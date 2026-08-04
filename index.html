@@ -5,256 +5,289 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>🚚 경로 최적화 PWA</title>
     
-    <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#4A90D9">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
-    <!-- 카카오 지도 API -->
-    <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=46f550c3a5a9bfc0ceff4bce9ecf71f8&autoload=false"></script>
+    <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=YOUR_KAKAO_JS_KEY&autoload=false"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: #f5f7fa;
+            background: #f0f2f5;
             color: #2d3748;
             padding-bottom: 80px;
         }
         
-        /* 헤더 */
         .header {
-            background: linear-gradient(135deg, #4A90D9, #357ABD);
+            background: linear-gradient(135deg, #1a365d, #2b6cb0);
             color: white;
-            padding: 16px 20px;
+            padding: 12px 16px;
             position: sticky;
             top: 0;
             z-index: 100;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+        }
+        
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
         }
         
         .header h1 {
-            font-size: 20px;
+            font-size: 17px;
             font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .header h1 small {
+            font-size: 10px;
+            font-weight: 400;
+            opacity: 0.7;
         }
         
         .header-actions {
             display: flex;
-            gap: 10px;
-            margin-top: 10px;
+            gap: 6px;
             flex-wrap: wrap;
         }
         
-        .header-actions select,
-        .header-actions input {
-            flex: 1;
-            min-width: 120px;
-            padding: 8px 12px;
+        .header-actions select {
+            padding: 5px 10px;
             border: none;
-            border-radius: 8px;
-            font-size: 14px;
-        }
-        
-        /* 탭 */
-        .tabs {
-            display: flex;
-            background: white;
-            border-bottom: 2px solid #e2e8f0;
-            position: sticky;
-            top: 80px;
-            z-index: 99;
-        }
-        
-        .tab {
-            flex: 1;
-            padding: 12px;
-            text-align: center;
-            font-weight: 600;
-            color: #718096;
+            border-radius: 6px;
+            font-size: 12px;
+            background: rgba(255,255,255,0.2);
+            color: white;
             cursor: pointer;
-            border-bottom: 3px solid transparent;
-            transition: all 0.2s;
         }
         
-        .tab.active {
-            color: #4A90D9;
-            border-bottom-color: #4A90D9;
-        }
-        
-        .tab-content {
-            display: none;
-            padding: 16px;
-        }
-        
-        .tab-content.active {
-            display: block;
-        }
-        
-        /* 장소 목록 */
-        .place-item {
+        .header-actions select option {
+            color: #2d3748;
             background: white;
-            border-radius: 12px;
-            padding: 14px 16px;
-            margin-bottom: 10px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: all 0.2s;
         }
         
-        .place-item:hover {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-        }
-        
-        .place-info {
-            flex: 1;
-        }
-        
-        .place-name {
-            font-weight: 600;
-            font-size: 15px;
-        }
-        
-        .place-address {
-            font-size: 13px;
-            color: #718096;
-            margin-top: 2px;
-        }
-        
-        .place-actions button {
-            background: none;
-            border: none;
-            font-size: 18px;
-            cursor: pointer;
-            padding: 4px 8px;
-            color: #a0aec0;
-            transition: color 0.2s;
-        }
-        
-        .place-actions button:hover {
-            color: #e53e3e;
-        }
-        
-        /* 버튼 */
         .btn {
-            padding: 10px 20px;
+            padding: 5px 12px;
             border: none;
-            border-radius: 10px;
-            font-size: 14px;
+            border-radius: 6px;
+            font-size: 12px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
         }
         
-        .btn-primary {
-            background: #4A90D9;
-            color: white;
-        }
+        .btn:active { transform: scale(0.97); }
+        .btn-primary { background: #2b6cb0; color: white; }
+        .btn-primary:hover { background: #1a365d; }
+        .btn-success { background: #38a169; color: white; }
+        .btn-success:hover { background: #276749; }
+        .btn-danger { background: #e53e3e; color: white; }
+        .btn-danger:hover { background: #c53030; }
+        .btn-outline { background: white; color: #2b6cb0; border: 2px solid #2b6cb0; }
+        .btn-outline:hover { background: #ebf8ff; }
+        .btn-sm { padding: 4px 10px; font-size: 11px; }
+        .btn-xs { padding: 2px 6px; font-size: 10px; }
+        .btn-sync { background: #805ad5; color: white; }
+        .btn-sync:hover { background: #6b46c1; }
         
-        .btn-primary:hover {
-            background: #357ABD;
-            transform: translateY(-1px);
-        }
-        
-        .btn-success {
-            background: #48BB78;
-            color: white;
-        }
-        
-        .btn-success:hover {
-            background: #38A169;
-        }
-        
-        .btn-danger {
-            background: #FC8181;
-            color: white;
-        }
-        
-        .btn-danger:hover {
-            background: #F56565;
-        }
-        
-        .btn-outline {
+        .tabs {
+            display: flex;
             background: white;
-            color: #4A90D9;
-            border: 2px solid #4A90D9;
+            border-bottom: 2px solid #e2e8f0;
+            position: sticky;
+            top: 58px;
+            z-index: 99;
+            overflow-x: auto;
         }
         
-        .btn-outline:hover {
-            background: #4A90D9;
-            color: white;
-        }
-        
-        .btn-sm {
-            padding: 6px 14px;
-            font-size: 12px;
-        }
-        
-        /* 드래그 앤 드롭 */
-        .drop-zone {
-            border: 2px dashed #cbd5e0;
-            border-radius: 12px;
-            padding: 40px 20px;
+        .tab {
+            flex: 1;
+            min-width: 60px;
+            padding: 10px 8px;
             text-align: center;
+            font-weight: 600;
+            font-size: 12px;
             color: #718096;
-            transition: all 0.3s;
             cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+            white-space: nowrap;
         }
         
-        .drop-zone.dragover {
-            border-color: #4A90D9;
+        .tab:hover { color: #4A90D9; }
+        .tab.active { color: #2b6cb0; border-bottom-color: #2b6cb0; }
+        
+        .tab-content {
+            display: none;
+            padding: 12px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .tab-content.active { display: block; }
+        
+        /* 입력 행 */
+        .input-row {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+        
+        .input-row input {
+            flex: 1;
+            min-width: 80px;
+            padding: 7px 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 13px;
+            transition: border-color 0.2s;
+        }
+        
+        .input-row input:focus {
+            outline: none;
+            border-color: #2b6cb0;
+        }
+        
+        /* 개소 목록 */
+        .place-item {
+            background: white;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 5px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+            border-left: 4px solid #2b6cb0;
+        }
+        
+        .place-item:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        
+        .place-item .info { flex: 1; min-width: 0; }
+        .place-item .info .name { font-weight: 600; font-size: 14px; }
+        .place-item .info .address { font-size: 12px; color: #718096; }
+        .place-item .info .coord { font-size: 10px; color: #a0aec0; }
+        
+        .place-item .idx {
+            background: #2b6cb0;
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+        
+        .place-item .actions { display: flex; gap: 3px; flex-shrink: 0; }
+        .place-item .actions button {
+            background: none;
+            border: none;
+            font-size: 14px;
+            cursor: pointer;
+            padding: 2px 5px;
+            color: #a0aec0;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        .place-item .actions button:hover {
+            background: #fed7d7;
+            color: #e53e3e;
+        }
+        .place-item .actions button.edit:hover {
             background: #ebf8ff;
+            color: #2b6cb0;
         }
         
-        .drop-zone .icon {
-            font-size: 48px;
-            margin-bottom: 12px;
+        .empty-state {
+            text-align: center;
+            padding: 30px 20px;
+            color: #a0aec0;
         }
+        .empty-state .icon { font-size: 36px; margin-bottom: 6px; }
+        .empty-state .text { font-size: 13px; }
+        
+        /* 버튼 그룹 */
+        .btn-group {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        
+        .btn-group .btn { flex: 1; min-width: 60px; justify-content: center; }
         
         /* 지도 */
         #map {
             width: 100%;
-            height: 400px;
-            border-radius: 12px;
-            margin-top: 12px;
+            height: 350px;
+            border-radius: 10px;
+            background: #e2e8f0;
         }
         
         /* 요약 */
         .summary {
             background: white;
-            border-radius: 12px;
-            padding: 16px;
-            margin: 12px 0;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            border-radius: 10px;
+            padding: 12px;
+            margin: 10px 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 12px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
         }
+        .summary-item { text-align: center; }
+        .summary-item .value { font-size: 20px; font-weight: 700; color: #2b6cb0; }
+        .summary-item .label { font-size: 11px; color: #718096; }
         
-        .summary-item {
-            text-align: center;
+        /* 경로 결과 */
+        .route-item {
+            background: white;
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-left: 4px solid #38a169;
         }
-        
-        .summary-item .value {
-            font-size: 24px;
+        .route-item .idx {
+            background: #38a169;
+            color: white;
+            font-size: 10px;
             font-weight: 700;
-            color: #4A90D9;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
         }
-        
-        .summary-item .label {
-            font-size: 12px;
-            color: #718096;
-            margin-top: 4px;
-        }
+        .route-item .info { flex: 1; min-width: 0; }
+        .route-item .info .name { font-weight: 600; font-size: 13px; }
+        .route-item .info .address { font-size: 11px; color: #718096; }
+        .route-item .dist { font-size: 12px; color: #38a169; font-weight: 600; text-align: right; flex-shrink: 0; }
+        .route-start { border-left-color: #2b6cb0; }
+        .route-start .idx { background: #2b6cb0; }
         
         /* 모달 */
         .modal-overlay {
@@ -265,121 +298,210 @@
             z-index: 1000;
             justify-content: center;
             align-items: center;
-            padding: 20px;
+            padding: 16px;
         }
-        
-        .modal-overlay.active {
-            display: flex;
-        }
+        .modal-overlay.active { display: flex; }
         
         .modal {
             background: white;
-            border-radius: 16px;
-            padding: 24px;
-            max-width: 500px;
+            border-radius: 12px;
+            padding: 18px;
+            max-width: 400px;
             width: 100%;
-            max-height: 80vh;
-            overflow-y: auto;
         }
-        
-        .modal h3 {
-            margin-bottom: 16px;
-            font-size: 18px;
-        }
-        
-        .modal input,
-        .modal textarea {
+        .modal h3 { font-size: 16px; margin-bottom: 12px; }
+        .modal input {
             width: 100%;
-            padding: 10px 12px;
+            padding: 7px 10px;
             border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 14px;
-            margin-bottom: 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            margin-bottom: 8px;
         }
-        
-        .modal input:focus,
-        .modal textarea:focus {
-            outline: none;
-            border-color: #4A90D9;
-        }
-        
-        /* 반응형 */
-        @media (max-width: 640px) {
-            .header h1 { font-size: 17px; }
-            .summary { grid-template-columns: 1fr 1fr; }
-            #map { height: 300px; }
-        }
+        .modal input:focus { outline: none; border-color: #2b6cb0; }
+        .modal .modal-actions { display: flex; gap: 6px; justify-content: flex-end; }
         
         /* 로딩 */
         .loading {
             display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 999;
+            justify-content: center;
+            align-items: center;
+        }
+        .loading.active { display: flex; }
+        
+        .loading-box {
+            background: white;
+            border-radius: 12px;
+            padding: 24px 32px;
             text-align: center;
-            padding: 20px;
+            max-width: 280px;
         }
-        
-        .loading.active {
-            display: block;
-        }
-        
-        .spinner {
+        .loading-box .spinner {
             border: 4px solid #e2e8f0;
-            border-top-color: #4A90D9;
+            border-top-color: #2b6cb0;
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
+            width: 36px;
+            height: 36px;
             animation: spin 0.8s linear infinite;
-            margin: 0 auto 12px;
+            margin: 0 auto 10px;
         }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-box .text { font-size: 14px; font-weight: 600; }
+        .loading-box .sub { font-size: 12px; color: #718096; margin-top: 3px; }
         
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        /* 드롭존 */
+        .drop-zone {
+            border: 2px dashed #cbd5e0;
+            border-radius: 10px;
+            padding: 30px 16px;
+            text-align: center;
+            color: #718096;
+            transition: all 0.3s;
+            cursor: pointer;
+            background: white;
+            margin-bottom: 10px;
+        }
+        .drop-zone.dragover {
+            border-color: #2b6cb0;
+            background: #ebf8ff;
+        }
+        .drop-zone .icon { font-size: 36px; margin-bottom: 6px; }
+        .drop-zone .title { font-weight: 600; font-size: 14px; }
+        .drop-zone .sub { font-size: 12px; margin-top: 3px; color: #a0aec0; }
+        
+        /* 결과 리포트 */
+        .report {
+            background: white;
+            border-radius: 8px;
+            padding: 12px 14px;
+            margin: 8px 0;
+            border-left: 4px solid #38a169;
+        }
+        .report .title { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+        .report .item { font-size: 12px; color: #4a5568; padding: 2px 0; }
+        .report .item .badge {
+            display: inline-block;
+            padding: 0 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            margin-right: 4px;
+        }
+        .badge-add { background: #c6f6d5; color: #22543d; }
+        .badge-update { background: #fefcbf; color: #975a16; }
+        .badge-skip { background: #e2e8f0; color: #4a5568; }
+        .badge-error { background: #fed7d7; color: #9b2c2c; }
+        
+        /* 설정 */
+        .setting-group {
+            background: white;
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+        .setting-group h4 {
+            font-size: 14px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .setting-group .row {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .setting-group .row input {
+            flex: 1;
+            min-width: 150px;
+            padding: 6px 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+        .setting-group .row input:focus {
+            outline: none;
+            border-color: #2b6cb0;
+        }
+        .setting-group .status {
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+        .status-ok { background: #c6f6d5; color: #22543d; }
+        .status-fail { background: #fed7d7; color: #9b2c2c; }
+        .status-wait { background: #e2e8f0; color: #4a5568; }
+        
+        /* 반응형 */
+        @media (max-width: 640px) {
+            .header h1 { font-size: 15px; }
+            .header h1 small { display: none; }
+            .tabs { top: 54px; }
+            .tab { font-size: 11px; padding: 8px 4px; min-width: 50px; }
+            .summary { grid-template-columns: 1fr 1fr; }
+            #map { height: 260px; }
+            .btn-group .btn { font-size: 11px; padding: 5px 8px; }
+            .setting-group .row input { min-width: 100px; }
         }
     </style>
 </head>
 <body>
-    <!-- 헤더 -->
+    <!-- ===== 헤더 ===== -->
     <header class="header">
-        <h1>🚚 경로 최적화</h1>
-        <div class="header-actions">
-            <select id="regionSelect">
-                <option value="seoul">📍 서울</option>
-                <option value="busan">📍 부산</option>
-                <option value="jeju">📍 제주</option>
-            </select>
-            <button class="btn btn-sm btn-outline" onclick="addRegion()">+ 추가</button>
-            <button class="btn btn-sm btn-success" onclick="exportData()">📤 내보내기</button>
-            <button class="btn btn-sm btn-danger" onclick="importData()">📥 가져오기</button>
+        <div class="header-top">
+            <h1>🚚 경로 최적화 <small>· 16방향 클러스터링</small></h1>
+            <div class="header-actions">
+                <select id="regionSelect">
+                    <option value="seoul">📍 서울</option>
+                    <option value="busan">📍 부산</option>
+                    <option value="jeju">📍 제주</option>
+                </select>
+                <button class="btn btn-sm btn-outline" onclick="addRegion()" style="background:rgba(255,255,255,0.15);color:white;border-color:rgba(255,255,255,0.3);">+ 추가</button>
+            </div>
         </div>
     </header>
     
-    <!-- 탭 -->
+    <!-- ===== 탭 ===== -->
     <div class="tabs">
         <div class="tab active" data-tab="places" onclick="switchTab('places')">📍 장소</div>
         <div class="tab" data-tab="map" onclick="switchTab('map')">🗺️ 지도</div>
-        <div class="tab" data-tab="upload" onclick="switchTab('upload')">📤 업로드</div>
+        <div class="tab" data-tab="list" onclick="switchTab('list')">📋 개소리스트</div>
+        <div class="tab" data-tab="settings" onclick="switchTab('settings')">⚙️ 설정</div>
     </div>
     
-    <!-- 탭: 장소 목록 -->
+    <!-- ===== 탭: 장소 ===== -->
     <div id="tab-places" class="tab-content active">
-        <div style="display:flex; gap:8px; margin-bottom:16px;">
-            <input type="text" id="placeName" placeholder="장소명" style="flex:2; padding:10px; border:2px solid #e2e8f0; border-radius:8px;">
-            <input type="text" id="placeAddress" placeholder="도로명주소" style="flex:3; padding:10px; border:2px solid #e2e8f0; border-radius:8px;">
-            <button class="btn btn-primary" onclick="addPlace()">추가</button>
+        <!-- 액션 바 -->
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
+            <button class="btn btn-success btn-sm" onclick="exportExcel()">📤 내보내기</button>
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('fileInput').click()">📥 가져오기</button>
+            <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none" onchange="importExcel(event)">
+            <button class="btn btn-sync btn-sm" onclick="syncToGitHub()">☁️ GitHub 동기화</button>
+            <span id="syncStatus" style="font-size:11px;color:#718096;display:flex;align-items:center;">⏳ 동기화 대기</span>
         </div>
         
+        <!-- 개소 목록 -->
         <div id="placeList"></div>
         
-        <div style="margin-top:16px; display:flex; gap:8px; flex-wrap:wrap;">
+        <!-- 액션 버튼 -->
+        <div class="btn-group">
             <button class="btn btn-success" onclick="optimizeRoute()">⚡ 경로 최적화</button>
             <button class="btn btn-primary" onclick="shareRoute()">📤 공유</button>
-            <button class="btn btn-outline" onclick="clearAll()">🗑️ 초기화</button>
+            <button class="btn btn-danger" onclick="clearAll()">🗑️ 초기화</button>
         </div>
     </div>
     
-    <!-- 탭: 지도 -->
+    <!-- ===== 탭: 지도 ===== -->
     <div id="tab-map" class="tab-content">
         <div id="map"></div>
-        <div class="summary" id="summary">
+        
+        <div class="summary">
             <div class="summary-item">
                 <div class="value" id="totalPlaces">0</div>
                 <div class="label">방문지</div>
@@ -393,44 +515,90 @@
                 <div class="label">총 시간 (분)</div>
             </div>
         </div>
+        
         <div id="routeList"></div>
     </div>
     
-    <!-- 탭: 업로드 -->
-    <div id="tab-upload" class="tab-content">
-        <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
-            <div class="icon">📁</div>
-            <div><strong>엑셀 파일을 드래그하거나 클릭하여 업로드</strong></div>
-            <div style="font-size:13px; margin-top:8px;">지원: .xlsx, .xls</div>
+    <!-- ===== 탭: 개소리스트 ===== -->
+    <div id="tab-list" class="tab-content">
+        <div class="input-row">
+            <input type="text" id="listName" placeholder="개소명">
+            <input type="text" id="listAddress" placeholder="도로명주소">
+            <button class="btn btn-primary" onclick="addToList()">+ 추가</button>
         </div>
-        <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none" onchange="handleFileUpload(event)">
         
-        <div style="margin-top:16px;">
-            <h4>📋 GitHub 연동</h4>
-            <input type="text" id="githubToken" placeholder="GitHub Token" style="width:100%; padding:10px; border:2px solid #e2e8f0; border-radius:8px; margin-top:8px;">
-            <button class="btn btn-primary" onclick="uploadToGitHub()" style="margin-top:8px;">☁️ GitHub 업로드</button>
-            <button class="btn btn-outline" onclick="loadFromGitHub()" style="margin-top:8px;">📥 GitHub 불러오기</button>
-        </div>
+        <div id="listContainer"></div>
     </div>
     
-    <!-- 모달 -->
-    <div class="modal-overlay" id="modal">
-        <div class="modal">
-            <h3 id="modalTitle">장소 편집</h3>
-            <input type="text" id="modalName" placeholder="장소명">
-            <input type="text" id="modalAddress" placeholder="도로명주소">
-            <input type="hidden" id="modalId">
-            <div style="display:flex; gap:8px; justify-content:flex-end;">
-                <button class="btn btn-outline" onclick="closeModal()">취소</button>
-                <button class="btn btn-primary" onclick="saveModal()">저장</button>
+    <!-- ===== 탭: 설정 ===== -->
+    <div id="tab-settings" class="tab-content">
+        <!-- GitHub 설정 -->
+        <div class="setting-group">
+            <h4>🔐 GitHub 연동</h4>
+            <div class="row">
+                <input type="password" id="githubToken" placeholder="GitHub Personal Access Token">
+                <button class="btn btn-primary btn-sm" onclick="saveGitHubToken()">저장</button>
+                <button class="btn btn-outline btn-sm" onclick="testGitHubToken()">테스트</button>
+            </div>
+            <div id="githubStatus" class="status status-wait" style="margin-top:6px;">⏳ 토큰이 설정되지 않았습니다</div>
+        </div>
+        
+        <!-- 카카오 API 설정 -->
+        <div class="setting-group">
+            <h4>🗺️ 카카오 API</h4>
+            <div class="row">
+                <input type="text" id="kakaoJsKey" placeholder="JavaScript 키">
+                <button class="btn btn-primary btn-sm" onclick="saveKakaoKeys()">저장</button>
+            </div>
+            <div class="row" style="margin-top:6px;">
+                <input type="text" id="kakaoRestKey" placeholder="REST API 키">
+            </div>
+            <div id="kakaoStatus" class="status status-wait" style="margin-top:6px;">⏳ API 키가 설정되지 않았습니다</div>
+        </div>
+        
+        <!-- 설정 관리 -->
+        <div class="setting-group">
+            <h4>💾 설정 관리</h4>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                <button class="btn btn-outline btn-sm" onclick="exportSettings()">📤 설정 내보내기</button>
+                <button class="btn btn-outline btn-sm" onclick="document.getElementById('settingsInput').click()">📥 설정 가져오기</button>
+                <input type="file" id="settingsInput" accept=".json" style="display:none" onchange="importSettings(event)">
+                <button class="btn btn-danger btn-sm" onclick="resetAll()">🗑️ 모든 데이터 초기화</button>
+            </div>
+        </div>
+        
+        <!-- 앱 정보 -->
+        <div class="setting-group">
+            <h4>ℹ️ 앱 정보</h4>
+            <div style="font-size:12px;color:#718096;line-height:1.8;">
+                <div>버전: 1.0.0</div>
+                <div>데이터 저장: localStorage + GitHub (자동 동기화)</div>
+                <div id="storageInfo">저장소 사용량: 계산 중...</div>
             </div>
         </div>
     </div>
     
-    <!-- 로딩 -->
+    <!-- ===== 모달 ===== -->
+    <div class="modal-overlay" id="modal">
+        <div class="modal">
+            <h3 id="modalTitle">✏️ 편집</h3>
+            <input type="text" id="modalName" placeholder="개소명">
+            <input type="text" id="modalAddress" placeholder="도로명주소">
+            <input type="hidden" id="modalId">
+            <div class="modal-actions">
+                <button class="btn btn-outline btn-sm" onclick="closeModal()">취소</button>
+                <button class="btn btn-primary btn-sm" onclick="saveModal()">저장</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ===== 로딩 ===== -->
     <div class="loading" id="loading">
-        <div class="spinner"></div>
-        <div id="loadingText">처리 중...</div>
+        <div class="loading-box">
+            <div class="spinner"></div>
+            <div class="text" id="loadingText">처리 중...</div>
+            <div class="sub" id="loadingSub">잠시만 기다려주세요</div>
+        </div>
     </div>
     
     <script src="app.js"></script>
