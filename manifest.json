@@ -2,7 +2,7 @@
   "name": "경로 최적화 PWA",
   "short_name": "RouteOpt",
   "description": "16방향 클러스터링 기반 경로 최적화",
-  "start_url": "/",
+  "start_url": "/route-optimizer-pwa/",
   "display": "standalone",
   "theme_color": "#4A90D9",
   "background_color": "#f5f7fa",
