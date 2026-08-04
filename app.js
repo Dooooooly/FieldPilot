@@ -1,12 +1,12 @@
 // ============================================================
-// 경로 최적화 PWA - 메인 앱
-// VBA 로직을 JavaScript로 포팅
+// 경로 최적화 PWA - VBA 완벽 포팅
+// 16방향 클러스터링 + 자동 GitHub 동기화
 // ============================================================
 
-// --- 설정 ---
+// --- 저장소 키 ---
 const STORAGE_KEY_PREFIX = 'places_';
 const SELECTED_REGION_KEY = 'selectedRegion';
-const KAKAO_JS_KEY = '46f550c3a5a9bfc0ceff4bce9ecf71f8'; // 카카오 JavaScript 키 입력
+const SETTINGS_KEY = 'app_settings';
 
 // --- 상태 ---
 let currentRegion = localStorage.getItem(SELECTED_REGION_KEY) || 'seoul';
@@ -15,9 +15,107 @@ let routeResult = null;
 let kakaoMap = null;
 let kakaoMarkers = [];
 let kakaoPolyline = null;
+let startPoint = null;
+let settings = {};
 
 // ============================================================
-// 1. 저장소 관리 (localStorage)
+// 1. 설정 관리
+// ============================================================
+
+function loadSettings() {
+    const saved = localStorage.getItem(SETTINGS_KEY);
+    if (saved) {
+        try {
+            settings = JSON.parse(saved);
+            document.getElementById('githubToken').value = settings.githubToken || '';
+            document.getElementById('kakaoJsKey').value = settings.kakaoJsKey || '';
+            document.getElementById('kakaoRestKey').value = settings.kakaoRestKey || '';
+            updateSettingsStatus();
+        } catch (e) {
+            console.error('설정 로드 오류:', e);
+        }
+    }
+}
+
+function saveSettings() {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    updateSettingsStatus();
+}
+
+function saveGitHubToken() {
+    const token = document.getElementById('githubToken').value.trim();
+    settings.githubToken = token;
+    saveSettings();
+    alert('✅ GitHub 토큰이 저장되었습니다.');
+    testGitHubToken();
+}
+
+function saveKakaoKeys() {
+    settings.kakaoJsKey = document.getElementById('kakaoJsKey').value.trim();
+    settings.kakaoRestKey = document.getElementById('kakaoRestKey').value.trim();
+    saveSettings();
+    alert('✅ 카카오 API 키가 저장되었습니다.');
+}
+
+function updateSettingsStatus() {
+    // GitHub 상태
+    const githubStatus = document.getElementById('githubStatus');
+    if (settings.githubToken) {
+        githubStatus.className = 'status status-ok';
+        githubStatus.textContent = '✅ 토큰이 설정됨 (테스트하려면 "테스트" 버튼 클릭)';
+    } else {
+        githubStatus.className = 'status status-wait';
+        githubStatus.textContent = '⏳ 토큰이 설정되지 않았습니다';
+    }
+    
+    // 카카오 상태
+    const kakaoStatus = document.getElementById('kakaoStatus');
+    if (settings.kakaoJsKey && settings.kakaoRestKey) {
+        kakaoStatus.className = 'status status-ok';
+        kakaoStatus.textContent = '✅ JavaScript 키, REST API 키 설정됨';
+    } else if (settings.kakaoJsKey || settings.kakaoRestKey) {
+        kakaoStatus.className = 'status status-wait';
+        kakaoStatus.textContent = '⚠️ 일부 키만 설정됨';
+    } else {
+        kakaoStatus.className = 'status status-wait';
+        kakaoStatus.textContent = '⏳ API 키가 설정되지 않았습니다';
+    }
+}
+
+async function testGitHubToken() {
+    const token = settings.githubToken || document.getElementById('githubToken').value.trim();
+    if (!token) {
+        alert('GitHub 토큰을 먼저 입력해주세요.');
+        return;
+    }
+    
+    const status = document.getElementById('githubStatus');
+    status.className = 'status status-wait';
+    status.textContent = '⏳ 테스트 중...';
+    
+    try {
+        const response = await fetch('https://api.github.com/user', {
+            headers: { 'Authorization': `token ${token}` }
+        });
+        
+        if (response.ok) {
+            const user = await response.json();
+            status.className = 'status status-ok';
+            status.textContent = `✅ 연결 성공! (${user.login})`;
+            settings.githubToken = token;
+            saveSettings();
+        } else {
+            status.className = 'status status-fail';
+            status.textContent = `❌ 연결 실패 (${response.status})`;
+        }
+    } catch (error) {
+        status.className = 'status status-fail';
+        status.textContent = '❌ 네트워크 오류';
+    }
+}
+
+// ============================================================
+// 2. 저장소 관리 (localStorage)
 // ============================================================
 
 function getStorageKey(region) {
@@ -29,12 +127,19 @@ function loadPlaces(region) {
     const data = localStorage.getItem(key);
     places = data ? JSON.parse(data) : [];
     renderPlaces();
+    renderList();
+    updateStorageInfo();
 }
 
 function savePlaces() {
     const key = getStorageKey(currentRegion);
     localStorage.setItem(key, JSON.stringify(places));
     renderPlaces();
+    renderList();
+    updateStorageInfo();
+    
+    // 자동 GitHub 동기화 (백그라운드)
+    autoSyncToGitHub();
 }
 
 function switchRegion(region) {
@@ -44,7 +149,6 @@ function switchRegion(region) {
     document.getElementById('regionSelect').value = region;
 }
 
-// --- 지역 추가 ---
 function addRegion() {
     const name = prompt('새 지역명을 입력하세요 (영문):', 'newregion');
     if (name && name.trim()) {
@@ -58,52 +162,283 @@ function addRegion() {
     }
 }
 
+function updateStorageInfo() {
+    const total = localStorage.length;
+    let size = 0;
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        size += localStorage.getItem(key).length * 2; // UTF-16
+    }
+    const sizeKB = (size / 1024).toFixed(1);
+    document.getElementById('storageInfo').textContent = 
+        `저장소 사용량: ${sizeKB} KB (항목 ${total}개)`;
+}
+
 // ============================================================
-// 2. 장소 CRUD
+// 3. GitHub 동기화 (자동 + 수동)
 // ============================================================
 
-function addPlace() {
-    const name = document.getElementById('placeName').value.trim();
-    const address = document.getElementById('placeAddress').value.trim();
+let syncTimeout = null;
+
+function autoSyncToGitHub() {
+    if (!settings.githubToken) return;
     
-    if (!name && !address) {
-        alert('장소명 또는 주소를 입력하세요.');
+    // 디바운스: 3초 내에 여러 번 호출되면 마지막 1번만 실행
+    clearTimeout(syncTimeout);
+    syncTimeout = setTimeout(() => {
+        syncToGitHub(true);
+    }, 3000);
+}
+
+async function syncToGitHub(silent = false) {
+    const token = settings.githubToken;
+    if (!token) {
+        if (!silent) alert('⚠️ GitHub 토큰이 설정되지 않았습니다.\n설정 탭에서 토큰을 입력해주세요.');
         return;
     }
     
-    const newPlace = {
-        id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-        name: name || '무명',
-        address: address || '',
-        lat: 0,
-        lng: 0,
-        order: places.length + 1,
-        cluster: 0
-    };
+    const statusEl = document.getElementById('syncStatus');
+    if (!silent) {
+        statusEl.textContent = '⏳ 동기화 중...';
+        statusEl.style.color = '#805ad5';
+    }
     
-    places.push(newPlace);
+    try {
+        // 사용자명 조회
+        const userRes = await fetch('https://api.github.com/user', {
+            headers: { 'Authorization': `token ${token}` }
+        });
+        if (!userRes.ok) throw new Error('토큰 인증 실패');
+        const user = await userRes.json();
+        
+        // 현재 지역 데이터 준비
+        const fileName = `${currentRegion}.json`;
+        const content = JSON.stringify(places, null, 2);
+        const b64Content = btoa(unescape(encodeURIComponent(content)));
+        
+        // GitHub에 업로드
+        const url = `https://api.github.com/repos/${user.login}/route-data/contents/${fileName}`;
+        
+        // 기존 파일 SHA 확인
+        let sha = '';
+        const getRes = await fetch(url, {
+            headers: { 'Authorization': `token ${token}` }
+        });
+        if (getRes.ok) {
+            const data = await getRes.json();
+            sha = data.sha;
+        }
+        
+        // 업로드
+        const putData = {
+            message: `Auto sync: ${currentRegion} (${new Date().toLocaleString()})`,
+            content: b64Content
+        };
+        if (sha) putData.sha = sha;
+        
+        const putRes = await fetch(url, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `token ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(putData)
+        });
+        
+        if (!putRes.ok) throw new Error(`업로드 실패: ${putRes.status}`);
+        
+        if (!silent) {
+            statusEl.textContent = '✅ 동기화 완료!';
+            statusEl.style.color = '#38a169';
+            setTimeout(() => {
+                statusEl.textContent = '☁️ 동기화됨';
+                statusEl.style.color = '#718096';
+            }, 3000);
+        } else {
+            statusEl.textContent = '☁️ 동기화됨';
+            statusEl.style.color = '#718096';
+        }
+        
+    } catch (error) {
+        console.error('GitHub 동기화 오류:', error);
+        if (!silent) {
+            statusEl.textContent = '❌ 동기화 실패';
+            statusEl.style.color = '#e53e3e';
+            alert('GitHub 동기화 실패: ' + error.message);
+        }
+    }
+}
+
+async function loadFromGitHub() {
+    const token = settings.githubToken;
+    if (!token) {
+        alert('⚠️ GitHub 토큰이 설정되지 않았습니다.\n설정 탭에서 토큰을 입력해주세요.');
+        return;
+    }
+    
+    const statusEl = document.getElementById('syncStatus');
+    statusEl.textContent = '⏳ 불러오는 중...';
+    statusEl.style.color = '#805ad5';
+    
+    try {
+        const userRes = await fetch('https://api.github.com/user', {
+            headers: { 'Authorization': `token ${token}` }
+        });
+        if (!userRes.ok) throw new Error('토큰 인증 실패');
+        const user = await userRes.json();
+        
+        const fileName = `${currentRegion}.json`;
+        const url = `https://api.github.com/repos/${user.login}/route-data/contents/${fileName}`;
+        
+        const response = await fetch(url, {
+            headers: { 'Authorization': `token ${token}` }
+        });
+        
+        if (response.status === 404) {
+            alert('GitHub에 저장된 데이터가 없습니다.');
+            statusEl.textContent = '📭 데이터 없음';
+            statusEl.style.color = '#718096';
+            return;
+        }
+        
+        if (!response.ok) throw new Error(`불러오기 실패: ${response.status}`);
+        
+        const data = await response.json();
+        const content = decodeURIComponent(escape(atob(data.content)));
+        const loaded = JSON.parse(content);
+        
+        if (loaded.length === 0) {
+            alert('빈 데이터입니다.');
+            return;
+        }
+        
+        if (places.length > 0) {
+            if (!confirm(`현재 ${places.length}개 데이터를 ${loaded.length}개로 덮어쓰시겠습니까?`)) {
+                return;
+            }
+        }
+        
+        places = loaded;
+        savePlaces();
+        
+        statusEl.textContent = '✅ 불러오기 완료!';
+        statusEl.style.color = '#38a169';
+        alert(`✅ ${places.length}개 데이터를 불러왔습니다.`);
+        
+        setTimeout(() => {
+            statusEl.textContent = '☁️ 동기화됨';
+            statusEl.style.color = '#718096';
+        }, 3000);
+        
+    } catch (error) {
+        console.error('GitHub 불러오기 오류:', error);
+        statusEl.textContent = '❌ 불러오기 실패';
+        statusEl.style.color = '#e53e3e';
+        alert('GitHub 불러오기 실패: ' + error.message);
+    }
+}
+
+// ============================================================
+// 4. 지오코딩 (REST API)
+// ============================================================
+
+async function geocodeAddress(address) {
+    const restKey = settings.kakaoRestKey;
+    if (!restKey) {
+        alert('⚠️ 카카오 REST API 키가 설정되지 않았습니다.\n설정 탭에서 키를 입력해주세요.');
+        return null;
+    }
+    
+    const url = `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(address)}`;
+    
+    try {
+        const response = await fetch(url, {
+            headers: { 'Authorization': `KakaoAK ${restKey}` }
+        });
+        
+        if (!response.ok) {
+            if (response.status === 401) {
+                alert('⚠️ REST API 키가 올바르지 않습니다.');
+            } else if (response.status === 403) {
+                alert('⚠️ 카카오 개발자센터에 도메인이 등록되지 않았습니다.');
+            }
+            return null;
+        }
+        
+        const data = await response.json();
+        
+        if (data.documents && data.documents.length > 0) {
+            const doc = data.documents[0];
+            const road = doc.road_address;
+            if (road) {
+                return {
+                    lat: parseFloat(road.y),
+                    lng: parseFloat(road.x),
+                    address: road.address_name
+                };
+            }
+            const addr = doc.address;
+            return {
+                lat: parseFloat(addr.y),
+                lng: parseFloat(addr.x),
+                address: addr.address_name
+            };
+        }
+        return null;
+    } catch (error) {
+        console.error('Geocode error:', error);
+        return null;
+    }
+}
+
+// ============================================================
+// 5. 장소 탭 (CRUD)
+// ============================================================
+
+function renderPlaces() {
+    const container = document.getElementById('placeList');
+    
+    if (places.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="icon">📭</div>
+                <div class="text">장소가 없습니다</div>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = places.map((p, i) => `
+        <div class="place-item">
+            <div class="idx">${i + 1}</div>
+            <div class="info">
+                <div class="name">${p.name}</div>
+                <div class="address">${p.address || '(주소 없음)'}</div>
+                ${p.lat && p.lng ? `<div class="coord">📍 ${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}</div>` : ''}
+            </div>
+            <div class="actions">
+                <button class="edit" onclick="editPlace('${p.id}')">✏️</button>
+                <button onclick="deletePlace('${p.id}')">🗑️</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function deletePlace(id) {
+    if (!confirm('삭제하시겠습니까?')) return;
+    places = places.filter(p => p.id !== id);
     savePlaces();
-    
-    document.getElementById('placeName').value = '';
-    document.getElementById('placeAddress').value = '';
-    document.getElementById('placeName').focus();
 }
 
 function editPlace(id) {
     const place = places.find(p => p.id === id);
     if (!place) return;
     
-    document.getElementById('modalTitle').textContent = '장소 편집';
+    document.getElementById('modalTitle').textContent = '✏️ 장소 편집';
     document.getElementById('modalName').value = place.name;
     document.getElementById('modalAddress').value = place.address;
     document.getElementById('modalId').value = id;
     document.getElementById('modal').classList.add('active');
-}
-
-function deletePlace(id) {
-    if (!confirm('이 장소를 삭제하시겠습니까?')) return;
-    places = places.filter(p => p.id !== id);
-    savePlaces();
 }
 
 function saveModal() {
@@ -124,14 +459,43 @@ function closeModal() {
     document.getElementById('modal').classList.remove('active');
 }
 
-function renderPlaces() {
-    const container = document.getElementById('placeList');
+// ============================================================
+// 6. 개소리스트 탭
+// ============================================================
+
+function addToList() {
+    const name = document.getElementById('listName').value.trim();
+    const address = document.getElementById('listAddress').value.trim();
+    
+    if (!name && !address) {
+        alert('개소명 또는 주소를 입력하세요.');
+        return;
+    }
+    
+    const newPlace = {
+        id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+        name: name || '무명',
+        address: address || '',
+        lat: 0,
+        lng: 0
+    };
+    
+    places.push(newPlace);
+    savePlaces();
+    
+    document.getElementById('listName').value = '';
+    document.getElementById('listAddress').value = '';
+    document.getElementById('listName').focus();
+}
+
+function renderList() {
+    const container = document.getElementById('listContainer');
     
     if (places.length === 0) {
         container.innerHTML = `
-            <div style="text-align:center; padding:40px; color:#a0aec0;">
-                <div style="font-size:48px;">📭</div>
-                <div>장소가 없습니다. 추가해주세요!</div>
+            <div class="empty-state">
+                <div class="icon">📭</div>
+                <div class="text">개소가 없습니다</div>
             </div>
         `;
         return;
@@ -139,64 +503,159 @@ function renderPlaces() {
     
     container.innerHTML = places.map((p, i) => `
         <div class="place-item">
-            <div class="place-info">
-                <div class="place-name">${i + 1}. ${p.name}</div>
-                <div class="place-address">${p.address || '(주소 없음)'}</div>
-                ${p.lat && p.lng ? `<div style="font-size:11px; color:#a0aec0;">📍 ${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}</div>` : ''}
+            <div class="idx">${i + 1}</div>
+            <div class="info">
+                <div class="name">${p.name}</div>
+                <div class="address">${p.address || '(주소 없음)'}</div>
             </div>
-            <div class="place-actions">
-                <button onclick="editPlace('${p.id}')" title="편집">✏️</button>
-                <button onclick="deletePlace('${p.id}')" title="삭제">🗑️</button>
+            <div class="actions">
+                <button onclick="deletePlace('${p.id}')">🗑️</button>
             </div>
         </div>
     `).join('');
 }
 
 // ============================================================
-// 3. 지오코딩 (카카오 API)
+// 7. 엑셀 내보내기/가져오기 (스마트)
 // ============================================================
 
-async function geocodeAddress(address) {
-    const url = `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(address)}`;
+function exportExcel() {
+    if (places.length === 0) {
+        alert('내보낼 데이터가 없습니다.');
+        return;
+    }
+    
+    const data = places.map(p => ({
+        '개소명': p.name,
+        '도로명주소': p.address
+    }));
+    
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(data);
+    XLSX.utils.book_append_sheet(wb, ws, '개소리스트');
+    
+    const fileName = `개소리스트_${currentRegion}_${new Date().toISOString().slice(0,10)}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+}
+
+async function importExcel(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const loading = document.getElementById('loading');
+    const loadingText = document.getElementById('loadingText');
+    const loadingSub = document.getElementById('loadingSub');
+    loading.classList.add('active');
+    loadingText.textContent = '📥 엑셀 파일 처리 중...';
+    loadingSub.textContent = '데이터 분석 중';
     
     try {
-        const response = await fetch(url, {
-            headers: {
-                'Authorization': `KakaoAK ${KAKAO_JS_KEY}`
-            }
-        });
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(sheet);
         
-        if (!response.ok) throw new Error('API 호출 실패');
-        const data = await response.json();
+        let added = 0, updated = 0, skipped = 0, errors = 0;
+        const report = [];
         
-        if (data.documents && data.documents.length > 0) {
-            const doc = data.documents[0];
-            // 도로명 주소 우선
-            const road = doc.road_address;
-            if (road) {
-                return {
-                    lat: parseFloat(road.y),
-                    lng: parseFloat(road.x),
-                    address: road.address_name
-                };
+        for (const row of json) {
+            const name = String(row['개소명'] || row['name'] || row['Name'] || '').trim();
+            const address = String(row['도로명주소'] || row['address'] || row['Address'] || '').trim();
+            
+            if (!name && !address) {
+                errors++;
+                report.push({ name: '(빈 행)', action: '❌ 오류', detail: '개소명과 주소가 모두 없음' });
+                continue;
             }
-            // 지번 주소
-            const addr = doc.address;
-            return {
-                lat: parseFloat(addr.y),
-                lng: parseFloat(addr.x),
-                address: addr.address_name
-            };
+            
+            // 기존 데이터에서 개소명 검색
+            const existing = places.find(p => p.name === name);
+            
+            if (existing) {
+                // 주소가 다르면 업데이트
+                if (existing.address !== address) {
+                    existing.address = address;
+                    updated++;
+                    report.push({ name: name, action: '🔄 업데이트', detail: `주소 변경: ${address}` });
+                } else {
+                    skipped++;
+                    report.push({ name: name, action: '⏭️ 건너뜀', detail: '변경 없음' });
+                }
+            } else {
+                // 새 개소 추가
+                places.push({
+                    id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+                    name: name || '무명',
+                    address: address || '',
+                    lat: 0,
+                    lng: 0
+                });
+                added++;
+                report.push({ name: name || '무명', action: '✅ 추가', detail: '신규 개소' });
+            }
         }
-        return null;
+        
+        // 변경사항 저장
+        if (added > 0 || updated > 0) {
+            savePlaces();
+        }
+        
+        loading.classList.remove('active');
+        
+        // 결과 리포트 표시
+        showImportReport(report, added, updated, skipped, errors);
+        
     } catch (error) {
-        console.error('Geocode error:', error);
-        return null;
+        loading.classList.remove('active');
+        alert('파일 처리 오류: ' + error.message);
     }
+    event.target.value = '';
+}
+
+function showImportReport(report, added, updated, skipped, errors) {
+    let html = `
+        <div class="report">
+            <div class="title">📊 엑셀 업로드 완료!</div>
+            <div class="item"><span class="badge badge-add">✅ 추가</span> ${added}개</div>
+            <div class="item"><span class="badge badge-update">🔄 업데이트</span> ${updated}개</div>
+            <div class="item"><span class="badge badge-skip">⏭️ 건너뜀</span> ${skipped}개</div>
+            ${errors > 0 ? `<div class="item"><span class="badge badge-error">❌ 오류</span> ${errors}개</div>` : ''}
+            <div style="font-size:11px;color:#718096;margin-top:4px;">총 처리: ${report.length}개</div>
+        </div>
+    `;
+    
+    // 상세 내역 (최대 10개만)
+    const details = report.slice(0, 10).map(r => 
+        `<div style="font-size:11px;padding:2px 0;border-bottom:1px solid #f0f2f5;">${r.action} ${r.name} - ${r.detail}</div>`
+    ).join('');
+    
+    if (details) {
+        html += `
+            <div class="report" style="border-left-color:#4A90D9;max-height:200px;overflow-y:auto;">
+                <div class="title">📋 상세 내역</div>
+                ${details}
+                ${report.length > 10 ? `<div style="font-size:11px;color:#a0aec0;padding-top:4px;">... 외 ${report.length - 10}개</div>` : ''}
+            </div>
+        `;
+    }
+    
+    // 기존 리포트 제거 후 추가
+    const oldReport = document.querySelector('.report');
+    if (oldReport) oldReport.remove();
+    document.getElementById('placeList').parentNode.insertBefore(
+        createElementFromHTML(html),
+        document.getElementById('placeList')
+    );
+}
+
+function createElementFromHTML(html) {
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    return div.firstElementChild;
 }
 
 // ============================================================
-// 4. 경로 최적화 엔진 (16방향 클러스터링)
+// 8. 16방향 클러스터링 (VBA 완벽 포팅)
 // ============================================================
 
 function calculateAngle(startX, startY, targetX, targetY) {
@@ -212,44 +671,31 @@ function calculateAngle(startX, startY, targetX, targetY) {
 }
 
 function getClusterGroup16(angle) {
-    // 16방향 (22.5도 간격)
     const directions = [
-        [78.75, 101.25, 1],   // 북
-        [56.25, 78.75, 2],    // 북동
-        [33.75, 56.25, 3],    // 동북
-        [11.25, 33.75, 4],    // 동
-        [348.75, 11.25, 5],   // 동남 (0도 기준)
-        [326.25, 348.75, 6],  // 남동
-        [303.75, 326.25, 7],  // 남
-        [281.25, 303.75, 8],  // 남서
-        [258.75, 281.25, 9],  // 서남
-        [236.25, 258.75, 10], // 서
-        [213.75, 236.25, 11], // 서북
-        [191.25, 213.75, 12], // 북서
-        [168.75, 191.25, 13], // 북북서
-        [146.25, 168.75, 14], // 북서북
-        [123.75, 146.25, 15], // 북북동
-        [101.25, 123.75, 16]  // 북동북
+        [78.75, 101.25, 1], [56.25, 78.75, 2], [33.75, 56.25, 3],
+        [11.25, 33.75, 4], [348.75, 11.25, 5], [326.25, 348.75, 6],
+        [303.75, 326.25, 7], [281.25, 303.75, 8], [258.75, 281.25, 9],
+        [236.25, 258.75, 10], [213.75, 236.25, 11], [191.25, 213.75, 12],
+        [168.75, 191.25, 13], [146.25, 168.75, 14], [123.75, 146.25, 15],
+        [101.25, 123.75, 16]
     ];
     
     for (const [min, max, group] of directions) {
         if (min <= max) {
             if (angle >= min && angle < max) return group;
         } else {
-            // 348.75 ~ 11.25 (0도 경계)
             if (angle >= min || angle < max) return group;
         }
     }
-    return 5; // 기본값
+    return 5;
 }
 
-function optimizeRoute(places, startLat, startLng, firstTargetMode = 'Nearest') {
+function optimizeRoute(places, startLat, startLng, firstTargetMode) {
     if (places.length === 0) return [];
     
     const count = places.length;
-    const rows = places.map((p, i) => i);
-    const groups = rows.map(i => {
-        const angle = calculateAngle(startLng, startLat, places[i].lng, places[i].lat);
+    const groups = places.map(p => {
+        const angle = calculateAngle(startLng, startLat, p.lng, p.lat);
         return getClusterGroup16(angle);
     });
     
@@ -258,7 +704,6 @@ function optimizeRoute(places, startLat, startLng, firstTargetMode = 'Nearest') 
     let currX = startLng;
     let currY = startLat;
     
-    // 첫 번째 목적지 선택
     let firstIdx = 0;
     let compVal = firstTargetMode === 'Nearest' ? Infinity : -Infinity;
     
@@ -272,7 +717,6 @@ function optimizeRoute(places, startLat, startLng, firstTargetMode = 'Nearest') 
         }
     }
     
-    // 그룹 방문
     function visitGroup(startIdx) {
         const targetGroup = groups[startIdx];
         const groupItems = [];
@@ -283,7 +727,6 @@ function optimizeRoute(places, startLat, startLng, firstTargetMode = 'Nearest') 
         }
         if (groupItems.length === 0) return;
         
-        // 그룹 내 정렬 (출발지 기준 가까운 순)
         groupItems.sort((a, b) => {
             const distA = Math.pow(currX - places[a].lng, 2) + Math.pow(currY - places[a].lat, 2);
             const distB = Math.pow(currX - places[b].lng, 2) + Math.pow(currY - places[b].lat, 2);
@@ -300,7 +743,6 @@ function optimizeRoute(places, startLat, startLng, firstTargetMode = 'Nearest') 
     
     visitGroup(firstIdx);
     
-    // 남은 그룹 방문
     while (true) {
         let nearestIdx = -1;
         let minDist = Infinity;
@@ -320,45 +762,42 @@ function optimizeRoute(places, startLat, startLng, firstTargetMode = 'Nearest') 
 }
 
 // ============================================================
-// 5. 카카오 경로 API 호출
+// 9. 카카오 경로 API
 // ============================================================
 
-async function callKakaoRoute(origin, destination, waypoints) {
+async function callKakaoRoute(origin, waypoints, destination) {
+    const restKey = settings.kakaoRestKey;
+    if (!restKey) {
+        alert('⚠️ 카카오 REST API 키가 설정되지 않았습니다.');
+        return null;
+    }
+    
     const url = 'https://apis-navi.kakaomobility.com/v1/waypoints/directions';
     
     const payload = {
-        origin: {
-            name: origin.name || '출발지',
-            x: origin.x,
-            y: origin.y
-        },
-        destination: {
-            name: destination.name || '도착지',
-            x: destination.x,
-            y: destination.y
-        },
+        origin: { name: origin.name, x: origin.x, y: origin.y },
+        destination: { name: destination.name, x: destination.x, y: destination.y },
         priority: 'RECOMMEND'
     };
     
     if (waypoints && waypoints.length > 0) {
-        payload.waypoints = waypoints.map(w => ({
-            name: w.name || '경유지',
-            x: w.x,
-            y: w.y
-        }));
+        payload.waypoints = waypoints.map(w => ({ name: w.name, x: w.x, y: w.y }));
     }
     
     try {
         const response = await fetch(url, {
             method: 'POST',
             headers: {
-                'Authorization': `KakaoAK ${KAKAO_JS_KEY}`,
+                'Authorization': `KakaoAK ${restKey}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(payload)
         });
         
-        if (!response.ok) throw new Error(`API 호출 실패: ${response.status}`);
+        if (!response.ok) {
+            console.error('Route API error:', response.status);
+            return null;
+        }
         return await response.json();
     } catch (error) {
         console.error('Route API error:', error);
@@ -369,130 +808,136 @@ async function callKakaoRoute(origin, destination, waypoints) {
 function parseRouteResult(data) {
     if (!data || !data.routes || data.routes.length === 0) return [];
     
-    const route = data.routes[0];
-    const sections = route.sections || [];
-    const results = [];
-    
-    for (const section of sections) {
-        const dist = section.distance ? section.distance / 1000 : 0;
-        const dur = section.duration ? section.duration / 60 : 0;
-        results.push({ km: dist, min: dur });
-    }
-    
-    return results;
+    const sections = data.routes[0].sections || [];
+    return sections.map(s => ({
+        km: s.distance ? s.distance / 1000 : 0,
+        min: s.duration ? s.duration / 60 : 0
+    }));
 }
 
 // ============================================================
-// 6. 메인 최적화 실행
+// 10. 메인 최적화 실행
 // ============================================================
 
+let startPoint = null;
+
+function setStartPoint(name, address, lat, lng) {
+    startPoint = { name, address, lat, lng };
+}
+
 async function optimizeRoute() {
+    // 출발지 확인 - 사용자에게 입력받기
+    if (!startPoint) {
+        const name = prompt('출발지명을 입력하세요:', '출발지');
+        if (!name) return;
+        const address = prompt('출발지 도로명주소를 입력하세요:');
+        if (!address) return;
+        
+        const result = await geocodeAddress(address);
+        if (result) {
+            setStartPoint(name, result.address, result.lat, result.lng);
+        } else {
+            alert('출발지 주소 변환에 실패했습니다.');
+            return;
+        }
+    }
+    
     if (places.length === 0) {
-        alert('장소를 먼저 추가해주세요.');
+        alert('📍 경유지를 최소 1개 이상 추가해주세요!');
         return;
     }
     
-    // 좌표가 없는 장소는 지오코딩
     const loading = document.getElementById('loading');
     const loadingText = document.getElementById('loadingText');
+    const loadingSub = document.getElementById('loadingSub');
     loading.classList.add('active');
-    loadingText.textContent = '주소 변환 중...';
+    
+    // 경유지 좌표 변환
+    loadingText.textContent = '📍 경유지 주소 변환 중...';
+    loadingSub.textContent = places.length + '개 경유지 처리 중';
     
     let hasError = false;
-    for (const place of places) {
+    for (let i = 0; i < places.length; i++) {
+        const place = places[i];
         if (!place.lat || !place.lng) {
             if (place.address) {
+                loadingSub.textContent = `${i + 1}/${places.length}: ${place.name}`;
                 const result = await geocodeAddress(place.address);
                 if (result) {
                     place.lat = result.lat;
                     place.lng = result.lng;
                     place.address = result.address || place.address;
                 } else {
-                    alert(`주소 변환 실패: ${place.name} (${place.address})`);
+                    alert(`❌ 주소 변환 실패: ${place.name} (${place.address})`);
                     hasError = true;
                 }
+            } else {
+                alert(`❌ 주소가 없는 경유지: ${place.name}`);
+                hasError = true;
             }
         }
     }
     
     if (hasError) {
         loading.classList.remove('active');
+        savePlaces();
         return;
     }
+    savePlaces();
     
-    // 유효한 좌표가 있는 장소만
     const validPlaces = places.filter(p => p.lat && p.lng);
     if (validPlaces.length === 0) {
-        alert('좌표가 있는 장소가 없습니다.');
+        alert('좌표가 있는 경유지가 없습니다.');
         loading.classList.remove('active');
         return;
     }
     
-    // 출발지 (첫 번째 장소 사용, 또는 사용자 입력)
-    const startPlace = validPlaces[0];
-    const startLat = startPlace.lat;
-    const startLng = startPlace.lng;
-    
     // 최적화 방식 선택
-    const mode = confirm('출발지에서 가까운 곳부터 시작하시겠습니까?\n(취소: 먼 곳부터 시작)') ? 'Nearest' : 'Farthest';
+    const mode = confirm('첫 번째 목적지 선택 방식을 선택하세요.\n\n[확인] 출발지에서 가까운 곳부터 시작\n[취소] 출발지에서 먼 곳부터 시작')
+        ? 'Nearest' : 'Farthest';
     
-    loadingText.textContent = '경로 최적화 중...';
+    loadingText.textContent = '⚡ 16방향 클러스터링 계산 중...';
+    loadingSub.textContent = validPlaces.length + '개 경유지 최적화';
     
-    // 경로 최적화 실행
-    const sorted = optimizeRoute(validPlaces, startLat, startLng, mode);
+    const sorted = optimizeRoute(validPlaces, startPoint.lat, startPoint.lng, mode);
     
     // 경로 API 호출
-    if (sorted.length > 1) {
-        loadingText.textContent = '카카오 경로 API 호출 중...';
-        
-        const origin = { name: '출발지', x: startLng, y: startLat };
-        const dest = { name: sorted[sorted.length - 1].name, x: sorted[sorted.length - 1].lng, y: sorted[sorted.length - 1].lat };
-        const waypoints = sorted.slice(0, -1).map(p => ({
-            name: p.name,
-            x: p.lng,
-            y: p.lat
-        }));
-        
-        const routeData = await callKakaoRoute(origin, dest, waypoints);
-        const sections = parseRouteResult(routeData);
-        
-        // 결과 저장
-        routeResult = {
-            places: sorted,
-            sections: sections,
-            totalKm: sections.reduce((sum, s) => sum + s.km, 0),
-            totalMin: sections.reduce((sum, s) => sum + s.min, 0),
-            mode: mode
-        };
-    } else {
-        routeResult = {
-            places: sorted,
-            sections: [],
-            totalKm: 0,
-            totalMin: 0,
-            mode: mode
-        };
-    }
+    loadingText.textContent = '🗺️ 카카오 경로 API 호출 중...';
+    loadingSub.textContent = '경로 정보 가져오는 중';
+    
+    const origin = { name: startPoint.name, x: startPoint.lng, y: startPoint.lat };
+    const dest = { name: sorted[sorted.length - 1].name, x: sorted[sorted.length - 1].lng, y: sorted[sorted.length - 1].lat };
+    const waypoints = sorted.slice(0, -1).map(p => ({ name: p.name, x: p.lng, y: p.lat }));
+    
+    const routeData = await callKakaoRoute(origin, waypoints, dest);
+    const sections = parseRouteResult(routeData);
+    
+    routeResult = {
+        places: sorted,
+        sections: sections,
+        totalKm: sections.reduce((sum, s) => sum + s.km, 0),
+        totalMin: sections.reduce((sum, s) => sum + s.min, 0),
+        mode: mode,
+        startPoint: startPoint
+    };
     
     loading.classList.remove('active');
     
-    // 결과 표시
     displayRouteResult();
     showRouteOnMap();
     alert('✅ 경로 최적화 완료!');
 }
 
 // ============================================================
-// 7. 결과 표시
+// 11. 결과 표시
 // ============================================================
 
 function displayRouteResult() {
     if (!routeResult) return;
     
     const container = document.getElementById('routeList');
-    const { places: sorted, sections, totalKm, totalMin } = routeResult;
+    const { places: sorted, sections, totalKm, totalMin, startPoint } = routeResult;
     
-    // 요약
     document.getElementById('totalPlaces').textContent = sorted.length;
     document.getElementById('totalKm').textContent = totalKm.toFixed(2);
     document.getElementById('totalMin').textContent = Math.round(totalMin);
@@ -502,34 +947,47 @@ function displayRouteResult() {
         return;
     }
     
-    let html = '<div style="font-weight:600; margin-bottom:12px;">📋 최적 경로</div>';
+    let html = `
+        <div style="font-weight:600; margin-bottom:10px; font-size:14px;">📋 최적 경로</div>
+        <div class="route-item route-start">
+            <div class="idx">🚩</div>
+            <div class="info">
+                <div class="name">${startPoint.name}</div>
+                <div class="address">${startPoint.address}</div>
+            </div>
+        </div>
+    `;
     
     for (let i = 0; i < sorted.length; i++) {
         const p = sorted[i];
         const sec = i < sections.length ? sections[i] : null;
         html += `
-            <div class="place-item">
-                <div class="place-info">
-                    <div class="place-name">${i + 1}. ${p.name}</div>
-                    <div class="place-address">${p.address || ''}</div>
-                    ${sec ? `<div style="font-size:12px; color:#48BB78;">→ ${sec.km.toFixed(2)}km / ${sec.min.toFixed(1)}분</div>` : ''}
+            <div class="route-item">
+                <div class="idx">${i + 1}</div>
+                <div class="info">
+                    <div class="name">${p.name}</div>
+                    <div class="address">${p.address || ''}</div>
                 </div>
-                <div style="font-size:20px;">${i === 0 ? '🚩' : '📍'}</div>
+                ${sec ? `<div class="dist">${sec.km.toFixed(2)}km<br>${sec.min.toFixed(0)}분</div>` : ''}
             </div>
         `;
     }
     
     container.innerHTML = html;
-    
-    // 지도 탭으로 전환
     switchTab('map');
 }
 
 // ============================================================
-// 8. 지도 표시 (카카오 지도)
+// 12. 지도 표시
 // ============================================================
 
 function initMap() {
+    const jsKey = settings.kakaoJsKey;
+    if (!jsKey) {
+        console.warn('카카오 JavaScript 키가 설정되지 않았습니다.');
+        return;
+    }
+    
     if (typeof kakao === 'undefined') {
         console.error('카카오 지도 API가 로드되지 않았습니다.');
         return;
@@ -537,11 +995,10 @@ function initMap() {
     
     kakao.maps.load(() => {
         const container = document.getElementById('map');
-        const options = {
+        kakaoMap = new kakao.maps.Map(container, {
             center: new kakao.maps.LatLng(37.5665, 126.9780),
             level: 7
-        };
-        kakaoMap = new kakao.maps.Map(container, options);
+        });
     });
 }
 
@@ -562,35 +1019,55 @@ function showRouteOnMap() {
         kakaoPolyline = null;
     }
     
-    const places = routeResult ? routeResult.places : [];
-    if (places.length === 0) return;
+    if (!routeResult) return;
+    
+    const { places: sorted, startPoint } = routeResult;
+    if (!startPoint) return;
     
     const bounds = new kakao.maps.LatLngBounds();
     const path = [];
     
-    for (let i = 0; i < places.length; i++) {
-        const p = places[i];
+    // 출발지
+    const startLatLng = new kakao.maps.LatLng(startPoint.lat, startPoint.lng);
+    bounds.extend(startLatLng);
+    path.push(startLatLng);
+    
+    const startMarker = new kakao.maps.Marker({
+        position: startLatLng,
+        map: kakaoMap,
+        image: new kakao.maps.MarkerImage(
+            'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png',
+            new kakao.maps.Size(24, 35)
+        )
+    });
+    kakaoMarkers.push(startMarker);
+    
+    const startInfo = new kakao.maps.InfoWindow({
+        content: `<div style="padding:6px 10px; font-weight:bold; color:#2b6cb0;">🚩 ${startPoint.name}</div>`
+    });
+    startInfo.open(kakaoMap, startMarker);
+    kakaoMarkers.push(startInfo);
+    
+    // 경유지
+    for (let i = 0; i < sorted.length; i++) {
+        const p = sorted[i];
         const latlng = new kakao.maps.LatLng(p.lat, p.lng);
         bounds.extend(latlng);
         path.push(latlng);
         
-        // 마커
         const marker = new kakao.maps.Marker({
             position: latlng,
             map: kakaoMap
         });
         kakaoMarkers.push(marker);
         
-        // 인포윈도우
         const content = `
             <div style="padding:6px 10px; font-size:13px; max-width:150px;">
-                <div style="font-weight:bold;">${i + 1}. ${p.name}</div>
+                <div style="font-weight:bold;">📍 ${i + 1}. ${p.name}</div>
                 <div style="font-size:11px; color:#666;">${p.address || ''}</div>
             </div>
         `;
-        const infowindow = new kakao.maps.InfoWindow({
-            content: content
-        });
+        const infowindow = new kakao.maps.InfoWindow({ content });
         infowindow.open(kakaoMap, marker);
         kakaoMarkers.push(infowindow);
     }
@@ -600,172 +1077,18 @@ function showRouteOnMap() {
         kakaoPolyline = new kakao.maps.Polyline({
             path: path,
             strokeWeight: 4,
-            strokeColor: '#4A90D9',
+            strokeColor: '#2b6cb0',
             strokeOpacity: 0.7,
             strokeStyle: 'solid'
         });
         kakaoPolyline.setMap(kakaoMap);
     }
     
-    // 지도 범위 설정
     kakaoMap.setBounds(bounds);
 }
 
 // ============================================================
-// 9. 엑셀 업로드 (드래그 & 드롭 + SheetJS)
-// ============================================================
-
-function handleFileUpload(event) {
-    const file = event.target.files[0];
-    if (file) processExcelFile(file);
-}
-
-// 드래그 앤 드롭
-const dropZone = document.getElementById('dropZone');
-dropZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    dropZone.classList.add('dragover');
-});
-
-dropZone.addEventListener('dragleave', () => {
-    dropZone.classList.remove('dragover');
-});
-
-dropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dropZone.classList.remove('dragover');
-    const file = e.dataTransfer.files[0];
-    if (file) processExcelFile(file);
-});
-
-async function processExcelFile(file) {
-    try {
-        const data = await file.arrayBuffer();
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json(sheet);
-        
-        // VBA와 동일한 컬럼 매핑 (개소명, 도로명주소)
-        let added = 0;
-        for (const row of json) {
-            const name = row['개소명'] || row['name'] || row['Name'] || '';
-            const address = row['도로명주소'] || row['address'] || row['Address'] || '';
-            
-            if (name || address) {
-                const newPlace = {
-                    id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-                    name: String(name).trim() || '무명',
-                    address: String(address).trim() || '',
-                    lat: 0,
-                    lng: 0,
-                    order: places.length + 1,
-                    cluster: 0
-                };
-                places.push(newPlace);
-                added++;
-            }
-        }
-        
-        savePlaces();
-        alert(`✅ ${added}개 장소를 추가했습니다.`);
-    } catch (error) {
-        alert('엑셀 파일 처리 오류: ' + error.message);
-        console.error(error);
-    }
-}
-
-// ============================================================
-// 10. GitHub 연동
-// ============================================================
-
-async function uploadToGitHub() {
-    const token = document.getElementById('githubToken').value.trim();
-    if (!token) {
-        alert('GitHub Token을 입력해주세요.');
-        return;
-    }
-    
-    // 사용자명 조회
-    try {
-        const userRes = await fetch('https://api.github.com/user', {
-            headers: { 'Authorization': `token ${token}` }
-        });
-        if (!userRes.ok) throw new Error('토큰 인증 실패');
-        const user = await userRes.json();
-        const username = user.login;
-        
-        const repoName = 'route-data';
-        const content = JSON.stringify(places, null, 2);
-        const b64Content = btoa(unescape(encodeURIComponent(content)));
-        
-        // 파일 업로드
-        const url = `https://api.github.com/repos/${username}/${repoName}/contents/data.json`;
-        const response = await fetch(url, {
-            method: 'PUT',
-            headers: {
-                'Authorization': `token ${token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                message: 'Update route data',
-                content: b64Content
-            })
-        });
-        
-        if (!response.ok) throw new Error(`업로드 실패: ${response.status}`);
-        
-        alert(`✅ GitHub 업로드 성공!\nhttps://${username}.github.io/${repoName}/`);
-    } catch (error) {
-        alert('GitHub 업로드 오류: ' + error.message);
-        console.error(error);
-    }
-}
-
-async function loadFromGitHub() {
-    const token = document.getElementById('githubToken').value.trim();
-    if (!token) {
-        alert('GitHub Token을 입력해주세요.');
-        return;
-    }
-    
-    try {
-        const userRes = await fetch('https://api.github.com/user', {
-            headers: { 'Authorization': `token ${token}` }
-        });
-        if (!userRes.ok) throw new Error('토큰 인증 실패');
-        const user = await userRes.json();
-        const username = user.login;
-        
-        const url = `https://api.github.com/repos/${username}/route-data/contents/data.json`;
-        const response = await fetch(url, {
-            headers: { 'Authorization': `token ${token}` }
-        });
-        
-        if (!response.ok) {
-            if (response.status === 404) {
-                alert('저장된 데이터가 없습니다.');
-                return;
-            }
-            throw new Error(`로드 실패: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        const content = decodeURIComponent(escape(atob(data.content)));
-        const loaded = JSON.parse(content);
-        
-        if (confirm(`현재 ${places.length}개 장소를 ${loaded.length}개로 덮어쓰시겠습니까?`)) {
-            places = loaded;
-            savePlaces();
-            alert(`✅ ${places.length}개 장소를 불러왔습니다.`);
-        }
-    } catch (error) {
-        alert('GitHub 로드 오류: ' + error.message);
-        console.error(error);
-    }
-}
-
-// ============================================================
-// 11. 공유
+// 13. 공유
 // ============================================================
 
 function shareRoute() {
@@ -774,8 +1097,9 @@ function shareRoute() {
         return;
     }
     
-    const { places: sorted, totalKm, totalMin } = routeResult;
+    const { places: sorted, totalKm, totalMin, startPoint } = routeResult;
     let text = '🚚 최적 이동 경로\n\n';
+    text += `🚩 출발: ${startPoint.name} (${startPoint.address})\n\n`;
     text += `📊 방문지: ${sorted.length}개소\n`;
     text += `📏 총 거리: ${totalKm.toFixed(2)}km\n`;
     text += `⏱️ 총 시간: 약 ${Math.round(totalMin)}분\n\n`;
@@ -786,14 +1110,9 @@ function shareRoute() {
         text += '\n';
     });
     
-    // Web Share API
     if (navigator.share) {
-        navigator.share({
-            title: '경로 최적화 결과',
-            text: text
-        }).catch(() => {});
+        navigator.share({ title: '경로 최적화 결과', text }).catch(() => {});
     } else {
-        // 클립보드 복사
         navigator.clipboard.writeText(text).then(() => {
             alert('✅ 경로 정보가 클립보드에 복사되었습니다!');
         }).catch(() => {
@@ -803,74 +1122,113 @@ function shareRoute() {
 }
 
 // ============================================================
-// 12. 내보내기/가져오기
-// ============================================================
-
-function exportData() {
-    const data = JSON.stringify(places, null, 2);
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `places_${currentRegion}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-}
-
-function importData() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            try {
-                const data = JSON.parse(ev.target.result);
-                if (confirm(`현재 ${places.length}개 장소를 ${data.length}개로 덮어쓰시겠습니까?`)) {
-                    places = data;
-                    savePlaces();
-                    alert(`✅ ${places.length}개 장소를 불러왔습니다.`);
-                }
-            } catch (error) {
-                alert('파일 파싱 오류: ' + error.message);
-            }
-        };
-        reader.readAsText(file);
-    };
-    input.click();
-}
-
-// ============================================================
-// 13. 초기화
+// 14. 초기화
 // ============================================================
 
 function clearAll() {
-    if (!confirm('모든 장소를 삭제하시겠습니까?')) return;
+    if (!confirm('모든 경유지를 삭제하시겠습니까?')) return;
     places = [];
     routeResult = null;
+    startPoint = null;
     savePlaces();
     document.getElementById('routeList').innerHTML = '';
     document.getElementById('totalPlaces').textContent = '0';
     document.getElementById('totalKm').textContent = '0';
     document.getElementById('totalMin').textContent = '0';
     
-    // 지도 초기화
     if (kakaoMap) {
-        for (const m of kakaoMarkers) {
-            m.setMap(null);
-        }
+        for (const m of kakaoMarkers) m.setMap(null);
         kakaoMarkers = [];
-        if (kakaoPolyline) {
-            kakaoPolyline.setMap(null);
-            kakaoPolyline = null;
-        }
+        if (kakaoPolyline) { kakaoPolyline.setMap(null); kakaoPolyline = null; }
     }
 }
 
+function resetAll() {
+    if (!confirm('⚠️ 모든 데이터를 초기화하시겠습니까?\n이 작업은 되돌릴 수 없습니다!')) return;
+    if (!confirm('정말로 모든 지역의 모든 데이터를 삭제하시겠습니까?')) return;
+    
+    // 모든 지역 데이터 삭제
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.startsWith(STORAGE_KEY_PREFIX)) {
+            keys.push(key);
+        }
+    }
+    for (const key of keys) {
+        localStorage.removeItem(key);
+    }
+    
+    places = [];
+    routeResult = null;
+    startPoint = null;
+    renderPlaces();
+    renderList();
+    document.getElementById('routeList').innerHTML = '';
+    document.getElementById('totalPlaces').textContent = '0';
+    document.getElementById('totalKm').textContent = '0';
+    document.getElementById('totalMin').textContent = '0';
+    
+    if (kakaoMap) {
+        for (const m of kakaoMarkers) m.setMap(null);
+        kakaoMarkers = [];
+        if (kakaoPolyline) { kakaoPolyline.setMap(null); kakaoPolyline = null; }
+    }
+    
+    updateStorageInfo();
+    alert('✅ 모든 데이터가 초기화되었습니다.');
+}
+
 // ============================================================
-// 14. 탭 전환
+// 15. 설정 내보내기/가져오기
+// ============================================================
+
+function exportSettings() {
+    const data = {
+        githubToken: settings.githubToken || '',
+        kakaoJsKey: settings.kakaoJsKey || '',
+        kakaoRestKey: settings.kakaoRestKey || '',
+        exportDate: new Date().toISOString(),
+        version: '1.0.0'
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `settings_${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function importSettings(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = JSON.parse(e.target.result);
+            settings.githubToken = data.githubToken || '';
+            settings.kakaoJsKey = data.kakaoJsKey || '';
+            settings.kakaoRestKey = data.kakaoRestKey || '';
+            saveSettings();
+            
+            document.getElementById('githubToken').value = settings.githubToken;
+            document.getElementById('kakaoJsKey').value = settings.kakaoJsKey;
+            document.getElementById('kakaoRestKey').value = settings.kakaoRestKey;
+            
+            alert('✅ 설정이 복원되었습니다!');
+        } catch (error) {
+            alert('설정 파일 파싱 오류: ' + error.message);
+        }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+}
+
+// ============================================================
+// 16. 탭 전환
 // ============================================================
 
 function switchTab(tab) {
@@ -883,41 +1241,37 @@ function switchTab(tab) {
     if (tab === 'map' && routeResult) {
         setTimeout(showRouteOnMap, 300);
     }
+    if (tab === 'settings') {
+        loadSettings();
+        updateStorageInfo();
+    }
 }
 
 // ============================================================
-// 15. 초기화
+// 17. 초기화 및 이벤트
 // ============================================================
 
-// 지역 선택 이벤트
 document.getElementById('regionSelect').addEventListener('change', (e) => {
     switchRegion(e.target.value);
 });
 
-// 엔터키로 장소 추가
-document.getElementById('placeAddress').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') addPlace();
+// 엔터키 이벤트
+document.getElementById('listAddress').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') addToList();
 });
-document.getElementById('placeName').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') document.getElementById('placeAddress').focus();
+document.getElementById('listName').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('listAddress').focus();
 });
 
 // 앱 초기화
+loadSettings();
 loadPlaces(currentRegion);
 
-// 카카오 지도 초기화 (API 로드 후)
+// 카카오 지도 초기화
 if (typeof kakao !== 'undefined') {
-    kakao.maps.load(() => {
-        initMap();
-    });
-}
-
-// PWA Service Worker 등록
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js')
-        .then(() => console.log('Service Worker 등록됨'))
-        .catch(err => console.log('SW 등록 실패:', err));
+    kakao.maps.load(initMap);
 }
 
 console.log('🚚 경로 최적화 PWA 로드 완료!');
-console.log(`📍 현재 지역: ${currentRegion}, 장소: ${places.length}개`);
+console.log(`📍 지역: ${currentRegion}, 경유지: ${places.length}개`);
+console.log(`🔐 GitHub: ${settings.githubToken ? '✅ 설정됨' : '❌ 미설정'}`);
