@@ -758,10 +758,11 @@ function parseRouteResult(data) {
 }
 
 // ============================================================
-// 10. 경로 최적화 실행
+// 10. 경로 최적화 실행 (수정됨)
 // ============================================================
 
 async function optimizeRoute() {
+    // 1. 출발지 설정
     if (!startPoint) {
         const name = prompt('출발지명을 입력하세요:', '출발지');
         if (!name) return;
@@ -769,22 +770,32 @@ async function optimizeRoute() {
         if (!address) return;
         const result = await geocodeAddress(address);
         if (result) {
-            startPoint = { name, address: result.address, lat: result.lat, lng: result.lng };
+            startPoint = { 
+                name: name, 
+                address: result.address, 
+                lat: result.lat, 
+                lng: result.lng 
+            };
         } else {
             alert('출발지 주소 변환에 실패했습니다.');
             return;
         }
     }
+    
+    // 2. 경유지 확인
     if (places.length === 0) {
         alert('📍 경유지를 최소 1개 이상 추가해주세요!');
         return;
     }
+    
     const loading = document.getElementById('loading');
     const loadingText = document.getElementById('loadingText');
     const loadingSub = document.getElementById('loadingSub');
     loading.classList.add('active');
     loadingText.textContent = '📍 경유지 주소 변환 중...';
     loadingSub.textContent = places.length + '개 경유지 처리 중';
+    
+    // 3. 경유지 좌표 변환
     let hasError = false;
     for (let i = 0; i < places.length; i++) {
         const place = places[i];
@@ -806,30 +817,67 @@ async function optimizeRoute() {
             }
         }
     }
+    
     if (hasError) {
         loading.classList.remove('active');
         savePlaces();
         return;
     }
     savePlaces();
+    
+    // 4. 유효한 경유지 필터링
     const validPlaces = places.filter(p => p.lat && p.lng);
     if (validPlaces.length === 0) {
         alert('좌표가 있는 경유지가 없습니다.');
         loading.classList.remove('active');
         return;
     }
+    
+    // 5. 최적화 방식 선택
     const mode = confirm('첫 번째 목적지 선택 방식을 선택하세요.\n\n[확인] 출발지에서 가까운 곳부터 시작\n[취소] 출발지에서 먼 곳부터 시작')
         ? 'Nearest' : 'Farthest';
+    
     loadingText.textContent = '⚡ 16방향 클러스터링 계산 중...';
     loadingSub.textContent = validPlaces.length + '개 경유지 최적화';
-    const sorted = optimizeRoute(validPlaces, startPoint.lat, startPoint.lng, mode);
+    
+    // 6. 경로 최적화 실행
+    const sorted = optimizeRouteAlgorithm(validPlaces, startPoint.lat, startPoint.lng, mode);
+    
+    // ⭐ 중요: sorted가 비어있는지 확인!
+    if (!sorted || sorted.length === 0) {
+        loading.classList.remove('active');
+        alert('⚠️ 최적화된 경로가 없습니다. 경유지 데이터를 확인해주세요.');
+        return;
+    }
+    
+    // 7. 카카오 경로 API 호출
     loadingText.textContent = '🗺️ 카카오 경로 API 호출 중...';
     loadingSub.textContent = '경로 정보 가져오는 중';
-    const origin = { name: startPoint.name, x: startPoint.lng, y: startPoint.lat };
-    const dest = { name: sorted[sorted.length - 1].name, x: sorted[sorted.length - 1].lng, y: sorted[sorted.length - 1].lat };
-    const waypoints = sorted.slice(0, -1).map(p => ({ name: p.name, x: p.lng, y: p.lat }));
-    const routeData = await callKakaoRoute(origin, waypoints, dest);
+    
+    const origin = { 
+        name: startPoint.name, 
+        x: startPoint.lng, 
+        y: startPoint.lat 
+    };
+    
+    // ⭐ 마지막 경유지를 도착지로 설정
+    const lastPlace = sorted[sorted.length - 1];
+    const destination = { 
+        name: lastPlace.name, 
+        x: lastPlace.lng, 
+        y: lastPlace.lat 
+    };
+    
+    const waypoints = sorted.slice(0, -1).map(p => ({ 
+        name: p.name, 
+        x: p.lng, 
+        y: p.lat 
+    }));
+    
+    const routeData = await callKakaoRoute(origin, waypoints, destination);
     const sections = parseRouteResult(routeData);
+    
+    // 8. 결과 저장
     routeResult = {
         places: sorted,
         sections: sections,
@@ -838,10 +886,87 @@ async function optimizeRoute() {
         mode: mode,
         startPoint: startPoint
     };
+    
     loading.classList.remove('active');
     displayRouteResult();
     showRouteOnMap();
     alert('✅ 경로 최적화 완료!');
+}
+
+// ============================================================
+// 8. 16방향 클러스터링 (함수명 변경)
+// ============================================================
+
+function optimizeRouteAlgorithm(places, startLat, startLng, firstTargetMode) {
+    if (!places || places.length === 0) return [];
+    
+    const count = places.length;
+    const groups = places.map(p => {
+        const angle = calculateAngle(startLng, startLat, p.lng, p.lat);
+        return getClusterGroup16(angle);
+    });
+    
+    const visited = new Array(count).fill(false);
+    const sorted = [];
+    let currX = startLng;
+    let currY = startLat;
+    
+    // 첫 번째 목적지 선택
+    let firstIdx = 0;
+    let compVal = firstTargetMode === 'Nearest' ? Infinity : -Infinity;
+    
+    for (let i = 0; i < count; i++) {
+        if (visited[i]) continue;
+        const dist = Math.pow(startLng - places[i].lng, 2) + Math.pow(startLat - places[i].lat, 2);
+        if (firstTargetMode === 'Nearest') {
+            if (dist < compVal) { compVal = dist; firstIdx = i; }
+        } else {
+            if (dist > compVal) { compVal = dist; firstIdx = i; }
+        }
+    }
+    
+    function visitGroup(startIdx) {
+        const targetGroup = groups[startIdx];
+        const groupItems = [];
+        for (let i = 0; i < count; i++) {
+            if (!visited[i] && groups[i] === targetGroup) {
+                groupItems.push(i);
+            }
+        }
+        if (groupItems.length === 0) return;
+        
+        groupItems.sort((a, b) => {
+            const distA = Math.pow(currX - places[a].lng, 2) + Math.pow(currY - places[a].lat, 2);
+            const distB = Math.pow(currX - places[b].lng, 2) + Math.pow(currY - places[b].lat, 2);
+            return distA - distB;
+        });
+        
+        for (const idx of groupItems) {
+            sorted.push(places[idx]);
+            visited[idx] = true;
+            currX = places[idx].lng;
+            currY = places[idx].lat;
+        }
+    }
+    
+    visitGroup(firstIdx);
+    
+    while (true) {
+        let nearestIdx = -1;
+        let minDist = Infinity;
+        for (let i = 0; i < count; i++) {
+            if (visited[i]) continue;
+            const dist = Math.pow(currX - places[i].lng, 2) + Math.pow(currY - places[i].lat, 2);
+            if (dist < minDist) {
+                minDist = dist;
+                nearestIdx = i;
+            }
+        }
+        if (nearestIdx === -1) break;
+        visitGroup(nearestIdx);
+    }
+    
+    return sorted;
 }
 
 // ============================================================
