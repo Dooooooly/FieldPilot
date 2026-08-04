@@ -7,7 +7,7 @@
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#4A90D9">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
     <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=YOUR_KAKAO_JS_KEY&autoload=false"></script>
@@ -99,7 +99,6 @@
         .btn-outline { background: white; color: #2b6cb0; border: 2px solid #2b6cb0; }
         .btn-outline:hover { background: #ebf8ff; }
         .btn-sm { padding: 4px 10px; font-size: 11px; }
-        .btn-xs { padding: 2px 6px; font-size: 10px; }
         .btn-sync { background: #805ad5; color: white; }
         .btn-sync:hover { background: #6b46c1; }
         
@@ -138,7 +137,6 @@
         }
         .tab-content.active { display: block; }
         
-        /* 입력 행 */
         .input-row {
             display: flex;
             gap: 6px;
@@ -161,7 +159,6 @@
             border-color: #2b6cb0;
         }
         
-        /* 개소 목록 */
         .place-item {
             background: white;
             border-radius: 8px;
@@ -225,7 +222,6 @@
         .empty-state .icon { font-size: 36px; margin-bottom: 6px; }
         .empty-state .text { font-size: 13px; }
         
-        /* 버튼 그룹 */
         .btn-group {
             display: flex;
             gap: 6px;
@@ -235,7 +231,6 @@
         
         .btn-group .btn { flex: 1; min-width: 60px; justify-content: center; }
         
-        /* 지도 */
         #map {
             width: 100%;
             height: 350px;
@@ -243,7 +238,6 @@
             background: #e2e8f0;
         }
         
-        /* 요약 */
         .summary {
             background: white;
             border-radius: 10px;
@@ -258,7 +252,6 @@
         .summary-item .value { font-size: 20px; font-weight: 700; color: #2b6cb0; }
         .summary-item .label { font-size: 11px; color: #718096; }
         
-        /* 경로 결과 */
         .route-item {
             background: white;
             border-radius: 8px;
@@ -289,7 +282,6 @@
         .route-start { border-left-color: #2b6cb0; }
         .route-start .idx { background: #2b6cb0; }
         
-        /* 모달 */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -321,7 +313,6 @@
         .modal input:focus { outline: none; border-color: #2b6cb0; }
         .modal .modal-actions { display: flex; gap: 6px; justify-content: flex-end; }
         
-        /* 로딩 */
         .loading {
             display: none;
             position: fixed;
@@ -353,7 +344,6 @@
         .loading-box .text { font-size: 14px; font-weight: 600; }
         .loading-box .sub { font-size: 12px; color: #718096; margin-top: 3px; }
         
-        /* 드롭존 */
         .drop-zone {
             border: 2px dashed #cbd5e0;
             border-radius: 10px;
@@ -373,7 +363,6 @@
         .drop-zone .title { font-weight: 600; font-size: 14px; }
         .drop-zone .sub { font-size: 12px; margin-top: 3px; color: #a0aec0; }
         
-        /* 결과 리포트 */
         .report {
             background: white;
             border-radius: 8px;
@@ -396,7 +385,6 @@
         .badge-skip { background: #e2e8f0; color: #4a5568; }
         .badge-error { background: #fed7d7; color: #9b2c2c; }
         
-        /* 설정 */
         .setting-group {
             background: white;
             border-radius: 10px;
@@ -438,7 +426,6 @@
         .status-fail { background: #fed7d7; color: #9b2c2c; }
         .status-wait { background: #e2e8f0; color: #4a5568; }
         
-        /* 반응형 */
         @media (max-width: 640px) {
             .header h1 { font-size: 15px; }
             .header h1 small { display: none; }
@@ -477,7 +464,6 @@
     
     <!-- ===== 탭: 장소 ===== -->
     <div id="tab-places" class="tab-content active">
-        <!-- 액션 바 -->
         <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
             <button class="btn btn-success btn-sm" onclick="exportExcel()">📤 내보내기</button>
             <button class="btn btn-outline btn-sm" onclick="document.getElementById('fileInput').click()">📥 가져오기</button>
@@ -486,10 +472,8 @@
             <span id="syncStatus" style="font-size:11px;color:#718096;display:flex;align-items:center;">⏳ 동기화 대기</span>
         </div>
         
-        <!-- 개소 목록 -->
         <div id="placeList"></div>
         
-        <!-- 액션 버튼 -->
         <div class="btn-group">
             <button class="btn btn-success" onclick="optimizeRoute()">⚡ 경로 최적화</button>
             <button class="btn btn-primary" onclick="shareRoute()">📤 공유</button>
@@ -532,7 +516,6 @@
     
     <!-- ===== 탭: 설정 ===== -->
     <div id="tab-settings" class="tab-content">
-        <!-- GitHub 설정 -->
         <div class="setting-group">
             <h4>🔐 GitHub 연동</h4>
             <div class="row">
@@ -543,7 +526,6 @@
             <div id="githubStatus" class="status status-wait" style="margin-top:6px;">⏳ 토큰이 설정되지 않았습니다</div>
         </div>
         
-        <!-- 카카오 API 설정 -->
         <div class="setting-group">
             <h4>🗺️ 카카오 API</h4>
             <div class="row">
@@ -556,7 +538,6 @@
             <div id="kakaoStatus" class="status status-wait" style="margin-top:6px;">⏳ API 키가 설정되지 않았습니다</div>
         </div>
         
-        <!-- 설정 관리 -->
         <div class="setting-group">
             <h4>💾 설정 관리</h4>
             <div style="display:flex; gap:6px; flex-wrap:wrap;">
@@ -567,7 +548,6 @@
             </div>
         </div>
         
-        <!-- 앱 정보 -->
         <div class="setting-group">
             <h4>ℹ️ 앱 정보</h4>
             <div style="font-size:12px;color:#718096;line-height:1.8;">
