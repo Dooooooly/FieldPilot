@@ -290,10 +290,17 @@
             display: flex;
             gap: 6px;
             flex-wrap: wrap;
+            align-items: center;
+        }
+        .setting-group .row label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #4a5568;
+            min-width: 80px;
         }
         .setting-group .row input {
             flex: 1;
-            min-width: 100px;
+            min-width: 120px;
             padding: 6px 10px;
             border: 2px solid #e2e8f0;
             border-radius: 6px;
@@ -310,7 +317,7 @@
         .badge-wait { background: #e2e8f0; color: #4a5568; }
         .badge-fail { background: #fed7d7; color: #9b2c2c; }
         
-        /* ===== 하단 탭 (모바일 최적화) ===== */
+        /* ===== 하단 탭 ===== */
         .bottom-tabs {
             position: fixed;
             bottom: 0;
@@ -420,6 +427,7 @@
             .bottom-tab { font-size: 9px; padding: 6px 2px 4px; }
             .bottom-tab .tab-icon { font-size: 18px; }
             .place-scroll { max-height: 200px; }
+            .setting-group .row label { min-width: 60px; font-size: 11px; }
         }
     </style>
 </head>
@@ -459,12 +467,15 @@
                 <div id="startInfo" style="font-size:12px; color:#718096; margin-top:6px;">⏳ 출발지를 검색하고 설정하세요</div>
             </div>
             
-            <!-- 경유지 -->
+            <!-- 경유지 (자동완성) -->
             <div class="card">
                 <div class="card-title">📍 경유지 <span id="wpCount" style="font-size:12px;color:#a0aec0;font-weight:400;"></span></div>
-                <div style="display:flex; gap:6px; margin-bottom:8px;">
-                    <input type="text" id="waypointInput" placeholder="경유지 입력" style="flex:1; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:14px;" onkeypress="if(event.key==='Enter') addWaypoint()">
-                    <button class="btn btn-success btn-sm" onclick="addWaypoint()">추가</button>
+                <div style="position:relative;">
+                    <div style="display:flex; gap:6px; margin-bottom:4px;">
+                        <input type="text" id="waypointInput" placeholder="경유지 입력 (개소명 검색)" style="flex:1; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:14px;" oninput="searchWaypoint(this.value)" onkeydown="handleWaypointKeydown(event)">
+                        <button class="btn btn-success btn-sm" onclick="addWaypoint()">추가</button>
+                    </div>
+                    <div id="waypointSearchResults" class="search-results"></div>
                 </div>
                 <ul class="waypoint-list" id="waypointList">
                     <li class="empty-msg">경유지를 추가하세요</li>
@@ -522,7 +533,10 @@
                 <div class="card-title">📋 개소리스트 <span id="listCount" style="font-size:12px;color:#a0aec0;font-weight:400;"></span></div>
                 <div style="display:flex; gap:6px; margin-bottom:8px;">
                     <input type="text" id="newPlaceName" placeholder="개소명" style="flex:1; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:14px;">
-                    <input type="text" id="newPlaceAddr" placeholder="주소" style="flex:1.5; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:14px;">
+                    <div style="position:relative; flex:1.5;">
+                        <input type="text" id="newPlaceAddr" placeholder="주소 검색" style="width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:14px;" oninput="searchAddressForPlace(this.value)" onkeydown="handleAddrKeydown(event)">
+                        <div id="addrSearchResults" class="search-results"></div>
+                    </div>
                     <button class="btn btn-primary btn-sm" onclick="addPlace()">추가</button>
                 </div>
                 <div style="margin-bottom:6px;">
@@ -555,7 +569,8 @@
             <div class="setting-group">
                 <h4>🔐 GitHub 연동</h4>
                 <div class="row">
-                    <input type="password" id="githubToken" placeholder="GitHub Token">
+                    <label>GitHub Token</label>
+                    <input type="password" id="githubToken" placeholder="GitHub Personal Access Token">
                     <button class="btn btn-primary btn-sm" onclick="saveGitHubToken()">저장</button>
                     <button class="btn btn-outline btn-sm" onclick="testGitHubToken()">테스트</button>
                 </div>
@@ -566,8 +581,14 @@
             <div class="setting-group">
                 <h4>🗺️ 카카오 API</h4>
                 <div class="row">
-                    <input type="text" id="kakaoJsKey" placeholder="JavaScript 키">
-                    <input type="text" id="kakaoRestKey" placeholder="REST API 키">
+                    <label>JavaScript 키</label>
+                    <input type="password" id="kakaoJsKey" placeholder="JavaScript 키 입력">
+                </div>
+                <div class="row" style="margin-top:4px;">
+                    <label>REST API 키</label>
+                    <input type="password" id="kakaoRestKey" placeholder="REST API 키 입력">
+                </div>
+                <div class="row" style="margin-top:6px;">
                     <button class="btn btn-primary btn-sm" onclick="saveKakaoKeys()">저장</button>
                 </div>
                 <div id="kakaoStatus" class="badge badge-wait" style="margin-top:6px;">⏳ API 키 미설정</div>
@@ -611,7 +632,7 @@
 
     <script>
     // ============================================================
-    // 경로 최적화 PWA - VBA 완벽 포팅 (검색 + 지도 개선)
+    // 경로 최적화 PWA - VBA 완벽 포팅 (자동완성 + 비밀번호)
     // ============================================================
 
     // --- 저장소 키 ---
@@ -633,6 +654,8 @@
     let optimizeMode = localStorage.getItem(OPTIMIZE_MODE_KEY) || 'Nearest';
     let searchTimeout = null;
     let selectedSearchIndex = -1;
+    let waypointSearchIndex = -1;
+    let addrSearchIndex = -1;
 
     // ============================================================
     // 1. 설정 관리
@@ -840,11 +863,11 @@
         if (event.key === 'ArrowDown') {
             event.preventDefault();
             selectedSearchIndex = Math.min(selectedSearchIndex + 1, results.length - 1);
-            highlightResult(results);
+            highlightResult(results, selectedSearchIndex);
         } else if (event.key === 'ArrowUp') {
             event.preventDefault();
             selectedSearchIndex = Math.max(selectedSearchIndex - 1, -1);
-            highlightResult(results);
+            highlightResult(results, selectedSearchIndex);
         } else if (event.key === 'Enter' && selectedSearchIndex >= 0) {
             event.preventDefault();
             results[selectedSearchIndex].click();
@@ -854,9 +877,9 @@
         }
     }
 
-    function highlightResult(results) {
+    function highlightResult(results, index) {
         results.forEach((el, idx) => {
-            el.style.background = idx === selectedSearchIndex ? '#bee3f8' : '';
+            el.style.background = idx === index ? '#bee3f8' : '';
         });
     }
 
@@ -879,7 +902,6 @@
         if (kakaoMap) {
             clearMarkers();
             addMarker(startPoint.lat, startPoint.lng, '🚩 ' + name, true);
-            // 지도 중심 이동
             const pos = new kakao.maps.LatLng(startPoint.lat, startPoint.lng);
             kakaoMap.setCenter(pos);
             kakaoMap.setLevel(4);
@@ -888,7 +910,136 @@
     }
 
     // ============================================================
-    // 5. 개소 관리
+    // 5. 경유지 자동완성 (개소 목록에서 검색)
+    // ============================================================
+
+    function searchWaypoint(query) {
+        const resultsContainer = document.getElementById('waypointSearchResults');
+        
+        if (!query || query.length < 1) {
+            resultsContainer.style.display = 'none';
+            return;
+        }
+        
+        const matched = places.filter(p => 
+            p.name.includes(query) || (p.address && p.address.includes(query))
+        ).slice(0, 5);
+        
+        if (matched.length > 0) {
+            resultsContainer.innerHTML = matched.map((p, idx) => `
+                <div class="result-item" onclick="selectWaypoint('${p.name}')" data-index="${idx}">
+                    <div>${p.name}</div>
+                    <div class="addr">${p.address || ''}</div>
+                </div>
+            `).join('');
+            resultsContainer.style.display = 'block';
+        } else {
+            resultsContainer.style.display = 'none';
+        }
+    }
+
+    function handleWaypointKeydown(event) {
+        const results = document.querySelectorAll('#waypointSearchResults .result-item');
+        if (results.length === 0) return;
+        
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            waypointSearchIndex = Math.min(waypointSearchIndex + 1, results.length - 1);
+            highlightResult(results, waypointSearchIndex);
+        } else if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            waypointSearchIndex = Math.max(waypointSearchIndex - 1, -1);
+            highlightResult(results, waypointSearchIndex);
+        } else if (event.key === 'Enter' && waypointSearchIndex >= 0) {
+            event.preventDefault();
+            results[waypointSearchIndex].click();
+        } else if (event.key === 'Escape') {
+            document.getElementById('waypointSearchResults').style.display = 'none';
+            waypointSearchIndex = -1;
+        }
+    }
+
+    function selectWaypoint(name) {
+        document.getElementById('waypointInput').value = name;
+        document.getElementById('waypointSearchResults').style.display = 'none';
+        waypointSearchIndex = -1;
+        addWaypoint();
+    }
+
+    // ============================================================
+    // 6. 개소탭 주소 자동완성 (카카오 장소 검색 API)
+    // ============================================================
+
+    async function searchAddressForPlace(query) {
+        const resultsContainer = document.getElementById('addrSearchResults');
+        const restKey = settings.kakaoRestKey;
+        
+        if (!query || query.length < 2 || !restKey) {
+            resultsContainer.style.display = 'none';
+            return;
+        }
+        
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(async () => {
+            try {
+                const res = await fetch(
+                    `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&size=5`,
+                    { headers: { 'Authorization': `KakaoAK ${restKey}` } }
+                );
+                if (!res.ok) { resultsContainer.style.display = 'none'; return; }
+                const data = await res.json();
+                
+                if (data.documents && data.documents.length > 0) {
+                    resultsContainer.innerHTML = data.documents.map((doc, idx) => `
+                        <div class="result-item" onclick="selectAddress('${doc.place_name}', '${doc.address_name}')" data-index="${idx}">
+                            <div>${doc.place_name}</div>
+                            <div class="addr">${doc.address_name}</div>
+                        </div>
+                    `).join('');
+                    resultsContainer.style.display = 'block';
+                } else {
+                    resultsContainer.style.display = 'none';
+                }
+            } catch {
+                resultsContainer.style.display = 'none';
+            }
+        }, 300);
+    }
+
+    function handleAddrKeydown(event) {
+        const results = document.querySelectorAll('#addrSearchResults .result-item');
+        if (results.length === 0) return;
+        
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            addrSearchIndex = Math.min(addrSearchIndex + 1, results.length - 1);
+            highlightResult(results, addrSearchIndex);
+        } else if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            addrSearchIndex = Math.max(addrSearchIndex - 1, -1);
+            highlightResult(results, addrSearchIndex);
+        } else if (event.key === 'Enter' && addrSearchIndex >= 0) {
+            event.preventDefault();
+            results[addrSearchIndex].click();
+        } else if (event.key === 'Escape') {
+            document.getElementById('addrSearchResults').style.display = 'none';
+            addrSearchIndex = -1;
+        }
+    }
+
+    function selectAddress(name, address) {
+        document.getElementById('newPlaceAddr').value = address;
+        document.getElementById('addrSearchResults').style.display = 'none';
+        addrSearchIndex = -1;
+        // 자동으로 개소명에 장소명 넣기 (비어있을 때만)
+        const nameInput = document.getElementById('newPlaceName');
+        if (!nameInput.value.trim()) {
+            nameInput.value = name;
+        }
+    }
+
+    // ============================================================
+    // 7. 개소 관리
     // ============================================================
 
     function renderPlaces(filtered) {
@@ -961,7 +1112,7 @@
     }
 
     // ============================================================
-    // 6. 경유지 관리
+    // 8. 경유지 관리
     // ============================================================
 
     function addWaypoint() {
@@ -975,6 +1126,7 @@
         renderWaypointList();
         input.value = '';
         input.focus();
+        document.getElementById('waypointSearchResults').style.display = 'none';
         showStatus(`✅ "${name}" 추가`, 'ok');
     }
 
@@ -1002,7 +1154,7 @@
     }
 
     // ============================================================
-    // 7. 지오코딩
+    // 9. 지오코딩
     // ============================================================
 
     async function geocodeAddress(address, restKey) {
@@ -1026,7 +1178,7 @@
     }
 
     // ============================================================
-    // 8. 16방향 클러스터링 (VBA 완벽 포팅)
+    // 10. 16방향 클러스터링 (VBA 완벽 포팅)
     // ============================================================
 
     function calculateAngle(startX, startY, targetX, targetY) {
@@ -1109,7 +1261,7 @@
     }
 
     // ============================================================
-    // 9. 경로 최적화 실행
+    // 11. 경로 최적화 실행
     // ============================================================
 
     async function runOptimize() {
@@ -1168,14 +1320,12 @@
             return;
         }
         
-        // 지도 표시
         clearMarkers();
         const allPoints = [{ name: startPoint.name, lat: startPoint.lat, lng: startPoint.lng }, ...sorted];
         addMarker(startPoint.lat, startPoint.lng, '🚩 ' + startPoint.name, true);
         sorted.forEach((p, i) => addMarker(p.lat, p.lng, `${i+1}. ${p.name}`));
         drawRoute(allPoints);
         
-        // 결과 저장
         const totalKm = (validPlaces.length * 2.5).toFixed(2);
         const totalMin = Math.round(validPlaces.length * 8);
         routeResult = { places: sorted, startPoint, totalKm, totalMin, mode: optimizeMode };
@@ -1185,7 +1335,6 @@
         document.getElementById('totalTime').textContent = totalMin + ' 분';
         document.getElementById('optimizeMode').textContent = optimizeMode === 'Nearest' ? '가까운순' : '먼순';
         
-        // 경로 목록
         let html = '<div style="font-weight:600;font-size:13px;margin-bottom:6px;">📋 최적 경로</div>';
         html += `<div style="padding:6px 10px;background:#ebf8ff;border-radius:6px;margin-bottom:4px;font-size:13px;">🚩 ${startPoint.name}</div>`;
         sorted.forEach((p, i) => {
@@ -1196,13 +1345,12 @@
         });
         document.getElementById('routeList').innerHTML = html;
         
-        // 경로 탭으로
         switchTab('tab-route');
         showStatus(`✅ 최적화 완료! ${validPlaces.length}개소`, 'ok');
     }
 
     // ============================================================
-    // 10. 지도 관련 (확대/축소/이동 지원)
+    // 12. 지도 관련
     // ============================================================
 
     function initMap() {
@@ -1219,7 +1367,6 @@
             };
             kakaoMap = new kakao.maps.Map(container, options);
             
-            // 줌 컨트롤 표시
             const zoomControl = new kakao.maps.ZoomControl();
             kakaoMap.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
             
@@ -1288,7 +1435,7 @@
     }
 
     // ============================================================
-    // 11. 엑셀 파일 처리
+    // 13. 엑셀 파일 처리
     // ============================================================
 
     function handleFile(event) {
@@ -1397,7 +1544,7 @@
     }
 
     // ============================================================
-    // 12. 데이터 내보내기
+    // 14. 데이터 내보내기
     // ============================================================
 
     function exportData() {
@@ -1431,7 +1578,7 @@
     }
 
     // ============================================================
-    // 13. 공유
+    // 15. 공유
     // ============================================================
 
     function shareRoute() {
@@ -1454,7 +1601,7 @@
     }
 
     // ============================================================
-    // 14. 초기화
+    // 16. 초기화
     // ============================================================
 
     function resetAll() {
@@ -1482,7 +1629,7 @@
     }
 
     // ============================================================
-    // 15. UI 헬퍼
+    // 17. UI 헬퍼
     // ============================================================
 
     function showStatus(msg, type) {
@@ -1510,7 +1657,6 @@
             setTimeout(() => {
                 if (kakaoMap) {
                     kakaoMap.relayout();
-                    // 지도가 안 보일 경우 재설정
                     const container = document.getElementById('map');
                     if (container && container.clientHeight > 0) {
                         kakaoMap.setCenter(kakaoMap.getCenter());
@@ -1524,7 +1670,7 @@
     }
 
     // ============================================================
-    // 16. 초기화
+    // 18. 초기화
     // ============================================================
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -1534,20 +1680,16 @@
         renderWaypointList();
         setOptimizeMode(optimizeMode);
         
-        // 지도 초기화 (JavaScript 키가 있을 때)
         if (settings.kakaoJsKey && typeof kakao !== 'undefined') {
-            // SDK가 이미 로드되었는지 확인
             if (kakao.maps && kakao.maps.load) {
                 kakao.maps.load(initMap);
             } else {
-                // SDK 로드 대기
                 const checkKakao = setInterval(() => {
                     if (typeof kakao !== 'undefined' && kakao.maps && kakao.maps.load) {
                         clearInterval(checkKakao);
                         kakao.maps.load(initMap);
                     }
                 }, 500);
-                // 10초 후 타임아웃
                 setTimeout(() => {
                     clearInterval(checkKakao);
                     if (!kakaoMap) {
