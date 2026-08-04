@@ -60,7 +60,7 @@
         }
         .header select option { color: #2d3748; background: white; }
         
-        /* ===== 메인 컨텐츠 ===== */
+        /* ===== 메인 ===== */
         .main {
             max-width: 600px;
             margin: 0 auto;
@@ -257,21 +257,6 @@
             margin-bottom: 10px;
         }
         
-        /* ===== 드롭존 ===== */
-        .drop-zone {
-            border: 2px dashed #2b6cb0;
-            border-radius: 10px;
-            padding: 20px;
-            text-align: center;
-            cursor: pointer;
-            background: #f7fafc;
-            transition: all 0.3s;
-        }
-        .drop-zone:hover { background: #ebf8ff; }
-        .drop-zone.dragover { background: #bee3f8; border-color: #1a365d; }
-        .drop-zone .icon { font-size: 28px; display: block; margin-bottom: 4px; }
-        .drop-zone .sub { font-size: 11px; color: #a0aec0; }
-        
         /* ===== 설정 ===== */
         .setting-group {
             background: #f7fafc;
@@ -372,7 +357,7 @@
         .modal h3 { font-size: 16px; margin-bottom: 12px; }
         .modal .btn-row { margin-top: 12px; }
         
-        /* ===== 검색 결과 (자동완성) ===== */
+        /* ===== 검색 결과 ===== */
         .search-results {
             position: relative;
             width: 100%;
@@ -402,7 +387,7 @@
         
         /* ===== 개소리스트 스크롤 ===== */
         .place-scroll {
-            max-height: 320px;
+            max-height: 200px;
             overflow-y: auto;
             padding-right: 4px;
         }
@@ -426,8 +411,7 @@
             #map { height: 280px; }
             .bottom-tab { font-size: 9px; padding: 6px 2px 4px; }
             .bottom-tab .tab-icon { font-size: 18px; }
-            .place-scroll { max-height: 200px; }
-            .setting-group .row label { min-width: 60px; font-size: 11px; }
+            .place-scroll { max-height: 150px; }
         }
     </style>
 </head>
@@ -454,7 +438,7 @@
         <!-- ===== 탭: 장소 ===== -->
         <div id="tab-places" class="tab-content active">
             
-            <!-- 출발지 (검색 기능 포함) -->
+            <!-- 출발지 -->
             <div class="card">
                 <div class="card-title">🚩 출발지</div>
                 <div style="position:relative;">
@@ -467,7 +451,7 @@
                 <div id="startInfo" style="font-size:12px; color:#718096; margin-top:6px;">⏳ 출발지를 검색하고 설정하세요</div>
             </div>
             
-            <!-- 경유지 (자동완성) -->
+            <!-- 경유지 -->
             <div class="card">
                 <div class="card-title">📍 경유지 <span id="wpCount" style="font-size:12px;color:#a0aec0;font-weight:400;"></span></div>
                 <div style="position:relative;">
@@ -488,7 +472,7 @@
                 <button class="btn btn-success btn-block" onclick="shareRoute()">📤 공유</button>
             </div>
             
-            <!-- 최적화 방식 선택 -->
+            <!-- 최적화 방식 -->
             <div class="card" style="margin-top:6px;">
                 <div style="display:flex; gap:6px; align-items:center;">
                     <span style="font-size:12px; font-weight:600; color:#4a5568;">📐 최적화 방식:</span>
@@ -527,10 +511,20 @@
             <div id="routeList" style="margin-top:8px;"></div>
         </div>
 
-        <!-- ===== 탭: 개소리스트 ===== -->
+        <!-- ===== 탭: 개소리스트 (엑셀 기능 포함) ===== -->
         <div id="tab-list" class="tab-content">
             <div class="card">
                 <div class="card-title">📋 개소리스트 <span id="listCount" style="font-size:12px;color:#a0aec0;font-weight:400;"></span></div>
+                
+                <!-- 엑셀 버튼 -->
+                <div style="display:flex; gap:6px; margin-bottom:8px;">
+                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="document.getElementById('fileInput').click()">📥 엑셀 가져오기</button>
+                    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFile(event)">
+                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="exportData()">📤 엑셀 내보내기</button>
+                </div>
+                <div id="uploadResult"></div>
+                
+                <!-- 개소 추가 -->
                 <div style="display:flex; gap:6px; margin-bottom:8px;">
                     <input type="text" id="newPlaceName" placeholder="개소명" style="flex:1; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:14px;">
                     <div style="position:relative; flex:1.5;">
@@ -539,31 +533,19 @@
                     </div>
                     <button class="btn btn-primary btn-sm" onclick="addPlace()">추가</button>
                 </div>
+                
+                <!-- 검색 -->
                 <div style="margin-bottom:6px;">
                     <input type="text" id="searchPlace" placeholder="🔍 검색" style="width:100%; padding:6px 10px; border:2px solid #e2e8f0; border-radius:6px; font-size:13px;" oninput="searchPlaces()">
                 </div>
+                
+                <!-- 목록 -->
                 <div id="placeList" class="place-scroll"></div>
             </div>
         </div>
 
         <!-- ===== 탭: 설정 ===== -->
         <div id="tab-settings" class="tab-content">
-            
-            <!-- 엑셀 업로드/내보내기 -->
-            <div class="setting-group">
-                <h4>📊 엑셀 관리</h4>
-                <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
-                    <span class="icon">📂</span>
-                    <div>엑셀 파일 드래그 또는 클릭</div>
-                    <div class="sub">.csv, .xlsx, .xls (개소명, 도로명주소)</div>
-                </div>
-                <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFile(event)">
-                <div id="uploadResult"></div>
-                <div style="display:flex; gap:6px; margin-top:6px;">
-                    <button class="btn btn-outline btn-sm btn-block" onclick="exportData()">📤 내보내기</button>
-                    <button class="btn btn-outline btn-sm btn-block" onclick="exportSettings()">⚙️ 설정 내보내기</button>
-                </div>
-            </div>
             
             <!-- GitHub -->
             <div class="setting-group">
@@ -592,6 +574,16 @@
                     <button class="btn btn-primary btn-sm" onclick="saveKakaoKeys()">저장</button>
                 </div>
                 <div id="kakaoStatus" class="badge badge-wait" style="margin-top:6px;">⏳ API 키 미설정</div>
+            </div>
+            
+            <!-- 설정 내보내기/가져오기 -->
+            <div class="setting-group">
+                <h4>⚙️ 설정 관리</h4>
+                <div style="display:flex; gap:6px;">
+                    <button class="btn btn-outline btn-sm btn-block" onclick="exportSettings()">📤 설정 내보내기</button>
+                    <button class="btn btn-outline btn-sm btn-block" onclick="document.getElementById('settingsInput').click()">📥 설정 가져오기</button>
+                    <input type="file" id="settingsInput" accept=".json" style="display:none" onchange="importSettings(event)">
+                </div>
             </div>
             
             <!-- 초기화 -->
@@ -632,7 +624,7 @@
 
     <script>
     // ============================================================
-    // 경로 최적화 PWA - VBA 완벽 포팅 (자동완성 + 비밀번호)
+    // 경로 최적화 PWA - VBA 완벽 포팅
     // ============================================================
 
     // --- 저장소 키 ---
@@ -656,6 +648,7 @@
     let selectedSearchIndex = -1;
     let waypointSearchIndex = -1;
     let addrSearchIndex = -1;
+    let mapInitAttempts = 0;
 
     // ============================================================
     // 1. 설정 관리
@@ -691,9 +684,8 @@
         settings.kakaoRestKey = document.getElementById('kakaoRestKey').value.trim();
         saveSettings();
         showStatus('✅ 카카오 API 키 저장됨', 'ok');
-        if (settings.kakaoJsKey && typeof kakao !== 'undefined') {
-            kakao.maps.load(initMap);
-        }
+        // 지도 재초기화
+        initMap();
     }
 
     function updateSettingsStatus() {
@@ -817,7 +809,7 @@
     }
 
     // ============================================================
-    // 4. 출발지 검색 (카카오 장소 검색 API)
+    // 4. 출발지 검색
     // ============================================================
 
     async function searchStartPoint(query) {
@@ -910,7 +902,7 @@
     }
 
     // ============================================================
-    // 5. 경유지 자동완성 (개소 목록에서 검색)
+    // 5. 경유지 자동완성
     // ============================================================
 
     function searchWaypoint(query) {
@@ -967,7 +959,7 @@
     }
 
     // ============================================================
-    // 6. 개소탭 주소 자동완성 (카카오 장소 검색 API)
+    // 6. 개소탭 주소 자동완성
     // ============================================================
 
     async function searchAddressForPlace(query) {
@@ -1031,7 +1023,6 @@
         document.getElementById('newPlaceAddr').value = address;
         document.getElementById('addrSearchResults').style.display = 'none';
         addrSearchIndex = -1;
-        // 자동으로 개소명에 장소명 넣기 (비어있을 때만)
         const nameInput = document.getElementById('newPlaceName');
         if (!nameInput.value.trim()) {
             nameInput.value = name;
@@ -1350,31 +1341,65 @@
     }
 
     // ============================================================
-    // 12. 지도 관련
+    // 12. 지도 관련 (확대/축소/이동 가능)
     // ============================================================
 
     function initMap() {
         const container = document.getElementById('map');
-        if (!container) return;
-        try {
-            const options = {
-                center: new kakao.maps.LatLng(37.5665, 126.9780),
-                level: 5,
-                draggable: true,
-                zoomable: true,
-                zoomControl: true,
-                scrollwheel: true
-            };
-            kakaoMap = new kakao.maps.Map(container, options);
-            
-            const zoomControl = new kakao.maps.ZoomControl();
-            kakaoMap.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
-            
-            console.log('🗺️ 지도 초기화 성공');
-        } catch (e) {
-            console.error('지도 초기화 실패:', e);
-            showStatus('⚠️ 지도 초기화 실패. JavaScript 키를 확인하세요.', 'error');
+        if (!container) {
+            console.warn('지도 컨테이너 없음');
+            return;
         }
+        
+        // JavaScript 키 확인
+        const jsKey = settings.kakaoJsKey;
+        if (!jsKey) {
+            console.warn('카카오 JavaScript 키 없음');
+            showStatus('⚠️ 카카오 JavaScript 키가 필요합니다. 설정 탭에서 입력하세요.', 'warning');
+            return;
+        }
+        
+        // SDK 로드 확인
+        if (typeof kakao === 'undefined' || !kakao.maps) {
+            console.warn('카카오 SDK 미로드, 재시도 중...');
+            mapInitAttempts++;
+            if (mapInitAttempts < 5) {
+                setTimeout(initMap, 1000);
+            }
+            return;
+        }
+        
+        kakao.maps.load(() => {
+            try {
+                const options = {
+                    center: new kakao.maps.LatLng(37.5665, 126.9780),
+                    level: 5,
+                    draggable: true,
+                    zoomable: true,
+                    zoomControl: true,
+                    scrollwheel: true
+                };
+                kakaoMap = new kakao.maps.Map(container, options);
+                
+                // 줌 컨트롤
+                const zoomControl = new kakao.maps.ZoomControl();
+                kakaoMap.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
+                
+                console.log('🗺️ 지도 초기화 성공');
+                showStatus('🗺️ 지도 로드 완료', 'info');
+                
+                // 저장된 출발지가 있으면 표시
+                if (startPoint && startPoint.lat) {
+                    addMarker(startPoint.lat, startPoint.lng, '🚩 ' + startPoint.name, true);
+                    const pos = new kakao.maps.LatLng(startPoint.lat, startPoint.lng);
+                    kakaoMap.setCenter(pos);
+                    kakaoMap.setLevel(4);
+                }
+            } catch (e) {
+                console.error('지도 초기화 실패:', e);
+                showStatus('⚠️ 지도 초기화 실패. JavaScript 키를 확인하세요.', 'error');
+            }
+        });
     }
 
     function addMarker(lat, lng, title, isStart = false) {
@@ -1435,7 +1460,7 @@
     }
 
     // ============================================================
-    // 13. 엑셀 파일 처리
+    // 13. 엑셀 파일 처리 (개소 탭)
     // ============================================================
 
     function handleFile(event) {
@@ -1444,21 +1469,6 @@
         processExcelFile(file);
         event.target.value = '';
     }
-
-    const dropZone = document.getElementById('dropZone');
-    dropZone.addEventListener('dragover', function(e) {
-        e.preventDefault();
-        this.classList.add('dragover');
-    });
-    dropZone.addEventListener('dragleave', function(e) {
-        e.preventDefault();
-        this.classList.remove('dragover');
-    });
-    dropZone.addEventListener('drop', function(e) {
-        e.preventDefault();
-        this.classList.remove('dragover');
-        if (e.dataTransfer.files.length > 0) processExcelFile(e.dataTransfer.files[0]);
-    });
 
     function processExcelFile(file) {
         const resultDiv = document.getElementById('uploadResult');
@@ -1544,7 +1554,7 @@
     }
 
     // ============================================================
-    // 14. 데이터 내보내기
+    // 14. 데이터 내보내기 (개소 탭)
     // ============================================================
 
     function exportData() {
@@ -1559,6 +1569,10 @@
         XLSX.writeFile(wb, `개소리스트_${currentRegion}_${new Date().toISOString().slice(0,10)}.xlsx`);
         showStatus('✅ 내보내기 완료', 'ok');
     }
+
+    // ============================================================
+    // 15. 설정 내보내기/가져오기
+    // ============================================================
 
     function exportSettings() {
         const data = {
@@ -1577,8 +1591,32 @@
         showStatus('✅ 설정 내보내기 완료', 'ok');
     }
 
+    function importSettings(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = JSON.parse(e.target.result);
+                settings.githubToken = data.githubToken || '';
+                settings.kakaoJsKey = data.kakaoJsKey || '';
+                settings.kakaoRestKey = data.kakaoRestKey || '';
+                saveSettings();
+                document.getElementById('githubToken').value = settings.githubToken;
+                document.getElementById('kakaoJsKey').value = settings.kakaoJsKey;
+                document.getElementById('kakaoRestKey').value = settings.kakaoRestKey;
+                showStatus('✅ 설정 복원 완료', 'ok');
+                initMap();
+            } catch (error) {
+                showStatus('❌ 설정 파일 오류: ' + error.message, 'error');
+            }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+    }
+
     // ============================================================
-    // 15. 공유
+    // 16. 공유
     // ============================================================
 
     function shareRoute() {
@@ -1601,7 +1639,7 @@
     }
 
     // ============================================================
-    // 16. 초기화
+    // 17. 초기화
     // ============================================================
 
     function resetAll() {
@@ -1629,7 +1667,7 @@
     }
 
     // ============================================================
-    // 17. UI 헬퍼
+    // 18. UI 헬퍼
     // ============================================================
 
     function showStatus(msg, type) {
@@ -1657,10 +1695,8 @@
             setTimeout(() => {
                 if (kakaoMap) {
                     kakaoMap.relayout();
-                    const container = document.getElementById('map');
-                    if (container && container.clientHeight > 0) {
-                        kakaoMap.setCenter(kakaoMap.getCenter());
-                    }
+                } else {
+                    initMap();
                 }
             }, 300);
         }
@@ -1670,7 +1706,7 @@
     }
 
     // ============================================================
-    // 18. 초기화
+    // 19. 초기화
     // ============================================================
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -1680,28 +1716,8 @@
         renderWaypointList();
         setOptimizeMode(optimizeMode);
         
-        if (settings.kakaoJsKey && typeof kakao !== 'undefined') {
-            if (kakao.maps && kakao.maps.load) {
-                kakao.maps.load(initMap);
-            } else {
-                const checkKakao = setInterval(() => {
-                    if (typeof kakao !== 'undefined' && kakao.maps && kakao.maps.load) {
-                        clearInterval(checkKakao);
-                        kakao.maps.load(initMap);
-                    }
-                }, 500);
-                setTimeout(() => {
-                    clearInterval(checkKakao);
-                    if (!kakaoMap) {
-                        console.warn('카카오 지도 로드 실패');
-                        showStatus('⚠️ 지도 로드 실패. JavaScript 키를 확인하세요.', 'error');
-                    }
-                }, 10000);
-            }
-        } else {
-            console.warn('카카오 JavaScript 키가 설정되지 않았습니다.');
-            showStatus('⚠️ 카카오 JavaScript 키가 필요합니다. 설정 탭에서 입력하세요.', 'warning');
-        }
+        // 지도 초기화 (지연 로드)
+        setTimeout(initMap, 500);
         
         updateStorageInfo();
         console.log('🚗 경로 최적화 PWA 로드 완료');
