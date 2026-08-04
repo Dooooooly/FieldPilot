@@ -6,7 +6,7 @@
 // --- 설정 ---
 const STORAGE_KEY_PREFIX = 'places_';
 const SELECTED_REGION_KEY = 'selectedRegion';
-const KAKAO_JS_KEY = 'YOUR_KAKAO_JS_KEY'; // 카카오 JavaScript 키 입력
+const KAKAO_JS_KEY = '46f550c3a5a9bfc0ceff4bce9ecf71f8'; // 카카오 JavaScript 키 입력
 
 // --- 상태 ---
 let currentRegion = localStorage.getItem(SELECTED_REGION_KEY) || 'seoul';
