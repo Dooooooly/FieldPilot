@@ -1298,3 +1298,44 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log(`📍 지역: ${currentRegion}, 경유지: ${places.length}개`);
     console.log(`🔐 GitHub: ${settings.githubToken ? '✅ 설정됨' : '❌ 미설정'}`);
 });
+
+// ============================================================
+// 탭 전환 (전역 함수)
+// ============================================================
+
+function switchTab(tabId) {
+    // 모든 탭 콘텐츠 숨기기
+    var contents = document.querySelectorAll('.tab-content');
+    for (var i = 0; i < contents.length; i++) {
+        contents[i].classList.remove('active');
+    }
+    
+    // 모든 하단 탭 버튼 비활성화
+    var tabs = document.querySelectorAll('.bottom-tab');
+    for (var i = 0; i < tabs.length; i++) {
+        tabs[i].classList.remove('active');
+    }
+    
+    // 선택한 탭 활성화
+    var targetContent = document.getElementById(tabId);
+    if (targetContent) {
+        targetContent.classList.add('active');
+    }
+    
+    // 선택한 버튼 활성화
+    var targetTab = document.querySelector('.bottom-tab[data-tab="' + tabId + '"]');
+    if (targetTab) {
+        targetTab.classList.add('active');
+    }
+    
+    // 지도 탭일 경우
+    if (tabId === 'tab-route') {
+        setTimeout(function() {
+            if (typeof kakaoMap !== 'undefined' && kakaoMap) {
+                kakaoMap.relayout();
+            } else if (typeof initMap === 'function') {
+                initMap();
+            }
+        }, 300);
+    }
+}
