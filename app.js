@@ -10,37 +10,37 @@ const OPTIMIZE_MODE_KEY = 'optimizeMode';
 
 // --- 지역별 중심 좌표 ---
 const REGION_CENTERS = {
-    '서울': { lat: 37.5665, lng: 126.9780, level: 12 },
-    '부산': { lat: 35.1796, lng: 129.0756, level: 12 },
-    '제주': { lat: 33.4996, lng: 126.5312, level: 12 },
+    '서울': { lat: 37.5665, lng: 126.9780, level: 14 },
+    '부산': { lat: 35.1796, lng: 129.0756, level: 14 },
+    '제주': { lat: 33.4996, lng: 126.5312, level: 14 },
     '용산': { lat: 37.5326, lng: 126.9900, level: 14 },
-    '강남': { lat: 37.5172, lng: 127.0473, level: 13 },
-    '서초': { lat: 37.4837, lng: 127.0326, level: 13 },
-    '종로': { lat: 37.5727, lng: 126.9791, level: 13 },
-    '중구': { lat: 37.5599, lng: 126.9978, level: 13 },
-    '마포': { lat: 37.5663, lng: 126.9011, level: 13 },
-    '영등포': { lat: 37.5264, lng: 126.8964, level: 13 },
-    '동작': { lat: 37.5124, lng: 126.9393, level: 13 },
-    '관악': { lat: 37.4782, lng: 126.9514, level: 13 },
-    '금천': { lat: 37.4569, lng: 126.8953, level: 13 },
-    '구로': { lat: 37.4951, lng: 126.8883, level: 13 },
-    '양천': { lat: 37.5170, lng: 126.8660, level: 13 },
-    '강서': { lat: 37.5509, lng: 126.8495, level: 13 },
-    '노원': { lat: 37.6542, lng: 127.0568, level: 13 },
-    '도봉': { lat: 37.6688, lng: 127.0471, level: 13 },
-    '성북': { lat: 37.5894, lng: 127.0167, level: 13 },
-    '동대문': { lat: 37.5744, lng: 127.0396, level: 13 },
-    '성동': { lat: 37.5632, lng: 127.0369, level: 13 },
-    '광진': { lat: 37.5385, lng: 127.0822, level: 13 },
-    '송파': { lat: 37.5146, lng: 127.1066, level: 13 },
-    '강동': { lat: 37.5302, lng: 127.1235, level: 13 },
-    '수원': { lat: 37.2636, lng: 127.0286, level: 13 },
-    '인천': { lat: 37.4563, lng: 126.7052, level: 13 },
-    '대전': { lat: 36.3504, lng: 127.3845, level: 13 },
-    '대구': { lat: 35.8714, lng: 128.6014, level: 13 },
-    '광주': { lat: 35.1595, lng: 126.8526, level: 13 },
-    '울산': { lat: 35.5384, lng: 129.3114, level: 13 },
-    '세종': { lat: 36.4801, lng: 127.2890, level: 13 }
+    '강남': { lat: 37.5172, lng: 127.0473, level: 14 },
+    '서초': { lat: 37.4837, lng: 127.0326, level: 14 },
+    '종로': { lat: 37.5727, lng: 126.9791, level: 14 },
+    '중구': { lat: 37.5599, lng: 126.9978, level: 14 },
+    '마포': { lat: 37.5663, lng: 126.9011, level: 14 },
+    '영등포': { lat: 37.5264, lng: 126.8964, level: 14 },
+    '동작': { lat: 37.5124, lng: 126.9393, level: 14 },
+    '관악': { lat: 37.4782, lng: 126.9514, level: 14 },
+    '금천': { lat: 37.4569, lng: 126.8953, level: 14 },
+    '구로': { lat: 37.4951, lng: 126.8883, level: 14 },
+    '양천': { lat: 37.5170, lng: 126.8660, level: 14 },
+    '강서': { lat: 37.5509, lng: 126.8495, level: 14 },
+    '노원': { lat: 37.6542, lng: 127.0568, level: 14 },
+    '도봉': { lat: 37.6688, lng: 127.0471, level: 14 },
+    '성북': { lat: 37.5894, lng: 127.0167, level: 14 },
+    '동대문': { lat: 37.5744, lng: 127.0396, level: 14 },
+    '성동': { lat: 37.5632, lng: 127.0369, level: 14 },
+    '광진': { lat: 37.5385, lng: 127.0822, level: 14 },
+    '송파': { lat: 37.5146, lng: 127.1066, level: 14 },
+    '강동': { lat: 37.5302, lng: 127.1235, level: 14 },
+    '수원': { lat: 37.2636, lng: 127.0286, level: 14 },
+    '인천': { lat: 37.4563, lng: 126.7052, level: 14 },
+    '대전': { lat: 36.3504, lng: 127.3845, level: 14 },
+    '대구': { lat: 35.8714, lng: 128.6014, level: 14 },
+    '광주': { lat: 35.1595, lng: 126.8526, level: 14 },
+    '울산': { lat: 35.5384, lng: 129.3114, level: 14 },
+    '세종': { lat: 36.4801, lng: 127.2890, level: 14 }
 };
 
 // --- 상태 ---
@@ -118,7 +118,7 @@ function getRegionCenter(region) {
         }
     }
     
-    return REGION_CENTERS['서울'];
+    return { lat: 37.5665, lng: 126.9780, level: 14 };
 }
 
 // ============================================================
@@ -304,7 +304,7 @@ function switchRegion(region) {
     if (kakaoMap) {
         var center = getRegionCenter(region);
         kakaoMap.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
-        kakaoMap.setLevel(center.level || 12);
+        kakaoMap.setLevel(14);
         setTimeout(showPlaceMarkers, 500);
     }
     
@@ -373,18 +373,16 @@ function scheduleAutoSync() {
 }
 
 // ============================================================
-// 7. GitHub 업로드 (수정 - 경쟁 조건 해결)
+// 7. GitHub 업로드 (수정 - 422 오류 해결)
 // ============================================================
 
-// UTF-8 to Base64 (btoa 대신 안전한 방식)
+// UTF-8 to Base64 (안전한 방식)
 function utf8ToBase64(str) {
     try {
-        // 최신 브라우저용
         var bytes = new TextEncoder().encode(str);
         var binString = String.fromCodePoint.apply(null, bytes);
         return btoa(binString);
     } catch (e) {
-        // 구형 브라우저 대비 (fallback)
         return btoa(unescape(encodeURIComponent(str)));
     }
 }
@@ -451,7 +449,6 @@ async function uploadToGitHub(silent) {
             console.log('5️⃣ 저장소 생성 성공! (3초 대기 중...)');
             if (!silent) showStatus('✅ 저장소 생성됨, 파일 업로드 준비 중...', 'info');
             
-            // ⭐⭐⭐ 중요: 저장소가 완전히 준비될 때까지 3초 대기 (경쟁 조건 해결)
             await new Promise(resolve => setTimeout(resolve, 3000));
         } else if (!repoRes.ok) {
             throw new Error('저장소 확인 실패: ' + repoRes.status);
@@ -460,7 +457,7 @@ async function uploadToGitHub(silent) {
         }
         
         // 4. 파일 업로드
-        var fileUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents/' + fileName;
+        var fileUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents/' + encodeURIComponent(fileName);
         console.log('6️⃣ 파일 업로드 시도: ' + fileName);
         
         // 기존 파일 SHA 확인
@@ -468,7 +465,7 @@ async function uploadToGitHub(silent) {
             headers: { 'Authorization': 'token ' + token }
         });
         
-        var sha = '';
+        var sha = null;
         if (fileRes.ok) {
             var fileData = await fileRes.json();
             sha = fileData.sha;
@@ -479,11 +476,15 @@ async function uploadToGitHub(silent) {
             throw new Error('파일 확인 실패: ' + fileRes.status);
         }
         
+        // ⭐ 중요: PUT 요청 데이터 구성 (sha가 있을 때만 추가)
         var putData = {
             message: 'Auto sync: ' + currentRegion + ' (' + new Date().toLocaleString() + ')',
             content: b64Content
         };
-        if (sha) putData.sha = sha;
+        // sha가 null이 아니고, 빈 문자열이 아닐 때만 추가
+        if (sha && sha !== '') {
+            putData.sha = sha;
+        }
         
         var putRes = await fetch(fileUrl, {
             method: 'PUT',
@@ -512,6 +513,7 @@ async function uploadToGitHub(silent) {
         }
     }
 }
+
 // ============================================================
 // 8. GitHub 다운로드
 // ============================================================
@@ -535,7 +537,7 @@ async function downloadFromGitHub() {
         
         var repoName = 'route-data';
         var fileName = currentRegion + '.json';
-        var fileUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents/' + fileName;
+        var fileUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents/' + encodeURIComponent(fileName);
         
         var fileRes = await fetch(fileUrl, {
             headers: { 'Authorization': 'token ' + token }
@@ -591,7 +593,7 @@ async function showGitHubHistory() {
         
         var repoName = 'route-data';
         var fileName = currentRegion + '.json';
-        var url = 'https://api.github.com/repos/' + username + '/' + repoName + '/commits?path=' + fileName + '&per_page=10';
+        var url = 'https://api.github.com/repos/' + username + '/' + repoName + '/commits?path=' + encodeURIComponent(fileName) + '&per_page=10';
         
         var commitRes = await fetch(url, {
             headers: { 'Authorization': 'token ' + token }
@@ -717,6 +719,12 @@ function selectStartPoint(name, address, lat, lng) {
     document.getElementById('startSearchResults').style.display = 'none';
     selectedSearchIndex = -1;
     
+    var isValid = lat && lng && lat > 33 && lat < 39 && lng > 124 && lng < 132;
+    if (!isValid) {
+        showStatus('⚠️ 유효하지 않은 좌표입니다. 다시 검색해주세요.', 'warning');
+        return;
+    }
+    
     startPoint = {
         name: name,
         address: address,
@@ -732,7 +740,7 @@ function selectStartPoint(name, address, lat, lng) {
         clearRouteMarkers();
         addRouteMarker(startPoint.lat, startPoint.lng, '🚩 ' + name, true);
         kakaoMap.setCenter(new kakao.maps.LatLng(startPoint.lat, startPoint.lng));
-        kakaoMap.setLevel(4);
+        kakaoMap.setLevel(14);
     }
     showStatus('✅ 출발지 "' + name + '" 설정 완료', 'ok');
 }
@@ -1292,45 +1300,38 @@ function initMap() {
 }
 
 // ============================================================
-// 23. 지도 생성 함수 (완전 새로 작성 - 확실한 버전)
+// 23. 지도 생성 함수 (출발지 우선, 없으면 지역 중심)
 // ============================================================
 
 function createMap(container) {
     try {
-        console.log('🗺️ 지도 생성 시작...');
+        console.log('🗺️ 지도 생성 중...');
+        console.log('🔍 currentRegion:', currentRegion);
+        console.log('🔍 startPoint:', startPoint);
         
-        // 1. 현재 지역이 제대로 설정되었는지 확인
-        var region = currentRegion || '서울';
-        console.log('📍 현재 지역:', region);
+        var centerLat, centerLng, zoomLevel;
         
-        // 2. 지역 중심 좌표 가져오기
-        var centerInfo = getRegionCenter(region);
-        var centerLat = centerInfo.lat;
-        var centerLng = centerInfo.lng;
-        var zoomLevel = centerInfo.level || 14;
+        // 출발지 유효성 검사
+        var isStartValid = startPoint && 
+                           typeof startPoint.lat === 'number' && 
+                           typeof startPoint.lng === 'number' &&
+                           startPoint.lat > 33 && startPoint.lat < 39 &&
+                           startPoint.lng > 124 && startPoint.lng < 132 &&
+                           !(startPoint.lat === 0 && startPoint.lng === 0);
         
-        console.log('📍 지역 중심 좌표:', centerLat, centerLng, '줌레벨:', zoomLevel);
-        
-        // 3. 출발지 유효성 검사 (진짜 유효한 좌표인지)
-        var isStartValid = false;
-        if (startPoint) {
-            var lat = parseFloat(startPoint.lat);
-            var lng = parseFloat(startPoint.lng);
-            // 한국 영역: 위도 33~39, 경도 124~132
-            if (!isNaN(lat) && !isNaN(lng) && lat > 33 && lat < 39 && lng > 124 && lng < 132) {
-                isStartValid = true;
-                centerLat = lat;
-                centerLng = lng;
-                zoomLevel = 14;
-                console.log('✅ 유효한 출발지 사용:', startPoint.name);
-            } else {
-                console.log('⚠️ 출발지 좌표 유효하지 않음, 지역 중심 사용');
-            }
+        if (isStartValid) {
+            centerLat = startPoint.lat;
+            centerLng = startPoint.lng;
+            zoomLevel = 14;
+            console.log('📍 출발지 중심: ' + startPoint.name);
         } else {
-            console.log('ℹ️ 출발지 없음, 지역 중심 사용');
+            var centerInfo = getRegionCenter(currentRegion);
+            centerLat = centerInfo.lat;
+            centerLng = centerInfo.lng;
+            zoomLevel = 14;
+            console.log('📍 지역 중심: ' + currentRegion);
         }
         
-        // 4. 지도 생성
         var options = {
             center: new kakao.maps.LatLng(centerLat, centerLng),
             level: zoomLevel,
@@ -1351,8 +1352,8 @@ function createMap(container) {
         var zoomControl = new kakao.maps.ZoomControl();
         kakaoMap.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
         
-        console.log('✅ 지도 생성 성공! 중심:', centerLat, centerLng);
-        showStatus('🗺️ 지도 로드 완료 (' + region + ')', 'ok');
+        console.log('🗺️ 지도 생성 성공! (줌레벨: ' + zoomLevel + ')');
+        showStatus('🗺️ 지도 로드 완료', 'ok');
         
         setTimeout(function() {
             showPlaceMarkers();
@@ -1364,6 +1365,7 @@ function createMap(container) {
         showStatus('⚠️ 지도 생성 실패', 'error');
     }
 }
+
 // ============================================================
 // 24. 개소 마커 표시
 // ============================================================
@@ -1583,13 +1585,12 @@ function exportData() {
     var data = [];
     
     if (places.length === 0) {
-        // 예시 데이터 (템플릿)
         data = [
             { '개소명': '예시_개소명_1', '도로명주소': '서울시 강남구 테헤란로 123', '비고': '', '위도': 0, '경도': 0 },
             { '개소명': '예시_개소명_2', '도로명주소': '서울시 서초구 서초대로 456', '비고': '', '위도': 0, '경도': 0 },
             { '개소명': '예시_개소명_3', '도로명주소': '서울시 종로구 종로 789', '비고': '', '위도': 0, '경도': 0 }
         ];
-        showStatus('📄 예시 양식이 다운로드됩니다. 데이터를 입력하여 사용하세요.', 'info');
+        showStatus('📄 예시 양식이 다운로드됩니다.', 'info');
     } else {
         data = places.map(function(p) {
             return {
@@ -1756,6 +1757,8 @@ function closeModal() {
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚗 앱 초기화 시작');
+    
+    startPoint = null;
     
     loadSettings();
     loadRegionList();
