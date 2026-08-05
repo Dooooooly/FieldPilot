@@ -373,8 +373,21 @@ function scheduleAutoSync() {
 }
 
 // ============================================================
-// 7. GitHub 업로드
+// 7. GitHub 업로드 (수정 - 경쟁 조건 해결)
 // ============================================================
+
+// UTF-8 to Base64 (btoa 대신 안전한 방식)
+function utf8ToBase64(str) {
+    try {
+        // 최신 브라우저용
+        var bytes = new TextEncoder().encode(str);
+        var binString = String.fromCodePoint.apply(null, bytes);
+        return btoa(binString);
+    } catch (e) {
+        // 구형 브라우저 대비 (fallback)
+        return btoa(unescape(encodeURIComponent(str)));
+    }
+}
 
 async function uploadToGitHub(silent) {
     silent = silent || false;
@@ -386,25 +399,35 @@ async function uploadToGitHub(silent) {
     
     try {
         if (!silent) showStatus('☁️ GitHub 업로드 중...', 'info');
+        console.log('1️⃣ GitHub 업로드 시작');
         
+        // 1. 사용자 정보 조회
         var userRes = await fetch('https://api.github.com/user', {
             headers: { 'Authorization': 'token ' + token }
         });
-        if (!userRes.ok) throw new Error('토큰 인증 실패');
+        if (!userRes.ok) {
+            var errText = await userRes.text();
+            throw new Error('토큰 인증 실패: ' + userRes.status + ' - ' + errText);
+        }
         var user = await userRes.json();
         var username = user.login;
+        console.log('2️⃣ 사용자 확인: ' + username);
         
         var repoName = 'route-data';
         var fileName = currentRegion + '.json';
         var content = JSON.stringify(places, null, 2);
-        var b64Content = btoa(unescape(encodeURIComponent(content)));
+        var b64Content = utf8ToBase64(content);
         
+        // 2. 저장소 확인
         var repoUrl = 'https://api.github.com/repos/' + username + '/' + repoName;
         var repoRes = await fetch(repoUrl, {
             headers: { 'Authorization': 'token ' + token }
         });
+        console.log('3️⃣ 저장소 확인 결과: ' + repoRes.status);
         
+        // 3. 저장소가 없으면 생성
         if (repoRes.status === 404) {
+            console.log('4️⃣ 저장소 생성 시도...');
             var createRes = await fetch('https://api.github.com/user/repos', {
                 method: 'POST',
                 headers: {
@@ -418,11 +441,29 @@ async function uploadToGitHub(silent) {
                     auto_init: true
                 })
             });
-            if (!createRes.ok) throw new Error('저장소 생성 실패');
-            if (!silent) showStatus('✅ 저장소 생성됨: ' + repoName, 'ok');
+            
+            if (!createRes.ok) {
+                var createErr = await createRes.json();
+                console.error('저장소 생성 실패 상세:', createErr);
+                throw new Error('저장소 생성 실패: ' + (createErr.message || JSON.stringify(createErr)));
+            }
+            
+            console.log('5️⃣ 저장소 생성 성공! (3초 대기 중...)');
+            if (!silent) showStatus('✅ 저장소 생성됨, 파일 업로드 준비 중...', 'info');
+            
+            // ⭐⭐⭐ 중요: 저장소가 완전히 준비될 때까지 3초 대기 (경쟁 조건 해결)
+            await new Promise(resolve => setTimeout(resolve, 3000));
+        } else if (!repoRes.ok) {
+            throw new Error('저장소 확인 실패: ' + repoRes.status);
+        } else {
+            console.log('4️⃣ 저장소 이미 존재함');
         }
         
+        // 4. 파일 업로드
         var fileUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents/' + fileName;
+        console.log('6️⃣ 파일 업로드 시도: ' + fileName);
+        
+        // 기존 파일 SHA 확인
         var fileRes = await fetch(fileUrl, {
             headers: { 'Authorization': 'token ' + token }
         });
@@ -431,6 +472,11 @@ async function uploadToGitHub(silent) {
         if (fileRes.ok) {
             var fileData = await fileRes.json();
             sha = fileData.sha;
+            console.log('7️⃣ 기존 파일 발견 (SHA: ' + sha.substring(0, 7) + '...)');
+        } else if (fileRes.status === 404) {
+            console.log('7️⃣ 신규 파일 생성');
+        } else {
+            throw new Error('파일 확인 실패: ' + fileRes.status);
         }
         
         var putData = {
@@ -448,20 +494,24 @@ async function uploadToGitHub(silent) {
             body: JSON.stringify(putData)
         });
         
-        if (!putRes.ok) throw new Error('업로드 실패');
+        if (!putRes.ok) {
+            var putErr = await putRes.json();
+            console.error('파일 업로드 실패 상세:', putErr);
+            throw new Error('파일 업로드 실패: ' + (putErr.message || JSON.stringify(putErr)));
+        }
         
+        console.log('8️⃣ 파일 업로드 성공!');
         if (!silent) {
             showStatus('✅ GitHub 업로드 완료! (' + places.length + '개)', 'ok');
         }
         
     } catch (error) {
-        console.error('GitHub 업로드 오류:', error);
+        console.error('❌ GitHub 업로드 오류 상세:', error);
         if (!silent) {
             showStatus('❌ 업로드 실패: ' + error.message, 'error');
         }
     }
 }
-
 // ============================================================
 // 8. GitHub 다운로드
 // ============================================================
