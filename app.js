@@ -8,6 +8,34 @@ const SELECTED_REGION_KEY = 'selectedRegion';
 const SETTINGS_KEY = 'app_settings';
 const OPTIMIZE_MODE_KEY = 'optimizeMode';
 
+// --- 지역별 중심 좌표 ---
+const REGION_CENTERS = {
+    '서울': { lat: 37.5665, lng: 126.9780, level: 12 },
+    '부산': { lat: 35.1796, lng: 129.0756, level: 12 },
+    '제주': { lat: 33.4996, lng: 126.5312, level: 12 },
+    '용산': { lat: 37.5326, lng: 126.9900, level: 14 },
+    '강남': { lat: 37.5172, lng: 127.0473, level: 13 },
+    '서초': { lat: 37.4837, lng: 127.0326, level: 13 },
+    '종로': { lat: 37.5727, lng: 126.9791, level: 13 },
+    '중구': { lat: 37.5599, lng: 126.9978, level: 13 },
+    '마포': { lat: 37.5663, lng: 126.9011, level: 13 },
+    '영등포': { lat: 37.5264, lng: 126.8964, level: 13 },
+    '동작': { lat: 37.5124, lng: 126.9393, level: 13 },
+    '관악': { lat: 37.4782, lng: 126.9514, level: 13 },
+    '금천': { lat: 37.4569, lng: 126.8953, level: 13 },
+    '구로': { lat: 37.4951, lng: 126.8883, level: 13 },
+    '양천': { lat: 37.5170, lng: 126.8660, level: 13 },
+    '강서': { lat: 37.5509, lng: 126.8495, level: 13 },
+    '노원': { lat: 37.6542, lng: 127.0568, level: 13 },
+    '도봉': { lat: 37.6688, lng: 127.0471, level: 13 },
+    '성북': { lat: 37.5894, lng: 127.0167, level: 13 },
+    '동대문': { lat: 37.5744, lng: 127.0396, level: 13 },
+    '성동': { lat: 37.5632, lng: 127.0369, level: 13 },
+    '광진': { lat: 37.5385, lng: 127.0822, level: 13 },
+    '송파': { lat: 37.5146, lng: 127.1066, level: 13 },
+    '강동': { lat: 37.5302, lng: 127.1235, level: 13 }
+};
+
 // --- 상태 ---
 let currentRegion = localStorage.getItem(SELECTED_REGION_KEY) || '서울';
 let places = [];
@@ -69,7 +97,28 @@ function switchTab(tabId) {
 }
 
 // ============================================================
-// 2. 저장된 지역 목록 불러오기
+// 2. 지역 중심 좌표 가져오기
+// ============================================================
+
+function getRegionCenter(region) {
+    // 정확히 일치하는 지역이 있으면 반환
+    if (REGION_CENTERS[region]) {
+        return REGION_CENTERS[region];
+    }
+    
+    // 부분 일치 검색 (예: "용산구" → "용산")
+    for (var key in REGION_CENTERS) {
+        if (region.includes(key) || key.includes(region)) {
+            return REGION_CENTERS[key];
+        }
+    }
+    
+    // 기본값: 서울
+    return REGION_CENTERS['서울'];
+}
+
+// ============================================================
+// 3. 저장된 지역 목록 불러오기
 // ============================================================
 
 function loadRegionList() {
@@ -114,7 +163,7 @@ function loadRegionList() {
 }
 
 // ============================================================
-// 3. 설정 관리
+// 4. 설정 관리
 // ============================================================
 
 function loadSettings() {
@@ -201,7 +250,7 @@ async function testGitHubToken() {
 }
 
 // ============================================================
-// 4. 저장소 관리
+// 5. 저장소 관리
 // ============================================================
 
 function getStorageKey(region) {
@@ -227,7 +276,6 @@ function savePlaces() {
     if (kakaoMap) {
         showPlaceMarkers();
     }
-    // 자동 GitHub 동기화 (5초 후)
     scheduleAutoSync();
 }
 
@@ -249,7 +297,11 @@ function switchRegion(region) {
     renderWaypointList();
     clearRouteMarkers();
     
+    // 지도 중심 변경 (지역명 기반)
     if (kakaoMap) {
+        var center = getRegionCenter(region);
+        kakaoMap.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
+        kakaoMap.setLevel(center.level || 12);
         setTimeout(showPlaceMarkers, 500);
     }
     
@@ -306,7 +358,7 @@ function updateStorageInfo() {
 }
 
 // ============================================================
-// 5. GitHub 자동 동기화
+// 6. GitHub 자동 동기화
 // ============================================================
 
 function scheduleAutoSync() {
@@ -318,7 +370,7 @@ function scheduleAutoSync() {
 }
 
 // ============================================================
-// 6. GitHub 업로드
+// 7. GitHub 업로드
 // ============================================================
 
 async function uploadToGitHub(silent) {
@@ -344,7 +396,6 @@ async function uploadToGitHub(silent) {
         var content = JSON.stringify(places, null, 2);
         var b64Content = btoa(unescape(encodeURIComponent(content)));
         
-        // 저장소 확인
         var repoUrl = 'https://api.github.com/repos/' + username + '/' + repoName;
         var repoRes = await fetch(repoUrl, {
             headers: { 'Authorization': 'token ' + token }
@@ -368,7 +419,6 @@ async function uploadToGitHub(silent) {
             if (!silent) showStatus('✅ 저장소 생성됨: ' + repoName, 'ok');
         }
         
-        // 파일 업로드
         var fileUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents/' + fileName;
         var fileRes = await fetch(fileUrl, {
             headers: { 'Authorization': 'token ' + token }
@@ -410,7 +460,7 @@ async function uploadToGitHub(silent) {
 }
 
 // ============================================================
-// 7. GitHub 다운로드
+// 8. GitHub 다운로드
 // ============================================================
 
 async function downloadFromGitHub() {
@@ -463,7 +513,7 @@ async function downloadFromGitHub() {
 }
 
 // ============================================================
-// 8. GitHub 히스토리
+// 9. GitHub 히스토리
 // ============================================================
 
 async function showGitHubHistory() {
@@ -534,7 +584,7 @@ async function showGitHubHistory() {
 }
 
 // ============================================================
-// 9. 최적화 방식
+// 10. 최적화 방식
 // ============================================================
 
 function setOptimizeMode(mode) {
@@ -546,7 +596,7 @@ function setOptimizeMode(mode) {
 }
 
 // ============================================================
-// 10. 카카오맵 장소 검색
+// 11. 카카오맵 장소 검색
 // ============================================================
 
 async function searchKakaoPlaces(query, size) {
@@ -585,7 +635,7 @@ function renderSearchResults(container, results, onClick) {
 }
 
 // ============================================================
-// 11. 출발지 검색
+// 12. 출발지 검색
 // ============================================================
 
 async function searchStartPoint(query) {
@@ -634,7 +684,7 @@ function selectStartPoint(name, address, lat, lng) {
 }
 
 // ============================================================
-// 12. 경유지 검색
+// 13. 경유지 검색
 // ============================================================
 
 async function searchWaypoint(query) {
@@ -691,7 +741,7 @@ function selectWaypointFromSearch(name, address, lat, lng) {
 }
 
 // ============================================================
-// 13. 개소탭 주소 검색
+// 14. 개소탭 주소 검색
 // ============================================================
 
 async function searchAddressForPlace(query) {
@@ -725,7 +775,7 @@ function selectAddress(name, address, lat, lng) {
 }
 
 // ============================================================
-// 14. 키보드 네비게이션
+// 15. 키보드 네비게이션
 // ============================================================
 
 function handleResultKeydown(event, results, containerId, stateKey) {
@@ -753,7 +803,7 @@ function handleResultKeydown(event, results, containerId, stateKey) {
 }
 
 // ============================================================
-// 15. 개소 관리
+// 16. 개소 관리
 // ============================================================
 
 function renderPlaces(filtered) {
@@ -835,7 +885,7 @@ function addWaypointFromList(id) {
 }
 
 // ============================================================
-// 16. 경유지 관리
+// 17. 경유지 관리
 // ============================================================
 
 function addWaypoint() {
@@ -879,7 +929,7 @@ function renderWaypointList() {
 }
 
 // ============================================================
-// 17. 지오코딩
+// 18. 지오코딩
 // ============================================================
 
 async function geocodeAddress(address, restKey) {
@@ -907,7 +957,7 @@ async function geocodeAddress(address, restKey) {
 }
 
 // ============================================================
-// 18. 16방향 클러스터링 (VBA 완벽 포팅)
+// 19. 16방향 클러스터링 (VBA 완벽 포팅)
 // ============================================================
 
 function calculateAngle(startX, startY, targetX, targetY) {
@@ -1008,7 +1058,7 @@ function optimizeRouteAlgorithm(places, startLat, startLng, mode) {
 }
 
 // ============================================================
-// 19. 경로 최적화 실행
+// 20. 경로 최적화 실행
 // ============================================================
 
 async function runOptimize() {
@@ -1116,7 +1166,7 @@ async function runOptimize() {
 }
 
 // ============================================================
-// 20. 지도 (SDK 동적 로드 + 용산구 기본 위치)
+// 21. 지도 (SDK 동적 로드 + 지역 중심)
 // ============================================================
 
 function initMap() {
@@ -1162,17 +1212,20 @@ function initMap() {
 }
 
 // ============================================================
-// 21. 지도 생성 함수 (용산구 기본 위치 + 모바일 터치 지원)
+// 22. 지도 생성 함수 (지역 중심 자동 이동)
 // ============================================================
 
 function createMap(container) {
     try {
         console.log('🗺️ 지도 생성 중...');
         
-        var centerLat = 37.5326;
-        var centerLng = 126.9900;
-        var zoomLevel = 14;
+        // 지역명 기반 중심 좌표 가져오기
+        var centerInfo = getRegionCenter(currentRegion);
+        var centerLat = centerInfo.lat;
+        var centerLng = centerInfo.lng;
+        var zoomLevel = centerInfo.level || 12;
         
+        // 출발지가 있으면 출발지로 이동
         if (startPoint && startPoint.lat) {
             centerLat = startPoint.lat;
             centerLng = startPoint.lng;
@@ -1199,8 +1252,8 @@ function createMap(container) {
         var zoomControl = new kakao.maps.ZoomControl();
         kakaoMap.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
         
-        console.log('🗺️ 지도 생성 성공!');
-        showStatus('🗺️ 지도 로드 완료', 'ok');
+        console.log('🗺️ 지도 생성 성공! (지역: ' + currentRegion + ')');
+        showStatus('🗺️ 지도 로드 완료 (' + currentRegion + ')', 'ok');
         
         setTimeout(function() {
             showPlaceMarkers();
@@ -1214,7 +1267,7 @@ function createMap(container) {
 }
 
 // ============================================================
-// 22. 개소 마커 표시
+// 23. 개소 마커 표시
 // ============================================================
 
 function showPlaceMarkers() {
@@ -1257,7 +1310,7 @@ function showPlaceMarkers() {
 }
 
 // ============================================================
-// 23. 경로 마커
+// 24. 경로 마커
 // ============================================================
 
 function addRouteMarker(lat, lng, title, isStart) {
@@ -1324,7 +1377,7 @@ function drawRoute(path) {
 }
 
 // ============================================================
-// 24. 엑셀 파일 처리
+// 25. 엑셀 파일 처리
 // ============================================================
 
 function handleFile(event) {
@@ -1425,7 +1478,7 @@ function showUploadResult(msg, type) {
 }
 
 // ============================================================
-// 25. 데이터 내보내기
+// 26. 데이터 내보내기
 // ============================================================
 
 function exportData() {
@@ -1488,7 +1541,7 @@ function importSettings(event) {
 }
 
 // ============================================================
-// 26. 공유
+// 27. 공유
 // ============================================================
 
 function shareRoute() {
@@ -1524,7 +1577,7 @@ function shareRoute() {
 }
 
 // ============================================================
-// 27. 초기화
+// 28. 초기화
 // ============================================================
 
 function resetAll() {
@@ -1564,7 +1617,7 @@ function resetAll() {
 }
 
 // ============================================================
-// 28. UI 헬퍼
+// 29. UI 헬퍼
 // ============================================================
 
 function showStatus(msg, type) {
@@ -1584,7 +1637,7 @@ function closeModal() {
 }
 
 // ============================================================
-// 29. 초기화 실행
+// 30. 초기화 실행
 // ============================================================
 
 document.addEventListener('DOMContentLoaded', function() {
