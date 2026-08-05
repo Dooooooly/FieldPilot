@@ -33,7 +33,14 @@ const REGION_CENTERS = {
     '성동': { lat: 37.5632, lng: 127.0369, level: 13 },
     '광진': { lat: 37.5385, lng: 127.0822, level: 13 },
     '송파': { lat: 37.5146, lng: 127.1066, level: 13 },
-    '강동': { lat: 37.5302, lng: 127.1235, level: 13 }
+    '강동': { lat: 37.5302, lng: 127.1235, level: 13 },
+    '수원': { lat: 37.2636, lng: 127.0286, level: 13 },
+    '인천': { lat: 37.4563, lng: 126.7052, level: 13 },
+    '대전': { lat: 36.3504, lng: 127.3845, level: 13 },
+    '대구': { lat: 35.8714, lng: 128.6014, level: 13 },
+    '광주': { lat: 35.1595, lng: 126.8526, level: 13 },
+    '울산': { lat: 35.5384, lng: 129.3114, level: 13 },
+    '세종': { lat: 36.4801, lng: 127.2890, level: 13 }
 };
 
 // --- 상태 ---
@@ -101,19 +108,16 @@ function switchTab(tabId) {
 // ============================================================
 
 function getRegionCenter(region) {
-    // 정확히 일치하는 지역이 있으면 반환
     if (REGION_CENTERS[region]) {
         return REGION_CENTERS[region];
     }
     
-    // 부분 일치 검색 (예: "용산구" → "용산")
     for (var key in REGION_CENTERS) {
         if (region.includes(key) || key.includes(region)) {
             return REGION_CENTERS[key];
         }
     }
     
-    // 기본값: 서울
     return REGION_CENTERS['서울'];
 }
 
@@ -297,7 +301,6 @@ function switchRegion(region) {
     renderWaypointList();
     clearRouteMarkers();
     
-    // 지도 중심 변경 (지역명 기반)
     if (kakaoMap) {
         var center = getRegionCenter(region);
         kakaoMap.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
@@ -524,6 +527,7 @@ async function showGitHubHistory() {
     }
     
     var historyDiv = document.getElementById('githubHistory');
+    if (!historyDiv) return;
     
     try {
         showStatus('📋 히스토리 불러오는 중...', 'info');
@@ -803,7 +807,7 @@ function handleResultKeydown(event, results, containerId, stateKey) {
 }
 
 // ============================================================
-// 16. 개소 관리
+// 16. 개소 관리 (장소 탭)
 // ============================================================
 
 function renderPlaces(filtered) {
@@ -885,7 +889,33 @@ function addWaypointFromList(id) {
 }
 
 // ============================================================
-// 17. 경유지 관리
+// 17. 개소리스트 탭 (개소 추가 전용)
+// ============================================================
+
+function addToList() {
+    var name = document.getElementById('listName').value.trim();
+    var address = document.getElementById('listAddress').value.trim();
+    if (!name) { showStatus('개소명을 입력하세요.', 'warning'); return; }
+    if (places.find(function(p) { return p.name === name; })) {
+        showStatus('⚠️ 이미 존재하는 개소명입니다.', 'warning');
+        return;
+    }
+    places.push({
+        id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+        name: name,
+        address: address || '',
+        lat: 0,
+        lng: 0
+    });
+    savePlaces();
+    document.getElementById('listName').value = '';
+    document.getElementById('listAddress').value = '';
+    document.getElementById('listName').focus();
+    showStatus('✅ "' + name + '" 추가됨', 'ok');
+}
+
+// ============================================================
+// 18. 경유지 관리
 // ============================================================
 
 function addWaypoint() {
@@ -929,7 +959,7 @@ function renderWaypointList() {
 }
 
 // ============================================================
-// 18. 지오코딩
+// 19. 지오코딩
 // ============================================================
 
 async function geocodeAddress(address, restKey) {
@@ -957,7 +987,7 @@ async function geocodeAddress(address, restKey) {
 }
 
 // ============================================================
-// 19. 16방향 클러스터링 (VBA 완벽 포팅)
+// 20. 16방향 클러스터링 (VBA 완벽 포팅)
 // ============================================================
 
 function calculateAngle(startX, startY, targetX, targetY) {
@@ -1058,7 +1088,7 @@ function optimizeRouteAlgorithm(places, startLat, startLng, mode) {
 }
 
 // ============================================================
-// 20. 경로 최적화 실행
+// 21. 경로 최적화 실행
 // ============================================================
 
 async function runOptimize() {
@@ -1166,7 +1196,7 @@ async function runOptimize() {
 }
 
 // ============================================================
-// 21. 지도 (SDK 동적 로드 + 지역 중심)
+// 22. 지도 (SDK 동적 로드 + 지역 중심)
 // ============================================================
 
 function initMap() {
@@ -1212,20 +1242,18 @@ function initMap() {
 }
 
 // ============================================================
-// 22. 지도 생성 함수 (지역 중심 자동 이동)
+// 23. 지도 생성 함수 (지역 중심 자동 이동)
 // ============================================================
 
 function createMap(container) {
     try {
         console.log('🗺️ 지도 생성 중...');
         
-        // 지역명 기반 중심 좌표 가져오기
         var centerInfo = getRegionCenter(currentRegion);
         var centerLat = centerInfo.lat;
         var centerLng = centerInfo.lng;
         var zoomLevel = centerInfo.level || 12;
         
-        // 출발지가 있으면 출발지로 이동
         if (startPoint && startPoint.lat) {
             centerLat = startPoint.lat;
             centerLng = startPoint.lng;
@@ -1267,7 +1295,7 @@ function createMap(container) {
 }
 
 // ============================================================
-// 23. 개소 마커 표시
+// 24. 개소 마커 표시
 // ============================================================
 
 function showPlaceMarkers() {
@@ -1310,7 +1338,7 @@ function showPlaceMarkers() {
 }
 
 // ============================================================
-// 24. 경로 마커
+// 25. 경로 마커
 // ============================================================
 
 function addRouteMarker(lat, lng, title, isStart) {
@@ -1377,7 +1405,7 @@ function drawRoute(path) {
 }
 
 // ============================================================
-// 25. 엑셀 파일 처리
+// 26. 엑셀 파일 처리 (개소 탭)
 // ============================================================
 
 function handleFile(event) {
@@ -1478,26 +1506,42 @@ function showUploadResult(msg, type) {
 }
 
 // ============================================================
-// 26. 데이터 내보내기
+// 27. 엑셀 내보내기 (장소 탭)
 // ============================================================
 
 function exportData() {
-    if (places.length === 0) { showStatus('내보낼 데이터 없음', 'warning'); return; }
-    var data = places.map(function(p) {
-        return {
-            '개소명': p.name,
-            '도로명주소': p.address || '',
-            '비고': p.remark || '',
-            '위도': p.lat || 0,
-            '경도': p.lng || 0
-        };
-    });
+    var data = [];
+    
+    if (places.length === 0) {
+        // 예시 데이터 (템플릿)
+        data = [
+            { '개소명': '예시_개소명_1', '도로명주소': '서울시 강남구 테헤란로 123', '비고': '', '위도': 0, '경도': 0 },
+            { '개소명': '예시_개소명_2', '도로명주소': '서울시 서초구 서초대로 456', '비고': '', '위도': 0, '경도': 0 },
+            { '개소명': '예시_개소명_3', '도로명주소': '서울시 종로구 종로 789', '비고': '', '위도': 0, '경도': 0 }
+        ];
+        showStatus('📄 예시 양식이 다운로드됩니다. 데이터를 입력하여 사용하세요.', 'info');
+    } else {
+        data = places.map(function(p) {
+            return {
+                '개소명': p.name,
+                '도로명주소': p.address || '',
+                '비고': p.remark || '',
+                '위도': p.lat || 0,
+                '경도': p.lng || 0
+            };
+        });
+        showStatus('✅ 내보내기 완료 (' + data.length + '개)', 'ok');
+    }
+    
     var wb = XLSX.utils.book_new();
     var ws = XLSX.utils.json_to_sheet(data);
     XLSX.utils.book_append_sheet(wb, ws, '개소리스트');
     XLSX.writeFile(wb, '개소리스트_' + currentRegion + '_' + new Date().toISOString().slice(0,10) + '.xlsx');
-    showStatus('✅ 내보내기 완료', 'ok');
 }
+
+// ============================================================
+// 28. 설정 내보내기/가져오기
+// ============================================================
 
 function exportSettings() {
     var data = {
@@ -1541,7 +1585,7 @@ function importSettings(event) {
 }
 
 // ============================================================
-// 27. 공유
+// 29. 공유
 // ============================================================
 
 function shareRoute() {
@@ -1577,7 +1621,7 @@ function shareRoute() {
 }
 
 // ============================================================
-// 28. 초기화
+// 30. 초기화
 // ============================================================
 
 function resetAll() {
@@ -1617,7 +1661,7 @@ function resetAll() {
 }
 
 // ============================================================
-// 29. UI 헬퍼
+// 31. UI 헬퍼
 // ============================================================
 
 function showStatus(msg, type) {
@@ -1637,7 +1681,7 @@ function closeModal() {
 }
 
 // ============================================================
-// 30. 초기화 실행
+// 32. 초기화 실행
 // ============================================================
 
 document.addEventListener('DOMContentLoaded', function() {
