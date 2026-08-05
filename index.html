@@ -106,23 +106,51 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 8px 12px;
+            padding: 6px 10px;
             background: #f7fafc;
-            border-radius: 8px;
-            margin-bottom: 4px;
+            border-radius: 6px;
+            margin-bottom: 3px;
             border-left: 3px solid #2b6cb0;
+            min-height: 36px;
+            gap: 8px;
+            flex-wrap: wrap;
         }
-        .place-item .info { flex: 1; min-width: 0; }
-        .place-item .info .name { font-weight: 600; font-size: 14px; }
-        .place-item .info .addr { font-size: 12px; color: #718096; }
-        .place-item .actions { display: flex; gap: 2px; }
+        .place-item .info {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .place-item .info .name {
+            font-weight: 600;
+            font-size: 14px;
+            white-space: nowrap;
+            padding: 2px 0;
+        }
+        .place-item .info .addr {
+            font-size: 12px;
+            color: #718096;
+            white-space: nowrap;
+            padding: 2px 0;
+        }
+        .place-item .info .addr:empty {
+            display: none;
+        }
+        .place-item .actions {
+            display: flex;
+            gap: 2px;
+            flex-shrink: 0;
+        }
         .place-item .actions button {
             background: none;
             border: none;
-            font-size: 16px;
+            font-size: 15px;
             cursor: pointer;
-            padding: 2px 6px;
+            padding: 2px 5px;
             color: #a0aec0;
+            border-radius: 4px;
             transition: color 0.2s;
         }
         .place-item .actions button.add:hover { color: #38a169; }
@@ -212,6 +240,10 @@
             border-radius: 12px;
             background: #e2e8f0;
             margin-bottom: 10px;
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
         
         .setting-group {
@@ -354,15 +386,32 @@
             background: #f7fafc;
         }
         
+        #githubHistory {
+            display: none;
+            margin-top: 8px;
+            max-height: 150px;
+            overflow-y: auto;
+            font-size: 12px;
+            background: #f7fafc;
+            border-radius: 6px;
+            padding: 8px;
+        }
+        
         @media (max-width: 480px) {
             .header h1 { font-size: 16px; }
             .header select { font-size: 11px; padding: 3px 8px; }
             .main { padding: 8px 10px 70px; }
             .card { padding: 12px 14px; }
-            #map { height: 280px; }
+            #map { height: 280px; touch-action: none; }
             .bottom-tab { font-size: 9px; padding: 6px 2px 4px; }
             .bottom-tab .tab-icon { font-size: 18px; }
             .place-scroll { max-height: 150px; }
+            .place-item .info .addr {
+                max-width: 120px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
         }
     </style>
 </head>
@@ -373,9 +422,9 @@
             <h1>🚗 경로 최적화</h1>
             <div class="header-right">
                 <select id="regionSelect" onchange="switchRegion(this.value)">
-                    <option value="seoul">서울</option>
-                    <option value="busan">부산</option>
-                    <option value="jeju">제주</option>
+                    <option value="서울">서울</option>
+                    <option value="부산">부산</option>
+                    <option value="제주">제주</option>
                 </select>
                 <button class="btn btn-sm" onclick="addRegion()" style="background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.2);padding:3px 10px;font-size:11px;">+</button>
             </div>
@@ -487,23 +536,26 @@
 
         <!-- ===== 탭: 설정 ===== -->
         <div id="tab-settings" class="tab-content">
-    <div class="setting-group">
-        <h4>🔐 GitHub 연동</h4>
-        <div class="row">
-            <label>GitHub Token</label>
-            <input type="password" id="githubToken" placeholder="GitHub Personal Access Token">
-            <button class="btn btn-primary btn-sm" onclick="saveGitHubToken()">저장</button>
-            <button class="btn btn-outline btn-sm" onclick="testGitHubToken()">테스트</button>
-        </div>
-        <div style="display:flex; gap:6px; margin-top:6px;">
-            <button class="btn btn-success btn-sm" style="flex:1;" onclick="uploadToGitHub()">📤 업로드</button>
-            <button class="btn btn-outline btn-sm" style="flex:1;" onclick="downloadFromGitHub()">📥 다운로드</button>
-            <button class="btn btn-outline btn-sm" style="flex:1;" onclick="showGitHubHistory()">📋 히스토리</button>
-        </div>
-        <div id="githubStatus" class="badge badge-wait" style="margin-top:6px;">⏳ 토큰 미설정</div>
-        <div id="githubHistory" style="display:none; margin-top:8px; max-height:150px; overflow-y:auto; font-size:12px; background:#f7fafc; border-radius:6px; padding:8px;"></div>
-    </div>
             
+            <!-- GitHub 연동 -->
+            <div class="setting-group">
+                <h4>🔐 GitHub 연동</h4>
+                <div class="row">
+                    <label>GitHub Token</label>
+                    <input type="password" id="githubToken" placeholder="GitHub Personal Access Token">
+                    <button class="btn btn-primary btn-sm" onclick="saveGitHubToken()">저장</button>
+                    <button class="btn btn-outline btn-sm" onclick="testGitHubToken()">테스트</button>
+                </div>
+                <div style="display:flex; gap:6px; margin-top:6px;">
+                    <button class="btn btn-success btn-sm" style="flex:1;" onclick="uploadToGitHub()">📤 업로드</button>
+                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="downloadFromGitHub()">📥 다운로드</button>
+                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="showGitHubHistory()">📋 히스토리</button>
+                </div>
+                <div id="githubStatus" class="badge badge-wait" style="margin-top:6px;">⏳ 토큰 미설정</div>
+                <div id="githubHistory"></div>
+            </div>
+            
+            <!-- 카카오 API -->
             <div class="setting-group">
                 <h4>🗺️ 카카오 API</h4>
                 <div class="row">
@@ -520,6 +572,7 @@
                 <div id="kakaoStatus" class="badge badge-wait" style="margin-top:6px;">⏳ API 키 미설정</div>
             </div>
             
+            <!-- 설정 관리 -->
             <div class="setting-group">
                 <h4>⚙️ 설정 관리</h4>
                 <div style="display:flex; gap:6px;">
@@ -529,6 +582,7 @@
                 </div>
             </div>
             
+            <!-- 초기화 -->
             <div class="setting-group">
                 <h4>💾 데이터 관리</h4>
                 <button class="btn btn-danger btn-sm btn-block" onclick="resetAll()">🗑️ 모든 데이터 초기화</button>
