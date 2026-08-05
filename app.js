@@ -1292,22 +1292,34 @@ function initMap() {
 }
 
 // ============================================================
-// 23. 지도 생성 함수 (지역 중심 자동 이동)
+// 23. 지도 생성 함수 (출발지 우선, 없으면 지역 중심)
 // ============================================================
 
 function createMap(container) {
     try {
         console.log('🗺️ 지도 생성 중...');
         
-        var centerInfo = getRegionCenter(currentRegion);
-        var centerLat = centerInfo.lat;
-        var centerLng = centerInfo.lng;
-        var zoomLevel = centerInfo.level || 12;
+        var centerLat, centerLng, zoomLevel;
         
-        if (startPoint && startPoint.lat) {
+        // 1️⃣ 출발지가 있고, 좌표가 유효하면 출발지 중심
+        var isStartValid = startPoint && 
+                           typeof startPoint.lat === 'number' && 
+                           typeof startPoint.lng === 'number' &&
+                           startPoint.lat > 33 && startPoint.lat < 39 &&
+                           startPoint.lng > 124 && startPoint.lng < 132;
+        
+        if (isStartValid) {
             centerLat = startPoint.lat;
             centerLng = startPoint.lng;
             zoomLevel = 13;
+            console.log('📍 출발지 중심: ' + startPoint.name);
+        } else {
+            // 2️⃣ 출발지가 없으면 지역 중심
+            var centerInfo = getRegionCenter(currentRegion);
+            centerLat = centerInfo.lat;
+            centerLng = centerInfo.lng;
+            zoomLevel = centerInfo.level || 12;
+            console.log('📍 지역 중심: ' + currentRegion);
         }
         
         var options = {
@@ -1330,8 +1342,8 @@ function createMap(container) {
         var zoomControl = new kakao.maps.ZoomControl();
         kakaoMap.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
         
-        console.log('🗺️ 지도 생성 성공! (지역: ' + currentRegion + ')');
-        showStatus('🗺️ 지도 로드 완료 (' + currentRegion + ')', 'ok');
+        console.log('🗺️ 지도 생성 성공!');
+        showStatus('🗺️ 지도 로드 완료', 'ok');
         
         setTimeout(function() {
             showPlaceMarkers();
@@ -1343,7 +1355,6 @@ function createMap(container) {
         showStatus('⚠️ 지도 생성 실패', 'error');
     }
 }
-
 // ============================================================
 // 24. 개소 마커 표시
 // ============================================================
