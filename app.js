@@ -1292,36 +1292,45 @@ function initMap() {
 }
 
 // ============================================================
-// 23. 지도 생성 함수 (출발지 우선, 없으면 지역 중심)
+// 23. 지도 생성 함수 (완전 새로 작성 - 확실한 버전)
 // ============================================================
 
 function createMap(container) {
     try {
-        console.log('🗺️ 지도 생성 중...');
+        console.log('🗺️ 지도 생성 시작...');
         
-        var centerLat, centerLng, zoomLevel;
+        // 1. 현재 지역이 제대로 설정되었는지 확인
+        var region = currentRegion || '서울';
+        console.log('📍 현재 지역:', region);
         
-        // 1️⃣ 출발지가 있고, 좌표가 유효하면 출발지 중심
-        var isStartValid = startPoint && 
-                           typeof startPoint.lat === 'number' && 
-                           typeof startPoint.lng === 'number' &&
-                           startPoint.lat > 33 && startPoint.lat < 39 &&
-                           startPoint.lng > 124 && startPoint.lng < 132;
+        // 2. 지역 중심 좌표 가져오기
+        var centerInfo = getRegionCenter(region);
+        var centerLat = centerInfo.lat;
+        var centerLng = centerInfo.lng;
+        var zoomLevel = centerInfo.level || 14;
         
-        if (isStartValid) {
-            centerLat = startPoint.lat;
-            centerLng = startPoint.lng;
-            zoomLevel = 13;
-            console.log('📍 출발지 중심: ' + startPoint.name);
+        console.log('📍 지역 중심 좌표:', centerLat, centerLng, '줌레벨:', zoomLevel);
+        
+        // 3. 출발지 유효성 검사 (진짜 유효한 좌표인지)
+        var isStartValid = false;
+        if (startPoint) {
+            var lat = parseFloat(startPoint.lat);
+            var lng = parseFloat(startPoint.lng);
+            // 한국 영역: 위도 33~39, 경도 124~132
+            if (!isNaN(lat) && !isNaN(lng) && lat > 33 && lat < 39 && lng > 124 && lng < 132) {
+                isStartValid = true;
+                centerLat = lat;
+                centerLng = lng;
+                zoomLevel = 14;
+                console.log('✅ 유효한 출발지 사용:', startPoint.name);
+            } else {
+                console.log('⚠️ 출발지 좌표 유효하지 않음, 지역 중심 사용');
+            }
         } else {
-            // 2️⃣ 출발지가 없으면 지역 중심
-            var centerInfo = getRegionCenter(currentRegion);
-            centerLat = centerInfo.lat;
-            centerLng = centerInfo.lng;
-            zoomLevel = centerInfo.level || 12;
-            console.log('📍 지역 중심: ' + currentRegion);
+            console.log('ℹ️ 출발지 없음, 지역 중심 사용');
         }
         
+        // 4. 지도 생성
         var options = {
             center: new kakao.maps.LatLng(centerLat, centerLng),
             level: zoomLevel,
@@ -1342,8 +1351,8 @@ function createMap(container) {
         var zoomControl = new kakao.maps.ZoomControl();
         kakaoMap.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
         
-        console.log('🗺️ 지도 생성 성공!');
-        showStatus('🗺️ 지도 로드 완료', 'ok');
+        console.log('✅ 지도 생성 성공! 중심:', centerLat, centerLng);
+        showStatus('🗺️ 지도 로드 완료 (' + region + ')', 'ok');
         
         setTimeout(function() {
             showPlaceMarkers();
