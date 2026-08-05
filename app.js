@@ -62,7 +62,7 @@ let routeMarkers = [];
 let autoSyncTimer = null;
 
 // ============================================================
-// 1. 탭 전환 (완전 확실한 버전)
+// 1. 탭 전환 (최종 확실한 버전)
 // ============================================================
 
 function switchTab(tabId) {
@@ -87,33 +87,36 @@ function switchTab(tabId) {
     }
     
     if (tabId === 'tab-route') {
-        // 지도가 있으면 갱신
-        if (kakaoMap) {
-            // 1. 먼저 relayout (지도 크기 재조정)
-            kakaoMap.relayout();
-            kakaoMap.setDraggable(true);
-            kakaoMap.setZoomable(true);
-            
-            // 2. 100ms 후 마커 갱신 (relayout이 완료된 후)
-            setTimeout(function() {
-                showPlaceMarkers();
-            }, 100);
-            
-            // 3. 300ms 후 한 번 더 강제 적용 (relayout 효과가 완전히 끝난 후)
-            setTimeout(function() {
-                if (kakaoMap) {
-                    // 다시 한 번 중심/줌 설정
-                    var center = getRegionCenter(currentRegion);
-                    kakaoMap.setOptions({
-                        center: new kakao.maps.LatLng(center.lat, center.lng),
-                        level: 14
-                    });
-                    console.log('🔄 재적용: 지역 중심 (줌 14)');
+        setTimeout(function() {
+            if (kakaoMap) {
+                // ⭐ relayout()을 직접 호출하지 않음 (자동으로 실행됨)
+                // 대신 지도 크기 강제 재조정을 위해 컨테이너 스타일을 건드림
+                var container = document.getElementById('map');
+                if (container) {
+                    // 컨테이너 크기를 강제로 재조정 (relayout 유발)
+                    container.style.height = container.style.height;
                 }
-            }, 300);
-        } else {
-            initMap();
-        }
+                
+                // 100ms 후 마커 갱신 (컨테이너 변화가 적용된 후)
+                setTimeout(function() {
+                    showPlaceMarkers();
+                }, 100);
+                
+                // 300ms 후 한 번 더 강제 적용 (완전히 안정화된 후)
+                setTimeout(function() {
+                    if (kakaoMap) {
+                        var center = getRegionCenter(currentRegion);
+                        kakaoMap.setOptions({
+                            center: new kakao.maps.LatLng(center.lat, center.lng),
+                            level: 14
+                        });
+                        console.log('🔄 최종 재적용: 지역 중심 (줌 14)');
+                    }
+                }, 300);
+            } else {
+                initMap();
+            }
+        }, 50);
     }
     
     if (tabId === 'tab-list') {
@@ -1424,37 +1427,27 @@ function showPlaceMarkers() {
         return p.lat && p.lng && p.lat !== 0 && p.lng !== 0;
     });
     
-    // 장소가 없으면 지역 중심으로 이동 (setOptions 사용)
+    // 장소가 없으면 지역 중심으로 이동
     if (placesWithCoords.length === 0) {
         var center = getRegionCenter(currentRegion);
         var targetPos = new kakao.maps.LatLng(center.lat, center.lng);
         
-        // 즉시 적용
-        kakaoMap.setOptions({
-            center: targetPos,
-            level: 14
-        });
-        
-        // 100ms 후 다시 한 번 적용 (relayout 후 덮어쓰기 방지)
-        setTimeout(function() {
-            if (kakaoMap) {
-                kakaoMap.setOptions({
-                    center: targetPos,
-                    level: 14
-                });
-            }
-        }, 100);
-        
-        // 300ms 후 마지막으로 한 번 더 적용
-        setTimeout(function() {
-            if (kakaoMap) {
-                kakaoMap.setOptions({
-                    center: targetPos,
-                    level: 14
-                });
-                console.log('📍 장소 없음, 지역 중심 (줌 14):', currentRegion);
-            }
-        }, 300);
+        // ⭐⭐ 3중 호출로 확실하게 적용
+        for (var i = 0; i < 3; i++) {
+            (function(idx) {
+                setTimeout(function() {
+                    if (kakaoMap) {
+                        kakaoMap.setOptions({
+                            center: targetPos,
+                            level: 14
+                        });
+                        if (idx === 2) {
+                            console.log('📍 장소 없음, 지역 중심 (줌 14):', currentRegion);
+                        }
+                    }
+                }, idx * 100);
+            })(i);
+        }
         
         return;
     }
