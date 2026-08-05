@@ -306,6 +306,8 @@ function switchRegion(region) {
         kakaoMap.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
         kakaoMap.setLevel(14);
         setTimeout(showPlaceMarkers, 500);
+    } else {
+        initMap();
     }
     
     document.getElementById('startInfo').textContent = '⏳ 출발지를 검색하고 설정하세요';
@@ -373,10 +375,9 @@ function scheduleAutoSync() {
 }
 
 // ============================================================
-// 7. GitHub 업로드 (수정 - 422 오류 해결)
+// 7. GitHub 업로드
 // ============================================================
 
-// UTF-8 to Base64 (안전한 방식)
 function utf8ToBase64(str) {
     try {
         var bytes = new TextEncoder().encode(str);
@@ -399,7 +400,6 @@ async function uploadToGitHub(silent) {
         if (!silent) showStatus('☁️ GitHub 업로드 중...', 'info');
         console.log('1️⃣ GitHub 업로드 시작');
         
-        // 1. 사용자 정보 조회
         var userRes = await fetch('https://api.github.com/user', {
             headers: { 'Authorization': 'token ' + token }
         });
@@ -416,14 +416,12 @@ async function uploadToGitHub(silent) {
         var content = JSON.stringify(places, null, 2);
         var b64Content = utf8ToBase64(content);
         
-        // 2. 저장소 확인
         var repoUrl = 'https://api.github.com/repos/' + username + '/' + repoName;
         var repoRes = await fetch(repoUrl, {
             headers: { 'Authorization': 'token ' + token }
         });
         console.log('3️⃣ 저장소 확인 결과: ' + repoRes.status);
         
-        // 3. 저장소가 없으면 생성
         if (repoRes.status === 404) {
             console.log('4️⃣ 저장소 생성 시도...');
             var createRes = await fetch('https://api.github.com/user/repos', {
@@ -448,7 +446,6 @@ async function uploadToGitHub(silent) {
             
             console.log('5️⃣ 저장소 생성 성공! (3초 대기 중...)');
             if (!silent) showStatus('✅ 저장소 생성됨, 파일 업로드 준비 중...', 'info');
-            
             await new Promise(resolve => setTimeout(resolve, 3000));
         } else if (!repoRes.ok) {
             throw new Error('저장소 확인 실패: ' + repoRes.status);
@@ -456,11 +453,9 @@ async function uploadToGitHub(silent) {
             console.log('4️⃣ 저장소 이미 존재함');
         }
         
-        // 4. 파일 업로드
         var fileUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents/' + encodeURIComponent(fileName);
         console.log('6️⃣ 파일 업로드 시도: ' + fileName);
         
-        // 기존 파일 SHA 확인
         var fileRes = await fetch(fileUrl, {
             headers: { 'Authorization': 'token ' + token }
         });
@@ -476,12 +471,10 @@ async function uploadToGitHub(silent) {
             throw new Error('파일 확인 실패: ' + fileRes.status);
         }
         
-        // ⭐ 중요: PUT 요청 데이터 구성 (sha가 있을 때만 추가)
         var putData = {
             message: 'Auto sync: ' + currentRegion + ' (' + new Date().toLocaleString() + ')',
             content: b64Content
         };
-        // sha가 null이 아니고, 빈 문자열이 아닐 때만 추가
         if (sha && sha !== '') {
             putData.sha = sha;
         }
@@ -1254,7 +1247,7 @@ async function runOptimize() {
 }
 
 // ============================================================
-// 22. 지도 (SDK 동적 로드 + 지역 중심)
+// 22. 지도 초기화
 // ============================================================
 
 function initMap() {
@@ -1300,18 +1293,25 @@ function initMap() {
 }
 
 // ============================================================
-// 23. 지도 생성 함수 (출발지 우선, 없으면 지역 중심)
+// 23. 지도 생성 함수 (확실한 버전)
 // ============================================================
 
 function createMap(container) {
     try {
-        console.log('🗺️ 지도 생성 중...');
+        console.log('🗺️ 지도 생성 시작...');
         console.log('🔍 currentRegion:', currentRegion);
         console.log('🔍 startPoint:', startPoint);
         
-        var centerLat, centerLng, zoomLevel;
+        var region = currentRegion || '서울';
+        console.log('📍 현재 지역:', region);
         
-        // 출발지 유효성 검사
+        var centerInfo = getRegionCenter(region);
+        var centerLat = centerInfo.lat;
+        var centerLng = centerInfo.lng;
+        var zoomLevel = 14;
+        
+        console.log('📍 지역 중심:', centerLat, centerLng, '줌레벨:', zoomLevel);
+        
         var isStartValid = startPoint && 
                            typeof startPoint.lat === 'number' && 
                            typeof startPoint.lng === 'number' &&
@@ -1322,14 +1322,9 @@ function createMap(container) {
         if (isStartValid) {
             centerLat = startPoint.lat;
             centerLng = startPoint.lng;
-            zoomLevel = 14;
-            console.log('📍 출발지 중심: ' + startPoint.name);
+            console.log('📍 출발지 중심:', startPoint.name);
         } else {
-            var centerInfo = getRegionCenter(currentRegion);
-            centerLat = centerInfo.lat;
-            centerLng = centerInfo.lng;
-            zoomLevel = 14;
-            console.log('📍 지역 중심: ' + currentRegion);
+            console.log('📍 출발지 없음, 지역 중심 사용');
         }
         
         var options = {
@@ -1344,6 +1339,8 @@ function createMap(container) {
         
         kakaoMap = new kakao.maps.Map(container, options);
         
+        kakaoMap.setLevel(zoomLevel);
+        
         if ('ontouchstart' in window) {
             kakaoMap.setDraggable(true);
             kakaoMap.setZoomable(true);
@@ -1352,8 +1349,8 @@ function createMap(container) {
         var zoomControl = new kakao.maps.ZoomControl();
         kakaoMap.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
         
-        console.log('🗺️ 지도 생성 성공! (줌레벨: ' + zoomLevel + ')');
-        showStatus('🗺️ 지도 로드 완료', 'ok');
+        console.log('✅ 지도 생성 성공! 중심:', centerLat, centerLng, '줌레벨:', zoomLevel);
+        showStatus('🗺️ 지도 로드 완료 (' + region + ')', 'ok');
         
         setTimeout(function() {
             showPlaceMarkers();
@@ -1758,6 +1755,12 @@ function closeModal() {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚗 앱 초기화 시작');
     
+    if (!currentRegion) {
+        currentRegion = '서울';
+        localStorage.setItem(SELECTED_REGION_KEY, currentRegion);
+    }
+    console.log('🔍 초기 currentRegion:', currentRegion);
+    
     startPoint = null;
     
     loadSettings();
@@ -1772,6 +1775,7 @@ document.addEventListener('DOMContentLoaded', function() {
     updateStorageInfo();
     
     setTimeout(function() {
+        console.log('🔍 지도 생성 시도 (currentRegion:', currentRegion + ')');
         initMap();
     }, 500);
     
