@@ -1369,6 +1369,10 @@ function createMap(container) {
 // 24. 개소 마커 표시 (장소에 맞게 지도 중심/줌 자동 조정)
 // ============================================================
 
+// ============================================================
+// 50. 개소 마커 표시 (장소에 맞게 지도 중심/줌 자동 조정)
+// ============================================================
+
 function showPlaceMarkers() {
     if (!kakaoMap) return;
     
@@ -1383,12 +1387,17 @@ function showPlaceMarkers() {
         return p.lat && p.lng && p.lat !== 0 && p.lng !== 0;
     });
     
-    // ⭐ 장소가 없으면 지역 중심으로 이동
+    // ⭐ 장소가 없으면 지역 중심으로 이동 (줌 레벨 14 강제 적용)
     if (placesWithCoords.length === 0) {
         var center = getRegionCenter(currentRegion);
-        kakaoMap.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
+        // 순서: 먼저 줌 레벨을 고정하고, 중심을 이동
         kakaoMap.setLevel(14);
-        console.log('📍 장소 없음, 지역 중심으로 이동:', currentRegion);
+        kakaoMap.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
+        // ⭐ 추가: 100ms 후에 다시 줌 레벨 강제 적용 (relayout 문제 해결)
+        setTimeout(function() {
+            kakaoMap.setLevel(14);
+        }, 100);
+        console.log('📍 장소 없음, 지역 중심으로 이동 (줌 14):', currentRegion);
         return;
     }
     
