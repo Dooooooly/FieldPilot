@@ -1,4 +1,105 @@
 // ============================================================
+// 0. 카카오 SDK 동적 로드 (최우선!)
+// ============================================================
+
+function loadKakaoSDK() {
+    return new Promise(function(resolve, reject) {
+        // 이미 로드되었는지 확인
+        if (typeof kakao !== 'undefined' && kakao.maps) {
+            console.log('✅ 카카오 SDK 이미 로드됨');
+            resolve();
+            return;
+        }
+
+        var jsKey = settings.kakaoJsKey;
+        if (!jsKey) {
+            reject(new Error('JavaScript 키가 설정되지 않았습니다.'));
+            return;
+        }
+
+        console.log('⏳ 카카오 SDK 동적 로드 시작...');
+
+        var script = document.createElement('script');
+        script.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=' + jsKey + '&autoload=false&libraries=services';
+        script.async = true;
+        script.onload = function() {
+            console.log('✅ 카카오 SDK 스크립트 로드 성공');
+            // SDK 초기화
+            if (typeof kakao !== 'undefined' && kakao.maps) {
+                kakao.maps.load(function() {
+                    console.log('✅ 카카오 maps 로드 완료');
+                    resolve();
+                });
+            } else {
+                reject(new Error('SDK 로드 후 kakao 객체를 찾을 수 없음'));
+            }
+        };
+        script.onerror = function() {
+            reject(new Error('SDK 스크립트 로드 실패 (네트워크 오류)'));
+        };
+        document.head.appendChild(script);
+    });
+}
+
+// ============================================================
+// 지도 초기화 (SDK 동적 로드 포함)
+// ============================================================
+
+function initMap() {
+    var container = document.getElementById('map');
+    if (!container) {
+        console.warn('❌ 지도 컨테이너 없음');
+        return;
+    }
+
+    // 1. 키 확인
+    var jsKey = settings.kakaoJsKey;
+    if (!jsKey) {
+        container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;color:#e53e3e;font-size:14px;background:#fff5f5;border-radius:12px;padding:20px;text-align:center;">⚠️ 설정 탭에서<br>카카오 JavaScript 키를 입력하세요</div>';
+        showStatus('⚠️ 카카오 JavaScript 키가 필요합니다.', 'warning');
+        return;
+    }
+
+    // 2. 로딩 메시지
+    container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;color:#d69e2e;font-size:14px;background:#fffff0;border-radius:12px;">⏳ 카카오 지도 로딩 중...</div>';
+    showStatus('🗺️ 지도 로딩 중...', 'info');
+
+    // 3. SDK 로드 및 지도 생성
+    loadKakaoSDK()
+        .then(function() {
+            try {
+                var options = {
+                    center: new kakao.maps.LatLng(37.5665, 126.9780),
+                    level: 7,
+                    draggable: true,
+                    zoomable: true,
+                    zoomControl: true,
+                    scrollwheel: true
+                };
+                kakaoMap = new kakao.maps.Map(container, options);
+
+                var zoomControl = new kakao.maps.ZoomControl();
+                kakaoMap.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
+
+                console.log('🗺️ 지도 초기화 성공');
+                showStatus('🗺️ 지도 로드 완료', 'ok');
+
+                // 개소 마커 표시
+                showPlaceMarkers();
+
+            } catch (e) {
+                console.error('지도 생성 실패:', e);
+                container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;color:#e53e3e;font-size:14px;background:#fff5f5;border-radius:12px;padding:20px;text-align:center;">❌ 지도 생성 실패<br><span style="font-size:12px;">' + e.message + '</span></div>';
+                showStatus('⚠️ 지도 생성 실패', 'error');
+            }
+        })
+        .catch(function(err) {
+            console.error('SDK 로드 실패:', err);
+            container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;color:#e53e3e;font-size:14px;background:#fff5f5;border-radius:12px;padding:20px;text-align:center;">❌ 카카오 SDK 로드 실패<br><span style="font-size:12px;">' + err.message + '</span></div>';
+            showStatus('❌ SDK 로드 실패: ' + err.message, 'error');
+        });
+}
+// ============================================================
 // 경로 최적화 PWA - VBA 완벽 포팅
 // ============================================================
 
