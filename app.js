@@ -62,7 +62,7 @@ let routeMarkers = [];
 let autoSyncTimer = null;
 
 // ============================================================
-// 1. 탭 전환 (수정 완료 - 지도 확실히 갱신)
+// 1. 탭 전환 (완전 새로고침 버전)
 // ============================================================
 
 function switchTab(tabId) {
@@ -87,27 +87,41 @@ function switchTab(tabId) {
     }
     
     if (tabId === 'tab-route') {
-        setTimeout(function() {
-            if (kakaoMap) {
-                kakaoMap.relayout();
-                kakaoMap.setDraggable(true);
-                kakaoMap.setZoomable(true);
-                
-                // 지도 크기 재조정 후 마커 갱신
-                setTimeout(function() {
-                    showPlaceMarkers();
-                }, 350);
-            } else {
-                initMap();
+        // ⭐ 지도를 완전히 새로 생성 (기존 지도 제거 후 재생성)
+        if (kakaoMap) {
+            // 기존 마커 제거
+            for (var i = 0; i < placeMarkers.length; i++) {
+                try { placeMarkers[i].setMap(null); } catch(e) {}
             }
-        }, 200);
+            placeMarkers = [];
+            for (var i = 0; i < routeMarkers.length; i++) {
+                try { routeMarkers[i].setMap(null); } catch(e) {}
+            }
+            routeMarkers = [];
+            if (kakaoPolyline) {
+                try { kakaoPolyline.setMap(null); } catch(e) {}
+                kakaoPolyline = null;
+            }
+            // 지도 객체 제거
+            kakaoMap = null;
+        }
+        
+        // 지도 컨테이너 초기화
+        var container = document.getElementById('map');
+        if (container) {
+            container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;color:#d69e2e;font-size:14px;background:#fffff0;border-radius:12px;">⏳ 지도 로딩 중...</div>';
+        }
+        
+        // 500ms 후 지도 새로 생성 (컨테이너 정리 시간)
+        setTimeout(function() {
+            initMap();
+        }, 500);
     }
     
     if (tabId === 'tab-list') {
         renderPlaces();
     }
 }
-
 // ============================================================
 // 2. 지역 중심 좌표 가져오기
 // ============================================================
@@ -1326,7 +1340,7 @@ function initMap() {
 }
 
 // ============================================================
-// 23. 지도 생성 함수
+// 23. 지도 생성 함수 (줌 레벨 확실히 14)
 // ============================================================
 
 function createMap(container) {
@@ -1337,7 +1351,7 @@ function createMap(container) {
         var centerInfo = getRegionCenter(region);
         var centerLat = centerInfo.lat;
         var centerLng = centerInfo.lng;
-        var zoomLevel = 14;
+        var zoomLevel = 14;  // ⭐ 강제 14
         
         var isStartValid = startPoint && 
                            typeof startPoint.lat === 'number' && 
@@ -1356,7 +1370,7 @@ function createMap(container) {
         
         var options = {
             center: new kakao.maps.LatLng(centerLat, centerLng),
-            level: zoomLevel,
+            level: zoomLevel,  // ⭐ 14
             draggable: true,
             zoomable: true,
             zoomControl: true,
@@ -1365,7 +1379,12 @@ function createMap(container) {
         };
         
         kakaoMap = new kakao.maps.Map(container, options);
-        kakaoMap.setLevel(zoomLevel);
+        
+        // ⭐⭐ 생성 직후 한 번 더 강제 설정
+        kakaoMap.setOptions({
+            center: new kakao.maps.LatLng(centerLat, centerLng),
+            level: 14
+        });
         
         if ('ontouchstart' in window) {
             kakaoMap.setDraggable(true);
@@ -1375,9 +1394,10 @@ function createMap(container) {
         var zoomControl = new kakao.maps.ZoomControl();
         kakaoMap.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
         
-        console.log('✅ 지도 생성 성공! (줌레벨: ' + zoomLevel + ')');
+        console.log('✅ 지도 생성 성공! (줌레벨: 14)');
         showStatus('🗺️ 지도 로드 완료', 'ok');
         
+        // ⭐ 마커 표시 (지도 생성 후 약간 지연)
         setTimeout(function() {
             showPlaceMarkers();
         }, 300);
@@ -1388,7 +1408,6 @@ function createMap(container) {
         showStatus('⚠️ 지도 생성 실패', 'error');
     }
 }
-
 // ============================================================
 // 24. 개소 마커 표시 (완벽 수정 - setOptions 사용)
 // ============================================================
