@@ -62,7 +62,7 @@ let routeMarkers = [];
 let autoSyncTimer = null;
 
 // ============================================================
-// 1. 탭 전환 (완전 새로고침 버전)
+// 1. 탭 전환 (완전 확실한 버전)
 // ============================================================
 
 function switchTab(tabId) {
@@ -87,35 +87,33 @@ function switchTab(tabId) {
     }
     
     if (tabId === 'tab-route') {
-        // ⭐ 지도를 완전히 새로 생성 (기존 지도 제거 후 재생성)
+        // 지도가 있으면 갱신
         if (kakaoMap) {
-            // 기존 마커 제거
-            for (var i = 0; i < placeMarkers.length; i++) {
-                try { placeMarkers[i].setMap(null); } catch(e) {}
-            }
-            placeMarkers = [];
-            for (var i = 0; i < routeMarkers.length; i++) {
-                try { routeMarkers[i].setMap(null); } catch(e) {}
-            }
-            routeMarkers = [];
-            if (kakaoPolyline) {
-                try { kakaoPolyline.setMap(null); } catch(e) {}
-                kakaoPolyline = null;
-            }
-            // 지도 객체 제거
-            kakaoMap = null;
-        }
-        
-        // 지도 컨테이너 초기화
-        var container = document.getElementById('map');
-        if (container) {
-            container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;color:#d69e2e;font-size:14px;background:#fffff0;border-radius:12px;">⏳ 지도 로딩 중...</div>';
-        }
-        
-        // 500ms 후 지도 새로 생성 (컨테이너 정리 시간)
-        setTimeout(function() {
+            // 1. 먼저 relayout (지도 크기 재조정)
+            kakaoMap.relayout();
+            kakaoMap.setDraggable(true);
+            kakaoMap.setZoomable(true);
+            
+            // 2. 100ms 후 마커 갱신 (relayout이 완료된 후)
+            setTimeout(function() {
+                showPlaceMarkers();
+            }, 100);
+            
+            // 3. 300ms 후 한 번 더 강제 적용 (relayout 효과가 완전히 끝난 후)
+            setTimeout(function() {
+                if (kakaoMap) {
+                    // 다시 한 번 중심/줌 설정
+                    var center = getRegionCenter(currentRegion);
+                    kakaoMap.setOptions({
+                        center: new kakao.maps.LatLng(center.lat, center.lng),
+                        level: 14
+                    });
+                    console.log('🔄 재적용: 지역 중심 (줌 14)');
+                }
+            }, 300);
+        } else {
             initMap();
-        }, 500);
+        }
     }
     
     if (tabId === 'tab-list') {
@@ -1409,7 +1407,7 @@ function createMap(container) {
     }
 }
 // ============================================================
-// 24. 개소 마커 표시 (완벽 수정 - setOptions 사용)
+// 24. 개소 마커 표시 (최종 확실한 버전)
 // ============================================================
 
 function showPlaceMarkers() {
@@ -1426,18 +1424,28 @@ function showPlaceMarkers() {
         return p.lat && p.lng && p.lat !== 0 && p.lng !== 0;
     });
     
-    // ⭐ 장소가 없으면 지역 중심으로 이동 (setOptions 사용)
+    // 장소가 없으면 지역 중심으로 이동 (setOptions 사용)
     if (placesWithCoords.length === 0) {
         var center = getRegionCenter(currentRegion);
         var targetPos = new kakao.maps.LatLng(center.lat, center.lng);
         
-        // ⭐⭐ setOptions로 한 번에 중심+줌 설정 (가장 확실한 방법)
+        // 즉시 적용
         kakaoMap.setOptions({
             center: targetPos,
             level: 14
         });
         
-        // 200ms 후 다시 한 번 강제 적용 (relayout 완료 후)
+        // 100ms 후 다시 한 번 적용 (relayout 후 덮어쓰기 방지)
+        setTimeout(function() {
+            if (kakaoMap) {
+                kakaoMap.setOptions({
+                    center: targetPos,
+                    level: 14
+                });
+            }
+        }, 100);
+        
+        // 300ms 후 마지막으로 한 번 더 적용
         setTimeout(function() {
             if (kakaoMap) {
                 kakaoMap.setOptions({
@@ -1446,12 +1454,12 @@ function showPlaceMarkers() {
                 });
                 console.log('📍 장소 없음, 지역 중심 (줌 14):', currentRegion);
             }
-        }, 200);
+        }, 300);
         
         return;
     }
     
-    // ⭐ 장소가 있으면 bounds 계산 후 자동 조정
+    // 장소가 있으면 bounds 계산 후 자동 조정
     var bounds = new kakao.maps.LatLngBounds();
     
     for (var i = 0; i < placesWithCoords.length; i++) {
