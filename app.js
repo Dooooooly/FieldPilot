@@ -62,7 +62,7 @@ let routeMarkers = [];
 let autoSyncTimer = null;
 
 // ============================================================
-// 1. 탭 전환
+// 1. 탭 전환 (수정 완료 - 지도 확실히 갱신)
 // ============================================================
 
 function switchTab(tabId) {
@@ -92,12 +92,15 @@ function switchTab(tabId) {
                 kakaoMap.relayout();
                 kakaoMap.setDraggable(true);
                 kakaoMap.setZoomable(true);
-                // ⭐ 경로탭 진입 시 항상 장소에 맞게 지도 중심/줌 조정
-                showPlaceMarkers();
+                
+                // 지도 크기 재조정 후 마커 갱신
+                setTimeout(function() {
+                    showPlaceMarkers();
+                }, 350);
             } else {
                 initMap();
             }
-        }, 300);
+        }, 200);
     }
     
     if (tabId === 'tab-list') {
@@ -903,7 +906,7 @@ function searchPlaces() {
     renderPlaces(results);
 }
 
-function addPlace() {
+async function addPlace() {
     var name = document.getElementById('newPlaceName').value.trim();
     var address = document.getElementById('newPlaceAddr').value.trim();
     if (!name) { showStatus('개소명을 입력하세요.', 'warning'); return; }
@@ -911,18 +914,32 @@ function addPlace() {
         showStatus('⚠️ 이미 존재하는 개소명입니다.', 'warning');
         return;
     }
+    
+    var lat = 0, lng = 0, fullAddress = address;
+    if (address) {
+        var restKey = settings.kakaoRestKey;
+        if (restKey) {
+            var geo = await geocodeAddress(address, restKey);
+            if (geo) {
+                lat = geo.lat;
+                lng = geo.lng;
+                fullAddress = geo.address || address;
+            }
+        }
+    }
+    
     places.push({
         id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
         name: name,
-        address: address || '',
-        lat: 0,
-        lng: 0
+        address: fullAddress,
+        lat: lat,
+        lng: lng
     });
     savePlaces();
     document.getElementById('newPlaceName').value = '';
     document.getElementById('newPlaceAddr').value = '';
     document.getElementById('newPlaceName').focus();
-    showStatus('✅ "' + name + '" 추가됨', 'ok');
+    showStatus('✅ "' + name + '" 추가됨' + (lat ? ' (좌표 있음)' : ''), 'ok');
 }
 
 function deletePlace(id) {
@@ -945,7 +962,7 @@ function addWaypointFromList(id) {
 // 17. 개소리스트 탭 (개소 추가 전용)
 // ============================================================
 
-function addToList() {
+async function addToList() {
     var name = document.getElementById('listName').value.trim();
     var address = document.getElementById('listAddress').value.trim();
     if (!name) { showStatus('개소명을 입력하세요.', 'warning'); return; }
@@ -953,12 +970,26 @@ function addToList() {
         showStatus('⚠️ 이미 존재하는 개소명입니다.', 'warning');
         return;
     }
+    
+    var lat = 0, lng = 0, fullAddress = address;
+    if (address) {
+        var restKey = settings.kakaoRestKey;
+        if (restKey) {
+            var geo = await geocodeAddress(address, restKey);
+            if (geo) {
+                lat = geo.lat;
+                lng = geo.lng;
+                fullAddress = geo.address || address;
+            }
+        }
+    }
+    
     places.push({
         id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
         name: name,
-        address: address || '',
-        lat: 0,
-        lng: 0
+        address: fullAddress,
+        lat: lat,
+        lng: lng
     });
     savePlaces();
     document.getElementById('listName').value = '';
@@ -1295,24 +1326,18 @@ function initMap() {
 }
 
 // ============================================================
-// 23. 지도 생성 함수 (확실한 버전)
+// 23. 지도 생성 함수
 // ============================================================
 
 function createMap(container) {
     try {
         console.log('🗺️ 지도 생성 시작...');
-        console.log('🔍 currentRegion:', currentRegion);
-        console.log('🔍 startPoint:', startPoint);
         
         var region = currentRegion || '서울';
-        console.log('📍 현재 지역:', region);
-        
         var centerInfo = getRegionCenter(region);
         var centerLat = centerInfo.lat;
         var centerLng = centerInfo.lng;
         var zoomLevel = 14;
-        
-        console.log('📍 지역 중심:', centerLat, centerLng, '줌레벨:', zoomLevel);
         
         var isStartValid = startPoint && 
                            typeof startPoint.lat === 'number' && 
@@ -1326,7 +1351,7 @@ function createMap(container) {
             centerLng = startPoint.lng;
             console.log('📍 출발지 중심:', startPoint.name);
         } else {
-            console.log('📍 출발지 없음, 지역 중심 사용');
+            console.log('📍 지역 중심:', region);
         }
         
         var options = {
@@ -1340,7 +1365,6 @@ function createMap(container) {
         };
         
         kakaoMap = new kakao.maps.Map(container, options);
-        
         kakaoMap.setLevel(zoomLevel);
         
         if ('ontouchstart' in window) {
@@ -1351,8 +1375,8 @@ function createMap(container) {
         var zoomControl = new kakao.maps.ZoomControl();
         kakaoMap.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
         
-        console.log('✅ 지도 생성 성공! 중심:', centerLat, centerLng, '줌레벨:', zoomLevel);
-        showStatus('🗺️ 지도 로드 완료 (' + region + ')', 'ok');
+        console.log('✅ 지도 생성 성공! (줌레벨: ' + zoomLevel + ')');
+        showStatus('🗺️ 지도 로드 완료', 'ok');
         
         setTimeout(function() {
             showPlaceMarkers();
@@ -1366,11 +1390,7 @@ function createMap(container) {
 }
 
 // ============================================================
-// 24. 개소 마커 표시 (장소에 맞게 지도 중심/줌 자동 조정)
-// ============================================================
-
-// ============================================================
-// 50. 개소 마커 표시 (장소에 맞게 지도 중심/줌 자동 조정)
+// 24. 개소 마커 표시 (완벽 수정 - 줌 레벨 확실히 적용)
 // ============================================================
 
 function showPlaceMarkers() {
@@ -1387,21 +1407,30 @@ function showPlaceMarkers() {
         return p.lat && p.lng && p.lat !== 0 && p.lng !== 0;
     });
     
-    // ⭐ 장소가 없으면 지역 중심으로 이동 (줌 레벨 14 강제 적용)
+    // 장소가 없으면 지역 중심으로 이동 (줌 레벨 14 강제 적용)
     if (placesWithCoords.length === 0) {
         var center = getRegionCenter(currentRegion);
-        // 순서: 먼저 줌 레벨을 고정하고, 중심을 이동
+        var targetPos = new kakao.maps.LatLng(center.lat, center.lng);
+        
+        // 즉시 적용
         kakaoMap.setLevel(14);
-        kakaoMap.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
-        // ⭐ 추가: 100ms 후에 다시 줌 레벨 강제 적용 (relayout 문제 해결)
+        kakaoMap.setCenter(targetPos);
+        kakaoMap.setLevel(14);
+        
+        // 200ms 후 한 번 더 강제 적용 (relayout 완료 후)
         setTimeout(function() {
-            kakaoMap.setLevel(14);
-        }, 100);
-        console.log('📍 장소 없음, 지역 중심으로 이동 (줌 14):', currentRegion);
+            if (kakaoMap) {
+                kakaoMap.setLevel(14);
+                kakaoMap.setCenter(targetPos);
+                kakaoMap.setLevel(14);
+                console.log('📍 장소 없음, 지역 중심 (줌 14):', currentRegion);
+            }
+        }, 200);
+        
         return;
     }
     
-    // ⭐ 장소가 있으면 bounds 계산 후 자동 조정
+    // 장소가 있으면 bounds 계산 후 자동 조정
     var bounds = new kakao.maps.LatLngBounds();
     
     for (var i = 0; i < placesWithCoords.length; i++) {
@@ -1424,10 +1453,10 @@ function showPlaceMarkers() {
         placeMarkers.push(marker);
     }
     
-    // ⭐ 모든 장소가 한 화면에 보이도록 지도 중심/줌 자동 조정
     kakaoMap.setBounds(bounds);
     console.log('📍 장소 ' + placesWithCoords.length + '개에 맞춰 지도 조정');
 }
+
 // ============================================================
 // 25. 경로 마커
 // ============================================================
@@ -1553,32 +1582,52 @@ function processExcelFile(file) {
     showUploadResult('❌ 지원 안 함 (.csv, .xlsx, .xls)', 'error');
 }
 
-function importPlaces(data) {
+async function importPlaces(data) {
     if (!data || data.length === 0) {
         showUploadResult('❌ 데이터 없음', 'error');
         return;
     }
     var added = 0, updated = 0, skipped = 0;
+    var restKey = settings.kakaoRestKey;
+    
     for (var i = 0; i < data.length; i++) {
         var row = data[i];
         var name = String(row['개소명'] || row['name'] || row['Name'] || '').trim();
         var address = String(row['도로명주소'] || row['address'] || row['Address'] || '').trim();
         if (!name) continue;
+        
         var existing = places.find(function(p) { return p.name === name; });
         if (existing) {
             if (existing.address !== address) {
                 existing.address = address;
+                if (address && restKey) {
+                    var geo = await geocodeAddress(address, restKey);
+                    if (geo) {
+                        existing.lat = geo.lat;
+                        existing.lng = geo.lng;
+                        existing.address = geo.address || address;
+                    }
+                }
                 updated++;
             } else {
                 skipped++;
             }
         } else {
+            var lat = 0, lng = 0, fullAddress = address;
+            if (address && restKey) {
+                var geo = await geocodeAddress(address, restKey);
+                if (geo) {
+                    lat = geo.lat;
+                    lng = geo.lng;
+                    fullAddress = geo.address || address;
+                }
+            }
             places.push({
                 id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
                 name: name,
-                address: address || '',
-                lat: 0,
-                lng: 0
+                address: fullAddress,
+                lat: lat,
+                lng: lng
             });
             added++;
         }
