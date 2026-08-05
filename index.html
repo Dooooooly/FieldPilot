@@ -487,17 +487,22 @@
 
         <!-- ===== 탭: 설정 ===== -->
         <div id="tab-settings" class="tab-content">
-            
-            <div class="setting-group">
-                <h4>🔐 GitHub 연동</h4>
-                <div class="row">
-                    <label>GitHub Token</label>
-                    <input type="password" id="githubToken" placeholder="GitHub Personal Access Token">
-                    <button class="btn btn-primary btn-sm" onclick="saveGitHubToken()">저장</button>
-                    <button class="btn btn-outline btn-sm" onclick="testGitHubToken()">테스트</button>
-                </div>
-                <div id="githubStatus" class="badge badge-wait" style="margin-top:6px;">⏳ 토큰 미설정</div>
-            </div>
+    <div class="setting-group">
+        <h4>🔐 GitHub 연동</h4>
+        <div class="row">
+            <label>GitHub Token</label>
+            <input type="password" id="githubToken" placeholder="GitHub Personal Access Token">
+            <button class="btn btn-primary btn-sm" onclick="saveGitHubToken()">저장</button>
+            <button class="btn btn-outline btn-sm" onclick="testGitHubToken()">테스트</button>
+        </div>
+        <div style="display:flex; gap:6px; margin-top:6px;">
+            <button class="btn btn-success btn-sm" style="flex:1;" onclick="uploadToGitHub()">📤 업로드</button>
+            <button class="btn btn-outline btn-sm" style="flex:1;" onclick="downloadFromGitHub()">📥 다운로드</button>
+            <button class="btn btn-outline btn-sm" style="flex:1;" onclick="showGitHubHistory()">📋 히스토리</button>
+        </div>
+        <div id="githubStatus" class="badge badge-wait" style="margin-top:6px;">⏳ 토큰 미설정</div>
+        <div id="githubHistory" style="display:none; margin-top:8px; max-height:150px; overflow-y:auto; font-size:12px; background:#f7fafc; border-radius:6px; padding:8px;"></div>
+    </div>
             
             <div class="setting-group">
                 <h4>🗺️ 카카오 API</h4>
