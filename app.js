@@ -92,6 +92,8 @@ function switchTab(tabId) {
                 kakaoMap.relayout();
                 kakaoMap.setDraggable(true);
                 kakaoMap.setZoomable(true);
+                // ⭐ 경로탭 진입 시 항상 장소에 맞게 지도 중심/줌 조정
+                showPlaceMarkers();
             } else {
                 initMap();
             }
@@ -1364,23 +1366,33 @@ function createMap(container) {
 }
 
 // ============================================================
-// 24. 개소 마커 표시
+// 24. 개소 마커 표시 (장소에 맞게 지도 중심/줌 자동 조정)
 // ============================================================
 
 function showPlaceMarkers() {
     if (!kakaoMap) return;
     
+    // 기존 개소 마커 제거
     for (var i = 0; i < placeMarkers.length; i++) {
         try { placeMarkers[i].setMap(null); } catch(e) {}
     }
     placeMarkers = [];
     
+    // 좌표가 있는 개소만 필터링
     var placesWithCoords = places.filter(function(p) {
         return p.lat && p.lng && p.lat !== 0 && p.lng !== 0;
     });
     
-    if (placesWithCoords.length === 0) return;
+    // ⭐ 장소가 없으면 지역 중심으로 이동
+    if (placesWithCoords.length === 0) {
+        var center = getRegionCenter(currentRegion);
+        kakaoMap.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
+        kakaoMap.setLevel(14);
+        console.log('📍 장소 없음, 지역 중심으로 이동:', currentRegion);
+        return;
+    }
     
+    // ⭐ 장소가 있으면 bounds 계산 후 자동 조정
     var bounds = new kakao.maps.LatLngBounds();
     
     for (var i = 0; i < placesWithCoords.length; i++) {
@@ -1403,9 +1415,10 @@ function showPlaceMarkers() {
         placeMarkers.push(marker);
     }
     
+    // ⭐ 모든 장소가 한 화면에 보이도록 지도 중심/줌 자동 조정
     kakaoMap.setBounds(bounds);
+    console.log('📍 장소 ' + placesWithCoords.length + '개에 맞춰 지도 조정');
 }
-
 // ============================================================
 // 25. 경로 마커
 // ============================================================
