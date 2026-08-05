@@ -1390,7 +1390,7 @@ function createMap(container) {
 }
 
 // ============================================================
-// 24. 개소 마커 표시 (완벽 수정 - 줌 레벨 확실히 적용)
+// 24. 개소 마커 표시 (완벽 수정 - setOptions 사용)
 // ============================================================
 
 function showPlaceMarkers() {
@@ -1407,22 +1407,24 @@ function showPlaceMarkers() {
         return p.lat && p.lng && p.lat !== 0 && p.lng !== 0;
     });
     
-    // 장소가 없으면 지역 중심으로 이동 (줌 레벨 14 강제 적용)
+    // ⭐ 장소가 없으면 지역 중심으로 이동 (setOptions 사용)
     if (placesWithCoords.length === 0) {
         var center = getRegionCenter(currentRegion);
         var targetPos = new kakao.maps.LatLng(center.lat, center.lng);
         
-        // 즉시 적용
-        kakaoMap.setLevel(14);
-        kakaoMap.setCenter(targetPos);
-        kakaoMap.setLevel(14);
+        // ⭐⭐ setOptions로 한 번에 중심+줌 설정 (가장 확실한 방법)
+        kakaoMap.setOptions({
+            center: targetPos,
+            level: 14
+        });
         
-        // 200ms 후 한 번 더 강제 적용 (relayout 완료 후)
+        // 200ms 후 다시 한 번 강제 적용 (relayout 완료 후)
         setTimeout(function() {
             if (kakaoMap) {
-                kakaoMap.setLevel(14);
-                kakaoMap.setCenter(targetPos);
-                kakaoMap.setLevel(14);
+                kakaoMap.setOptions({
+                    center: targetPos,
+                    level: 14
+                });
                 console.log('📍 장소 없음, 지역 중심 (줌 14):', currentRegion);
             }
         }, 200);
@@ -1430,7 +1432,7 @@ function showPlaceMarkers() {
         return;
     }
     
-    // 장소가 있으면 bounds 계산 후 자동 조정
+    // ⭐ 장소가 있으면 bounds 계산 후 자동 조정
     var bounds = new kakao.maps.LatLngBounds();
     
     for (var i = 0; i < placesWithCoords.length; i++) {
@@ -1456,7 +1458,6 @@ function showPlaceMarkers() {
     kakaoMap.setBounds(bounds);
     console.log('📍 장소 ' + placesWithCoords.length + '개에 맞춰 지도 조정');
 }
-
 // ============================================================
 // 25. 경로 마커
 // ============================================================
