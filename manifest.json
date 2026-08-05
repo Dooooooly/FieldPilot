@@ -1,21 +1,10 @@
 {
-  "name": "경로 최적화 PWA",
+  "name": "🚗 경로 최적화",
   "short_name": "RouteOpt",
-  "description": "16방향 클러스터링 기반 경로 최적화",
+  "description": "경로 최적화 시스템",
   "start_url": "/route-optimizer-pwa/",
   "display": "standalone",
-  "theme_color": "#4A90D9",
-  "background_color": "#f5f7fa",
-  "icons": [
-    {
-      "src": "icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ]
+  "theme_color": "#2b6cb0",
+  "background_color": "#f0f2f5",
+  "icons": []
 }
