@@ -61,8 +61,20 @@ let placeMarkers = [];
 let routeMarkers = [];
 let autoSyncTimer = null;
 
+
+                // 100ms 후 마커 갱신
+                setTimeout(function() {
+                    showPlaceMarkers();
+                }, 100);
+                
+                // 300ms 후 한 번 더 강제 적용
+                setTimeout(function() {
+                    if (kakaoMap) {
+                        var center = getRegionCenter(currentRegion);
+                        kakaoMap.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
+                        kakaoMap.setLevel(14);
 // ============================================================
-// 1. 탭 전환 (setOptions 제거, setLevel/setCenter 사용)
+// 1. 탭 전환 (setOptions 완전 제거)
 // ============================================================
 
 function switchTab(tabId) {
@@ -1337,7 +1349,7 @@ function initMap() {
 }
 
 // ============================================================
-// 23. 지도 생성 함수 (setOptions 제거)
+// 23. 지도 생성 함수 (setOptions 제거, 기본 옵션 사용)
 // ============================================================
 
 function createMap(container) {
@@ -1365,9 +1377,10 @@ function createMap(container) {
             console.log('📍 지역 중심:', region);
         }
         
+        // ⭐ options에 level을 직접 전달 (setOptions 사용 안 함)
         var options = {
             center: new kakao.maps.LatLng(centerLat, centerLng),
-            level: zoomLevel,
+            level: 14,
             draggable: true,
             zoomable: true,
             zoomControl: true,
@@ -1377,7 +1390,7 @@ function createMap(container) {
         
         kakaoMap = new kakao.maps.Map(container, options);
         
-        // ⭐ setOptions 대신 setLevel + setCenter 사용
+        // ⭐ 생성 후 한 번 더 확실하게 설정 (setLevel + setCenter)
         kakaoMap.setLevel(14);
         kakaoMap.setCenter(new kakao.maps.LatLng(centerLat, centerLng));
         
@@ -1403,7 +1416,7 @@ function createMap(container) {
     }
 }
 // ============================================================
-// 24. 개소 마커 표시 (최종 확실한 버전)
+// 24. 개소 마커 표시 (setOptions 제거)
 // ============================================================
 
 function showPlaceMarkers() {
@@ -1425,22 +1438,26 @@ function showPlaceMarkers() {
         var center = getRegionCenter(currentRegion);
         var targetPos = new kakao.maps.LatLng(center.lat, center.lng);
         
-        // ⭐⭐ 3중 호출로 확실하게 적용
-        for (var i = 0; i < 3; i++) {
-            (function(idx) {
-                setTimeout(function() {
-                    if (kakaoMap) {
-                        kakaoMap.setOptions({
-                            center: targetPos,
-                            level: 14
-                        });
-                        if (idx === 2) {
-                            console.log('📍 장소 없음, 지역 중심 (줌 14):', currentRegion);
-                        }
-                    }
-                }, idx * 100);
-            })(i);
-        }
+        // 즉시 적용
+        kakaoMap.setCenter(targetPos);
+        kakaoMap.setLevel(14);
+        
+        // 100ms 후 한 번 더
+        setTimeout(function() {
+            if (kakaoMap) {
+                kakaoMap.setCenter(targetPos);
+                kakaoMap.setLevel(14);
+            }
+        }, 100);
+        
+        // 300ms 후 마지막으로 한 번 더
+        setTimeout(function() {
+            if (kakaoMap) {
+                kakaoMap.setCenter(targetPos);
+                kakaoMap.setLevel(14);
+                console.log('📍 장소 없음, 지역 중심 (줌 14):', currentRegion);
+            }
+        }, 300);
         
         return;
     }
