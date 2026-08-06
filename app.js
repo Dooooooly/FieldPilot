@@ -1946,12 +1946,13 @@ function closeModal() {
 }
 
 // ============================================================
-// 31. Service Worker 등록 (PWA)
+// Service Worker 등록 (PWA)
 // ============================================================
 
 function registerServiceWorker() {
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js')
+        // ⭐ 경로를 저장소 이름을 포함한 전체 경로로 수정
+        navigator.serviceWorker.register('/route-optimizer-pwa/sw.js')
             .then(function(reg) {
                 console.log('✅ Service Worker 등록 성공');
             })
