@@ -126,13 +126,6 @@ function switchTab(tabId) {
                 kakaoMap.relayout();
                 kakaoMap.setDraggable(true);
                 kakaoMap.setZoomable(true);
-                // 경로탭 진입 시 마커 상태 유지 (단일 마커 또는 경로 마커)
-                if (!isShowingRouteMarkers && !singlePlaceMarker) {
-                    // 마커가 없으면 지역 중심만
-                    var center = getRegionCenter(currentRegion);
-                    kakaoMap.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
-                    kakaoMap.setLevel(5);
-                }
             } else {
                 initMap();
             }
@@ -1057,7 +1050,7 @@ function openEditModal(id) {
     document.getElementById('modal').classList.add('active');
 }
 
-function saveModal() {
+async function saveModal() {
     var id = document.getElementById('modalId').value;
     var name = document.getElementById('modalName').value.trim();
     var address = document.getElementById('modalAddress').value.trim();
@@ -1075,6 +1068,26 @@ function saveModal() {
         showTabStatus('tab-list', '⚠️ 이미 존재하는 개소명입니다.', 'warning');
         return;
     }
+    var lat = place.lat, lng = place.lng, fullAddress = address;
+    if (address && address !== place.address) {
+        var restKey = settings.kakaoRestKey;
+        if (restKey) {
+            var geo = await geocodeAddress(address, restKey);
+            if (geo) {
+                lat = geo.lat;
+                lng = geo.lng;
+                fullAddress = geo.address || address;
+            }
+        }
+    }
+    place.name = name;
+    place.address = fullAddress;
+    place.lat = lat;
+    place.lng = lng;
+    savePlaces();
+    closeModal();
+    showTabStatus('tab-list', '✅ "' + name + '" 수정 완료', 'ok');
+}
     // 주소가 변경되었으면 좌표 재변환
     var lat = place.lat, lng = place.lng, fullAddress = address;
     if (address && address !== place.address) {
