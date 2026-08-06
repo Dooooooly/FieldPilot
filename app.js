@@ -1279,7 +1279,7 @@ async function runOptimize() {
 }
 
 // ============================================================
-// 22. 지도 초기화
+// 22. 지도 초기화 (이전 빠른 버전)
 // ============================================================
 
 function initMap() {
@@ -1296,40 +1296,38 @@ function initMap() {
         return;
     }
 
-    // ⭐ SDK가 이미 로드되어 있다고 가정하고 바로 지도 생성
-    if (typeof kakao !== 'undefined' && kakao.maps) {
-        console.log('✅ SDK 이미 로드됨, 지도 생성 시작');
-        createMap(container);
-    } else {
-        // SDK가 없으면 동적 로드 (백업)
+    container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;color:#d69e2e;font-size:14px;background:#fffff0;border-radius:12px;">⏳ 카카오 지도 로딩 중...</div>';
+
+    if (typeof kakao === 'undefined' || !kakao.maps) {
         console.log('⏳ SDK 동적 로드 시작...');
         var script = document.createElement('script');
         script.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=' + jsKey + '&autoload=false&libraries=services';
         script.async = true;
         script.onload = function() {
+            console.log('✅ SDK 스크립트 로드 성공');
             kakao.maps.load(function() {
                 createMap(container);
             });
         };
         script.onerror = function() {
-            container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;color:#e53e3e;font-size:14px;background:#fff5f5;border-radius:12px;padding:20px;text-align:center;">❌ SDK 로드 실패</div>';
+            console.error('❌ SDK 스크립트 로드 실패');
+            container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;color:#e53e3e;font-size:14px;background:#fff5f5;border-radius:12px;padding:20px;text-align:center;">❌ SDK 로드 실패<br><span style="font-size:12px;">네트워크를 확인하세요</span></div>';
             showStatus('❌ SDK 로드 실패', 'error');
         };
         document.head.appendChild(script);
+        return;
     }
+
+    console.log('✅ SDK 이미 로드됨, 지도 생성 시작');
+    kakao.maps.load(function() {
+        createMap(container);
+    });
 }
 // ============================================================
-// 23. 지도 생성 함수
+// 23. 지도 생성 함수 (이전 빠른 버전)
 // ============================================================
 
 function createMap(container) {
-       // ⭐ 이미 지도가 있으면 다시 생성하지 않음
-    if (kakaoMap) {
-        console.log('ℹ️ 지도 이미 존재함, relayout만 실행');
-        kakaoMap.relayout();
-        showPlaceMarkers();
-        return;
-    }
     try {
         console.log('🗺️ 지도 생성 시작...');
         
@@ -1337,7 +1335,7 @@ function createMap(container) {
         var centerInfo = getRegionCenter(region);
         var centerLat = centerInfo.lat;
         var centerLng = centerInfo.lng;
-        var zoomLevel = 5;
+        var zoomLevel = 5;  // ⭐ 5 (14에서 변경)
         
         var isStartValid = startPoint && 
                            typeof startPoint.lat === 'number' && 
@@ -1387,9 +1385,8 @@ function createMap(container) {
         showStatus('⚠️ 지도 생성 실패', 'error');
     }
 }
-
 // ============================================================
-// 24. 개소 마커 표시
+// 24. 개소 마커 표시 (이전 빠른 버전)
 // ============================================================
 
 function showPlaceMarkers() {
@@ -1408,7 +1405,7 @@ function showPlaceMarkers() {
         var center = getRegionCenter(currentRegion);
         var targetPos = new kakao.maps.LatLng(center.lat, center.lng);
         kakaoMap.setCenter(targetPos);
-        kakaoMap.setLevel(5);
+        kakaoMap.setLevel(5);  // ⭐ 5 (14에서 변경)
         console.log('📍 장소 없음, 지역 중심 (줌 5):', currentRegion);
         return;
     }
@@ -1438,7 +1435,6 @@ function showPlaceMarkers() {
     kakaoMap.setBounds(bounds);
     console.log('📍 장소 ' + placesWithCoords.length + '개에 맞춰 지도 조정');
 }
-
 // ============================================================
 // 25. 경로 마커
 // ============================================================
