@@ -1338,7 +1338,7 @@ function initMap() {
 }
 
 // ============================================================
-// 23. 지도 생성 함수 (최종 안정 버전 - setOptions 제거)
+// 23. 지도 생성 함수 (level: 5로 수정)
 // ============================================================
 
 function createMap(container) {
@@ -1350,7 +1350,6 @@ function createMap(container) {
         var centerLat = centerInfo.lat;
         var centerLng = centerInfo.lng;
         
-        // 출발지가 있으면 출발지로 중심 이동
         var isStartValid = startPoint && 
                            typeof startPoint.lat === 'number' && 
                            typeof startPoint.lng === 'number' &&
@@ -1366,10 +1365,10 @@ function createMap(container) {
             console.log('📍 지역 중심:', region);
         }
         
-        // ⭐⭐⭐ 가장 기본적인 지도 생성 방법 (level: 14 직접 입력)
+        // ⭐ level: 5로 변경 (14 → 5)
         var options = {
             center: new kakao.maps.LatLng(centerLat, centerLng),
-            level: 14,  // 여기에 직접 줌 레벨을 넣습니다!
+            level: 5,
             draggable: true,
             zoomable: true,
             zoomControl: true,
@@ -1379,23 +1378,21 @@ function createMap(container) {
         
         kakaoMap = new kakao.maps.Map(container, options);
         
-        // ⭐ 생성 후에도 한 번 더 확실하게 설정 (setLevel은 기본 함수)
-        kakaoMap.setLevel(14);
+        // 생성 후 한 번 더 설정 (level: 5)
+        kakaoMap.setLevel(5);
+        kakaoMap.setCenter(new kakao.maps.LatLng(centerLat, centerLng));
         
-        // 모바일 터치 지원
         if ('ontouchstart' in window) {
             kakaoMap.setDraggable(true);
             kakaoMap.setZoomable(true);
         }
         
-        // 줌 컨트롤 표시
         var zoomControl = new kakao.maps.ZoomControl();
         kakaoMap.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
         
-        console.log('✅ 지도 생성 성공! (줌레벨: 14)');
+        console.log('✅ 지도 생성 성공! (줌레벨: 5)');
         showStatus('🗺️ 지도 로드 완료', 'ok');
         
-        // 300ms 후 마커 표시
         setTimeout(function() {
             showPlaceMarkers();
         }, 300);
@@ -1407,7 +1404,7 @@ function createMap(container) {
     }
 }
 // ============================================================
-// 24. 개소 마커 표시 (최종 안정 버전)
+// 24. 개소 마커 표시 (카카오맵 가이드 기반 수정)
 // ============================================================
 
 function showPlaceMarkers() {
@@ -1424,28 +1421,32 @@ function showPlaceMarkers() {
         return p.lat && p.lng && p.lat !== 0 && p.lng !== 0;
     });
     
-    // ⭐ 장소가 없으면 지역 중심으로 이동 (setLevel + setCenter 사용)
+    // 장소가 없으면 지역 중심으로 이동 (level: 5 = 시/군/구 단위)
     if (placesWithCoords.length === 0) {
         var center = getRegionCenter(currentRegion);
         var targetPos = new kakao.maps.LatLng(center.lat, center.lng);
         
-        // 즉시 적용
+        // ⭐ level 5로 설정 (14가 아니라 5!)
+        kakaoMap.setLevel(5);
         kakaoMap.setCenter(targetPos);
-        kakaoMap.setLevel(14);
         
-        // 150ms 후 다시 한 번 적용 (relayout 등에 의한 초기화 방지)
+        // 100ms 후 다시 한 번 확인
         setTimeout(function() {
             if (kakaoMap) {
+                var currentLevel = kakaoMap.getLevel();
+                console.log('📍 현재 줌 레벨:', currentLevel, '(목표: 5)');
+                if (currentLevel !== 5) {
+                    kakaoMap.setLevel(5);
+                }
                 kakaoMap.setCenter(targetPos);
-                kakaoMap.setLevel(14);
-                console.log('📍 장소 없음, 지역 중심 (줌 14):', currentRegion);
+                console.log('📍 장소 없음, 지역 중심 (줌 5):', currentRegion);
             }
-        }, 150);
+        }, 100);
         
         return;
     }
     
-    // ⭐ 장소가 있으면 bounds 계산 후 자동 조정
+    // 장소가 있으면 bounds 계산 후 자동 조정
     var bounds = new kakao.maps.LatLngBounds();
     
     for (var i = 0; i < placesWithCoords.length; i++) {
@@ -1469,6 +1470,20 @@ function showPlaceMarkers() {
     }
     
     kakaoMap.setBounds(bounds);
+    
+    // setBounds 후에도 줌 레벨 확인
+    setTimeout(function() {
+        if (kakaoMap) {
+            var currentLevel = kakaoMap.getLevel();
+            console.log('📍 setBounds 후 줌 레벨:', currentLevel);
+            // 너무 멀리 보이면(level이 8 이상) 강제로 5로 설정
+            if (currentLevel > 7) {
+                kakaoMap.setLevel(5);
+                console.log('🔄 줌 레벨 재설정: 5');
+            }
+        }
+    }, 200);
+    
     console.log('📍 장소 ' + placesWithCoords.length + '개에 맞춰 지도 조정');
 }
 // ============================================================
