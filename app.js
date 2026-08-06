@@ -1,5 +1,68 @@
 // ============================================================
-// 1. 탭 전환 (최종 안정 버전)
+// 경로 최적화 PWA - 전역 변수 선언
+// ============================================================
+
+// --- 저장소 키 ---
+const STORAGE_KEY_PREFIX = 'places_';
+const SELECTED_REGION_KEY = 'selectedRegion';
+const SETTINGS_KEY = 'app_settings';
+const OPTIMIZE_MODE_KEY = 'optimizeMode';
+
+// --- 전역 변수 ---
+let currentRegion = localStorage.getItem(SELECTED_REGION_KEY) || '서울';
+let places = [];
+let waypoints = [];
+let routeResult = null;
+let kakaoMap = null;
+let kakaoPolyline = null;
+let startPoint = null;
+let settings = {};
+let optimizeMode = localStorage.getItem(OPTIMIZE_MODE_KEY) || 'Nearest';
+let searchTimeout = null;
+let selectedSearchIndex = -1;
+let waypointSearchIndex = -1;
+let addrSearchIndex = -1;
+let placeMarkers = [];
+let routeMarkers = [];
+let autoSyncTimer = null;
+
+// --- 지역별 중심 좌표 ---
+const REGION_CENTERS = {
+    '서울': { lat: 37.5665, lng: 126.9780 },
+    '부산': { lat: 35.1796, lng: 129.0756 },
+    '제주': { lat: 33.4996, lng: 126.5312 },
+    '용산': { lat: 37.5326, lng: 126.9900 },
+    '강남': { lat: 37.5172, lng: 127.0473 },
+    '서초': { lat: 37.4837, lng: 127.0326 },
+    '종로': { lat: 37.5727, lng: 126.9791 },
+    '중구': { lat: 37.5599, lng: 126.9978 },
+    '마포': { lat: 37.5663, lng: 126.9011 },
+    '영등포': { lat: 37.5264, lng: 126.8964 },
+    '동작': { lat: 37.5124, lng: 126.9393 },
+    '관악': { lat: 37.4782, lng: 126.9514 },
+    '금천': { lat: 37.4569, lng: 126.8953 },
+    '구로': { lat: 37.4951, lng: 126.8883 },
+    '양천': { lat: 37.5170, lng: 126.8660 },
+    '강서': { lat: 37.5509, lng: 126.8495 },
+    '노원': { lat: 37.6542, lng: 127.0568 },
+    '도봉': { lat: 37.6688, lng: 127.0471 },
+    '성북': { lat: 37.5894, lng: 127.0167 },
+    '동대문': { lat: 37.5744, lng: 127.0396 },
+    '성동': { lat: 37.5632, lng: 127.0369 },
+    '광진': { lat: 37.5385, lng: 127.0822 },
+    '송파': { lat: 37.5146, lng: 127.1066 },
+    '강동': { lat: 37.5302, lng: 127.1235 },
+    '수원': { lat: 37.2636, lng: 127.0286 },
+    '인천': { lat: 37.4563, lng: 126.7052 },
+    '대전': { lat: 36.3504, lng: 127.3845 },
+    '대구': { lat: 35.8714, lng: 128.6014 },
+    '광주': { lat: 35.1595, lng: 126.8526 },
+    '울산': { lat: 35.5384, lng: 129.3114 },
+    '세종': { lat: 36.4801, lng: 127.2890 }
+};
+
+// ============================================================
+// 1. 탭 전환
 // ============================================================
 
 function switchTab(tabId) {
@@ -59,7 +122,7 @@ function getRegionCenter(region) {
         }
     }
     
-    return { lat: 37.5665, lng: 126.9780, level: 5 };
+    return { lat: 37.5665, lng: 126.9780 };
 }
 
 // ============================================================
@@ -1376,3 +1439,414 @@ function showPlaceMarkers() {
     kakaoMap.setBounds(bounds);
     console.log('📍 장소 ' + placesWithCoords.length + '개에 맞춰 지도 조정');
 }
+
+// ============================================================
+// 25. 경로 마커
+// ============================================================
+
+function addRouteMarker(lat, lng, title, isStart) {
+    if (!kakaoMap) return;
+    try {
+        var pos = new kakao.maps.LatLng(lat, lng);
+        var marker = new kakao.maps.Marker({
+            map: kakaoMap,
+            position: pos,
+            title: title,
+            draggable: false
+        });
+        
+        var icon = isStart ? '🚩' : '📍';
+        var iw = new kakao.maps.InfoWindow({
+            content: '<div style="padding:4px 10px;font-weight:bold;font-size:13px;">' + icon + ' ' + title + '</div>'
+        });
+        iw.open(kakaoMap, marker);
+        
+        routeMarkers.push(marker);
+        return marker;
+    } catch (e) {
+        console.error('마커 추가 실패:', e);
+    }
+}
+
+function clearRouteMarkers() {
+    for (var i = 0; i < routeMarkers.length; i++) {
+        try { routeMarkers[i].setMap(null); } catch(e) {}
+    }
+    routeMarkers = [];
+    if (kakaoPolyline) {
+        try { kakaoPolyline.setMap(null); } catch(e) {}
+        kakaoPolyline = null;
+    }
+}
+
+function drawRoute(path) {
+    if (!kakaoMap || !path || path.length < 2) return;
+    try {
+        if (kakaoPolyline) {
+            kakaoPolyline.setMap(null);
+            kakaoPolyline = null;
+        }
+        var linePath = path.map(function(p) {
+            return new kakao.maps.LatLng(p.lat, p.lng);
+        });
+        kakaoPolyline = new kakao.maps.Polyline({
+            map: kakaoMap,
+            path: linePath,
+            strokeWeight: 5,
+            strokeColor: '#FF6B6B',
+            strokeOpacity: 0.8,
+            strokeStyle: 'solid'
+        });
+        var bounds = new kakao.maps.LatLngBounds();
+        for (var i = 0; i < linePath.length; i++) {
+            bounds.extend(linePath[i]);
+        }
+        kakaoMap.setBounds(bounds);
+    } catch (e) {
+        console.error('경로 그리기 실패:', e);
+    }
+}
+
+// ============================================================
+// 26. 엑셀 파일 처리 (개소 탭)
+// ============================================================
+
+function handleFile(event) {
+    var file = event.target.files[0];
+    if (!file) return;
+    processExcelFile(file);
+    event.target.value = '';
+}
+
+function processExcelFile(file) {
+    var resultDiv = document.getElementById('uploadResult');
+    resultDiv.style.display = 'block';
+    var ext = file.name.split('.').pop().toLowerCase();
+    
+    if (ext === 'csv') {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            var text = e.target.result;
+            var lines = text.split('\n').filter(function(l) { return l.trim(); });
+            if (lines.length === 0) { showUploadResult('❌ 데이터 없음', 'error'); return; }
+            var header = lines[0].split(',').map(function(h) { return h.trim(); });
+            var rows = [];
+            for (var i = 1; i < lines.length; i++) {
+                var vals = lines[i].split(',').map(function(v) { return v.trim(); });
+                if (vals.length < 2) continue;
+                var row = {};
+                for (var j = 0; j < header.length; j++) {
+                    row[header[j]] = vals[j] || '';
+                }
+                rows.push(row);
+            }
+            importPlaces(rows);
+        };
+        reader.readAsText(file, 'UTF-8');
+        return;
+    }
+    
+    if (ext === 'xlsx' || ext === 'xls') {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                var data = new Uint8Array(e.target.result);
+                var wb = XLSX.read(data, { type: 'array' });
+                var sheet = wb.Sheets[wb.SheetNames[0]];
+                var json = XLSX.utils.sheet_to_json(sheet);
+                importPlaces(json);
+            } catch (error) {
+                showUploadResult('❌ 엑셀 읽기 오류: ' + error.message, 'error');
+            }
+        };
+        reader.readAsArrayBuffer(file);
+        return;
+    }
+    showUploadResult('❌ 지원 안 함 (.csv, .xlsx, .xls)', 'error');
+}
+
+async function importPlaces(data) {
+    if (!data || data.length === 0) {
+        showUploadResult('❌ 데이터 없음', 'error');
+        return;
+    }
+    var added = 0, updated = 0, skipped = 0;
+    var restKey = settings.kakaoRestKey;
+    
+    for (var i = 0; i < data.length; i++) {
+        var row = data[i];
+        var name = String(row['개소명'] || row['name'] || row['Name'] || '').trim();
+        var address = String(row['도로명주소'] || row['address'] || row['Address'] || '').trim();
+        if (!name) continue;
+        
+        var existing = places.find(function(p) { return p.name === name; });
+        if (existing) {
+            if (existing.address !== address) {
+                existing.address = address;
+                if (address && restKey) {
+                    var geo = await geocodeAddress(address, restKey);
+                    if (geo) {
+                        existing.lat = geo.lat;
+                        existing.lng = geo.lng;
+                        existing.address = geo.address || address;
+                    }
+                }
+                updated++;
+            } else {
+                skipped++;
+            }
+        } else {
+            var lat = 0, lng = 0, fullAddress = address;
+            if (address && restKey) {
+                var geo = await geocodeAddress(address, restKey);
+                if (geo) {
+                    lat = geo.lat;
+                    lng = geo.lng;
+                    fullAddress = geo.address || address;
+                }
+            }
+            places.push({
+                id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+                name: name,
+                address: fullAddress,
+                lat: lat,
+                lng: lng
+            });
+            added++;
+        }
+    }
+    if (added > 0 || updated > 0) { savePlaces(); }
+    showUploadResult('✅ 추가 ' + added + ', 업데이트 ' + updated + ', 건너뜀 ' + skipped, 'success');
+    searchPlaces();
+}
+
+function showUploadResult(msg, type) {
+    var el = document.getElementById('uploadResult');
+    el.textContent = msg;
+    el.style.display = 'block';
+    var colors = { success: '#c6f6d5', error: '#fed7d7', warning: '#fefcbf', info: '#bee3f8' };
+    el.style.background = colors[type] || colors.info;
+}
+
+// ============================================================
+// 27. 엑셀 내보내기 (장소 탭)
+// ============================================================
+
+function exportData() {
+    var data = [];
+    
+    if (places.length === 0) {
+        data = [
+            { '개소명': '예시_개소명_1', '도로명주소': '서울시 강남구 테헤란로 123', '비고': '', '위도': 0, '경도': 0 },
+            { '개소명': '예시_개소명_2', '도로명주소': '서울시 서초구 서초대로 456', '비고': '', '위도': 0, '경도': 0 },
+            { '개소명': '예시_개소명_3', '도로명주소': '서울시 종로구 종로 789', '비고': '', '위도': 0, '경도': 0 }
+        ];
+        showStatus('📄 예시 양식이 다운로드됩니다.', 'info');
+    } else {
+        data = places.map(function(p) {
+            return {
+                '개소명': p.name,
+                '도로명주소': p.address || '',
+                '비고': p.remark || '',
+                '위도': p.lat || 0,
+                '경도': p.lng || 0
+            };
+        });
+        showStatus('✅ 내보내기 완료 (' + data.length + '개)', 'ok');
+    }
+    
+    var wb = XLSX.utils.book_new();
+    var ws = XLSX.utils.json_to_sheet(data);
+    XLSX.utils.book_append_sheet(wb, ws, '개소리스트');
+    XLSX.writeFile(wb, '개소리스트_' + currentRegion + '_' + new Date().toISOString().slice(0,10) + '.xlsx');
+}
+
+// ============================================================
+// 28. 설정 내보내기/가져오기
+// ============================================================
+
+function exportSettings() {
+    var data = {
+        githubToken: settings.githubToken || '',
+        kakaoJsKey: settings.kakaoJsKey || '',
+        kakaoRestKey: settings.kakaoRestKey || '',
+        exportDate: new Date().toISOString()
+    };
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'settings_' + new Date().toISOString().slice(0,10) + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    showStatus('✅ 설정 내보내기 완료', 'ok');
+}
+
+function importSettings(event) {
+    var file = event.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            var data = JSON.parse(e.target.result);
+            settings.githubToken = data.githubToken || '';
+            settings.kakaoJsKey = data.kakaoJsKey || '';
+            settings.kakaoRestKey = data.kakaoRestKey || '';
+            saveSettings();
+            document.getElementById('githubToken').value = settings.githubToken;
+            document.getElementById('kakaoJsKey').value = settings.kakaoJsKey;
+            document.getElementById('kakaoRestKey').value = settings.kakaoRestKey;
+            showStatus('✅ 설정 복원 완료', 'ok');
+            initMap();
+        } catch (error) {
+            showStatus('❌ 설정 파일 오류: ' + error.message, 'error');
+        }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+}
+
+// ============================================================
+// 29. 공유
+// ============================================================
+
+function shareRoute() {
+    if (!routeResult) {
+        showStatus('먼저 경로 최적화를 실행하세요.', 'warning');
+        return;
+    }
+    var startPoint = routeResult.startPoint;
+    var sorted = routeResult.places;
+    var totalKm = routeResult.totalKm;
+    var totalMin = routeResult.totalMin;
+    var mode = routeResult.mode;
+    
+    var text = '🚗 최적 경로\n\n';
+    text += '📊 ' + sorted.length + '개소\n';
+    text += '📏 ' + totalKm + ' km\n';
+    text += '⏱️ ' + totalMin + '분\n';
+    text += '📐 ' + (mode === 'Nearest' ? '가까운순' : '먼순') + '\n\n';
+    text += '🚩 ' + startPoint.name + '\n';
+    for (var i = 0; i < sorted.length; i++) {
+        text += '  ' + (i + 1) + '. ' + sorted[i].name + '\n';
+    }
+    
+    if (navigator.share) {
+        navigator.share({ title: '경로 최적화', text: text }).catch(function() {});
+    } else {
+        navigator.clipboard.writeText(text).then(function() {
+            showStatus('✅ 클립보드 복사 완료', 'ok');
+        }).catch(function() {
+            showModal('📋 공유', text);
+        });
+    }
+}
+
+// ============================================================
+// 30. 초기화
+// ============================================================
+
+function resetAll() {
+    if (!confirm('⚠️ 모든 데이터를 초기화하시겠습니까?')) return;
+    if (!confirm('정말로 삭제하시겠습니까?')) return;
+    var keys = [];
+    for (var i = 0; i < localStorage.length; i++) {
+        var key = localStorage.key(i);
+        if (key && (key.startsWith(STORAGE_KEY_PREFIX) || key === SETTINGS_KEY || key === SELECTED_REGION_KEY || key === OPTIMIZE_MODE_KEY)) {
+            keys.push(key);
+        }
+    }
+    for (var i = 0; i < keys.length; i++) {
+        localStorage.removeItem(keys[i]);
+    }
+    places = [];
+    waypoints = [];
+    routeResult = null;
+    startPoint = null;
+    renderPlaces();
+    renderWaypointList();
+    clearRouteMarkers();
+    for (var i = 0; i < placeMarkers.length; i++) {
+        try { placeMarkers[i].setMap(null); } catch(e) {}
+    }
+    placeMarkers = [];
+    document.getElementById('placeCount').textContent = '0개소';
+    document.getElementById('totalDistance').textContent = '0.00 km';
+    document.getElementById('totalTime').textContent = '0 분';
+    document.getElementById('optimizeMode').textContent = '-';
+    document.getElementById('routeList').innerHTML = '';
+    document.getElementById('startInfo').textContent = '⏳ 출발지를 검색하고 설정하세요';
+    document.getElementById('startInfo').style.color = '#718096';
+    updateStorageInfo();
+    showStatus('✅ 초기화 완료', 'ok');
+    loadRegionList();
+}
+
+// ============================================================
+// 31. UI 헬퍼
+// ============================================================
+
+function showStatus(msg, type) {
+    var el = document.getElementById('status');
+    el.textContent = msg;
+    el.className = 'status-' + type;
+}
+
+function showModal(title, body) {
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalBody').textContent = body;
+    document.getElementById('modal').classList.add('active');
+}
+
+function closeModal() {
+    document.getElementById('modal').classList.remove('active');
+}
+
+// ============================================================
+// 32. 초기화 실행
+// ============================================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚗 앱 초기화 시작');
+    
+    if (!currentRegion) {
+        currentRegion = '서울';
+        localStorage.setItem(SELECTED_REGION_KEY, currentRegion);
+    }
+    console.log('🔍 초기 currentRegion:', currentRegion);
+    
+    startPoint = null;
+    
+    loadSettings();
+    loadRegionList();
+    
+    var key = getStorageKey(currentRegion);
+    var data = localStorage.getItem(key);
+    places = data ? JSON.parse(data) : [];
+    renderPlaces();
+    renderWaypointList();
+    setOptimizeMode(optimizeMode);
+    updateStorageInfo();
+    
+    setTimeout(function() {
+        console.log('🔍 지도 생성 시도 (currentRegion:', currentRegion + ')');
+        initMap();
+    }, 500);
+    
+    setTimeout(function() {
+        if (!kakaoMap) {
+            console.log('⏳ 지도가 없음, 재시도...');
+            initMap();
+        }
+    }, 3000);
+    
+    setTimeout(function() {
+        if (!kakaoMap) {
+            console.log('⏳ 마지막 재시도...');
+            initMap();
+        }
+    }, 6000);
+    
+    console.log('🚗 경로 최적화 PWA 로드 완료');
+    console.log('📍 ' + currentRegion + ', 개소 ' + places.length + '개');
+});
