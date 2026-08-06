@@ -665,8 +665,9 @@ function renderSearchResults(container, results, onClickName) {
     var html = '';
     for (var i = 0; i < results.length; i++) {
         var item = results[i];
+        var sourceLabel = item._source || '카카오맵';
         html += '<div class="result-item" data-name="' + escapeHtml(item.place_name) + '" data-address="' + escapeHtml(item.address_name) + '" data-lat="' + item.y + '" data-lng="' + item.x + '" data-index="' + i + '">';
-        html += '<div>' + escapeHtml(item.place_name) + '</div>';
+        html += '<div>' + escapeHtml(item.place_name) + ' <span class="source" style="font-size:10px;color:#a0aec0;margin-left:4px;">' + sourceLabel + '</span></div>';
         html += '<div class="addr">' + escapeHtml(item.address_name) + '</div>';
         html += '</div>';
     }
@@ -690,25 +691,66 @@ function renderSearchResults(container, results, onClickName) {
 // ============================================================
 // 12. 검색 핸들러 생성 (공통)
 // ============================================================
-
-function makeSearchHandler(containerId, minLen, onClickName, timeoutIdRef) {
-    return function(query) {
-        var container = document.getElementById(containerId);
-        if (!query || query.length < minLen) {
-            container.style.display = 'none';
-            return;
+async function searchStartPoint(query) {
+    var container = document.getElementById('startSearchResults');
+    if (!query || query.length < 2) {
+        container.style.display = 'none';
+        return;
+    }
+    
+    clearTimeout(startSearchTimeout);
+    startSearchTimeout = setTimeout(async function() {
+        // 1. 개소리스트에서 검색
+        var placeResults = [];
+        var lowerQuery = query.toLowerCase();
+        for (var i = 0; i < places.length; i++) {
+            var p = places[i];
+            if (p.name.toLowerCase().includes(lowerQuery) || 
+                (p.address && p.address.toLowerCase().includes(lowerQuery))) {
+                placeResults.push({
+                    place_name: p.name,
+                    address_name: p.address || '(주소 없음)',
+                    y: p.lat || 0,
+                    x: p.lng || 0,
+                    _source: '개소리스트'
+                });
+            }
         }
-        clearTimeout(timeoutIdRef);
-        timeoutIdRef = setTimeout(async function() {
-            var results = await searchKakaoPlaces(query);
-            renderSearchResults(container, results, onClickName);
-        }, 300);
-        return timeoutIdRef;
-    };
+        // 최대 5개만
+        placeResults = placeResults.slice(0, 5);
+        
+        // 2. 카카오맵에서 검색
+        var kakaoResults = await searchKakaoPlaces(query);
+        
+        // 3. 결과 합치기 (개소리스트 우선, 중복 제거)
+        var allResults = [];
+        var seenNames = {};
+        // 개소리스트 결과 먼저 추가
+        for (var i = 0; i < placeResults.length; i++) {
+            var item = placeResults[i];
+            var key = item.place_name + '|' + item.address_name;
+            if (!seenNames[key]) {
+                seenNames[key] = true;
+                allResults.push(item);
+            }
+        }
+        // 카카오맵 결과 추가 (중복 제거)
+        for (var i = 0; i < kakaoResults.length; i++) {
+            var item = kakaoResults[i];
+            var key = item.place_name + '|' + item.address_name;
+            if (!seenNames[key]) {
+                seenNames[key] = true;
+                allResults.push(item);
+            }
+        }
+        
+        renderSearchResults(container, allResults, 'selectStartPoint');
+    }, 300);
 }
 
-var searchStartPoint = makeSearchHandler('startSearchResults', 2, 'selectStartPoint', startSearchTimeout);
-var searchAddressForPlace = makeSearchHandler('addrSearchResults', 2, 'selectAddress', addrSearchTimeout);
+// ============================================================
+// 13. 경유지 검색 (개소리스트 + 카카오맵)
+// ============================================================
 
 var searchWaypoint = function(query) {
     var container = document.getElementById('waypointSearchResults');
@@ -718,21 +760,65 @@ var searchWaypoint = function(query) {
     }
     clearTimeout(waypointSearchTimeout);
     waypointSearchTimeout = setTimeout(async function() {
-        var results = await searchKakaoPlaces(query, 5);
-        if (results.length === 0) {
+        // 1. 개소리스트에서 검색
+        var placeResults = [];
+        var lowerQuery = query.toLowerCase();
+        for (var i = 0; i < places.length; i++) {
+            var p = places[i];
+            if (p.name.toLowerCase().includes(lowerQuery) || 
+                (p.address && p.address.toLowerCase().includes(lowerQuery))) {
+                placeResults.push({
+                    place_name: p.name,
+                    address_name: p.address || '(주소 없음)',
+                    y: p.lat || 0,
+                    x: p.lng || 0,
+                    _source: '개소리스트'
+                });
+            }
+        }
+        placeResults = placeResults.slice(0, 5);
+        
+        // 2. 카카오맵에서 검색
+        var kakaoResults = await searchKakaoPlaces(query, 5);
+        
+        // 3. 결과 합치기
+        var allResults = [];
+        var seenNames = {};
+        for (var i = 0; i < placeResults.length; i++) {
+            var item = placeResults[i];
+            var key = item.place_name + '|' + item.address_name;
+            if (!seenNames[key]) {
+                seenNames[key] = true;
+                allResults.push(item);
+            }
+        }
+        for (var i = 0; i < kakaoResults.length; i++) {
+            var item = kakaoResults[i];
+            var key = item.place_name + '|' + item.address_name;
+            if (!seenNames[key]) {
+                seenNames[key] = true;
+                allResults.push(item);
+            }
+        }
+        
+        if (allResults.length === 0) {
             container.style.display = 'none';
             return;
         }
+        
+        // 렌더링 (소스 표시)
         var html = '';
-        for (var i = 0; i < results.length; i++) {
-            var item = results[i];
+        for (var i = 0; i < allResults.length; i++) {
+            var item = allResults[i];
+            var sourceLabel = item._source || '카카오맵';
             html += '<div class="result-item" data-name="' + escapeHtml(item.place_name) + '" data-address="' + escapeHtml(item.address_name) + '" data-lat="' + item.y + '" data-lng="' + item.x + '" data-index="' + i + '">';
-            html += '<div>' + escapeHtml(item.place_name) + '</div>';
+            html += '<div>' + escapeHtml(item.place_name) + ' <span class="source" style="font-size:10px;color:#a0aec0;margin-left:4px;">' + sourceLabel + '</span></div>';
             html += '<div class="addr">' + escapeHtml(item.address_name) + '</div>';
             html += '</div>';
         }
         container.innerHTML = html;
         container.style.display = 'block';
+        
         container.querySelectorAll('.result-item').forEach(function(el) {
             el.addEventListener('click', function() {
                 var name = this.dataset.name;
@@ -745,29 +831,6 @@ var searchWaypoint = function(query) {
     }, 300);
     return waypointSearchTimeout;
 };
-
-// ============================================================
-// 13. setStartPoint() - 수동 입력 처리 (버튼용)
-// ============================================================
-
-async function setStartPoint() {
-    var name = document.getElementById('startPoint').value.trim();
-    if (!name) {
-        showStatus('출발지를 입력하세요.', 'warning');
-        return;
-    }
-    var restKey = settings.kakaoRestKey;
-    if (!restKey) {
-        showStatus('⚠️ REST API 키가 필요합니다. 설정 탭에서 입력하세요.', 'warning');
-        return;
-    }
-    var geo = await geocodeAddress(name, restKey);
-    if (!geo) {
-        showStatus('❌ "' + name + '" 위치를 찾을 수 없습니다. 검색 목록에서 선택해주세요.', 'error');
-        return;
-    }
-    selectStartPoint(name, geo.address, geo.lat, geo.lng);
-}
 
 // ============================================================
 // 14. 검색 결과 선택 함수들
