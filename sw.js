@@ -1,9 +1,9 @@
 const CACHE_NAME = 'route-opt-v1';
 const ASSETS = [
-    '/',
-    '/index.html',
-    '/app.js',
-    '/manifest.json',
+    '/route-optimizer-pwa/',
+    '/route-optimizer-pwa/index.html',
+    '/route-optimizer-pwa/app.js',
+    '/route-optimizer-pwa/manifest.json',
     'https://dapi.kakao.com/v2/maps/sdk.js'
 ];
 
