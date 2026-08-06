@@ -1283,8 +1283,6 @@ async function runOptimize() {
 // ============================================================
 
 function initMap() {
-    console.log('🔍 initMap 시작');
-    
     var container = document.getElementById('map');
     if (!container) {
         console.warn('❌ 지도 컨테이너 없음');
@@ -1298,39 +1296,40 @@ function initMap() {
         return;
     }
 
-    container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;color:#d69e2e;font-size:14px;background:#fffff0;border-radius:12px;">⏳ 카카오 지도 로딩 중...</div>';
-
-    if (typeof kakao === 'undefined' || !kakao.maps) {
+    // ⭐ SDK가 이미 로드되어 있다고 가정하고 바로 지도 생성
+    if (typeof kakao !== 'undefined' && kakao.maps) {
+        console.log('✅ SDK 이미 로드됨, 지도 생성 시작');
+        createMap(container);
+    } else {
+        // SDK가 없으면 동적 로드 (백업)
         console.log('⏳ SDK 동적 로드 시작...');
         var script = document.createElement('script');
         script.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=' + jsKey + '&autoload=false&libraries=services';
         script.async = true;
         script.onload = function() {
-            console.log('✅ SDK 스크립트 로드 성공');
             kakao.maps.load(function() {
                 createMap(container);
             });
         };
         script.onerror = function() {
-            console.error('❌ SDK 스크립트 로드 실패');
-            container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;color:#e53e3e;font-size:14px;background:#fff5f5;border-radius:12px;padding:20px;text-align:center;">❌ SDK 로드 실패<br><span style="font-size:12px;">네트워크를 확인하세요</span></div>';
+            container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;color:#e53e3e;font-size:14px;background:#fff5f5;border-radius:12px;padding:20px;text-align:center;">❌ SDK 로드 실패</div>';
             showStatus('❌ SDK 로드 실패', 'error');
         };
         document.head.appendChild(script);
-        return;
     }
-
-    console.log('✅ SDK 이미 로드됨, 지도 생성 시작');
-    kakao.maps.load(function() {
-        createMap(container);
-    });
 }
-
 // ============================================================
 // 23. 지도 생성 함수
 // ============================================================
 
 function createMap(container) {
+       // ⭐ 이미 지도가 있으면 다시 생성하지 않음
+    if (kakaoMap) {
+        console.log('ℹ️ 지도 이미 존재함, relayout만 실행');
+        kakaoMap.relayout();
+        showPlaceMarkers();
+        return;
+    }
     try {
         console.log('🗺️ 지도 생성 시작...');
         
