@@ -1338,7 +1338,7 @@ function initMap() {
 }
 
 // ============================================================
-// 23. 지도 생성 함수 (level: 5로 수정)
+// 23. 지도 생성 함수 (이전에 잘 되던 버전으로 복원)
 // ============================================================
 
 function createMap(container) {
@@ -1349,6 +1349,7 @@ function createMap(container) {
         var centerInfo = getRegionCenter(region);
         var centerLat = centerInfo.lat;
         var centerLng = centerInfo.lng;
+        var zoomLevel = 5;  // ⭐ 시/군/구 단위
         
         var isStartValid = startPoint && 
                            typeof startPoint.lat === 'number' && 
@@ -1365,10 +1366,10 @@ function createMap(container) {
             console.log('📍 지역 중심:', region);
         }
         
-        // ⭐ level: 5로 변경 (14 → 5)
+        // ⭐⭐⭐ 기본 지도 생성 (setOptions 절대 사용하지 않음)
         var options = {
             center: new kakao.maps.LatLng(centerLat, centerLng),
-            level: 5,
+            level: zoomLevel,
             draggable: true,
             zoomable: true,
             zoomControl: true,
@@ -1378,9 +1379,8 @@ function createMap(container) {
         
         kakaoMap = new kakao.maps.Map(container, options);
         
-        // 생성 후 한 번 더 설정 (level: 5)
-        kakaoMap.setLevel(5);
-        kakaoMap.setCenter(new kakao.maps.LatLng(centerLat, centerLng));
+        // ⭐ setLevel만 사용 (setOptions 사용 금지!)
+        kakaoMap.setLevel(zoomLevel);
         
         if ('ontouchstart' in window) {
             kakaoMap.setDraggable(true);
@@ -1390,7 +1390,7 @@ function createMap(container) {
         var zoomControl = new kakao.maps.ZoomControl();
         kakaoMap.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
         
-        console.log('✅ 지도 생성 성공! (줌레벨: 5)');
+        console.log('✅ 지도 생성 성공! (줌레벨: ' + zoomLevel + ')');
         showStatus('🗺️ 지도 로드 완료', 'ok');
         
         setTimeout(function() {
