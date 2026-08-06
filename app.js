@@ -73,7 +73,7 @@ let singlePlaceMarker = null;
 let singlePlaceInfoWindow = null;
 let autoSyncTimer = null;
 let sdkLoading = false;
-let isShowingRouteMarkers = false;  // 경로 마커 표시 여부
+let isShowingRouteMarkers = false;
 
 // ============================================================
 // 0. 보안 유틸리티
@@ -161,7 +161,6 @@ function getRegionCenter(region) {
 function showTabStatus(tabId, msg, type) {
     var statusEl = document.getElementById(tabId + 'Status');
     if (!statusEl) {
-        // 없으면 해당 탭에 생성
         var tabContent = document.getElementById(tabId);
         if (tabContent) {
             var newStatus = document.createElement('div');
@@ -174,7 +173,6 @@ function showTabStatus(tabId, msg, type) {
     if (statusEl) {
         statusEl.textContent = msg;
         statusEl.className = 'tab-status show ' + (type || 'info');
-        // 5초 후 자동 숨김 (성공/정보만)
         if (type === 'ok' || type === 'success' || type === 'info') {
             clearTimeout(statusEl._hideTimer);
             statusEl._hideTimer = setTimeout(function() {
@@ -292,7 +290,6 @@ function savePlaces() {
     localStorage.setItem(key, JSON.stringify(places));
     renderPlaces();
     updateStorageInfo();
-    // 자동 동기화는 여전히 동작 (GitHub 업로드)
     scheduleAutoSync();
 }
 
@@ -715,7 +712,6 @@ function makeSearchHandler(containerId, minLen, onClickName, timeoutIdRef) {
         }
         clearTimeout(timeoutIdRef);
         timeoutIdRef = setTimeout(async function() {
-            // 개소리스트 검색 + 카카오맵 검색
             var placeResults = [];
             var lowerQuery = query.toLowerCase();
             for (var i = 0; i < places.length; i++) {
@@ -1088,27 +1084,6 @@ async function saveModal() {
     closeModal();
     showTabStatus('tab-list', '✅ "' + name + '" 수정 완료', 'ok');
 }
-    // 주소가 변경되었으면 좌표 재변환
-    var lat = place.lat, lng = place.lng, fullAddress = address;
-    if (address && address !== place.address) {
-        var restKey = settings.kakaoRestKey;
-        if (restKey) {
-            var geo = await geocodeAddress(address, restKey);
-            if (geo) {
-                lat = geo.lat;
-                lng = geo.lng;
-                fullAddress = geo.address || address;
-            }
-        }
-    }
-    place.name = name;
-    place.address = fullAddress;
-    place.lat = lat;
-    place.lng = lng;
-    savePlaces();
-    closeModal();
-    showTabStatus('tab-list', '✅ "' + name + '" 수정 완료', 'ok');
-}
 
 function closeModal() {
     document.getElementById('modal').classList.remove('active');
@@ -1144,7 +1119,6 @@ function addWaypointFromList(id) {
         showTabStatus('tab-list', '⚠️ 최대 15개까지 가능', 'warning');
         return;
     }
-    // 이미 경유지에 있는지 확인
     if (waypoints.some(function(w) { return w.name === place.name; })) {
         showTabStatus('tab-list', '⚠️ "' + place.name + '"은(는) 이미 경유지에 있습니다.', 'warning');
         return;
@@ -1196,7 +1170,6 @@ function renderWaypointList() {
     }
     list.innerHTML = html;
     
-    // 마우스 오버 미리보기
     list.querySelectorAll('li[data-lat]').forEach(function(el) {
         el.addEventListener('mouseenter', function() {
             var lat = parseFloat(this.dataset.lat);
@@ -1227,12 +1200,10 @@ function showPlaceOnMap(id) {
         return;
     }
     
-    // 기존 경로 마커 제거
     clearRouteMarkers();
     clearSingleMarker();
     isShowingRouteMarkers = false;
     
-    // 해당 개소 마커 표시
     if (!kakaoMap) {
         initMap();
         setTimeout(function() {
@@ -1260,7 +1231,6 @@ function showPlaceOnMap(id) {
     kakaoMap.setCenter(pos);
     kakaoMap.setLevel(4);
     
-    // 경로탭으로 전환
     switchTab('tab-route');
     showTabStatus('tab-route', '📍 "' + place.name + '" 위치 표시 중', 'info');
 }
@@ -1523,7 +1493,6 @@ async function runOptimize() {
             return;
         }
         
-        // 기존 마커 완전 제거
         clearRouteMarkers();
         clearSingleMarker();
         isShowingRouteMarkers = true;
@@ -1641,7 +1610,6 @@ function createMap(container) {
         var centerLat = centerInfo.lat;
         var centerLng = centerInfo.lng;
         var zoomLevel = 5;
-        // 출발지가 있고 유효하면 출발지 중심 (단, 단일 마커나 경로 마커가 없을 때만)
         var isStartValid = startPoint &&
                            typeof startPoint.lat === 'number' &&
                            typeof startPoint.lng === 'number' &&
@@ -1669,7 +1637,6 @@ function createMap(container) {
         var zoomControl = new kakao.maps.ZoomControl();
         kakaoMap.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
         showTabStatus('tab-route', '🗺️ 지도 로드 완료', 'ok');
-        // 마커는 표시하지 않음 (경로탭 기본은 빈 지도)
     } catch (e) {
         console.error('지도 생성 실패:', e);
         container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;color:#e53e3e;font-size:14px;background:#fff5f5;border-radius:12px;padding:20px;text-align:center;">❌ 지도 생성 실패<br><span style="font-size:12px;">' + e.message + '</span></div>';
