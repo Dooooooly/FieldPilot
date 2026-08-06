@@ -2,18 +2,31 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🚗 경로 최적화</title>
     
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🚗%3C/text%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🚗%3C/text%3E%3C/svg%3E">
     
     <meta name="theme-color" content="#2b6cb0">
     <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     
     <style>
+        /* ===== CSS 유틸리티 클래스 추가 ===== */
+        .flex-row { display: flex; gap: 6px; flex-wrap: wrap; }
+        .flex-1 { flex: 1; }
+        .gap-2 { gap: 8px; }
+        .mt-1 { margin-top: 6px; }
+        .mb-1 { margin-bottom: 6px; }
+        .w-full { width: 100%; }
+        .items-center { align-items: center; }
+        
+        /* ===== 기존 스타일 (변경 없음) ===== */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -31,15 +44,8 @@
             z-index: 100;
             box-shadow: 0 2px 10px rgba(0,0,0,0.15);
         }
-        .header h1 {
-            font-size: 18px;
-            font-weight: 700;
-        }
-        .header-right {
-            display: flex;
-            gap: 6px;
-            align-items: center;
-        }
+        .header h1 { font-size: 18px; font-weight: 700; }
+        .header-right { display: flex; gap: 6px; align-items: center; }
         .header select {
             padding: 4px 10px;
             border: none;
@@ -51,11 +57,7 @@
         }
         .header select option { color: #2d3748; background: white; }
         
-        .main {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 12px 14px 80px;
-        }
+        .main { max-width: 600px; margin: 0 auto; padding: 12px 14px 80px; }
         
         .tab-content { display: none; }
         .tab-content.active { display: block; }
@@ -91,14 +93,15 @@
             justify-content: center;
         }
         .btn:active { transform: scale(0.97); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .btn-primary { background: #2b6cb0; color: white; }
-        .btn-primary:hover { background: #1a365d; }
+        .btn-primary:hover:not(:disabled) { background: #1a365d; }
         .btn-success { background: #38a169; color: white; }
-        .btn-success:hover { background: #276749; }
+        .btn-success:hover:not(:disabled) { background: #276749; }
         .btn-danger { background: #e53e3e; color: white; }
-        .btn-danger:hover { background: #c53030; }
+        .btn-danger:hover:not(:disabled) { background: #c53030; }
         .btn-outline { background: white; color: #2b6cb0; border: 2px solid #2b6cb0; }
-        .btn-outline:hover { background: #ebf8ff; }
+        .btn-outline:hover:not(:disabled) { background: #ebf8ff; }
         .btn-sm { padding: 5px 12px; font-size: 12px; }
         .btn-block { width: 100%; }
         
@@ -135,14 +138,8 @@
             white-space: nowrap;
             padding: 2px 0;
         }
-        .place-item .info .addr:empty {
-            display: none;
-        }
-        .place-item .actions {
-            display: flex;
-            gap: 2px;
-            flex-shrink: 0;
-        }
+        .place-item .info .addr:empty { display: none; }
+        .place-item .actions { display: flex; gap: 2px; flex-shrink: 0; }
         .place-item .actions button {
             background: none;
             border: none;
@@ -192,12 +189,7 @@
             padding: 0 4px;
         }
         
-        .empty-msg {
-            text-align: center;
-            color: #a0aec0;
-            padding: 16px;
-            font-size: 13px;
-        }
+        .empty-msg { text-align: center; color: #a0aec0; padding: 16px; font-size: 13px; }
         
         .summary {
             background: #ebf8ff;
@@ -321,9 +313,7 @@
             color: #2b6cb0;
             border-top-color: #2b6cb0;
         }
-        .bottom-tab.help-tab {
-            color: #805ad5;
-        }
+        .bottom-tab.help-tab { color: #805ad5; }
         .bottom-tab.help-tab.active {
             color: #805ad5;
             border-top-color: #805ad5;
@@ -369,29 +359,17 @@
             font-size: 13px;
             border-bottom: 1px solid #f0f2f5;
         }
-        .search-results .result-item:hover {
-            background: #ebf8ff;
-        }
-        .search-results .result-item .addr {
-            font-size: 11px;
-            color: #718096;
-        }
+        .search-results .result-item:hover { background: #ebf8ff; }
+        .search-results .result-item .addr { font-size: 11px; color: #718096; }
         
         .place-scroll {
             max-height: 200px;
             overflow-y: auto;
             padding-right: 4px;
         }
-        .place-scroll::-webkit-scrollbar {
-            width: 4px;
-        }
-        .place-scroll::-webkit-scrollbar-thumb {
-            background: #cbd5e0;
-            border-radius: 4px;
-        }
-        .place-scroll::-webkit-scrollbar-track {
-            background: #f7fafc;
-        }
+        .place-scroll::-webkit-scrollbar { width: 4px; }
+        .place-scroll::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 4px; }
+        .place-scroll::-webkit-scrollbar-track { background: #f7fafc; }
         
         #githubHistory {
             display: none;
@@ -410,11 +388,7 @@
             padding-bottom: 14px;
             border-bottom: 1px solid #e2e8f0;
         }
-        .help-section:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-            padding-bottom: 0;
-        }
+        .help-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
         .help-section .help-title {
             font-weight: 700;
             font-size: 14px;
@@ -430,10 +404,7 @@
             line-height: 1.7;
             padding-left: 4px;
         }
-        .help-section .help-body .step {
-            display: block;
-            padding: 2px 0;
-        }
+        .help-section .help-body .step { display: block; padding: 2px 0; }
         .help-section .help-body .step .num {
             display: inline-block;
             width: 20px;
@@ -457,15 +428,9 @@
             color: #2d3748;
             border: 1px solid #e2e8f0;
         }
-        .help-section .help-body .tip {
-            font-size: 12px;
-            color: #a0aec0;
-            margin-top: 2px;
-        }
+        .help-section .help-body .tip { font-size: 12px; color: #a0aec0; margin-top: 2px; }
         
-        #tab-help.active {
-            animation: fadeIn 0.3s ease;
-        }
+        #tab-help.active { animation: fadeIn 0.3s ease; }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -486,24 +451,18 @@
                 text-overflow: ellipsis;
                 white-space: nowrap;
             }
-            .help-section .help-body {
-                font-size: 12px;
-            }
+            .help-section .help-body { font-size: 12px; }
         }
     </style>
 </head>
 <body>
 
     <header class="header">
-        <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+        <div class="flex-row items-center" style="justify-content:space-between; width:100%;">
             <h1>🚗 경로 최적화</h1>
             <div class="header-right">
-                <select id="regionSelect" onchange="switchRegion(this.value)">
-                    <option value="서울">서울</option>
-                    <option value="부산">부산</option>
-                    <option value="제주">제주</option>
-                </select>
-                <button class="btn btn-sm" onclick="addRegion()" style="background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.2);padding:3px 10px;font-size:11px;">+</button>
+                <select id="regionSelect" onchange="switchRegion(this.value)"></select>
+                <button class="btn btn-sm" onclick="addRegion()" style="background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.2);padding:3px 10px;font-size:11px;" aria-label="지역 추가">+</button>
             </div>
         </div>
     </header>
@@ -516,9 +475,9 @@
             <div class="card">
                 <div class="card-title">🚩 출발지</div>
                 <div style="position:relative;">
-                    <div style="display:flex; gap:6px;">
-                        <input type="text" id="startPoint" placeholder="출발지 입력" style="flex:1; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:14px;" oninput="searchStartPoint(this.value)" onkeydown="handleStartKeydown(event)">
-                        <button class="btn btn-primary btn-sm" onclick="setStartPoint()" style="white-space:nowrap;">설정</button>
+                    <div class="flex-row">
+                        <input type="text" id="startPoint" aria-label="출발지" placeholder="출발지 입력" class="flex-1" style="padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:14px;" oninput="searchStartPoint(this.value)" onkeydown="handleStartKeydown(event)">
+                        <button class="btn btn-primary btn-sm" onclick="setStartPoint()" aria-label="출발지 설정">설정</button>
                     </div>
                     <div id="startSearchResults" class="search-results"></div>
                 </div>
@@ -528,9 +487,9 @@
             <div class="card">
                 <div class="card-title">📍 경유지 <span id="wpCount" style="font-size:12px;color:#a0aec0;font-weight:400;"></span></div>
                 <div style="position:relative;">
-                    <div style="display:flex; gap:6px; margin-bottom:4px;">
-                        <input type="text" id="waypointInput" placeholder="경유지 입력" style="flex:1; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:14px;" oninput="searchWaypoint(this.value)" onkeydown="handleWaypointKeydown(event)">
-                        <button class="btn btn-success btn-sm" onclick="addWaypoint()">추가</button>
+                    <div class="flex-row" style="margin-bottom:4px;">
+                        <input type="text" id="waypointInput" aria-label="경유지" placeholder="경유지 입력" class="flex-1" style="padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:14px;" oninput="searchWaypoint(this.value)" onkeydown="handleWaypointKeydown(event)">
+                        <button class="btn btn-success btn-sm" onclick="addWaypoint()" aria-label="경유지 추가">추가</button>
                     </div>
                     <div id="waypointSearchResults" class="search-results"></div>
                 </div>
@@ -539,16 +498,16 @@
                 </ul>
             </div>
             
-            <div style="display:flex; gap:6px;">
-                <button class="btn btn-primary btn-block" onclick="runOptimize()">⚡ 경로 최적화</button>
-                <button class="btn btn-success btn-block" onclick="shareRoute()">📤 공유</button>
+            <div class="flex-row">
+                <button class="btn btn-primary btn-block" onclick="runOptimize()" aria-label="경로 최적화 실행">⚡ 경로 최적화</button>
+                <button class="btn btn-success btn-block" onclick="shareRoute()" aria-label="경로 공유">📤 공유</button>
             </div>
             
             <div class="card" style="margin-top:6px;">
-                <div style="display:flex; gap:6px; align-items:center;">
+                <div class="flex-row" style="align-items:center;">
                     <span style="font-size:12px; font-weight:600; color:#4a5568;">📐 최적화 방식:</span>
-                    <button class="btn btn-sm btn-primary" id="modeNearest" onclick="setOptimizeMode('Nearest')" style="flex:1;">가까운순</button>
-                    <button class="btn btn-sm btn-outline" id="modeFarthest" onclick="setOptimizeMode('Farthest')" style="flex:1;">먼순</button>
+                    <button class="btn btn-sm btn-primary" id="modeNearest" onclick="setOptimizeMode('Nearest')" style="flex:1;" aria-label="가까운순 최적화">가까운순</button>
+                    <button class="btn btn-sm btn-outline" id="modeFarthest" onclick="setOptimizeMode('Farthest')" style="flex:1;" aria-label="먼순 최적화">먼순</button>
                 </div>
                 <div id="modeInfo" style="font-size:11px; color:#718096; margin-top:4px; text-align:center;">현재: 가까운순</div>
             </div>
@@ -587,24 +546,24 @@
             <div class="card">
                 <div class="card-title">📋 개소리스트 <span id="listCount" style="font-size:12px;color:#a0aec0;font-weight:400;"></span></div>
                 
-                <div style="display:flex; gap:6px; margin-bottom:8px;">
-                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="document.getElementById('fileInput').click()">📥 엑셀 가져오기</button>
+                <div class="flex-row" style="margin-bottom:8px;">
+                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="document.getElementById('fileInput').click()" aria-label="엑셀 가져오기">📥 엑셀 가져오기</button>
                     <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFile(event)">
-                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="exportData()">📤 엑셀 내보내기</button>
+                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="exportData()" aria-label="엑셀 내보내기">📤 엑셀 내보내기</button>
                 </div>
                 <div id="uploadResult"></div>
                 
-                <div style="display:flex; gap:6px; margin-bottom:8px;">
-                    <input type="text" id="newPlaceName" placeholder="개소명" style="flex:1; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:14px;">
+                <div class="flex-row" style="margin-bottom:8px;">
+                    <input type="text" id="newPlaceName" aria-label="개소명" placeholder="개소명" class="flex-1" style="padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:14px;">
                     <div style="position:relative; flex:1.5;">
-                        <input type="text" id="newPlaceAddr" placeholder="주소 입력" style="width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:14px;" oninput="searchAddressForPlace(this.value)" onkeydown="handleAddrKeydown(event)">
+                        <input type="text" id="newPlaceAddr" aria-label="주소" placeholder="주소 입력" style="width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:14px;" oninput="searchAddressForPlace(this.value)" onkeydown="handleAddrKeydown(event)">
                         <div id="addrSearchResults" class="search-results"></div>
                     </div>
-                    <button class="btn btn-primary btn-sm" onclick="addPlace()">추가</button>
+                    <button class="btn btn-primary btn-sm" onclick="addPlace()" aria-label="개소 추가">추가</button>
                 </div>
                 
                 <div style="margin-bottom:6px;">
-                    <input type="text" id="searchPlace" placeholder="🔍 개소 검색" style="width:100%; padding:6px 10px; border:2px solid #e2e8f0; border-radius:6px; font-size:13px;" oninput="searchPlaces()">
+                    <input type="text" id="searchPlace" aria-label="개소 검색" placeholder="🔍 개소 검색" style="width:100%; padding:6px 10px; border:2px solid #e2e8f0; border-radius:6px; font-size:13px;" oninput="searchPlaces()">
                 </div>
                 
                 <div id="placeList" class="place-scroll"></div>
@@ -617,15 +576,15 @@
             <div class="setting-group">
                 <h4>🔐 GitHub 연동</h4>
                 <div class="row">
-                    <label>GitHub Token</label>
-                    <input type="password" id="githubToken" placeholder="GitHub Personal Access Token">
-                    <button class="btn btn-primary btn-sm" onclick="saveGitHubToken()">저장</button>
-                    <button class="btn btn-outline btn-sm" onclick="testGitHubToken()">테스트</button>
+                    <label for="githubToken">GitHub Token</label>
+                    <input type="password" id="githubToken" autocomplete="off" placeholder="GitHub Personal Access Token">
+                    <button class="btn btn-primary btn-sm" onclick="saveGitHubToken()" aria-label="GitHub 토큰 저장">저장</button>
+                    <button class="btn btn-outline btn-sm" onclick="testGitHubToken()" aria-label="GitHub 토큰 테스트">테스트</button>
                 </div>
-                <div style="display:flex; gap:6px; margin-top:6px;">
-                    <button class="btn btn-success btn-sm" style="flex:1;" onclick="uploadToGitHub()">📤 업로드</button>
-                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="downloadFromGitHub()">📥 다운로드</button>
-                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="showGitHubHistory()">📋 히스토리</button>
+                <div class="flex-row" style="margin-top:6px;">
+                    <button class="btn btn-success btn-sm" style="flex:1;" onclick="uploadToGitHub()" aria-label="GitHub 업로드">📤 업로드</button>
+                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="downloadFromGitHub()" aria-label="GitHub 다운로드">📥 다운로드</button>
+                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="showGitHubHistory()" aria-label="GitHub 히스토리">📋 히스토리</button>
                 </div>
                 <div id="githubStatus" class="badge badge-wait" style="margin-top:6px;">⏳ 토큰 미설정</div>
                 <div id="githubHistory"></div>
@@ -635,31 +594,31 @@
             <div class="setting-group">
                 <h4>🗺️ 카카오 API</h4>
                 <div class="row">
-                    <label>JavaScript 키</label>
-                    <input type="password" id="kakaoJsKey" placeholder="JavaScript 키 입력">
+                    <label for="kakaoJsKey">JavaScript 키</label>
+                    <input type="password" id="kakaoJsKey" autocomplete="off" placeholder="JavaScript 키 입력">
                 </div>
                 <div class="row" style="margin-top:4px;">
-                    <label>REST API 키</label>
-                    <input type="password" id="kakaoRestKey" placeholder="REST API 키 입력">
+                    <label for="kakaoRestKey">REST API 키</label>
+                    <input type="password" id="kakaoRestKey" autocomplete="off" placeholder="REST API 키 입력">
                 </div>
                 <div class="row" style="margin-top:6px;">
-                    <button class="btn btn-primary btn-sm" onclick="saveKakaoKeys()">저장</button>
+                    <button class="btn btn-primary btn-sm" onclick="saveKakaoKeys()" aria-label="카카오 API 키 저장">저장</button>
                 </div>
                 <div id="kakaoStatus" class="badge badge-wait" style="margin-top:6px;">⏳ API 키 미설정</div>
             </div>
             
             <div class="setting-group">
                 <h4>⚙️ 설정 관리</h4>
-                <div style="display:flex; gap:6px;">
-                    <button class="btn btn-outline btn-sm btn-block" onclick="exportSettings()">📤 설정 내보내기</button>
-                    <button class="btn btn-outline btn-sm btn-block" onclick="document.getElementById('settingsInput').click()">📥 설정 가져오기</button>
+                <div class="flex-row">
+                    <button class="btn btn-outline btn-sm btn-block" onclick="exportSettings()" aria-label="설정 내보내기">📤 설정 내보내기</button>
+                    <button class="btn btn-outline btn-sm btn-block" onclick="document.getElementById('settingsInput').click()" aria-label="설정 가져오기">📥 설정 가져오기</button>
                     <input type="file" id="settingsInput" accept=".json" style="display:none" onchange="importSettings(event)">
                 </div>
             </div>
             
             <div class="setting-group">
                 <h4>💾 데이터 관리</h4>
-                <button class="btn btn-danger btn-sm btn-block" onclick="resetAll()">🗑️ 모든 데이터 초기화</button>
+                <button class="btn btn-danger btn-sm btn-block" onclick="resetAll()" aria-label="모든 데이터 초기화">🗑️ 모든 데이터 초기화</button>
                 <div style="font-size:11px; color:#a0aec0; margin-top:4px;" id="storageInfo">저장소 사용량: 계산 중...</div>
             </div>
         </div>
@@ -669,7 +628,6 @@
             <div class="card">
                 <div class="card-title">📖 사용 가이드</div>
                 
-                <!-- 장소 탭 -->
                 <div class="help-section">
                     <div class="help-title">📍 장소 탭</div>
                     <div class="help-body">
@@ -680,7 +638,6 @@
                     </div>
                 </div>
                 
-                <!-- 경로 탭 -->
                 <div class="help-section">
                     <div class="help-title">🗺️ 경로 탭</div>
                     <div class="help-body">
@@ -691,7 +648,6 @@
                     </div>
                 </div>
                 
-                <!-- 개소리스트 탭 -->
                 <div class="help-section">
                     <div class="help-title">📋 개소리스트 탭</div>
                     <div class="help-body">
@@ -703,7 +659,6 @@
                     </div>
                 </div>
                 
-                <!-- 설정 탭 -->
                 <div class="help-section">
                     <div class="help-title">⚙️ 설정 탭</div>
                     <div class="help-body">
@@ -715,7 +670,6 @@
                     </div>
                 </div>
                 
-                <!-- 엑셀 양식 -->
                 <div class="help-section">
                     <div class="help-title">📊 엑셀 파일 양식</div>
                     <div class="help-body">
@@ -726,7 +680,6 @@
                     </div>
                 </div>
                 
-                <!-- 유용한 팁 -->
                 <div class="help-section">
                     <div class="help-title">💡 유용한 팁</div>
                     <div class="help-body">
@@ -744,19 +697,19 @@
 
     <!-- ===== 하단 탭 ===== -->
     <div class="bottom-tabs">
-        <button class="bottom-tab active" data-tab="tab-places" onclick="switchTab('tab-places')">
+        <button class="bottom-tab active" data-tab="tab-places" onclick="switchTab('tab-places')" aria-label="장소 탭">
             <span class="tab-icon">📍</span> 장소
         </button>
-        <button class="bottom-tab" data-tab="tab-route" onclick="switchTab('tab-route')">
+        <button class="bottom-tab" data-tab="tab-route" onclick="switchTab('tab-route')" aria-label="경로 탭">
             <span class="tab-icon">🗺️</span> 경로
         </button>
-        <button class="bottom-tab" data-tab="tab-list" onclick="switchTab('tab-list')">
+        <button class="bottom-tab" data-tab="tab-list" onclick="switchTab('tab-list')" aria-label="개소리스트 탭">
             <span class="tab-icon">📋</span> 개소
         </button>
-        <button class="bottom-tab" data-tab="tab-settings" onclick="switchTab('tab-settings')">
+        <button class="bottom-tab" data-tab="tab-settings" onclick="switchTab('tab-settings')" aria-label="설정 탭">
             <span class="tab-icon">⚙️</span> 설정
         </button>
-        <button class="bottom-tab help-tab" data-tab="tab-help" onclick="switchTab('tab-help')">
+        <button class="bottom-tab help-tab" data-tab="tab-help" onclick="switchTab('tab-help')" aria-label="도움말 탭">
             <span class="tab-icon">❓</span> 도움말
         </button>
     </div>
@@ -767,11 +720,11 @@
             <h3 id="modalTitle">알림</h3>
             <div id="modalBody" style="font-size:14px;color:#4a5568;"></div>
             <div class="btn-row">
-                <button class="btn btn-primary btn-block" onclick="closeModal()">확인</button>
+                <button class="btn btn-primary btn-block" onclick="closeModal()" aria-label="모달 닫기">확인</button>
             </div>
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <script src="app.js" defer></script>
 </body>
 </html>
