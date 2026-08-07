@@ -2646,7 +2646,149 @@ async function fetchWeather() {
         weatherEl.innerHTML = '<span>⏳</span><span class="temp">--°C</span><span>날씨</span>';
     }
 }
+// ============================================================
+// 38-1. 5일 일기예보 모달 띄우기
+// ============================================================
 
+async function showWeekWeather() {
+    var weatherEl = document.getElementById('weatherDisplay');
+    if (!weatherEl) return;
+
+    // 이미 예보 모달이 떠있으면 닫기
+    var existingModal = document.getElementById('weekWeatherModal');
+    if (existingModal) {
+        existingModal.remove();
+        return;
+    }
+
+    var center = getRegionCenter(currentRegion);
+    var lat = center.lat;
+    var lon = center.lng;
+    var apiKey = 'b84c1b9a09d8316b679320cceb3a1097'; // 여러분의 키로 변경
+
+    try {
+        // 5일 예보 API 호출 (3시간 간격, 최대 40개)
+        var url = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&lang=kr`;
+        var response = await fetch(url);
+        if (!response.ok) throw new Error('예보 조회 실패');
+        var data = await response.json();
+
+        // 날짜별로 그룹화 (하루에 8개의 3시간 데이터가 있음)
+        var dailyMap = {};
+        data.list.forEach(function(item) {
+            var date = item.dt_txt.split(' ')[0]; // '2026-08-10'
+            if (!dailyMap[date]) {
+                dailyMap[date] = {
+                    temps: [],
+                    icons: [],
+                    descs: [],
+                    date: date
+                };
+            }
+            dailyMap[date].temps.push(item.main.temp);
+            dailyMap[date].icons.push(item.weather[0].icon);
+            dailyMap[date].descs.push(item.weather[0].description);
+        });
+
+        // 객체를 배열로 변환하고, 최대 5일만 표시
+        var dailyList = Object.values(dailyMap).slice(0, 5);
+
+        // 모달 HTML 생성
+        var modalHtml = `
+            <div id="weekWeatherModal" style="
+                position: fixed;
+                top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(0,0,0,0.6);
+                backdrop-filter: blur(8px);
+                -webkit-backdrop-filter: blur(8px);
+                z-index: 9999;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                animation: fadeIn 0.3s ease;
+                padding: 20px;
+            " onclick="this.remove()">
+                <div style="
+                    background: white;
+                    border-radius: 24px;
+                    padding: 24px 20px;
+                    max-width: 420px;
+                    width: 100%;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                    max-height: 80vh;
+                    overflow-y: auto;
+                " onclick="event.stopPropagation()">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                        <h3 style="font-size:18px;font-weight:700;color:#2d3748;">📅 5일 예보 (${currentRegion})</h3>
+                        <button onclick="document.getElementById('weekWeatherModal').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#a0aec0;">&times;</button>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:10px;">
+        `;
+
+        var iconMap = {
+            '01d': '☀️', '01n': '🌙', '02d': '⛅', '02n': '☁️',
+            '03d': '☁️', '03n': '☁️', '04d': '☁️', '04n': '☁️',
+            '09d': '🌧️', '09n': '🌧️', '10d': '🌦️', '10n': '🌦️',
+            '11d': '⛈️', '11n': '⛈️', '13d': '❄️', '13n': '❄️',
+            '50d': '🌫️', '50n': '🌫️'
+        };
+
+        dailyList.forEach(function(day) {
+            // 하루 평균 기온 계산
+            var avgTemp = day.temps.reduce((a,b) => a + b, 0) / day.temps.length;
+            var minTemp = Math.round(Math.min.apply(null, day.temps));
+            var maxTemp = Math.round(Math.max.apply(null, day.temps));
+            // 가장 자주 등장한 아이콘 찾기 (간단히 첫 번째로 대체)
+            var iconCode = day.icons[0] || '01d';
+            var iconEmoji = iconMap[iconCode] || '🌡️';
+            var desc = day.descs[0] || '';
+
+            var dateObj = new Date(day.date + 'T00:00:00');
+            var weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+            var dayLabel = weekdays[dateObj.getDay()] + '요일';
+            var dateLabel = (dateObj.getMonth() + 1) + '/' + dateObj.getDate();
+
+            modalHtml += `
+                <div style="
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 10px 14px;
+                    background: #f7fafc;
+                    border-radius: 14px;
+                    border-left: 4px solid #2b6cb0;
+                ">
+                    <div style="display:flex;align-items:center;gap:12px;min-width:80px;">
+                        <span style="font-size:22px;">${iconEmoji}</span>
+                        <div>
+                            <div style="font-weight:600;font-size:14px;">${dayLabel}</div>
+                            <div style="font-size:11px;color:#a0aec0;">${dateLabel}</div>
+                        </div>
+                    </div>
+                    <div style="text-align:center;flex:1;">
+                        <span style="font-size:13px;color:#718096;">${desc}</span>
+                    </div>
+                    <div style="text-align:right;font-weight:700;font-size:15px;">
+                        ${maxTemp}° <span style="color:#a0aec0;font-weight:400;">/</span> ${minTemp}°
+                    </div>
+                </div>
+            `;
+        });
+
+        modalHtml += `
+                    </div>
+                    <div style="margin-top:14px;font-size:11px;color:#a0aec0;text-align:center;">* 3시간 간격 예보를 평균/최고/최저로 표시했어요</div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    } catch (error) {
+        console.error('예보 오류:', error);
+        alert('날씨 예보를 불러오지 못했습니다. 네트워크를 확인해주세요.');
+    }
+}
 // ============================================================
 // 39. 초기화 실행
 // ============================================================
