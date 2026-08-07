@@ -1663,7 +1663,7 @@ async function runOptimize() {
         isShowingRouteMarkers = true;
         
         var allPoints = [{ name: startPoint.name, lat: startPoint.lat, lng: startPoint.lng }].concat(sorted);
-        addRouteMarker(startPoint.lat, startPoint.lng, '🚩 ' + startPoint.name, true);
+        addRouteMarker(startPoint.lat, startPoint.lng,startPoint.name, true);
         for (var i = 0; i < sorted.length; i++) {
             var p = sorted[i];
             addRouteMarker(p.lat, p.lng, (i + 1) + '. ' + p.name, false);
