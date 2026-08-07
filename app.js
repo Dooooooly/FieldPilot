@@ -1423,7 +1423,7 @@ function optimizeRouteAlgorithm(places, startLat, startLng, mode) {
 }
 
 // ============================================================
-// 24. 경로 최적화 실행
+// 24. 경로 최적화 실행 (도로 경로 표시 추가)
 // ============================================================
 
 async function runOptimize() {
@@ -1501,18 +1501,32 @@ async function runOptimize() {
         addRouteMarker(startPoint.lat, startPoint.lng, '🚩 ' + startPoint.name, true);
         for (var i = 0; i < sorted.length; i++) {
             var p = sorted[i];
-            addRouteMarker(p.lat, p.lng, (i + 1) + '. ' + p.name);
+            addRouteMarker(p.lat, p.lng, (i + 1) + '. ' + p.name, false);
         }
-        drawRoute(allPoints);
+        
+        // ⭐⭐⭐ 도로 경로 요청 (카카오 모빌리티 API) ⭐⭐⭐
+        var routeData = await callKakaoMobilityRoute(allPoints, restKey);
+        if (routeData) {
+            drawRoadRoute(routeData);
+        } else {
+            drawRoute(allPoints);
+            showTabStatus('tab-route', '⚠️ 도로 경로를 불러올 수 없어 직선으로 표시합니다.', 'warning');
+        }
         
         var totalKm = 0;
         var totalMin = 0;
-        for (var i = 0; i < allPoints.length - 1; i++) {
-            var p1 = allPoints[i];
-            var p2 = allPoints[i + 1];
-            var dist = haversineKm(p1.lat, p1.lng, p2.lat, p2.lng);
-            totalKm += dist;
-            totalMin += dist * 1.5;
+        if (routeData && routeData.routes && routeData.routes[0]) {
+            var route = routeData.routes[0];
+            totalKm = route.summary ? route.summary.distance / 1000 : 0;
+            totalMin = route.summary ? route.summary.duration / 60 : 0;
+        } else {
+            for (var i = 0; i < allPoints.length - 1; i++) {
+                var p1 = allPoints[i];
+                var p2 = allPoints[i + 1];
+                var dist = haversineKm(p1.lat, p1.lng, p2.lat, p2.lng);
+                totalKm += dist;
+                totalMin += dist * 1.5;
+            }
         }
         totalKm = parseFloat(totalKm.toFixed(2));
         totalMin = Math.round(totalMin);
@@ -1530,7 +1544,6 @@ async function runOptimize() {
         document.getElementById('totalTime').textContent = totalMin + ' 분';
         document.getElementById('optimizeMode').textContent = optimizeMode === 'Nearest' ? '가까운순' : '먼순';
         
-        // 경로 목록 표시 (클릭 이동 기능 포함)
         showRouteList();
         
         switchTab('tab-route');
@@ -1542,9 +1555,98 @@ async function runOptimize() {
         if (btn) btn.disabled = false;
     }
 }
-
 // ============================================================
-// 24-1. 경로 목록 표시 (클릭 이동 포함)
+// 24-1. 카카오 모빌리티 길찾기 API 호출
+// ============================================================
+
+async function callKakaoMobilityRoute(points, restKey) {
+    if (!restKey || points.length < 2) return null;
+    try {
+        var origin = points[0];
+        var destination = points[points.length - 1];
+        var waypoints = points.slice(1, -1);
+        
+        var url = 'https://apis-navi.kakaomobility.com/v1/waypoints/directions';
+        var payload = {
+            origin: {
+                name: origin.name || '출발지',
+                x: origin.lng,
+                y: origin.lat
+            },
+            destination: {
+                name: destination.name || '도착지',
+                x: destination.lng,
+                y: destination.lat
+            },
+            priority: 'RECOMMEND'
+        };
+        if (waypoints.length > 0) {
+            payload.waypoints = waypoints.map(function(w) {
+                return { name: w.name || '경유지', x: w.lng, y: w.lat };
+            });
+        }
+        var response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': 'KakaoAK ' + restKey,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+        if (!response.ok) return null;
+        return await response.json();
+    } catch (e) {
+        console.warn('도로 경로 API 호출 실패:', e);
+        return null;
+    }
+}
+// ============================================================
+// 24-2. 도로 경로 그리기
+// ============================================================
+
+function drawRoadRoute(routeData) {
+    if (!kakaoMap || !routeData) return;
+    try {
+        var route = routeData.routes[0];
+        if (!route || !route.sections) return;
+        var path = [];
+        for (var s = 0; s < route.sections.length; s++) {
+            var section = route.sections[s];
+            if (section.roads) {
+                for (var r = 0; r < section.roads.length; r++) {
+                    var road = section.roads[r];
+                    if (road.vertexes) {
+                        for (var v = 0; v < road.vertexes.length; v += 2) {
+                            var lng = road.vertexes[v];
+                            var lat = road.vertexes[v + 1];
+                            if (lat && lng) {
+                                path.push(new kakao.maps.LatLng(lat, lng));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (path.length < 2) return;
+        if (kakaoPolyline) kakaoPolyline.setMap(null);
+        kakaoPolyline = new kakao.maps.Polyline({
+            map: kakaoMap,
+            path: path,
+            strokeWeight: 5,
+            strokeColor: '#2B6CB0',
+            strokeOpacity: 0.8,
+            strokeStyle: 'solid'
+        });
+        var bounds = new kakao.maps.LatLngBounds();
+        for (var i = 0; i < path.length; i++) bounds.extend(path[i]);
+        kakaoMap.setBounds(bounds);
+        console.log('✅ 도로 경로 표시 완료 (포인트 수: ' + path.length + ')');
+    } catch (e) {
+        console.error('도로 경로 그리기 실패:', e);
+    }
+}
+// ============================================================
+// 24-3. 경로 목록 표시 (클릭 이동 포함) - 변경 없음
 // ============================================================
 
 function showRouteList() {
@@ -1560,7 +1662,6 @@ function showRouteList() {
 
     var html = '<div style="font-weight:600;font-size:14px;margin-bottom:8px;">📋 최적 경로</div>';
 
-    // 출발지
     html += `
         <div class="route-item route-start">
             <div class="idx">🚩</div>
@@ -1571,7 +1672,6 @@ function showRouteList() {
         </div>
     `;
 
-    // 경유지들 (클릭 가능)
     for (var i = 0; i < sorted.length; i++) {
         var p = sorted[i];
         var prevLat = i === 0 ? startPoint.lat : sorted[i-1].lat;
@@ -1596,9 +1696,8 @@ function showRouteList() {
 
     container.innerHTML = html;
 }
-
 // ============================================================
-// 24-2. 경로 항목 클릭 시 해당 위치로 지도 이동
+// 24-4. 경로 항목 클릭 시 해당 위치로 지도 이동 - 변경 없음
 // ============================================================
 
 function moveToRoutePoint(el) {
@@ -1623,7 +1722,6 @@ function moveToRoutePoint(el) {
 
     showTabStatus('tab-route', '📍 해당 위치로 이동했습니다.', 'info');
 }
-
 // ============================================================
 // 25. 지도 초기화
 // ============================================================
