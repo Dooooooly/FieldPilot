@@ -1735,14 +1735,12 @@ function showRouteList() {
         return;
     }
 
-    var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
-    html += '<div style="font-weight:600;font-size:14px;">📋 최적 경로</div>';
-    // 🔥 전체 경로 카카오맵 열기 버튼
-    html += `
-        <button class="btn btn-primary btn-sm" onclick="openKakaoMap()" style="font-size:11px;padding:4px 12px;">
-            🗺️ 전체 경로 지도에서 보기
-        </button>
-    </div>`;
+    var html = '<div style="font-weight:600;font-size:14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">';
+    html += '<span>📋 최적 경로</span>';
+    // 🚀 "전체 경로 카카오맵에서 보기" 버튼 추가
+    html += '<button class="btn btn-sm btn-outline" onclick="openFullRouteInKakaoMap()" style="font-size:11px;padding:2px 10px;">🗺️ 전체 경로 보기</button>';
+    html += '</div>';
+}
 
     // ===== 출발지 =====
     html += `
@@ -2798,37 +2796,35 @@ async function showWeekWeather() {
         alert('날씨 예보를 불러오지 못했습니다. 네트워크를 확인해주세요.');
     }
 }
-// ============================================================
-// 카카오맵 앱/웹 열기 (좌표 기반 정확한 위치)
-// ============================================================
 
 // ============================================================
-// 카카오맵에 전체 최적 경로 표시 (출발지 + 모든 경유지)
+// 카카오맵 길찾기 열기 (출발지 → 목적지 실제 경로)
 // ============================================================
 
-function openKakaoMap() {
-    // 전역 routeResult에서 경로 데이터 가져오기
-    if (!routeResult || !routeResult.places || routeResult.places.length === 0) {
-        showTabStatus('tab-route', '⚠️ 먼저 경로 최적화를 실행하세요.', 'warning');
+function openKakaoMap(destName, destLat, destLng) {
+    if (!destName || !destLat || !destLng) {
+        showTabStatus('tab-route', '⚠️ 목적지 정보가 없습니다.', 'warning');
         return;
     }
 
-    var start = routeResult.startPoint;
-    var places = routeResult.places;
-
-    // 검색어 구성: "출발지 → 1경유지 → 2경유지 → ... → 도착지"
-    var searchQuery = start.name;
-    for (var i = 0; i < places.length; i++) {
-        searchQuery += ' → ' + places[i].name;
+    // 출발지 좌표 (startPoint가 설정되어 있어야 함)
+    if (!startPoint || !startPoint.lat || !startPoint.lng) {
+        showTabStatus('tab-route', '⚠️ 출발지가 설정되지 않았습니다.', 'warning');
+        return;
     }
 
-    // 카카오맵 검색 URL (경로 검색 결과 표시)
-    var url = 'https://map.kakao.com/?q=' + encodeURIComponent(searchQuery);
+    // 카카오맵 길찾기 URL (출발지 → 목적지)
+    // https://map.kakao.com/link/to/목적지명,위도,경도
+    // 또는 출발지도 지정하려면: https://map.kakao.com/link/from/출발지명,위도,경도/to/목적지명,위도,경도
+    var url = 'https://map.kakao.com/link/from/' 
+        + encodeURIComponent(startPoint.name) + ',' + startPoint.lat + ',' + startPoint.lng 
+        + '/to/' 
+        + encodeURIComponent(destName) + ',' + destLat + ',' + destLng;
 
-    // 새 창으로 열기
+    // 새 창(또는 새 탭)으로 열기
     window.open(url, '_blank');
-
-    showTabStatus('tab-route', '🗺️ 카카오맵에서 전체 경로를 확인하세요!', 'info');
+    
+    showTabStatus('tab-route', '🗺️ 카카오맵 길찾기 열림: ' + startPoint.name + ' → ' + destName, 'info');
 }
 // ============================================================
 // 39. 초기화 실행
