@@ -119,36 +119,37 @@
         .btn-sm { padding: 4px 10px; font-size: 11px; }
         .btn-block { width: 100%; }
         
+        /* ===== 개소 아이템 ===== */
         .place-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 2px 5px;
+            padding: 4px 8px;
             background: #f7fafc;
             border-radius: 4px;
-            margin-bottom: 2px;
+            margin-bottom: 3px;
             border-left: 3px solid #2b6cb0;
-            gap: 4px;
-            min-height: 24px;
+            gap: 6px;
+            min-height: 32px;
         }
         .place-item .info {
             flex: 1;
             min-width: 0;
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 6px;
             flex-wrap: nowrap;
             overflow: hidden;
         }
         .place-item .info .name {
             font-weight: 600;
-            font-size: 11px;
+            font-size: 13px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
         .place-item .info .addr {
-            font-size: 10px;
+            font-size: 11px;
             color: #718096;
             white-space: nowrap;
             overflow: hidden;
@@ -157,16 +158,16 @@
         .place-item .info .addr:empty { display: none; }
         .place-item .actions {
             display: flex;
-            gap: 2px;
+            gap: 3px;
             flex-shrink: 0;
             align-items: center;
         }
         .place-item .actions button {
             background: none;
             border: none;
-            font-size: 10px;
+            font-size: 12px;
             cursor: pointer;
-            padding: 1px 3px;
+            padding: 2px 4px;
             color: #a0aec0;
             border-radius: 3px;
             transition: color 0.2s;
@@ -400,7 +401,6 @@
             flex: 1;
             overflow-y: auto;
             min-height: 0;
-            max-height: 300px;
             padding-right: 4px;
         }
         .place-scroll::-webkit-scrollbar {
@@ -414,12 +414,12 @@
             background: #f7fafc;
         }
         
-        /* ===== 개소탭 (수정됨: .active 추가) ===== */
+        /* ===== 개소탭 ===== */
         #tab-list.active {
             display: flex;
             flex-direction: column;
             height: auto;
-            max-height: calc(100vh - 180px);
+            max-height: calc(100vh - 130px);
             padding: 8px 10px;
             overflow: hidden;
         }
@@ -443,7 +443,6 @@
             flex: 1;
             overflow-y: auto;
             min-height: 0;
-            max-height: 300px;
             padding-right: 4px;
         }
         
@@ -554,8 +553,21 @@
             #map { height: 280px; }
             .bottom-tab { font-size: 9px; padding: 4px 2px 3px; }
             .bottom-tab .tab-icon { font-size: 16px; }
-            #tab-list.active { max-height: calc(100vh - 150px); }
-            #tab-list.active .place-scroll { max-height: 250px; }
+            #tab-list.active { max-height: calc(100vh - 120px); }
+            .place-item {
+                padding: 3px 6px;
+                min-height: 28px;
+            }
+            .place-item .info .name {
+                font-size: 12px;
+            }
+            .place-item .info .addr {
+                font-size: 10px;
+            }
+            .place-item .actions button {
+                font-size: 11px;
+                padding: 1px 3px;
+            }
             .place-item .info .addr { max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         }
         @media (max-width: 400px) {
