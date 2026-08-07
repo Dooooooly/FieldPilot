@@ -1737,12 +1737,10 @@ function showRouteList() {
 
     var html = '<div style="font-weight:600;font-size:14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">';
     html += '<span>📋 최적 경로</span>';
-    // 🚀 "전체 경로 카카오맵에서 보기" 버튼 추가
     html += '<button class="btn btn-sm btn-outline" onclick="openFullRouteInKakaoMap()" style="font-size:11px;padding:2px 10px;">🗺️ 전체 경로 보기</button>';
     html += '</div>';
-}
 
-    // ===== 출발지 =====
+    // ===== 출발지 (버튼 없음) =====
     html += `
         <div class="route-item route-start">
             <div class="idx">🚩</div>
@@ -1753,17 +1751,24 @@ function showRouteList() {
         </div>
     `;
 
-    // ===== 경유지들 =====
+    // ===== 경유지들 (각각 🗺️ 버튼) =====
     for (var i = 0; i < sorted.length; i++) {
         var p = sorted[i];
-        var prevLat = i === 0 ? startPoint.lat : sorted[i-1].lat;
-        var prevLng = i === 0 ? startPoint.lng : sorted[i-1].lng;
+        
+        // 직전 경유지 (출발지 또는 이전 경유지)
+        var prev = i === 0 ? startPoint : sorted[i - 1];
+        var prevName = prev.name;
+        var prevLat = prev.lat;
+        var prevLng = prev.lng;
+        
+        // 구간 거리 계산
         var segDist = haversineKm(prevLat, prevLng, p.lat, p.lng);
         
         html += `
             <div class="route-item" 
                  data-lat="${p.lat}" 
                  data-lng="${p.lng}"
+                 data-name="${escapeHtml(p.name)}"
                  onclick="moveToRoutePoint(this)"
                  title="클릭하면 지도에서 해당 위치로 이동합니다">
                 <div class="idx">${i + 1}</div>
@@ -1772,13 +1777,18 @@ function showRouteList() {
                     <div class="addr">${escapeHtml(p.address || '')}</div>
                 </div>
                 <div class="dist">${segDist.toFixed(1)}km</div>
+                <button class="btn btn-sm btn-outline" 
+                        style="margin-left:4px;padding:2px 6px;font-size:10px;flex-shrink:0;" 
+                        onclick="event.stopPropagation(); openKakaoMap('${escapeHtml(prevName)}', ${prevLat}, ${prevLng}, '${escapeHtml(p.name)}', ${p.lat}, ${p.lng})" 
+                        title="카카오맵에서 ${escapeHtml(prevName)} → ${escapeHtml(p.name)} 길찾기">
+                    🗺️
+                </button>
             </div>
         `;
     }
 
     container.innerHTML = html;
 }
-
 // ============================================================
 // 24-2. 경로 항목 클릭 시 해당 위치로 지도 이동
 // ============================================================
@@ -2798,33 +2808,26 @@ async function showWeekWeather() {
 }
 
 // ============================================================
-// 카카오맵 길찾기 열기 (출발지 → 목적지 실제 경로)
+// 카카오맵 길찾기 열기 (from → to)
 // ============================================================
 
-function openKakaoMap(destName, destLat, destLng) {
-    if (!destName || !destLat || !destLng) {
+function openKakaoMap(fromName, fromLat, fromLng, toName, toLat, toLng) {
+    if (!toName || !toLat || !toLng) {
         showTabStatus('tab-route', '⚠️ 목적지 정보가 없습니다.', 'warning');
         return;
     }
-
-    // 출발지 좌표 (startPoint가 설정되어 있어야 함)
-    if (!startPoint || !startPoint.lat || !startPoint.lng) {
-        showTabStatus('tab-route', '⚠️ 출발지가 설정되지 않았습니다.', 'warning');
+    if (!fromName || !fromLat || !fromLng) {
+        showTabStatus('tab-route', '⚠️ 출발지 정보가 없습니다.', 'warning');
         return;
     }
 
-    // 카카오맵 길찾기 URL (출발지 → 목적지)
-    // https://map.kakao.com/link/to/목적지명,위도,경도
-    // 또는 출발지도 지정하려면: https://map.kakao.com/link/from/출발지명,위도,경도/to/목적지명,위도,경도
     var url = 'https://map.kakao.com/link/from/' 
-        + encodeURIComponent(startPoint.name) + ',' + startPoint.lat + ',' + startPoint.lng 
+        + encodeURIComponent(fromName) + ',' + fromLat + ',' + fromLng 
         + '/to/' 
-        + encodeURIComponent(destName) + ',' + destLat + ',' + destLng;
+        + encodeURIComponent(toName) + ',' + toLat + ',' + toLng;
 
-    // 새 창(또는 새 탭)으로 열기
     window.open(url, '_blank');
-    
-    showTabStatus('tab-route', '🗺️ 카카오맵 길찾기 열림: ' + startPoint.name + ' → ' + destName, 'info');
+    showTabStatus('tab-route', '🗺️ 카카오맵 길찾기: ' + fromName + ' → ' + toName, 'info');
 }
 // ============================================================
 // 39. 초기화 실행
