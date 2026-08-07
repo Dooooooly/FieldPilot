@@ -2240,21 +2240,32 @@ function registerServiceWorker() {
 // 35. 날씨 정보 가져오기
 // ============================================================
 
+// ============================================================
+// 35. 날씨 정보 가져오기 (위도/경도 기반)
+// ============================================================
+
 async function fetchWeather() {
     var weatherEl = document.getElementById('weatherDisplay');
     if (!weatherEl) return;
     try {
-        // OpenWeatherMap API (무료, API 키 필요)
-        // https://openweathermap.org/current
-        var apiKey = 'b84c1b9a09d8316b679320cceb3a1097'; // 여기에 API 키 입력
-        var city = currentRegion || 'Seoul';
-        var url = 'https://api.openweathermap.org/data/2.5/weather?q=' + encodeURIComponent(city) + '&appid=' + apiKey + '&units=metric&lang=kr';
+        // ⭐ OpenWeatherMap API 키 (여기에 본인 키 입력)
+        var apiKey = 'b84c1b9a09d8316b679320cceb3a1097'; // 현재 키는 유효하나, 필요시 변경
+        
+        // ⭐ 현재 지역의 위도/경도 가져오기
+        var center = getRegionCenter(currentRegion);
+        var lat = center.lat;
+        var lon = center.lng;
+        
+        // ⭐ 위도/경도로 날씨 요청 (도시명 대신)
+        var url = 'https://api.openweathermap.org/data/2.5/weather?lat=' + lat + '&lon=' + lon + '&appid=' + apiKey + '&units=metric&lang=kr';
+        
         var res = await fetch(url);
         if (!res.ok) throw new Error('날씨 API 호출 실패');
         var data = await res.json();
         var temp = Math.round(data.main.temp);
         var desc = data.weather[0].description;
         var icon = data.weather[0].icon;
+        
         var iconEmoji = {
             '01d': '☀️', '01n': '🌙', '02d': '⛅', '02n': '☁️',
             '03d': '☁️', '03n': '☁️', '04d': '☁️', '04n': '☁️',
