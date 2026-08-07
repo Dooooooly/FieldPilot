@@ -1737,6 +1737,7 @@ function showRouteList() {
 
     var html = '<div style="font-weight:600;font-size:14px;margin-bottom:8px;">📋 최적 경로</div>';
 
+    // ===== 출발지 =====
     html += `
         <div class="route-item route-start">
             <div class="idx">🚩</div>
@@ -1744,9 +1745,15 @@ function showRouteList() {
                 <div class="name">${escapeHtml(startPoint.name)}</div>
                 <div class="addr">${escapeHtml(startPoint.address || '')}</div>
             </div>
+            <button class="btn btn-sm btn-outline" style="margin-left:4px;padding:2px 6px;font-size:10px;flex-shrink:0;" 
+                    onclick="event.stopPropagation(); openKakaoMap('${escapeHtml(startPoint.name)}', ${startPoint.lat || 0}, ${startPoint.lng || 0})" 
+                    title="카카오맵에서 상세보기">
+                🗺️
+            </button>
         </div>
     `;
 
+    // ===== 경유지들 =====
     for (var i = 0; i < sorted.length; i++) {
         var p = sorted[i];
         var prevLat = i === 0 ? startPoint.lat : sorted[i-1].lat;
@@ -1757,6 +1764,7 @@ function showRouteList() {
             <div class="route-item" 
                  data-lat="${p.lat}" 
                  data-lng="${p.lng}"
+                 data-name="${escapeHtml(p.name)}"
                  onclick="moveToRoutePoint(this)"
                  title="클릭하면 지도에서 해당 위치로 이동합니다">
                 <div class="idx">${i + 1}</div>
@@ -1765,6 +1773,11 @@ function showRouteList() {
                     <div class="addr">${escapeHtml(p.address || '')}</div>
                 </div>
                 <div class="dist">${segDist.toFixed(1)}km</div>
+                <button class="btn btn-sm btn-outline" style="margin-left:4px;padding:2px 6px;font-size:10px;flex-shrink:0;" 
+                        onclick="event.stopPropagation(); openKakaoMap('${escapeHtml(p.name)}', ${p.lat || 0}, ${p.lng || 0})" 
+                        title="카카오맵에서 상세보기">
+                    🗺️
+                </button>
             </div>
         `;
     }
