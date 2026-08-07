@@ -1366,6 +1366,16 @@ function showPlaceOnMap(id) {
     switchTab('tab-route');
     showTabStatus('tab-route', '📍 "' + place.name + '" 위치 표시 중', 'info');
 }
+function clearSingleMarker() {
+    if (singlePlaceMarker) {
+        try { singlePlaceMarker.setMap(null); } catch(e) {}
+        singlePlaceMarker = null;
+    }
+    if (singlePlaceInfoWindow) {
+        try { singlePlaceInfoWindow.close(); } catch(e) {}
+        singlePlaceInfoWindow = null;
+    }
+}
 // ============================================================
 // 22. 지오코딩
 // ============================================================
