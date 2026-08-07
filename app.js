@@ -1302,7 +1302,7 @@ function renderWaypointList() {
 }
 
 // ============================================================
-// 21. 지도에 개소 표시 (개소탭 지도 버튼)
+// 21. 지도에 개소 표시 (반투명 커스텀 오버레이)
 // ============================================================
 
 function showPlaceOnMap(id) {
@@ -1330,19 +1330,21 @@ function showPlaceOnMap(id) {
     
     var pos = new kakao.maps.LatLng(place.lat, place.lng);
     
-    // ⭐⭐ 단일 개소용 커스텀 오버레이
+    // ⭐ 강조된 반투명 단일 개소 오버레이
     var content = `
         <div style="
-            background: white;
-            padding: 6px 14px;
-            border-radius: 20px;
-            border: 3px solid #2b6cb0;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+            background: rgba(255, 255, 255, 0.92);
+            padding: 8px 18px;
+            border-radius: 24px;
+            border: 2.5px solid rgba(43, 108, 176, 0.4);
+            box-shadow: 0 8px 32px rgba(43, 108, 176, 0.2), 0 4px 16px rgba(0,0,0,0.08);
             font-size: 14px;
             font-weight: 700;
             color: #2d3748;
             white-space: nowrap;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
         ">
             📍 ${escapeHtml(place.name)}
         </div>
@@ -1364,18 +1366,6 @@ function showPlaceOnMap(id) {
     switchTab('tab-route');
     showTabStatus('tab-route', '📍 "' + place.name + '" 위치 표시 중', 'info');
 }
-
-function clearSingleMarker() {
-    if (singlePlaceMarker) {
-        try { singlePlaceMarker.setMap(null); } catch(e) {}
-        singlePlaceMarker = null;
-    }
-    if (singlePlaceInfoWindow) {
-        try { singlePlaceInfoWindow.close(); } catch(e) {}
-        singlePlaceInfoWindow = null;
-    }
-}
-
 // ============================================================
 // 22. 지오코딩
 // ============================================================
@@ -1812,7 +1802,7 @@ async function callKakaoMobilityRoute(points, restKey) {
 }
 
 // ============================================================
-// 24-4. 도로 경로 그리기 (무지개 색상 + 화살표)
+// 24-4. 도로 경로 그리기 (반투명 파스텔 톤)
 // ============================================================
 
 function drawRoadRoute(routeData) {
@@ -1830,12 +1820,15 @@ function drawRoadRoute(routeData) {
             kakaoPolyline = null;
         }
         
-        // 무지개 색상 (최대 15개 경유지 대응)
-        var rainbowColors = [
-            '#FF0000', '#FF7F00', '#FFFF00', '#00FF00',
-            '#0000FF', '#4B0082', '#8B00FF', '#FF1493',
-            '#00CED1', '#FF4500', '#32CD32', '#1E90FF',
-            '#FF69B4', '#FFD700', '#00FF7F'
+        // ⭐ 파스텔 반투명 색상 (16진수 + 투명도)
+        var pastelColors = [
+            'rgba(255, 150, 150, 0.7)',  // 연한 빨강
+            'rgba(255, 200, 150, 0.7)',  // 연한 주황
+            'rgba(255, 230, 150, 0.7)',  // 연한 노랑
+            'rgba(150, 220, 150, 0.7)',  // 연한 초록
+            'rgba(150, 200, 255, 0.7)',  // 연한 파랑
+            'rgba(200, 150, 255, 0.7)',  // 연한 보라
+            'rgba(255, 150, 200, 0.7)'   // 연한 핑크
         ];
         
         var totalBounds = new kakao.maps.LatLngBounds();
@@ -1863,19 +1856,19 @@ function drawRoadRoute(routeData) {
             }
             
             if (sectionPath.length > 1) {
-                var colorIndex = sectionIndex % rainbowColors.length;
-                var color = rainbowColors[colorIndex];
+                var colorIndex = sectionIndex % pastelColors.length;
+                var color = pastelColors[colorIndex];
                 
                 var polyline = new kakao.maps.Polyline({
                     map: kakaoMap,
                     path: sectionPath,
                     strokeWeight: 6,
                     strokeColor: color,
-                    strokeOpacity: 0.9,
+                    strokeOpacity: 0.85,
                     strokeStyle: 'solid'
                 });
                 
-                // 화살표 표시
+                // ⭐ 화살표도 반투명
                 if (sectionPath.length > 2) {
                     var lastIdx = sectionPath.length - 1;
                     var prevIdx = lastIdx - 1;
@@ -1893,7 +1886,7 @@ function drawRoadRoute(routeData) {
                             border-right: 8px solid transparent;
                             border-bottom: 14px solid ${color};
                             transform: rotate(${angle + 90}deg);
-                            filter: drop-shadow(0 1px 3px rgba(0,0,0,0.3));
+                            filter: drop-shadow(0 1px 3px rgba(0,0,0,0.2));
                         "></div>
                     `;
                     
@@ -1914,7 +1907,7 @@ function drawRoadRoute(routeData) {
         }
         
         kakaoMap.setBounds(totalBounds);
-        console.log('✅ 무지개 도로 경로 표시 완료 (' + sectionIndex + '개 구간)');
+        console.log('✅ 반투명 파스텔 경로 표시 완료 (' + sectionIndex + '개 구간)');
         
     } catch (e) {
         console.error('도로 경로 그리기 실패:', e);
@@ -2066,9 +2059,8 @@ function createMap(container) {
         showTabStatus('tab-settings', '⚠️ 지도 생성 실패', 'error');
     }
 }
-
 // ============================================================
-// 28. 마커 관리 (경로/개소) - 커스텀 오버레이 적용
+// 28. 마커 관리 (반투명 커스텀 오버레이)
 // ============================================================
 
 function addRouteMarker(lat, lng, title, isStart) {
@@ -2077,21 +2069,25 @@ function addRouteMarker(lat, lng, title, isStart) {
         var pos = new kakao.maps.LatLng(lat, lng);
         
         var icon = isStart ? '🚩' : '📍';
-        var bgColor = isStart ? '#2b6cb0' : '#38a169';
+        var bgColor = isStart ? 'rgba(43, 108, 176, 0.85)' : 'rgba(56, 161, 105, 0.85)';
+        var shadowColor = isStart ? 'rgba(43, 108, 176, 0.3)' : 'rgba(56, 161, 105, 0.3)';
         var textColor = 'white';
         
         var content = `
             <div style="
                 background: ${bgColor};
-                padding: 4px 12px;
-                border-radius: 16px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                padding: 6px 14px;
+                border-radius: 20px;
+                box-shadow: 0 4px 16px ${shadowColor}, 0 2px 8px rgba(0,0,0,0.1);
                 font-size: 13px;
                 font-weight: 700;
                 color: ${textColor};
                 white-space: nowrap;
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                border: 2px solid ${isStart ? '#1a365d' : '#276749'};
+                backdrop-filter: blur(4px);
+                -webkit-backdrop-filter: blur(4px);
+                border: 1px solid rgba(255,255,255,0.2);
+                letter-spacing: 0.3px;
             ">
                 ${icon} ${escapeHtml(title)}
             </div>
@@ -2112,20 +2108,8 @@ function addRouteMarker(lat, lng, title, isStart) {
     }
 }
 
-function clearRouteMarkers() {
-    for (var i = 0; i < routeMarkers.length; i++) {
-        try { routeMarkers[i].setMap(null); } catch(e) {}
-    }
-    routeMarkers = [];
-    if (kakaoPolyline) {
-        try { kakaoPolyline.setMap(null); } catch(e) {}
-        kakaoPolyline = null;
-    }
-    isShowingRouteMarkers = false;
-}
-
 // ============================================================
-// 29. 개소 마커 표시 (커스텀 오버레이 적용)
+// 29. 개소 마커 표시 (반투명 커스텀 오버레이)
 // ============================================================
 
 function showPlaceMarkers() {
@@ -2158,13 +2142,14 @@ function showPlaceMarkers() {
         var pos = new kakao.maps.LatLng(p.lat, p.lng);
         bounds.extend(pos);
         
+        // ⭐ 반투명 블러 효과 커스텀 오버레이
         var content = `
             <div style="
-                background: white;
-                padding: 4px 10px;
+                background: rgba(255, 255, 255, 0.88);
+                padding: 5px 12px;
                 border-radius: 16px;
-                border: 2px solid #2b6cb0;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+                border: 1.5px solid rgba(43, 108, 176, 0.25);
+                box-shadow: 0 4px 16px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
                 font-size: 12px;
                 font-weight: 600;
                 color: #2d3748;
@@ -2172,9 +2157,11 @@ function showPlaceMarkers() {
                 cursor: pointer;
                 transition: transform 0.2s, box-shadow 0.2s;
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                backdrop-filter: blur(8px);
+                -webkit-backdrop-filter: blur(8px);
             "
-            onmouseover="this.style.transform='scale(1.05)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.2)'"
-            onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 2px 6px rgba(0,0,0,0.15)'"
+            onmouseover="this.style.transform='scale(1.05)';this.style.boxShadow='0 6px 20px rgba(0,0,0,0.12)'"
+            onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 4px 16px rgba(0,0,0,0.08)'"
             onclick="showPlaceOnMap('${p.id}')">
                 📍 ${escapeHtml(p.name)}
             </div>
@@ -2193,7 +2180,6 @@ function showPlaceMarkers() {
     
     kakaoMap.setBounds(bounds);
 }
-
 // ============================================================
 // 30. 엑셀 파일 처리
 // ============================================================
