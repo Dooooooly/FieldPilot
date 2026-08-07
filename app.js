@@ -919,9 +919,19 @@ async function setStartPoint() {
 
 function getRecentStartPoints() {
     try {
-        var data = localStorage.getItem('recentStartPoints');
+        var key = 'recentStartPoints_' + currentRegion;
+        var data = localStorage.getItem(key);
         return data ? JSON.parse(data) : [];
     } catch { return []; }
+}
+
+function saveRecentStartPoint(name, address, lat, lng) {
+    var recent = getRecentStartPoints();
+    recent = recent.filter(function(item) { return item.name !== name; });
+    recent.unshift({ name: name, address: address, lat: lat, lng: lng });
+    recent = recent.slice(0, 3);
+    var key = 'recentStartPoints_' + currentRegion;
+    localStorage.setItem(key, JSON.stringify(recent));
 }
 
 function saveRecentStartPoint(name, address, lat, lng) {
@@ -1709,6 +1719,12 @@ async function runOptimize() {
         document.getElementById('optimizeMode').textContent = optimizeMode === 'Nearest' ? '가까운순' : '먼순';
         
         showRouteList();
+
+        // ===== 🔥 추가: 지도 중심을 출발지로 이동 =====
+if (kakaoMap && startPoint && startPoint.lat && startPoint.lng) {
+    kakaoMap.setCenter(new kakao.maps.LatLng(startPoint.lat, startPoint.lng));
+    kakaoMap.setLevel(5); // 적절한 줌 레벨 (5~6 권장)
+}
         
         switchTab('tab-route');
         showTabStatus('tab-route', '✅ 최적화 완료! ' + validPlaces.length + '개소', 'ok');
@@ -1735,6 +1751,7 @@ function showRouteList() {
         return;
     }
 
+    // ===== "전체 경로보기" 버튼 제거 =====
     var html = '<div style="font-weight:600;font-size:14px;margin-bottom:8px;">📋 최적 경로</div>';
 
     // ===== 출발지 (클릭 가능하도록 수정) =====
@@ -1751,37 +1768,19 @@ function showRouteList() {
                 <div class="name">${escapeHtml(startPoint.name)}</div>
                 <div class="addr">${escapeHtml(startPoint.address || '')}</div>
             </div>
-            <div class="dist" style="color:#2b6cb0;">출발</div>
+            <!-- 출발지에는 거리/시간 표시 없음 -->
         </div>
     `;
 
     // ===== 경유지들 (거리 + 시간 표시) =====
     for (var i = 0; i < sorted.length; i++) {
         var p = sorted[i];
-        
-        // 직전 경유지 (출발지 또는 이전 경유지)
         var prev = i === 0 ? startPoint : sorted[i - 1];
-        var prevName = prev.name;
-        var prevLat = prev.lat;
-        var prevLng = prev.lng;
         
-        // 구간 거리 계산 (km)
-        var segDist = haversineKm(prevLat, prevLng, p.lat, p.lng);
-        
-        // 구간 시간 계산 (분) - 총 시간에서 비율로 계산하거나, 거리 기반 추정
-        // 실제 API 응답에 duration이 있다면 그것을 사용하는 것이 좋음
-        var segTime = 0;
-        if (routeResult.sectionDurations && routeResult.sectionDurations[i]) {
-            // 만약 runOptimize에서 sectionDurations를 저장했다면 사용
-            segTime = routeResult.sectionDurations[i];
-        } else {
-            // 거리 기반 추정 (평균 시속 40km/h 가정)
-            segTime = Math.round(segDist / 40 * 60);
-        }
-        
-        // 시간 표시 문자열 (분)
-        var timeStr = segTime + '분';
-        if (segTime < 1) timeStr = '1분 미만';
+        // 구간 거리 (km)
+        var segDist = haversineKm(prev.lat, prev.lng, p.lat, p.lng);
+        // 구간 시간 (분) - 평균 속도 40km/h 가정 (또는 API 응답에서 duration 사용)
+        var segTime = Math.round(segDist / 40 * 60); // 40km/h = 0.667 km/min
         
         html += `
             <div class="route-item" 
@@ -1795,14 +1794,14 @@ function showRouteList() {
                     <div class="name">${escapeHtml(p.name)}</div>
                     <div class="addr">${escapeHtml(p.address || '')}</div>
                 </div>
-                <div class="dist" style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
-                    <span style="font-size:12px;color:#38a169;">${segDist.toFixed(1)}km</span>
-                    <span style="font-size:11px;color:#718096;">⏱️ ${timeStr}</span>
+                <div class="dist" style="text-align:right;font-size:12px;color:#38a169;font-weight:600;flex-shrink:0;min-width:70px;">
+                    ${segDist.toFixed(1)}km<br>
+                    <span style="font-size:10px;color:#718096;">${segTime}분</span>
                 </div>
                 <button class="btn btn-sm btn-outline" 
                         style="margin-left:4px;padding:2px 6px;font-size:10px;flex-shrink:0;" 
-                        onclick="event.stopPropagation(); openKakaoMap('${escapeHtml(prevName)}', ${prevLat}, ${prevLng}, '${escapeHtml(p.name)}', ${p.lat}, ${p.lng})" 
-                        title="카카오맵에서 ${escapeHtml(prevName)} → ${escapeHtml(p.name)} 길찾기">
+                        onclick="event.stopPropagation(); openKakaoMap('${escapeHtml(prev.name)}', ${prev.lat}, ${prev.lng}, '${escapeHtml(p.name)}', ${p.lat}, ${p.lng})" 
+                        title="카카오맵에서 ${escapeHtml(prev.name)} → ${escapeHtml(p.name)} 길찾기">
                     🗺️
                 </button>
             </div>
@@ -1818,6 +1817,7 @@ function showRouteList() {
 function moveToRoutePoint(el) {
     var lat = parseFloat(el.dataset.lat);
     var lng = parseFloat(el.dataset.lng);
+    var name = el.dataset.name || '장소';
     
     if (!lat || !lng || !kakaoMap) {
         showTabStatus('tab-route', '⚠️ 위치 정보가 없거나 지도가 준비되지 않았습니다.', 'warning');
@@ -1827,6 +1827,7 @@ function moveToRoutePoint(el) {
     kakaoMap.setCenter(new kakao.maps.LatLng(lat, lng));
     kakaoMap.setLevel(4);
 
+    // 하이라이트 효과 (출발지 포함 모든 항목)
     var items = document.querySelectorAll('.route-item');
     for (var i = 0; i < items.length; i++) {
         items[i].style.background = '';
@@ -1835,7 +1836,7 @@ function moveToRoutePoint(el) {
     el.style.background = '#ebf8ff';
     el.style.borderLeftColor = '#2b6cb0';
 
-    showTabStatus('tab-route', '📍 해당 위치로 이동했습니다.', 'info');
+    showTabStatus('tab-route', '📍 "' + name + '" 위치로 이동했습니다.', 'info');
 }
 
 // ============================================================
@@ -2850,6 +2851,53 @@ function openKakaoMap(fromName, fromLat, fromLng, toName, toLat, toLng) {
 
     window.open(url, '_blank');
     showTabStatus('tab-route', '🗺️ 카카오맵 길찾기: ' + fromName + ' → ' + toName, 'info');
+}
+// ============================================================
+// 경로 초기화 (출발지, 경유지, 계산 결과 모두 리셋)
+// ============================================================
+
+function resetRoute() {
+    if (!confirm('출발지, 경유지, 최적화 결과를 모두 초기화하시겠습니까?')) {
+        return;
+    }
+
+    // 1. 출발지 초기화
+    startPoint = null;
+    document.getElementById('startPoint').value = '';
+    document.getElementById('startInfo').textContent = '⏳ 출발지를 검색하고 설정하세요';
+    document.getElementById('startInfo').style.color = '#718096';
+    document.getElementById('startSearchResults').style.display = 'none';
+
+    // 2. 경유지 초기화
+    waypoints = [];
+    renderWaypointList();
+    document.getElementById('waypointInput').value = '';
+    document.getElementById('waypointSearchResults').style.display = 'none';
+
+    // 3. 경로 결과 초기화
+    routeResult = null;
+    document.getElementById('placeCount').textContent = '0개소';
+    document.getElementById('totalDistance').textContent = '0.00 km';
+    document.getElementById('totalTime').textContent = '0 분';
+    document.getElementById('optimizeMode').textContent = '-';
+    document.getElementById('routeList').innerHTML = '';
+
+    // 4. 지도 마커/경로 초기화
+    clearRouteMarkers();
+    clearSingleMarker();
+    isShowingRouteMarkers = false;
+
+    // 5. 지도를 현재 지역 중심으로 이동
+    if (kakaoMap && currentRegion) {
+        var center = getRegionCenter(currentRegion);
+        kakaoMap.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
+        kakaoMap.setLevel(5);
+    }
+
+    // 6. 출발지 최근 목록도 초기화 (선택)
+    // localStorage.removeItem('recentStartPoints');
+
+    showTabStatus('tab-places', '🔄 모든 경로 데이터가 초기화되었습니다.', 'ok');
 }
 // ============================================================
 // 39. 초기화 실행
