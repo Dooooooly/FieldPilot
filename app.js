@@ -1604,48 +1604,129 @@ async function callKakaoMobilityRoute(points, restKey) {
     }
 }
 // ============================================================
-// 24-2. 도로 경로 그리기
+// 도로 경로 그리기 (무지개 색상)
 // ============================================================
 
 function drawRoadRoute(routeData) {
     if (!kakaoMap || !routeData) return;
+    
     try {
         var route = routeData.routes[0];
         if (!route || !route.sections) return;
-        var path = [];
+        
+        // 기존 폴리라인 제거
+        if (kakaoPolyline) {
+            kakaoPolyline.setMap(null);
+            kakaoPolyline = null;
+        }
+        
+        // ⭐ 무지개 색상 (경유지 최대 15개까지 대응)
+        var rainbowColors = [
+            '#FF0000', // 1: 빨강
+            '#FF7F00', // 2: 주황
+            '#FFFF00', // 3: 노랑
+            '#00FF00', // 4: 초록
+            '#0000FF', // 5: 파랑
+            '#4B0082', // 6: 남색
+            '#8B00FF', // 7: 보라
+            '#FF1493', // 8: 핫핑크
+            '#00CED1', // 9: 다크터콰이즈
+            '#FF4500', // 10: 오렌지레드
+            '#32CD32', // 11: 라임그린
+            '#1E90FF', // 12: 도저블루
+            '#FF69B4', // 13: 핫핑크
+            '#FFD700', // 14: 골드
+            '#00FF7F'  // 15: 스프링그린
+        ];
+        
+        var allPaths = [];
+        var totalBounds = new kakao.maps.LatLngBounds();
+        var sectionIndex = 0;
+        
+        // 각 섹션별로 처리
         for (var s = 0; s < route.sections.length; s++) {
             var section = route.sections[s];
-            if (section.roads) {
-                for (var r = 0; r < section.roads.length; r++) {
-                    var road = section.roads[r];
-                    if (road.vertexes) {
-                        for (var v = 0; v < road.vertexes.length; v += 2) {
-                            var lng = road.vertexes[v];
-                            var lat = road.vertexes[v + 1];
-                            if (lat && lng) {
-                                path.push(new kakao.maps.LatLng(lat, lng));
-                            }
+            if (!section.roads) continue;
+            
+            var sectionPath = [];
+            
+            for (var r = 0; r < section.roads.length; r++) {
+                var road = section.roads[r];
+                if (road.vertexes) {
+                    for (var v = 0; v < road.vertexes.length; v += 2) {
+                        var lng = road.vertexes[v];
+                        var lat = road.vertexes[v + 1];
+                        if (lat && lng) {
+                            var point = new kakao.maps.LatLng(lat, lng);
+                            sectionPath.push(point);
+                            totalBounds.extend(point);
                         }
                     }
                 }
             }
+            
+            if (sectionPath.length > 1) {
+                // ⭐ 무지개 색상 (구간 인덱스에 따라)
+                var colorIndex = sectionIndex % rainbowColors.length;
+                var color = rainbowColors[colorIndex];
+                
+                var polyline = new kakao.maps.Polyline({
+                    map: kakaoMap,
+                    path: sectionPath,
+                    strokeWeight: 6,
+                    strokeColor: color,
+                    strokeOpacity: 0.9,
+                    strokeStyle: 'solid'
+                });
+                
+                // ⭐ 화살표 표시 (진행 방향)
+                if (sectionPath.length > 2) {
+                    var lastIdx = sectionPath.length - 1;
+                    var prevIdx = lastIdx - 1;
+                    var angle = Math.atan2(
+                        sectionPath[lastIdx].getLat() - sectionPath[prevIdx].getLat(),
+                        sectionPath[lastIdx].getLng() - sectionPath[prevIdx].getLng()
+                    ) * 180 / Math.PI;
+                    
+                    var arrowPos = sectionPath[lastIdx];
+                    var arrowContent = `
+                        <div style="
+                            width: 0;
+                            height: 0;
+                            border-left: 8px solid transparent;
+                            border-right: 8px solid transparent;
+                            border-bottom: 14px solid ${color};
+                            transform: rotate(${angle + 90}deg);
+                            filter: drop-shadow(0 1px 3px rgba(0,0,0,0.3));
+                        "></div>
+                    `;
+                    
+                    new kakao.maps.CustomOverlay({
+                        map: kakaoMap,
+                        position: arrowPos,
+                        content: arrowContent,
+                        yAnchor: 0.5,
+                        xAnchor: 0.5
+                    });
+                }
+                
+                // 폴리라인 저장
+                if (!window._sectionPolylines) window._sectionPolylines = [];
+                window._sectionPolylines.push(polyline);
+                
+                sectionIndex++;
+            }
         }
-        if (path.length < 2) return;
-        if (kakaoPolyline) kakaoPolyline.setMap(null);
-        kakaoPolyline = new kakao.maps.Polyline({
-            map: kakaoMap,
-            path: path,
-            strokeWeight: 5,
-            strokeColor: '#2B6CB0',
-            strokeOpacity: 0.8,
-            strokeStyle: 'solid'
-        });
-        var bounds = new kakao.maps.LatLngBounds();
-        for (var i = 0; i < path.length; i++) bounds.extend(path[i]);
-        kakaoMap.setBounds(bounds);
-        console.log('✅ 도로 경로 표시 완료 (포인트 수: ' + path.length + ')');
+        
+        kakaoMap.setBounds(totalBounds);
+        console.log('✅ 무지개 경로 표시 완료 (' + sectionIndex + '개 구간)');
+        
     } catch (e) {
         console.error('도로 경로 그리기 실패:', e);
+        // 실패 시 직선 경로로 폴백
+        if (window._lastPath) {
+            drawRoute(window._lastPath);
+        }
     }
 }
 // ============================================================
