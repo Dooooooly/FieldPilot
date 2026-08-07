@@ -17,7 +17,6 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     
     <style>
-        /* ===== 리셋 ===== */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -26,17 +25,9 @@
             padding-bottom: 70px;
         }
         
-        /* ===== 유틸리티 ===== */
         .flex-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
         .flex-1 { flex: 1; min-width: 0; }
-        .gap-2 { gap: 8px; }
-        .mt-1 { margin-top: 6px; }
-        .mb-1 { margin-bottom: 6px; }
-        .w-full { width: 100%; }
-        .text-center { text-align: center; }
-        .text-muted { color: #a0aec0; font-size: 12px; }
         
-        /* ===== 헤더 ===== */
         .header {
             background: linear-gradient(135deg, #1a365d, #2b6cb0);
             color: white;
@@ -102,7 +93,6 @@
             gap: 6px;
         }
         
-        /* ===== 버튼 ===== */
         .btn {
             padding: 6px 14px;
             border: none;
@@ -128,21 +118,18 @@
         .btn-outline:hover:not(:disabled) { background: #ebf8ff; }
         .btn-sm { padding: 4px 10px; font-size: 11px; }
         .btn-block { width: 100%; }
-        .btn-map { background: #38a169; color: white; padding: 2px 6px; font-size: 10px; border-radius: 3px; }
-        .btn-map:hover { background: #276749; }
         
-        /* ===== 개소 아이템 ===== */
         .place-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 3px 6px;
+            padding: 2px 5px;
             background: #f7fafc;
             border-radius: 4px;
             margin-bottom: 2px;
             border-left: 3px solid #2b6cb0;
             gap: 4px;
-            min-height: 28px;
+            min-height: 24px;
         }
         .place-item .info {
             flex: 1;
@@ -155,7 +142,7 @@
         }
         .place-item .info .name {
             font-weight: 600;
-            font-size: 12px;
+            font-size: 11px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -177,7 +164,7 @@
         .place-item .actions button {
             background: none;
             border: none;
-            font-size: 11px;
+            font-size: 10px;
             cursor: pointer;
             padding: 1px 3px;
             color: #a0aec0;
@@ -243,7 +230,6 @@
         .summary-row .label { color: #4a5568; }
         .summary-row .value { font-weight: 700; color: #2b6cb0; }
         
-        /* ===== 상태/알림 ===== */
         .tab-status {
             display: none;
             padding: 6px 10px;
@@ -355,14 +341,6 @@
         .bottom-tab.active { color: #2b6cb0; border-top-color: #2b6cb0; }
         .bottom-tab.help-tab { color: #805ad5; }
         .bottom-tab.help-tab.active { color: #805ad5; border-top-color: #805ad5; }
-        .bottom-tab .tab-badge {
-            background: #e53e3e;
-            color: white;
-            font-size: 8px;
-            padding: 1px 5px;
-            border-radius: 10px;
-            margin-left: 2px;
-        }
         
         .modal-overlay {
             display: none;
@@ -418,105 +396,57 @@
         .search-results .result-item .source { font-size: 10px; color: #a0aec0; margin-left: 4px; }
         
         /* ===== 개소리스트 스크롤 ===== */
-.place-scroll {
-    flex: 1;
-    overflow-y: auto;
-    min-height: 0;
-    max-height: 300px;  /* ⭐ 최대 높이 제한! */
-    padding-right: 4px;
-}
-.place-scroll::-webkit-scrollbar {
-    width: 4px;
-}
-.place-scroll::-webkit-scrollbar-thumb {
-    background: #cbd5e0;
-    border-radius: 4px;
-}
-.place-scroll::-webkit-scrollbar-track {
-    background: #f7fafc;
-}
-
-/* ===== 개소탭 ===== */
-#tab-list {
-    display: flex;
-    flex-direction: column;
-    height: auto;
-    max-height: calc(100vh - 180px);
-    padding: 8px 10px;
-    overflow: hidden;
-}
-#tab-list .card {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    padding: 8px 10px;
-    margin-bottom: 4px;
-}
-#tab-list .card .flex-row {
-    flex-shrink: 0;
-    margin-bottom: 4px;
-}
-#tab-list .card #searchPlace {
-    flex-shrink: 0;
-    margin-bottom: 4px;
-}
-
-/* ===== 개소 아이템 (크기 줄임) ===== */
-.place-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 2px 5px;
-    background: #f7fafc;
-    border-radius: 4px;
-    margin-bottom: 2px;
-    border-left: 3px solid #2b6cb0;
-    gap: 4px;
-    min-height: 24px;
-}
-.place-item .info {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    flex-wrap: nowrap;
-    overflow: hidden;
-}
-.place-item .info .name {
-    font-weight: 600;
-    font-size: 11px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.place-item .info .addr {
-    font-size: 10px;
-    color: #718096;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.place-item .info .addr:empty { display: none; }
-.place-item .actions {
-    display: flex;
-    gap: 2px;
-    flex-shrink: 0;
-    align-items: center;
-}
-.place-item .actions button {
-    background: none;
-    border: none;
-    font-size: 10px;
-    cursor: pointer;
-    padding: 1px 3px;
-    color: #a0aec0;
-    border-radius: 3px;
-    transition: color 0.2s;
-}
+        .place-scroll {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+            max-height: 300px;
+            padding-right: 4px;
+        }
+        .place-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+        .place-scroll::-webkit-scrollbar-thumb {
+            background: #cbd5e0;
+            border-radius: 4px;
+        }
+        .place-scroll::-webkit-scrollbar-track {
+            background: #f7fafc;
+        }
         
-        /* ===== 경로 리스트 ===== */
+        /* ===== 개소탭 (수정됨: .active 추가) ===== */
+        #tab-list.active {
+            display: flex;
+            flex-direction: column;
+            height: auto;
+            max-height: calc(100vh - 180px);
+            padding: 8px 10px;
+            overflow: hidden;
+        }
+        #tab-list.active .card {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            padding: 8px 10px;
+            margin-bottom: 4px;
+        }
+        #tab-list.active .card .flex-row {
+            flex-shrink: 0;
+            margin-bottom: 4px;
+        }
+        #tab-list.active .card #searchPlace {
+            flex-shrink: 0;
+            margin-bottom: 4px;
+        }
+        #tab-list.active .place-scroll {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+            max-height: 300px;
+            padding-right: 4px;
+        }
+        
         .route-item {
             background: white;
             border-radius: 6px;
@@ -562,7 +492,6 @@
         .route-start .idx { background: #2b6cb0; }
         .route-start:hover { background: white; }
         
-        /* ===== 도움말 ===== */
         .help-section {
             margin-bottom: 12px;
             padding-bottom: 12px;
@@ -616,7 +545,6 @@
             to { opacity: 1; transform: translateY(0); }
         }
         
-        /* ===== 반응형 ===== */
         @media (max-width: 480px) {
             .header h1 { font-size: 15px; }
             .header select { font-size: 11px; padding: 3px 8px; }
@@ -626,14 +554,9 @@
             #map { height: 280px; }
             .bottom-tab { font-size: 9px; padding: 4px 2px 3px; }
             .bottom-tab .tab-icon { font-size: 16px; }
-            #tab-list { height: calc(100vh - 150px); }
-            .place-item .info .addr {
-                max-width: 100px;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-            }
-            .help-section .help-body { font-size: 12px; }
+            #tab-list.active { max-height: calc(100vh - 150px); }
+            #tab-list.active .place-scroll { max-height: 250px; }
+            .place-item .info .addr { max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         }
         @media (max-width: 400px) {
             .place-item .info .addr { max-width: 60px; }
