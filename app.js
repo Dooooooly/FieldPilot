@@ -371,7 +371,19 @@ function switchRegion(region) {
         kakaoMap.setLevel(5);
     }
     
-    showTabStatus('tab-settings', '📍 ' + region + ' 지역으로 전환', 'info');
+    // ===== 🔥 1. 알림 버그 수정: 현재 활성화된 탭에 메시지 띄우기 =====
+    // 현재 보이는 탭 콘텐츠를 찾아서 해당 탭에 상태를 표시
+    var activeTab = document.querySelector('.tab-content.active');
+    if (activeTab) {
+        var activeTabId = activeTab.id;
+        showTabStatus(activeTabId, '📍 ' + region + ' 지역으로 전환됨', 'info');
+    } else {
+        // 혹시 모를 fallback
+        showTabStatus('tab-settings', '📍 ' + region + ' 지역으로 전환됨', 'info');
+    }
+
+    // ===== 🔥 2. 날씨 버그 수정: 지역 전환 시 날씨 즉시 갱신 =====
+    fetchWeather();
 }
 
 function addRegion() {
