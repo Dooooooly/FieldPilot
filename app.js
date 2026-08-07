@@ -729,6 +729,7 @@ function makeSearchHandler(containerId, minLen, onClickName, timeoutIdRef) {
             }
             placeResults = placeResults.slice(0, 5);
             var kakaoResults = await searchKakaoPlaces(query);
+            kakaoResults = kakaoResults.slice(0, 5);
             var allResults = [];
             var seenNames = {};
             for (var i = 0; i < placeResults.length; i++) {
@@ -781,6 +782,7 @@ var searchWaypoint = function(query) {
         }
         placeResults = placeResults.slice(0, 5);
         var kakaoResults = await searchKakaoPlaces(query, 5);
+        kakaoResults = kakaoResults.slice(0, 5);
         var allResults = [];
         var seenNames = {};
         for (var i = 0; i < placeResults.length; i++) {
@@ -854,6 +856,93 @@ async function setStartPoint() {
 // 14. 검색 결과 선택
 // ============================================================
 
+// ⭐ 최근 출발지 저장 함수
+function getRecentStartPoints() {
+    try {
+        var data = localStorage.getItem('recentStartPoints');
+        return data ? JSON.parse(data) : [];
+    } catch { return []; }
+}
+
+function saveRecentStartPoint(name, address, lat, lng) {
+    var recent = getRecentStartPoints();
+    recent = recent.filter(function(item) { return item.name !== name; });
+    recent.unshift({ name: name, address: address, lat: lat, lng: lng });
+    recent = recent.slice(0, 3);
+    localStorage.setItem('recentStartPoints', JSON.stringify(recent));
+}
+
+// ⭐ 수정된 searchStartPoint - 최근 출발지 표시
+async function searchStartPoint(query) {
+    var container = document.getElementById('startSearchResults');
+    
+    // ⭐ 입력이 없으면 최근 출발지 3개 표시
+    if (!query || query.length === 0) {
+        var recent = getRecentStartPoints();
+        if (recent.length === 0) {
+            container.style.display = 'none';
+            return;
+        }
+        var html = '';
+        for (var i = 0; i < recent.length; i++) {
+            var item = recent[i];
+            html += '<div class="result-item" onclick="selectStartPoint(\'' + escapeHtml(item.name) + '\', \'' + escapeHtml(item.address) + '\', ' + item.lat + ', ' + item.lng + ')" data-index="' + i + '">';
+            html += '<div>🕐 ' + escapeHtml(item.name) + ' <span class="source" style="font-size:10px;color:#a0aec0;margin-left:4px;">최근</span></div>';
+            html += '<div class="addr">' + escapeHtml(item.address) + '</div>';
+            html += '</div>';
+        }
+        container.innerHTML = html;
+        container.style.display = 'block';
+        return;
+    }
+    
+    // 입력이 있으면 기존 검색 로직 실행
+    if (query.length < 2) {
+        container.style.display = 'none';
+        return;
+    }
+    clearTimeout(startSearchTimeout);
+    startSearchTimeout = setTimeout(async function() {
+        var placeResults = [];
+        var lowerQuery = query.toLowerCase();
+        for (var i = 0; i < places.length; i++) {
+            var p = places[i];
+            if (p.name.toLowerCase().includes(lowerQuery) || 
+                (p.address && p.address.toLowerCase().includes(lowerQuery))) {
+                placeResults.push({
+                    place_name: p.name,
+                    address_name: p.address || '(주소 없음)',
+                    y: p.lat || 0,
+                    x: p.lng || 0,
+                    _source: '개소리스트'
+                });
+            }
+        }
+        placeResults = placeResults.slice(0, 5);
+        var kakaoResults = await searchKakaoPlaces(query);
+        kakaoResults = kakaoResults.slice(0, 5);
+        var allResults = [];
+        var seenNames = {};
+        for (var i = 0; i < placeResults.length; i++) {
+            var item = placeResults[i];
+            var key = item.place_name + '|' + item.address_name;
+            if (!seenNames[key]) {
+                seenNames[key] = true;
+                allResults.push(item);
+            }
+        }
+        for (var i = 0; i < kakaoResults.length; i++) {
+            var item = kakaoResults[i];
+            var key = item.place_name + '|' + item.address_name;
+            if (!seenNames[key]) {
+                seenNames[key] = true;
+                allResults.push(item);
+            }
+        }
+        renderSearchResults(container, allResults, 'selectStartPoint');
+    }, 300);
+}
+
 function selectStartPoint(name, address, lat, lng) {
     document.getElementById('startPoint').value = name;
     document.getElementById('startSearchResults').style.display = 'none';
@@ -863,9 +952,14 @@ function selectStartPoint(name, address, lat, lng) {
         showTabStatus('tab-places', '⚠️ 유효하지 않은 좌표입니다. 다시 검색해주세요.', 'warning');
         return;
     }
+    
+    // ⭐ 최근 출발지 저장
+    saveRecentStartPoint(name, address, lat, lng);
+    
     startPoint = { name: name, address: address, lat: lat, lng: lng };
     document.getElementById('startInfo').textContent = '✅ ' + name + ' (' + address + ')';
     document.getElementById('startInfo').style.color = '#22543d';
+    
     if (kakaoMap) {
         clearRouteMarkers();
         clearSingleMarker();
@@ -1186,7 +1280,7 @@ function renderWaypointList() {
 }
 
 // ============================================================
-// 21. 지도에 개소 표시 (커스텀 오버레이 적용)
+// 21. 지도에 개소 표시 (개소탭 지도 버튼)
 // ============================================================
 
 function showPlaceOnMap(id) {
@@ -1247,6 +1341,17 @@ function showPlaceOnMap(id) {
     
     switchTab('tab-route');
     showTabStatus('tab-route', '📍 "' + place.name + '" 위치 표시 중', 'info');
+}
+
+function clearSingleMarker() {
+    if (singlePlaceMarker) {
+        try { singlePlaceMarker.setMap(null); } catch(e) {}
+        singlePlaceMarker = null;
+    }
+    if (singlePlaceInfoWindow) {
+        try { singlePlaceInfoWindow.close(); } catch(e) {}
+        singlePlaceInfoWindow = null;
+    }
 }
 
 // ============================================================
@@ -1325,7 +1430,7 @@ async function geocodeBatch(rows, restKey, batchSize, onProgress) {
 }
 
 // ============================================================
-// 23. 16방향 클러스터링
+// 23. 16방향 클러스터링 (VBA 완벽 포팅)
 // ============================================================
 
 function calculateAngle(startX, startY, targetX, targetY) {
@@ -1426,7 +1531,7 @@ function optimizeRouteAlgorithm(places, startLat, startLng, mode) {
 }
 
 // ============================================================
-// 24. 경로 최적화 실행 (도로 경로 표시 추가)
+// 24. 경로 최적화 실행
 // ============================================================
 
 async function runOptimize() {
@@ -1507,7 +1612,7 @@ async function runOptimize() {
             addRouteMarker(p.lat, p.lng, (i + 1) + '. ' + p.name, false);
         }
         
-        // ⭐⭐⭐ 도로 경로 요청 (카카오 모빌리티 API) ⭐⭐⭐
+        // 도로 경로 요청
         var routeData = await callKakaoMobilityRoute(allPoints, restKey);
         if (routeData) {
             drawRoadRoute(routeData);
@@ -1558,179 +1663,9 @@ async function runOptimize() {
         if (btn) btn.disabled = false;
     }
 }
-// ============================================================
-// 24-1. 카카오 모빌리티 길찾기 API 호출
-// ============================================================
 
-async function callKakaoMobilityRoute(points, restKey) {
-    if (!restKey || points.length < 2) return null;
-    try {
-        var origin = points[0];
-        var destination = points[points.length - 1];
-        var waypoints = points.slice(1, -1);
-        
-        var url = 'https://apis-navi.kakaomobility.com/v1/waypoints/directions';
-        var payload = {
-            origin: {
-                name: origin.name || '출발지',
-                x: origin.lng,
-                y: origin.lat
-            },
-            destination: {
-                name: destination.name || '도착지',
-                x: destination.lng,
-                y: destination.lat
-            },
-            priority: 'RECOMMEND'
-        };
-        if (waypoints.length > 0) {
-            payload.waypoints = waypoints.map(function(w) {
-                return { name: w.name || '경유지', x: w.lng, y: w.lat };
-            });
-        }
-        var response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Authorization': 'KakaoAK ' + restKey,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
-        });
-        if (!response.ok) return null;
-        return await response.json();
-    } catch (e) {
-        console.warn('도로 경로 API 호출 실패:', e);
-        return null;
-    }
-}
 // ============================================================
-// 도로 경로 그리기 (무지개 색상)
-// ============================================================
-
-function drawRoadRoute(routeData) {
-    if (!kakaoMap || !routeData) return;
-    
-    try {
-        var route = routeData.routes[0];
-        if (!route || !route.sections) return;
-        
-        // 기존 폴리라인 제거
-        if (kakaoPolyline) {
-            kakaoPolyline.setMap(null);
-            kakaoPolyline = null;
-        }
-        
-        // ⭐ 무지개 색상 (경유지 최대 15개까지 대응)
-        var rainbowColors = [
-            '#FF0000', // 1: 빨강
-            '#FF7F00', // 2: 주황
-            '#FFFF00', // 3: 노랑
-            '#00FF00', // 4: 초록
-            '#0000FF', // 5: 파랑
-            '#4B0082', // 6: 남색
-            '#8B00FF', // 7: 보라
-            '#FF1493', // 8: 핫핑크
-            '#00CED1', // 9: 다크터콰이즈
-            '#FF4500', // 10: 오렌지레드
-            '#32CD32', // 11: 라임그린
-            '#1E90FF', // 12: 도저블루
-            '#FF69B4', // 13: 핫핑크
-            '#FFD700', // 14: 골드
-            '#00FF7F'  // 15: 스프링그린
-        ];
-        
-        var allPaths = [];
-        var totalBounds = new kakao.maps.LatLngBounds();
-        var sectionIndex = 0;
-        
-        // 각 섹션별로 처리
-        for (var s = 0; s < route.sections.length; s++) {
-            var section = route.sections[s];
-            if (!section.roads) continue;
-            
-            var sectionPath = [];
-            
-            for (var r = 0; r < section.roads.length; r++) {
-                var road = section.roads[r];
-                if (road.vertexes) {
-                    for (var v = 0; v < road.vertexes.length; v += 2) {
-                        var lng = road.vertexes[v];
-                        var lat = road.vertexes[v + 1];
-                        if (lat && lng) {
-                            var point = new kakao.maps.LatLng(lat, lng);
-                            sectionPath.push(point);
-                            totalBounds.extend(point);
-                        }
-                    }
-                }
-            }
-            
-            if (sectionPath.length > 1) {
-                // ⭐ 무지개 색상 (구간 인덱스에 따라)
-                var colorIndex = sectionIndex % rainbowColors.length;
-                var color = rainbowColors[colorIndex];
-                
-                var polyline = new kakao.maps.Polyline({
-                    map: kakaoMap,
-                    path: sectionPath,
-                    strokeWeight: 6,
-                    strokeColor: color,
-                    strokeOpacity: 0.9,
-                    strokeStyle: 'solid'
-                });
-                
-                // ⭐ 화살표 표시 (진행 방향)
-                if (sectionPath.length > 2) {
-                    var lastIdx = sectionPath.length - 1;
-                    var prevIdx = lastIdx - 1;
-                    var angle = Math.atan2(
-                        sectionPath[lastIdx].getLat() - sectionPath[prevIdx].getLat(),
-                        sectionPath[lastIdx].getLng() - sectionPath[prevIdx].getLng()
-                    ) * 180 / Math.PI;
-                    
-                    var arrowPos = sectionPath[lastIdx];
-                    var arrowContent = `
-                        <div style="
-                            width: 0;
-                            height: 0;
-                            border-left: 8px solid transparent;
-                            border-right: 8px solid transparent;
-                            border-bottom: 14px solid ${color};
-                            transform: rotate(${angle + 90}deg);
-                            filter: drop-shadow(0 1px 3px rgba(0,0,0,0.3));
-                        "></div>
-                    `;
-                    
-                    new kakao.maps.CustomOverlay({
-                        map: kakaoMap,
-                        position: arrowPos,
-                        content: arrowContent,
-                        yAnchor: 0.5,
-                        xAnchor: 0.5
-                    });
-                }
-                
-                // 폴리라인 저장
-                if (!window._sectionPolylines) window._sectionPolylines = [];
-                window._sectionPolylines.push(polyline);
-                
-                sectionIndex++;
-            }
-        }
-        
-        kakaoMap.setBounds(totalBounds);
-        console.log('✅ 무지개 경로 표시 완료 (' + sectionIndex + '개 구간)');
-        
-    } catch (e) {
-        console.error('도로 경로 그리기 실패:', e);
-        // 실패 시 직선 경로로 폴백
-        if (window._lastPath) {
-            drawRoute(window._lastPath);
-        }
-    }
-}
-// ============================================================
-// 24-3. 경로 목록 표시 (클릭 이동 포함) - 변경 없음
+// 24-1. 경로 목록 표시 (클릭 이동 포함)
 // ============================================================
 
 function showRouteList() {
@@ -1780,8 +1715,9 @@ function showRouteList() {
 
     container.innerHTML = html;
 }
+
 // ============================================================
-// 24-4. 경로 항목 클릭 시 해당 위치로 지도 이동 - 변경 없음
+// 24-2. 경로 항목 클릭 시 해당 위치로 지도 이동
 // ============================================================
 
 function moveToRoutePoint(el) {
@@ -1806,8 +1742,219 @@ function moveToRoutePoint(el) {
 
     showTabStatus('tab-route', '📍 해당 위치로 이동했습니다.', 'info');
 }
+
 // ============================================================
-// 25. 지도 초기화
+// 24-3. 카카오 모빌리티 길찾기 API 호출
+// ============================================================
+
+async function callKakaoMobilityRoute(points, restKey) {
+    if (!restKey || points.length < 2) return null;
+    try {
+        var origin = points[0];
+        var destination = points[points.length - 1];
+        var waypoints = points.slice(1, -1);
+        
+        var url = 'https://apis-navi.kakaomobility.com/v1/waypoints/directions';
+        var payload = {
+            origin: {
+                name: origin.name || '출발지',
+                x: origin.lng,
+                y: origin.lat
+            },
+            destination: {
+                name: destination.name || '도착지',
+                x: destination.lng,
+                y: destination.lat
+            },
+            priority: 'RECOMMEND'
+        };
+        if (waypoints.length > 0) {
+            payload.waypoints = waypoints.map(function(w) {
+                return { name: w.name || '경유지', x: w.lng, y: w.lat };
+            });
+        }
+        var response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': 'KakaoAK ' + restKey,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+        if (!response.ok) return null;
+        return await response.json();
+    } catch (e) {
+        console.warn('도로 경로 API 호출 실패:', e);
+        return null;
+    }
+}
+
+// ============================================================
+// 24-4. 도로 경로 그리기 (무지개 색상 + 화살표)
+// ============================================================
+
+function drawRoadRoute(routeData) {
+    if (!kakaoMap || !routeData) return;
+    
+    try {
+        var route = routeData.routes[0];
+        if (!route || !route.sections) {
+            console.warn('⚠️ 경로 데이터에 sections가 없습니다.');
+            return;
+        }
+        
+        if (kakaoPolyline) {
+            kakaoPolyline.setMap(null);
+            kakaoPolyline = null;
+        }
+        
+        // 무지개 색상 (최대 15개 경유지 대응)
+        var rainbowColors = [
+            '#FF0000', '#FF7F00', '#FFFF00', '#00FF00',
+            '#0000FF', '#4B0082', '#8B00FF', '#FF1493',
+            '#00CED1', '#FF4500', '#32CD32', '#1E90FF',
+            '#FF69B4', '#FFD700', '#00FF7F'
+        ];
+        
+        var totalBounds = new kakao.maps.LatLngBounds();
+        var sectionIndex = 0;
+        
+        for (var s = 0; s < route.sections.length; s++) {
+            var section = route.sections[s];
+            if (!section.roads) continue;
+            
+            var sectionPath = [];
+            
+            for (var r = 0; r < section.roads.length; r++) {
+                var road = section.roads[r];
+                if (road.vertexes) {
+                    for (var v = 0; v < road.vertexes.length; v += 2) {
+                        var lng = road.vertexes[v];
+                        var lat = road.vertexes[v + 1];
+                        if (lat && lng) {
+                            var point = new kakao.maps.LatLng(lat, lng);
+                            sectionPath.push(point);
+                            totalBounds.extend(point);
+                        }
+                    }
+                }
+            }
+            
+            if (sectionPath.length > 1) {
+                var colorIndex = sectionIndex % rainbowColors.length;
+                var color = rainbowColors[colorIndex];
+                
+                var polyline = new kakao.maps.Polyline({
+                    map: kakaoMap,
+                    path: sectionPath,
+                    strokeWeight: 6,
+                    strokeColor: color,
+                    strokeOpacity: 0.9,
+                    strokeStyle: 'solid'
+                });
+                
+                // 화살표 표시
+                if (sectionPath.length > 2) {
+                    var lastIdx = sectionPath.length - 1;
+                    var prevIdx = lastIdx - 1;
+                    var angle = Math.atan2(
+                        sectionPath[lastIdx].getLat() - sectionPath[prevIdx].getLat(),
+                        sectionPath[lastIdx].getLng() - sectionPath[prevIdx].getLng()
+                    ) * 180 / Math.PI;
+                    
+                    var arrowPos = sectionPath[lastIdx];
+                    var arrowContent = `
+                        <div style="
+                            width: 0;
+                            height: 0;
+                            border-left: 8px solid transparent;
+                            border-right: 8px solid transparent;
+                            border-bottom: 14px solid ${color};
+                            transform: rotate(${angle + 90}deg);
+                            filter: drop-shadow(0 1px 3px rgba(0,0,0,0.3));
+                        "></div>
+                    `;
+                    
+                    new kakao.maps.CustomOverlay({
+                        map: kakaoMap,
+                        position: arrowPos,
+                        content: arrowContent,
+                        yAnchor: 0.5,
+                        xAnchor: 0.5
+                    });
+                }
+                
+                if (!window._sectionPolylines) window._sectionPolylines = [];
+                window._sectionPolylines.push(polyline);
+                
+                sectionIndex++;
+            }
+        }
+        
+        kakaoMap.setBounds(totalBounds);
+        console.log('✅ 무지개 도로 경로 표시 완료 (' + sectionIndex + '개 구간)');
+        
+    } catch (e) {
+        console.error('도로 경로 그리기 실패:', e);
+    }
+}
+
+// ============================================================
+// 25. 직선 경로 그리기 (무지개 색상)
+// ============================================================
+
+function drawRoute(path) {
+    if (!kakaoMap || !path || path.length < 2) return;
+    
+    try {
+        if (kakaoPolyline) {
+            kakaoPolyline.setMap(null);
+            kakaoPolyline = null;
+        }
+        
+        var rainbowColors = [
+            '#FF0000', '#FF7F00', '#FFFF00', '#00FF00',
+            '#0000FF', '#4B0082', '#8B00FF', '#FF1493',
+            '#00CED1', '#FF4500', '#32CD32', '#1E90FF',
+            '#FF69B4', '#FFD700', '#00FF7F'
+        ];
+        
+        var bounds = new kakao.maps.LatLngBounds();
+        
+        for (var i = 0; i < path.length - 1; i++) {
+            var p1 = path[i];
+            var p2 = path[i + 1];
+            var latlng1 = new kakao.maps.LatLng(p1.lat, p1.lng);
+            var latlng2 = new kakao.maps.LatLng(p2.lat, p2.lng);
+            
+            bounds.extend(latlng1);
+            bounds.extend(latlng2);
+            
+            var colorIndex = i % rainbowColors.length;
+            
+            var polyline = new kakao.maps.Polyline({
+                map: kakaoMap,
+                path: [latlng1, latlng2],
+                strokeWeight: 5,
+                strokeColor: rainbowColors[colorIndex],
+                strokeOpacity: 0.8,
+                strokeStyle: 'solid'
+            });
+            
+            if (!window._sectionPolylines) window._sectionPolylines = [];
+            window._sectionPolylines.push(polyline);
+        }
+        
+        kakaoMap.setBounds(bounds);
+        console.log('✅ 무지개 직선 경로 표시 완료');
+        
+    } catch (e) {
+        console.error('경로 그리기 실패:', e);
+    }
+}
+
+// ============================================================
+// 26. 지도 초기화
 // ============================================================
 
 function initMap() {
@@ -1854,7 +2001,7 @@ function initMap() {
 }
 
 // ============================================================
-// 26. 지도 생성
+// 27. 지도 생성
 // ============================================================
 
 function createMap(container) {
@@ -1899,7 +2046,7 @@ function createMap(container) {
 }
 
 // ============================================================
-// 27. 마커 관리 (경로/개소) - 커스텀 오버레이 적용
+// 28. 마커 관리 (경로/개소) - 커스텀 오버레이 적용
 // ============================================================
 
 function addRouteMarker(lat, lng, title, isStart) {
@@ -1942,14 +2089,26 @@ function addRouteMarker(lat, lng, title, isStart) {
         console.error('커스텀 오버레이 추가 실패:', e);
     }
 }
+
+function clearRouteMarkers() {
+    for (var i = 0; i < routeMarkers.length; i++) {
+        try { routeMarkers[i].setMap(null); } catch(e) {}
+    }
+    routeMarkers = [];
+    if (kakaoPolyline) {
+        try { kakaoPolyline.setMap(null); } catch(e) {}
+        kakaoPolyline = null;
+    }
+    isShowingRouteMarkers = false;
+}
+
 // ============================================================
-// 28. 개소 마커 표시 (커스텀 오버레이 적용)
+// 29. 개소 마커 표시 (커스텀 오버레이 적용)
 // ============================================================
 
 function showPlaceMarkers() {
     if (!kakaoMap) return;
     
-    // 기존 마커/오버레이 제거
     for (var i = 0; i < placeMarkers.length; i++) {
         try { placeMarkers[i].setMap(null); } catch(e) {}
     }
@@ -2012,8 +2171,9 @@ function showPlaceMarkers() {
     
     kakaoMap.setBounds(bounds);
 }
+
 // ============================================================
-// 28. 엑셀 파일 처리
+// 30. 엑셀 파일 처리
 // ============================================================
 
 function parseCSVLine(line) {
@@ -2173,7 +2333,7 @@ function showUploadResult(msg, type) {
 }
 
 // ============================================================
-// 29. 엑셀 내보내기
+// 31. 엑셀 내보내기
 // ============================================================
 
 function exportData() {
@@ -2207,7 +2367,7 @@ function exportData() {
 }
 
 // ============================================================
-// 30. 설정 내보내기/가져오기
+// 32. 설정 내보내기/가져오기
 // ============================================================
 
 function exportSettings() {
@@ -2256,7 +2416,7 @@ function importSettings(event) {
 }
 
 // ============================================================
-// 31. 공유
+// 33. 공유
 // ============================================================
 
 function shareRoute() {
@@ -2290,7 +2450,7 @@ function shareRoute() {
 }
 
 // ============================================================
-// 32. 초기화
+// 34. 초기화
 // ============================================================
 
 function resetAll() {
@@ -2333,7 +2493,7 @@ function resetAll() {
 }
 
 // ============================================================
-// 33. UI 헬퍼
+// 35. UI 헬퍼
 // ============================================================
 
 function showModal(title, body) {
@@ -2347,7 +2507,7 @@ function closeModal() {
 }
 
 // ============================================================
-// 34. Service Worker 등록
+// 36. Service Worker 등록
 // ============================================================
 
 function registerServiceWorker() {
@@ -2363,7 +2523,7 @@ function registerServiceWorker() {
 }
 
 // ============================================================
-// 35. 날씨 정보 가져오기 (위도/경도 강제 사용)
+// 37. 날씨 정보 가져오기
 // ============================================================
 
 async function fetchWeather() {
@@ -2375,16 +2535,11 @@ async function fetchWeather() {
 
     try {
         var apiKey = 'b84c1b9a09d8316b679320cceb3a1097';
-        
-        // ⭐⭐⭐ 강제로 위도/경도 사용 (도시명 절대 사용 금지!)
         var center = getRegionCenter(currentRegion);
         var lat = center.lat;
         var lon = center.lng;
         
-        // ⭐⭐⭐ URL에 q=용산이 절대 안 들어가게!
         var url = 'https://api.openweathermap.org/data/2.5/weather?lat=' + lat + '&lon=' + lon + '&appid=' + apiKey + '&units=metric&lang=kr';
-        
-        console.log('📡 요청 URL (위도/경도):', url); // 여기서 q=용산인지 확인!
         
         var response = await fetch(url);
         if (!response.ok) {
@@ -2412,8 +2567,9 @@ async function fetchWeather() {
         weatherEl.innerHTML = '<span>⏳</span><span class="temp">--°C</span><span>날씨</span>';
     }
 }
+
 // ============================================================
-// 36. 초기화 실행
+// 38. 초기화 실행
 // ============================================================
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -2439,5 +2595,5 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!kakaoMap && !sdkLoading) { initMap(); }
     }, 6000);
     registerServiceWorker();
-    setTimeout(fetchWeather, 2000);
+    setTimeout(fetchWeather, 3000);
 });
