@@ -1314,11 +1314,26 @@ function removeWaypoint(index) {
 
 function renderWaypointList() {
     var list = document.getElementById('waypointList');
-    document.getElementById('wpCount').textContent = '(' + waypoints.length + '개)';
+    var countEl = document.getElementById('wpCount');
+    
+    // 🔥 방어 코드: 요소가 없으면 함수 종료
+    if (!list) {
+        console.warn('⚠️ waypointList 요소를 찾을 수 없습니다.');
+        return;
+    }
+    
+    // wpCount 업데이트 (이미 존재해야 함)
+    if (countEl) {
+        countEl.textContent = '(' + waypoints.length + '개)';
+    } else {
+        console.warn('⚠️ wpCount 요소를 찾을 수 없습니다.');
+    }
+    
     if (waypoints.length === 0) {
         list.innerHTML = '<li class="empty-msg">경유지를 추가하세요</li>';
         return;
     }
+    
     var html = '';
     for (var i = 0; i < waypoints.length; i++) {
         var wp = waypoints[i];
@@ -1332,6 +1347,7 @@ function renderWaypointList() {
     }
     list.innerHTML = html;
     
+    // 마우스 호버 이벤트
     list.querySelectorAll('li[data-lat]').forEach(function(el) {
         el.addEventListener('mouseenter', function() {
             var lat = parseFloat(this.dataset.lat);
@@ -1341,12 +1357,8 @@ function renderWaypointList() {
                 kakaoMap.setLevel(4);
             }
         });
-        el.addEventListener('mouseleave', function() {
-            // 원래 위치로 복원 (선택)
-        });
     });
 }
-
 // ============================================================
 // 21. 지도에 개소 표시 (반투명 커스텀 오버레이)
 // ============================================================
