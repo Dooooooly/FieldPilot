@@ -593,16 +593,22 @@
 
     <div class="main">
 
-        <!-- ===== 탭: 장소 ===== -->
+     <!-- ===== 탭: 장소 ===== -->
 <div id="tab-places" class="tab-content active">
     
     <!-- 출발지 카드 -->
-    <div class="card">...</div>
+    <div class="card">
+        <div class="card-title">🚩 출발지</div>
+        <!-- ... -->
+    </div>
     
     <!-- 경유지 카드 -->
-    <div class="card">...</div>
+    <div class="card">
+        <div class="card-title">📍 경유지 <span id="wpCount" style="font-size:12px;color:#a0aec0;font-weight:400;"></span></div>
+        <!-- ... -->
+    </div>
     
-    <!-- 버튼들 (최적화, 프리셋 저장, 초기화, 공유) -->
+    <!-- 버튼들 -->
     <div class="flex-row">
         <button class="btn btn-primary btn-block" onclick="runOptimize()">⚡ 경로 최적화</button>
         <button class="btn btn-success btn-block" onclick="addPreset()">💾 프리셋 저장</button>
@@ -610,13 +616,14 @@
         <button class="btn btn-success btn-block" onclick="shareRoute()">📤 공유</button>
     </div>
     
-    <!-- 최적화 방식 선택 -->
-    <div class="card" style="margin-top:6px;">...</div>
+    <!-- 최적화 방식 -->
+    <div class="card" style="margin-top:6px;">
+        <!-- ... -->
+    </div>
     
-    <!-- 상태 메시지 -->
     <div id="placesStatus" class="tab-status"></div>
 
-    <!-- ===== 프리셋 목록 (여기!) ===== -->
+    <!-- ===== 🔥 프리셋 카드는 여기에 (tab-places 내부) ===== -->
     <div class="card" style="margin-top:6px;">
         <div class="card-title">📂 저장된 프리셋</div>
         <div id="presetList" style="max-height:150px; overflow-y:auto;">
