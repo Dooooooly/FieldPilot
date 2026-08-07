@@ -2107,7 +2107,37 @@ function addRouteMarker(lat, lng, title, isStart) {
         console.error('커스텀 오버레이 추가 실패:', e);
     }
 }
+// ============================================================
+// 29. 경로 마커 제거
+// ============================================================
 
+function clearRouteMarkers() {
+    // 기존 경로 마커 제거
+    for (var i = 0; i < routeMarkers.length; i++) {
+        try { routeMarkers[i].setMap(null); } catch(e) {}
+    }
+    for (var i = 0; i < routeInfoWindows.length; i++) {
+        try { routeInfoWindows[i].close(); } catch(e) {}
+    }
+    routeMarkers = [];
+    routeInfoWindows = [];
+    
+    // 구간별 폴리라인 제거
+    if (window._sectionPolylines) {
+        for (var i = 0; i < window._sectionPolylines.length; i++) {
+            try { window._sectionPolylines[i].setMap(null); } catch(e) {}
+        }
+        window._sectionPolylines = [];
+    }
+    
+    // 기존 단일 폴리라인 제거
+    if (kakaoPolyline) {
+        try { kakaoPolyline.setMap(null); } catch(e) {}
+        kakaoPolyline = null;
+    }
+    
+    isShowingRouteMarkers = false;
+}
 // ============================================================
 // 29. 개소 마커 표시 (반투명 커스텀 오버레이)
 // ============================================================
