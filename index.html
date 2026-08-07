@@ -753,78 +753,81 @@
             <div id="settingsStatus" class="tab-status"></div>
         </div>
 
-        <!-- ===== 탭: 도움말 ===== -->
+              <!-- ===== 탭: 도움말 ===== -->
         <div id="tab-help" class="tab-content">
             <div class="card">
                 <div class="card-title">📖 사용 가이드</div>
                 
                 <div class="help-section">
-                    <div class="help-title">📍 장소 탭</div>
+                    <div class="help-title">📍 1. 장소 탭 — 출발지 & 경유지 설정</div>
                     <div class="help-body">
-                        <span class="step"><span class="num">1</span><strong>출발지</strong>를 검색하고 설정하세요</span>
-                        <span class="step"><span class="num">2</span><strong>경유지</strong>를 추가하세요 (최대 15개)</span>
-                        <span class="step"><span class="num">3</span><strong>경로 최적화</strong> 버튼으로 최적 경로 계산</span>
-                        <span class="step"><span class="num">4</span><strong>가까운순/먼순</strong> 중 최적화 방식을 선택하세요</span>
+                        <span class="step"><span class="num">1</span>출발지 입력창에 <strong>지명 또는 주소</strong>를 입력하세요.</span>
+                        <span class="step"><span class="num">2</span>검색 목록에서 선택하거나 <kbd>↑</kbd><kbd>↓</kbd> <kbd>Enter</kbd>로 선택할 수 있습니다.</span>
+                        <span class="step"><span class="num">3</span>경유지 입력창에서 추가할 장소를 검색하고 <strong>추가</strong> 버튼을 누르세요.</span>
+                        <span class="step"><span class="num">4</span>최대 <strong>15개</strong>까지 경유지를 추가할 수 있습니다.</span>
+                        <span class="step"><span class="num">5</span><strong>⚡ 경로 최적화</strong> 버튼을 누르면 16방향 클러스터링으로 최적 경로를 계산합니다.</span>
+                        <div class="tip">💡 입력창을 클릭하면 최근 사용한 출발지 3개가 자동으로 표시됩니다.</div>
                     </div>
                 </div>
                 
                 <div class="help-section">
-                    <div class="help-title">🗺️ 경로 탭</div>
+                    <div class="help-title">🗺️ 2. 경로 탭 — 지도 확인 & 상세 경로</div>
                     <div class="help-body">
-                        <span class="step">📍 최적화된 경로를 <strong>지도</strong>로 확인하세요</span>
-                        <span class="step">📊 <strong>방문지 개수, 총 거리, 총 시간</strong>을 한눈에 확인</span>
-                        <span class="step">📋 각 구간별 <strong>거리</strong>와 <strong>순서</strong>를 확인하세요</span>
-                        <span class="step">🔄 지도는 <strong>드래그</strong>와 <strong>확대/축소</strong>가 가능합니다</span>
-                        <span class="step">📍 개소리스트에서 <strong>지도 보기</strong> 버튼으로 해당 위치로 이동</span>
-                        <span class="step">📋 경로 목록 클릭하면 해당 위치로 <strong>지도 이동</strong></span>
+                        <span class="step">최적화된 경로를 <strong>카카오 지도</strong>에서 확인합니다.</span>
+                        <span class="step">도로 경로 API를 통해 <strong>실제 도로 기준</strong> 경로를 표시합니다. (API 호출 실패 시 직선 연결)</span>
+                        <span class="step">경로 목록의 각 항목을 <strong>클릭</strong>하면 지도가 해당 위치로 이동합니다.</span>
+                        <span class="step">요약 패널에서 <strong>총 거리, 예상 시간, 방문지 수</strong>를 확인하세요.</span>
+                        <span class="step"><strong>📤 공유</strong> 버튼으로 텍스트 형태의 경로를 복사하거나 공유할 수 있습니다.</span>
                     </div>
                 </div>
                 
                 <div class="help-section">
-                    <div class="help-title">📋 개소리스트 탭</div>
+                    <div class="help-title">📋 3. 개소 탭 — 개소리스트 관리</div>
                     <div class="help-body">
-                        <span class="step">📤 <strong>엑셀 가져오기</strong>로 개소를 일괄 등록하세요</span>
-                        <span class="step">📥 <strong>엑셀 내보내기</strong>로 데이터를 백업하세요</span>
-                        <span class="step">➕ <strong>개소명</strong>과 <strong>주소</strong>를 직접 추가하세요</span>
-                        <span class="step">🔍 <strong>검색</strong>으로 개소를 빠르게 찾으세요</span>
-                        <span class="step">✏️ <strong>편집</strong> 버튼으로 개소 정보를 수정하세요</span>
-                        <span class="step">📍 <strong>지도 보기</strong> 버튼으로 해당 위치를 지도에서 확인하세요</span>
+                        <span class="step"><strong>➕ 개소 추가</strong>: 개소명과 주소를 입력하여 직접 등록하세요.</span>
+                        <span class="step"><strong>📥 엑셀 가져오기</strong>: CSV 또는 XLSX 파일로 일괄 등록할 수 있습니다.</span>
+                        <span class="step"><strong>📤 엑셀 내보내기</strong>: 현재 지역의 개소리스트를 백업합니다.</span>
+                        <span class="step"><strong>🔍 검색</strong>: 개소명 또는 주소로 실시간 필터링됩니다.</span>
+                        <span class="step"><strong>✏️ 편집 / 🗑️ 삭제</strong>: 각 개소의 정보를 수정하거나 제거합니다.</span>
+                        <span class="step"><strong>📍 지도 보기</strong>: 해당 개소의 위치를 경로 탭 지도에서 확인합니다.</span>
+                        <span class="step"><strong>➕ 경유지 추가</strong>: 개소를 현재 경유지 목록에 바로 추가합니다.</span>
                     </div>
                 </div>
                 
                 <div class="help-section">
-                    <div class="help-title">⚙️ 설정 탭</div>
+                    <div class="help-title">⚙️ 4. 설정 탭 — API 키 & 동기화</div>
                     <div class="help-body">
-                        <span class="step">🔐 <strong>GitHub Token</strong>을 입력하면 데이터가 자동 백업됩니다</span>
-                        <span class="step">🗺️ <strong>카카오 JavaScript 키</strong>와 <strong>REST API 키</strong>를 입력하세요</span>
-                        <span class="step">💾 <strong>설정 내보내기/가져오기</strong>로 설정을 백업하세요</span>
-                        <span class="step">🗑️ <strong>모든 데이터 초기화</strong>로 데이터를 삭제하세요</span>
+                        <span class="step"><strong>🔐 GitHub Token</strong>을 입력하면 데이터가 <strong>5초 후 자동 업로드</strong>됩니다.</span>
+                        <span class="step"><strong>🗺️ 카카오 JavaScript 키</strong>와 <strong>REST API 키</strong>를 모두 입력해야 지도와 검색이 작동합니다.</span>
+                        <span class="step"><strong>📋 히스토리</strong>: GitHub에 저장된 커밋 기록을 확인할 수 있습니다.</span>
+                        <span class="step"><strong>💾 설정 내보내기/가져오기</strong>: API 키를 JSON 파일로 백업 및 복원합니다.</span>
+                        <span class="step"><strong>🗑️ 초기화</strong>: 모든 지역 데이터와 설정을 삭제합니다. (복구 불가)</span>
                     </div>
                 </div>
                 
                 <div class="help-section">
                     <div class="help-title">📊 엑셀 파일 양식</div>
                     <div class="help-body">
-                        <span class="step">엑셀 파일은 다음 컬럼을 포함해야 합니다:</span>
+                        <span class="step">첫 번째 행은 <strong>헤더(컬럼명)</strong>로 작성해야 합니다.</span>
                         <div class="badge-example">개소명 | 도로명주소 | 비고(선택) | 위도(선택) | 경도(선택)</div>
-                        <span class="tip">💡 위도/경도가 없으면 주소로 자동 변환됩니다</span>
+                        <span class="tip">💡 위도/경도가 없으면 주소로 자동 변환됩니다. (카카오 REST API 키 필요)</span>
+                        <span class="tip">💡 개소리스트가 비어 있을 때 내보내기를 누르면 <strong>예시 양식</strong>이 다운로드됩니다.</span>
                     </div>
                 </div>
                 
                 <div class="help-section">
-                    <div class="help-title">💡 유용한 팁</div>
+                    <div class="help-title">⌨️ 단축키 & 팁</div>
                     <div class="help-body">
-                        <span class="step">🔍 출발지/경유지 입력 시 <strong>개소리스트 + 카카오맵</strong> 자동완성</span>
-                        <span class="step">⌨️ 검색 결과는 <strong>↑↓ 키</strong>로 이동하고 <strong>Enter</strong>로 선택</span>
-                        <span class="step">📱 <strong>모바일</strong>에서도 최적화된 화면으로 사용 가능</span>
-                        <span class="step">☁️ <strong>GitHub</strong>에 데이터를 백업하면 다른 기기에서도 불러올 수 있음</span>
-                        <span class="step">📍 <strong>개소탭 지도 버튼</strong>으로 원하는 장소를 바로 확인</span>
+                        <span class="step"><kbd>↑</kbd><kbd>↓</kbd> 검색 결과 목록 이동</span>
+                        <span class="step"><kbd>Enter</kbd> 검색 결과 선택</span>
+                        <span class="step"><kbd>Esc</kbd> 검색 목록 닫기</span>
+                        <span class="step">📱 모바일에서도 하단 탭으로 편리하게 사용 가능합니다.</span>
+                        <span class="step">☁️ GitHub 동기화를 설정하면 여러 기기에서 데이터를 공유할 수 있습니다.</span>
+                        <span class="step">🌡️ 상단 날씨는 현재 선택된 지역의 중심 좌표 기준으로 표시됩니다.</span>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-
     <!-- ===== 하단 탭 ===== -->
     <div class="bottom-tabs">
         <button class="bottom-tab active" data-tab="tab-places" onclick="switchTab('tab-places')" aria-label="장소 탭">
