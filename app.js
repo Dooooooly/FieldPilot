@@ -1735,23 +1735,27 @@ function showRouteList() {
         return;
     }
 
-    var html = '<div style="font-weight:600;font-size:14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">';
-    html += '<span>📋 최적 경로</span>';
-    html += '<button class="btn btn-sm btn-outline" onclick="openFullRouteInKakaoMap()" style="font-size:11px;padding:2px 10px;">🗺️ 전체 경로 보기</button>';
-    html += '</div>';
+    var html = '<div style="font-weight:600;font-size:14px;margin-bottom:8px;">📋 최적 경로</div>';
 
-    // ===== 출발지 (버튼 없음) =====
+    // ===== 출발지 (클릭 가능하도록 수정) =====
     html += `
-        <div class="route-item route-start">
+        <div class="route-item route-start" 
+             data-lat="${startPoint.lat}" 
+             data-lng="${startPoint.lng}"
+             data-name="${escapeHtml(startPoint.name)}"
+             onclick="moveToRoutePoint(this)"
+             title="클릭하면 지도에서 출발지로 이동합니다"
+             style="cursor:pointer;">
             <div class="idx">🚩</div>
             <div class="info">
                 <div class="name">${escapeHtml(startPoint.name)}</div>
                 <div class="addr">${escapeHtml(startPoint.address || '')}</div>
             </div>
+            <div class="dist" style="color:#2b6cb0;">출발</div>
         </div>
     `;
 
-    // ===== 경유지들 (각각 🗺️ 버튼) =====
+    // ===== 경유지들 (거리 + 시간 표시) =====
     for (var i = 0; i < sorted.length; i++) {
         var p = sorted[i];
         
@@ -1761,8 +1765,23 @@ function showRouteList() {
         var prevLat = prev.lat;
         var prevLng = prev.lng;
         
-        // 구간 거리 계산
+        // 구간 거리 계산 (km)
         var segDist = haversineKm(prevLat, prevLng, p.lat, p.lng);
+        
+        // 구간 시간 계산 (분) - 총 시간에서 비율로 계산하거나, 거리 기반 추정
+        // 실제 API 응답에 duration이 있다면 그것을 사용하는 것이 좋음
+        var segTime = 0;
+        if (routeResult.sectionDurations && routeResult.sectionDurations[i]) {
+            // 만약 runOptimize에서 sectionDurations를 저장했다면 사용
+            segTime = routeResult.sectionDurations[i];
+        } else {
+            // 거리 기반 추정 (평균 시속 40km/h 가정)
+            segTime = Math.round(segDist / 40 * 60);
+        }
+        
+        // 시간 표시 문자열 (분)
+        var timeStr = segTime + '분';
+        if (segTime < 1) timeStr = '1분 미만';
         
         html += `
             <div class="route-item" 
@@ -1776,7 +1795,10 @@ function showRouteList() {
                     <div class="name">${escapeHtml(p.name)}</div>
                     <div class="addr">${escapeHtml(p.address || '')}</div>
                 </div>
-                <div class="dist">${segDist.toFixed(1)}km</div>
+                <div class="dist" style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
+                    <span style="font-size:12px;color:#38a169;">${segDist.toFixed(1)}km</span>
+                    <span style="font-size:11px;color:#718096;">⏱️ ${timeStr}</span>
+                </div>
                 <button class="btn btn-sm btn-outline" 
                         style="margin-left:4px;padding:2px 6px;font-size:10px;flex-shrink:0;" 
                         onclick="event.stopPropagation(); openKakaoMap('${escapeHtml(prevName)}', ${prevLat}, ${prevLng}, '${escapeHtml(p.name)}', ${p.lat}, ${p.lng})" 
