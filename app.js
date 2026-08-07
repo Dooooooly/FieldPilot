@@ -1186,7 +1186,7 @@ function renderWaypointList() {
 }
 
 // ============================================================
-// 21. 지도에 개소 표시 (개소탭 지도 버튼)
+// 지도에 개소 표시 (커스텀 오버레이 적용)
 // ============================================================
 
 function showPlaceOnMap(id) {
@@ -1213,37 +1213,40 @@ function showPlaceOnMap(id) {
     }
     
     var pos = new kakao.maps.LatLng(place.lat, place.lng);
-    var marker = new kakao.maps.Marker({
+    
+    // ⭐⭐ 단일 개소용 커스텀 오버레이
+    var content = `
+        <div style="
+            background: white;
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: 3px solid #2b6cb0;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+            font-size: 14px;
+            font-weight: 700;
+            color: #2d3748;
+            white-space: nowrap;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        ">
+            📍 ${escapeHtml(place.name)}
+        </div>
+    `;
+    
+    var customOverlay = new kakao.maps.CustomOverlay({
         map: kakaoMap,
         position: pos,
-        title: place.name,
-        draggable: false
+        content: content,
+        yAnchor: 1.4,
+        xAnchor: 0.5
     });
-    singlePlaceMarker = marker;
+    singlePlaceMarker = customOverlay;
     singlePlaceMarker._placeId = id;
-    
-    var iw = new kakao.maps.InfoWindow({
-        content: '<div style="padding:4px 10px;font-weight:bold;font-size:13px;">📍 ' + escapeHtml(place.name) + '</div>'
-    });
-    iw.open(kakaoMap, marker);
-    singlePlaceInfoWindow = iw;
     
     kakaoMap.setCenter(pos);
     kakaoMap.setLevel(4);
     
     switchTab('tab-route');
     showTabStatus('tab-route', '📍 "' + place.name + '" 위치 표시 중', 'info');
-}
-
-function clearSingleMarker() {
-    if (singlePlaceMarker) {
-        try { singlePlaceMarker.setMap(null); } catch(e) {}
-        singlePlaceMarker = null;
-    }
-    if (singlePlaceInfoWindow) {
-        try { singlePlaceInfoWindow.close(); } catch(e) {}
-        singlePlaceInfoWindow = null;
-    }
 }
 
 // ============================================================
@@ -1815,77 +1818,123 @@ function createMap(container) {
 }
 
 // ============================================================
-// 27. 마커 관리 (경로/개소)
+// 27. 마커 관리 (경로/개소) - 커스텀 오버레이 적용
 // ============================================================
 
 function addRouteMarker(lat, lng, title, isStart) {
     if (!kakaoMap) return;
     try {
         var pos = new kakao.maps.LatLng(lat, lng);
-        var marker = new kakao.maps.Marker({
+        
+        var icon = isStart ? '🚩' : '📍';
+        var bgColor = isStart ? '#2b6cb0' : '#38a169';
+        var textColor = 'white';
+        
+        // ⭐ 커스텀 오버레이 HTML
+        var content = `
+            <div style="
+                background: ${bgColor};
+                padding: 4px 12px;
+                border-radius: 16px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                font-size: 13px;
+                font-weight: 700;
+                color: ${textColor};
+                white-space: nowrap;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                border: 2px solid ${isStart ? '#1a365d' : '#276749'};
+            ">
+                ${icon} ${escapeHtml(title)}
+            </div>
+        `;
+        
+        // ⭐⭐ 커스텀 오버레이 생성 (Marker 대신)
+        var customOverlay = new kakao.maps.CustomOverlay({
             map: kakaoMap,
             position: pos,
-            title: title,
-            draggable: false
+            content: content,
+            yAnchor: 1.4,
+            xAnchor: 0.5
         });
-        // isStart일 때는 title에 이미 이모티콘이 포함되어 있으므로 인포윈도우에는 제목만 표시
-        var displayTitle = isStart ? title.replace('🚩 ', '') : '📍 ' + title;
-        var iw = new kakao.maps.InfoWindow({
-            content: '<div style="padding:4px 10px;font-weight:bold;font-size:13px;">' + escapeHtml(displayTitle) + '</div>'
-        });
-        iw.open(kakaoMap, marker);
-        routeMarkers.push(marker);
-        routeInfoWindows.push(iw);
-        return marker;
+        
+        routeMarkers.push(customOverlay);
+        return customOverlay;
     } catch (e) {
-        console.error('마커 추가 실패:', e);
+        console.error('커스텀 오버레이 추가 실패:', e);
     }
 }
+// ============================================================
+// 개소 마커 표시 (커스텀 오버레이 적용)
+// ============================================================
 
-function clearRouteMarkers() {
-    for (var i = 0; i < routeMarkers.length; i++) {
-        try { routeMarkers[i].setMap(null); } catch(e) {}
+function showPlaceMarkers() {
+    if (!kakaoMap) return;
+    
+    // 기존 마커/오버레이 제거
+    for (var i = 0; i < placeMarkers.length; i++) {
+        try { placeMarkers[i].setMap(null); } catch(e) {}
     }
-    for (var i = 0; i < routeInfoWindows.length; i++) {
-        try { routeInfoWindows[i].close(); } catch(e) {}
+    for (var i = 0; i < placeInfoWindows.length; i++) {
+        try { placeInfoWindows[i].close(); } catch(e) {}
     }
-    routeMarkers = [];
-    routeInfoWindows = [];
-    if (kakaoPolyline) {
-        try { kakaoPolyline.setMap(null); } catch(e) {}
-        kakaoPolyline = null;
+    placeMarkers = [];
+    placeInfoWindows = [];
+    
+    var placesWithCoords = places.filter(function(p) {
+        return p.lat && p.lng && p.lat !== 0 && p.lng !== 0;
+    });
+    
+    if (placesWithCoords.length === 0) {
+        var center = getRegionCenter(currentRegion);
+        kakaoMap.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
+        kakaoMap.setLevel(5);
+        return;
     }
-    isShowingRouteMarkers = false;
-}
-
-function drawRoute(path) {
-    if (!kakaoMap || !path || path.length < 2) return;
-    try {
-        if (kakaoPolyline) {
-            kakaoPolyline.setMap(null);
-            kakaoPolyline = null;
-        }
-        var linePath = path.map(function(p) {
-            return new kakao.maps.LatLng(p.lat, p.lng);
-        });
-        kakaoPolyline = new kakao.maps.Polyline({
+    
+    var bounds = new kakao.maps.LatLngBounds();
+    
+    for (var i = 0; i < placesWithCoords.length; i++) {
+        var p = placesWithCoords[i];
+        var pos = new kakao.maps.LatLng(p.lat, p.lng);
+        bounds.extend(pos);
+        
+        // ⭐⭐ 커스텀 오버레이 컨텐츠 (HTML)
+        var content = `
+            <div style="
+                background: white;
+                padding: 4px 10px;
+                border-radius: 16px;
+                border: 2px solid #2b6cb0;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+                font-size: 12px;
+                font-weight: 600;
+                color: #2d3748;
+                white-space: nowrap;
+                cursor: pointer;
+                transition: transform 0.2s, box-shadow 0.2s;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            "
+            onmouseover="this.style.transform='scale(1.05)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.2)'"
+            onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 2px 6px rgba(0,0,0,0.15)'"
+            onclick="showPlaceOnMap('${p.id}')">
+                📍 ${escapeHtml(p.name)}
+            </div>
+        `;
+        
+        // ⭐⭐ 커스텀 오버레이 생성
+        var customOverlay = new kakao.maps.CustomOverlay({
             map: kakaoMap,
-            path: linePath,
-            strokeWeight: 5,
-            strokeColor: '#FF6B6B',
-            strokeOpacity: 0.8,
-            strokeStyle: 'solid'
+            position: pos,
+            content: content,
+            yAnchor: 1.2,
+            xAnchor: 0.5
         });
-        var bounds = new kakao.maps.LatLngBounds();
-        for (var i = 0; i < linePath.length; i++) {
-            bounds.extend(linePath[i]);
-        }
-        kakaoMap.setBounds(bounds);
-    } catch (e) {
-        console.error('경로 그리기 실패:', e);
+        
+        placeMarkers.push(customOverlay);
     }
+    
+    kakaoMap.setBounds(bounds);
 }
-
 // ============================================================
 // 28. 엑셀 파일 처리
 // ============================================================
