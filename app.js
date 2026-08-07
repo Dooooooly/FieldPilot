@@ -2803,6 +2803,31 @@ async function showWeekWeather() {
     }
 }
 // ============================================================
+// 카카오맵 앱/웹 열기 (좌표 기반 정확한 위치)
+// ============================================================
+
+function openKakaoMap(name, lat, lng) {
+    if (!name) {
+        showTabStatus('tab-route', '⚠️ 장소명이 없습니다.', 'warning');
+        return;
+    }
+    
+    // 좌표가 없으면 검색 기반 URL 사용
+    var url;
+    if (lat && lng && lat !== 0 && lng !== 0) {
+        // 좌표가 있으면 정확한 위치로 연결 (카카오맵 앱 실행 or 웹)
+        url = 'https://map.kakao.com/link/map/' + encodeURIComponent(name) + ',' + lat + ',' + lng;
+    } else {
+        // 좌표가 없으면 장소명 검색 결과로 연결
+        url = 'https://map.kakao.com/?q=' + encodeURIComponent(name);
+    }
+    
+    // 새 창(또는 새 탭)으로 열기
+    window.open(url, '_blank');
+    
+    showTabStatus('tab-route', '🗺️ 카카오맵이 열렸습니다: ' + name, 'info');
+}
+// ============================================================
 // 39. 초기화 실행
 // ============================================================
 
