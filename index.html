@@ -136,31 +136,32 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 4px 8px;
+            padding: 3px 6px;
             background: #f7fafc;
             border-radius: 4px;
             margin-bottom: 2px;
             border-left: 3px solid #2b6cb0;
             gap: 4px;
+            min-height: 28px;
         }
         .place-item .info {
             flex: 1;
             min-width: 0;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
             flex-wrap: nowrap;
             overflow: hidden;
         }
         .place-item .info .name {
             font-weight: 600;
-            font-size: 13px;
+            font-size: 12px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
         .place-item .info .addr {
-            font-size: 11px;
+            font-size: 10px;
             color: #718096;
             white-space: nowrap;
             overflow: hidden;
@@ -176,9 +177,9 @@
         .place-item .actions button {
             background: none;
             border: none;
-            font-size: 13px;
+            font-size: 11px;
             cursor: pointer;
-            padding: 2px 4px;
+            padding: 1px 3px;
             color: #a0aec0;
             border-radius: 3px;
             transition: color 0.2s;
@@ -277,7 +278,7 @@
             border-radius: 10px;
             background: #e2e8f0;
             margin-bottom: 8px;
-            touch-action: auto; /* 드래그 허용 */
+            touch-action: auto;
         }
         
         .setting-group {
@@ -416,14 +417,59 @@
         .search-results .result-item .addr { font-size: 11px; color: #718096; }
         .search-results .result-item .source { font-size: 10px; color: #a0aec0; margin-left: 4px; }
         
+        /* ===== ⭐ 개소리스트 스크롤 영역 (수정됨) ===== */
         .place-scroll {
-            max-height: 600px;
+            max-height: calc(100vh - 280px);
+            min-height: 200px;
             overflow-y: auto;
-            padding-right: 2px;
+            padding-right: 4px;
+            flex: 1;
         }
-        .place-scroll::-webkit-scrollbar { width: 4px; }
-        .place-scroll::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 4px; }
-        .place-scroll::-webkit-scrollbar-track { background: #f7fafc; }
+        .place-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+        .place-scroll::-webkit-scrollbar-thumb {
+            background: #cbd5e0;
+            border-radius: 4px;
+        }
+        .place-scroll::-webkit-scrollbar-track {
+            background: #f7fafc;
+        }
+        
+        /* ===== ⭐ 개소리스트 카드 여백 최소화 (수정됨) ===== */
+        #tab-list .card {
+            padding: 8px 10px;
+            margin-bottom: 4px;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+        #tab-list .card .flex-row {
+            margin-bottom: 4px;
+        }
+        #tab-list .card #searchPlace {
+            margin-bottom: 4px;
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+        
+        /* ===== 전체 개소리스트 탭 높이 활용 ===== */
+        #tab-list {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            padding: 8px 10px;
+        }
+        #tab-list .card {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        #tab-list .card .place-scroll {
+            flex: 1;
+            max-height: none;
+            min-height: 300px;
+        }
         
         #githubHistory {
             display: none;
@@ -546,7 +592,7 @@
             #map { height: 280px; }
             .bottom-tab { font-size: 9px; padding: 4px 2px 3px; }
             .bottom-tab .tab-icon { font-size: 16px; }
-            .place-scroll { max-height: 150px; }
+            .place-scroll { max-height: calc(100vh - 300px); min-height: 150px; }
             .place-item .info .addr {
                 max-width: 100px;
                 overflow: hidden;
@@ -568,7 +614,7 @@
             <div class="weather" id="weatherDisplay">
                 <span>⏳</span>
                 <span class="temp">--°C</span>
-                <span id="weatherDesc">날씨</span>
+                <span>날씨</span>
             </div>
             <select id="regionSelect" onchange="switchRegion(this.value)"></select>
             <button class="btn btn-sm" onclick="addRegion()" style="background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.2);padding:2px 8px;font-size:11px;" aria-label="지역 추가">+</button>
@@ -584,7 +630,11 @@
                 <div class="card-title">🚩 출발지</div>
                 <div style="position:relative;">
                     <div class="flex-row">
-                        <input type="text" id="startPoint" aria-label="출발지" placeholder="출발지 입력" class="flex-1" style="padding:6px 10px; border:2px solid #e2e8f0; border-radius:6px; font-size:13px;" oninput="searchStartPoint(this.value)" onkeydown="handleStartKeydown(event)">
+                        <input type="text" id="startPoint" aria-label="출발지" placeholder="출발지 입력" class="flex-1" 
+                               style="padding:6px 10px; border:2px solid #e2e8f0; border-radius:6px; font-size:13px;" 
+                               oninput="searchStartPoint(this.value)" 
+                               onclick="searchStartPoint(this.value)" 
+                               onkeydown="handleStartKeydown(event)">
                         <button class="btn btn-primary btn-sm" onclick="setStartPoint()" aria-label="출발지 설정">설정</button>
                     </div>
                     <div id="startSearchResults" class="search-results"></div>
@@ -655,14 +705,14 @@
             <div class="card">
                 <div class="card-title">📋 개소리스트 <span id="listCount" style="font-size:12px;color:#a0aec0;font-weight:400;"></span></div>
                 
-                <div class="flex-row" style="margin-bottom:6px;">
+                <div class="flex-row" style="margin-bottom:4px;">
                     <button class="btn btn-outline btn-sm" style="flex:1;" onclick="document.getElementById('fileInput').click()" aria-label="엑셀 가져오기">📥 엑셀 가져오기</button>
                     <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFile(event)">
                     <button class="btn btn-outline btn-sm" style="flex:1;" onclick="exportData()" aria-label="엑셀 내보내기">📤 엑셀 내보내기</button>
                 </div>
                 <div id="uploadResult"></div>
                 
-                <div class="flex-row" style="margin-bottom:6px;">
+                <div class="flex-row" style="margin-bottom:4px;">
                     <input type="text" id="newPlaceName" aria-label="개소명" placeholder="개소명" class="flex-1" style="padding:6px 10px; border:2px solid #e2e8f0; border-radius:6px; font-size:13px;">
                     <div style="position:relative; flex:1.5;">
                         <input type="text" id="newPlaceAddr" aria-label="주소" placeholder="주소 입력" style="width:100%; padding:6px 10px; border:2px solid #e2e8f0; border-radius:6px; font-size:13px;" oninput="searchAddressForPlace(this.value)" onkeydown="handleAddrKeydown(event)">
@@ -672,7 +722,7 @@
                 </div>
                 
                 <div style="margin-bottom:4px;">
-                    <input type="text" id="searchPlace" aria-label="개소 검색" placeholder="🔍 개소 검색" style="width:100%; padding:5px 8px; border:2px solid #e2e8f0; border-radius:4px; font-size:12px;" oninput="searchPlaces()">
+                    <input type="text" id="searchPlace" aria-label="개소 검색" placeholder="🔍 개소 검색" style="width:100%; padding:4px 8px; border:2px solid #e2e8f0; border-radius:4px; font-size:12px;" oninput="searchPlaces()">
                 </div>
                 
                 <div id="placeList" class="place-scroll"></div>
