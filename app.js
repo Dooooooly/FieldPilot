@@ -942,9 +942,10 @@ function saveRecentStartPoint(name, address, lat, lng) {
     localStorage.setItem('recentStartPoints', JSON.stringify(recent));
 }
 
-async function searchStartPoint(query) {
+function searchStartPoint(query) {
     var container = document.getElementById('startSearchResults');
     
+    // 🔥 입력값이 없으면 최근 목록 표시
     if (!query || query.length === 0) {
         var recent = getRecentStartPoints();
         if (recent.length === 0) {
@@ -1047,6 +1048,7 @@ function selectWaypointFromSearch(name, address, lat, lng) {
     }
     waypoints.push({ name: name, lat: lat, lng: lng, address: address });
     renderWaypointList();
+    document.getElementById('waypointInput').value = '';
     showTabStatus('tab-places', '✅ "' + name + '" 경유지 추가', 'ok');
 }
 
@@ -2900,12 +2902,169 @@ function resetRoute() {
     showTabStatus('tab-places', '🔄 모든 경로 데이터가 초기화되었습니다.', 'ok');
 }
 // ============================================================
+// 프리셋 관리
+// ============================================================
+
+const PRESETS_KEY = 'route_presets';
+let presets = [];
+
+function loadPresets() {
+    var saved = localStorage.getItem(PRESETS_KEY);
+    if (saved) {
+        try {
+            presets = JSON.parse(saved);
+        } catch(e) { presets = []; }
+    } else {
+        presets = [];
+    }
+    renderPresets();
+}
+
+function savePresets() {
+    localStorage.setItem(PRESETS_KEY, JSON.stringify(presets));
+    renderPresets();
+}
+
+function renderPresets() {
+    var container = document.getElementById('presetList');
+    if (!container) return;
+    
+    if (presets.length === 0) {
+        container.innerHTML = '<div class="empty-msg" style="padding:8px;font-size:12px;">저장된 프리셋이 없습니다</div>';
+        return;
+    }
+    
+    var html = '';
+    for (var i = 0; i < presets.length; i++) {
+        var p = presets[i];
+        var wpCount = p.waypoints ? p.waypoints.length : 0;
+        html += `
+            <div class="preset-item" onclick="loadPreset(${i})" style="
+                display:flex;
+                justify-content:space-between;
+                align-items:center;
+                padding:6px 10px;
+                background:#f7fafc;
+                border-radius:6px;
+                margin-bottom:4px;
+                cursor:pointer;
+                border-left:3px solid #2b6cb0;
+            ">
+                <div>
+                    <div style="font-weight:600;font-size:13px;">${escapeHtml(p.name)}</div>
+                    <div style="font-size:11px;color:#718096;">
+                        🚩 ${escapeHtml(p.startPoint ? p.startPoint.name : '없음')} 
+                        → ${wpCount}개 경유지
+                    </div>
+                </div>
+                <button onclick="event.stopPropagation(); deletePreset(${i})" style="background:none;border:none;color:#e53e3e;font-size:14px;cursor:pointer;">✕</button>
+            </div>
+        `;
+    }
+    container.innerHTML = html;
+}
+
+function addPreset() {
+    if (!startPoint || !startPoint.name) {
+        showTabStatus('tab-places', '⚠️ 출발지를 먼저 설정하세요.', 'warning');
+        return;
+    }
+    if (waypoints.length === 0) {
+        showTabStatus('tab-places', '⚠️ 경유지를 최소 1개 이상 추가하세요.', 'warning');
+        return;
+    }
+    
+    var name = prompt('프리셋 이름을 입력하세요:', '프리셋 ' + (presets.length + 1));
+    if (!name || name.trim() === '') return;
+    
+    var preset = {
+        id: Date.now(),
+        name: name.trim(),
+        startPoint: {
+            name: startPoint.name,
+            address: startPoint.address || '',
+            lat: startPoint.lat,
+            lng: startPoint.lng
+        },
+        waypoints: waypoints.map(function(w) {
+            return {
+                name: w.name,
+                address: w.address || '',
+                lat: w.lat || 0,
+                lng: w.lng || 0
+            };
+        })
+    };
+    
+    presets.push(preset);
+    savePresets();
+    showTabStatus('tab-places', '✅ 프리셋 "' + preset.name + '" 저장됨!', 'ok');
+}
+
+function loadPreset(index) {
+    var preset = presets[index];
+    if (!preset) return;
+    
+    if (!confirm('"' + preset.name + '" 프리셋을 불러오시겠습니까?\n현재 데이터는 초기화됩니다.')) {
+        return;
+    }
+    
+    // 1. 출발지 설정
+    var sp = preset.startPoint;
+    if (sp && sp.lat && sp.lng) {
+        selectStartPoint(sp.name, sp.address, sp.lat, sp.lng);
+    } else {
+        showTabStatus('tab-places', '⚠️ 출발지 정보가 없습니다.', 'warning');
+        return;
+    }
+    
+    // 2. 경유지 초기화 후 추가
+    waypoints = [];
+    for (var i = 0; i < preset.waypoints.length; i++) {
+        var w = preset.waypoints[i];
+        waypoints.push({
+            name: w.name,
+            address: w.address || '',
+            lat: w.lat || 0,
+            lng: w.lng || 0
+        });
+    }
+    renderWaypointList();
+    
+    // 3. 경로 결과 초기화
+    routeResult = null;
+    document.getElementById('placeCount').textContent = '0개소';
+    document.getElementById('totalDistance').textContent = '0.00 km';
+    document.getElementById('totalTime').textContent = '0 분';
+    document.getElementById('optimizeMode').textContent = '-';
+    document.getElementById('routeList').innerHTML = '';
+    clearRouteMarkers();
+    clearSingleMarker();
+    isShowingRouteMarkers = false;
+    
+    // 4. 지도를 출발지로 이동
+    if (kakaoMap && sp && sp.lat && sp.lng) {
+        kakaoMap.setCenter(new kakao.maps.LatLng(sp.lat, sp.lng));
+        kakaoMap.setLevel(5);
+    }
+    
+    showTabStatus('tab-places', '✅ 프리셋 "' + preset.name + '" 불러오기 완료!', 'ok');
+}
+
+function deletePreset(index) {
+    if (!confirm('프리셋을 삭제하시겠습니까?')) return;
+    presets.splice(index, 1);
+    savePresets();
+    showTabStatus('tab-places', '🗑️ 프리셋 삭제됨', 'ok');
+}
+// ============================================================
 // 39. 초기화 실행
 // ============================================================
 
 document.addEventListener('DOMContentLoaded', function() {
     loadSettings();
     loadRegionList();
+    loadPresets();
     
     // currentRegion이 없으면 빈 상태로 시작
     if (currentRegion) {
