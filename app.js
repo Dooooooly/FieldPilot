@@ -1186,7 +1186,7 @@ function renderWaypointList() {
 }
 
 // ============================================================
-// 지도에 개소 표시 (커스텀 오버레이 적용)
+// 21. 지도에 개소 표시 (커스텀 오버레이 적용)
 // ============================================================
 
 function showPlaceOnMap(id) {
@@ -1830,7 +1830,6 @@ function addRouteMarker(lat, lng, title, isStart) {
         var bgColor = isStart ? '#2b6cb0' : '#38a169';
         var textColor = 'white';
         
-        // ⭐ 커스텀 오버레이 HTML
         var content = `
             <div style="
                 background: ${bgColor};
@@ -1848,7 +1847,6 @@ function addRouteMarker(lat, lng, title, isStart) {
             </div>
         `;
         
-        // ⭐⭐ 커스텀 오버레이 생성 (Marker 대신)
         var customOverlay = new kakao.maps.CustomOverlay({
             map: kakaoMap,
             position: pos,
@@ -1864,7 +1862,7 @@ function addRouteMarker(lat, lng, title, isStart) {
     }
 }
 // ============================================================
-// 개소 마커 표시 (커스텀 오버레이 적용)
+// 28. 개소 마커 표시 (커스텀 오버레이 적용)
 // ============================================================
 
 function showPlaceMarkers() {
@@ -1898,7 +1896,6 @@ function showPlaceMarkers() {
         var pos = new kakao.maps.LatLng(p.lat, p.lng);
         bounds.extend(pos);
         
-        // ⭐⭐ 커스텀 오버레이 컨텐츠 (HTML)
         var content = `
             <div style="
                 background: white;
@@ -1921,7 +1918,6 @@ function showPlaceMarkers() {
             </div>
         `;
         
-        // ⭐⭐ 커스텀 오버레이 생성
         var customOverlay = new kakao.maps.CustomOverlay({
             map: kakaoMap,
             position: pos,
