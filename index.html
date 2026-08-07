@@ -580,10 +580,11 @@
     <header class="header">
         <h1>🚗 경로 최적화</h1>
         <div class="header-right">
-            <div class="weather" id="weatherDisplay">
-                <span>⏳</span>
-                <span class="temp">--°C</span>
-                <span>날씨</span>
+           <div class="weather" id="weatherDisplay" onclick="showWeekWeather()" style="cursor:pointer;">
+    <span>⏳</span>
+    <span class="temp">--°C</span>
+    <span>날씨</span>
+</div>
             </div>
             <select id="regionSelect" onchange="switchRegion(this.value)"></select>
             <button class="btn btn-sm" onclick="addRegion()" style="background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.2);padding:2px 8px;font-size:11px;" aria-label="지역 추가">+</button>
