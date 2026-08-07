@@ -126,12 +126,15 @@ function switchTab(tabId) {
                 kakaoMap.relayout();
                 kakaoMap.setDraggable(true);
                 kakaoMap.setZoomable(true);
+                // ⭐ 여기서 showPlaceMarkers()만 호출 (renderPlaces 아님!)
+                showPlaceMarkers();
             } else {
                 initMap();
             }
         }, 100);
     }
     
+    // ⭐ 개소탭에서만 renderPlaces() 호출
     if (tabId === 'tab-list') {
         renderPlaces();
     }
