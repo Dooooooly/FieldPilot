@@ -2237,26 +2237,37 @@ function registerServiceWorker() {
 }
 
 // ============================================================
-// 35. 날씨 정보 가져오기 (위도/경도 기반)
+// 35. 날씨 정보 가져오기 (디버깅 추가)
 // ============================================================
 
 async function fetchWeather() {
     var weatherEl = document.getElementById('weatherDisplay');
-    if (!weatherEl) return;
+    if (!weatherEl) {
+        console.warn('⚠️ 날씨 표시 요소 없음');
+        return;
+    }
+    
     try {
-        var apiKey = 'b84c1b9a09d8316b679320cceb3a1097';
+        console.log('🌤️ 날씨 요청 시작 (지역:', currentRegion + ')');
         
-        // ⭐ 현재 지역의 위도/경도 가져오기 (도시명 대신)
+        var apiKey = 'b84c1b9a09d8316b679320cceb3a1097';
         var center = getRegionCenter(currentRegion);
         var lat = center.lat;
         var lon = center.lng;
         
-        // ⭐ 위도/경도로 날씨 요청
         var url = 'https://api.openweathermap.org/data/2.5/weather?lat=' + lat + '&lon=' + lon + '&appid=' + apiKey + '&units=metric&lang=kr';
+        console.log('📡 요청 URL:', url);
         
         var res = await fetch(url);
-        if (!res.ok) throw new Error('날씨 API 호출 실패');
+        if (!res.ok) {
+            console.warn('⚠️ 날씨 API 응답 오류:', res.status);
+            weatherEl.innerHTML = '<span>⏳</span><span class="temp">--°C</span><span>날씨</span>';
+            return;
+        }
+        
         var data = await res.json();
+        console.log('✅ 날씨 데이터 수신:', data);
+        
         var temp = Math.round(data.main.temp);
         var desc = data.weather[0].description;
         var icon = data.weather[0].icon;
@@ -2268,9 +2279,12 @@ async function fetchWeather() {
             '11d': '⛈️', '11n': '⛈️', '13d': '❄️', '13n': '❄️',
             '50d': '🌫️', '50n': '🌫️'
         };
+        
         weatherEl.innerHTML = '<span>' + (iconEmoji[icon] || '🌡️') + '</span><span class="temp">' + temp + '°C</span><span>' + desc + '</span>';
+        console.log('✅ 날씨 표시 완료:', temp + '°C ' + desc);
+        
     } catch (e) {
-        console.warn('날씨 정보를 가져오지 못했습니다:', e);
+        console.error('❌ 날씨 오류:', e);
         weatherEl.innerHTML = '<span>⏳</span><span class="temp">--°C</span><span>날씨</span>';
     }
 }
