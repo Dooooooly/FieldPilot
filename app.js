@@ -120,7 +120,6 @@ function switchTab(tabId) {
         targetTab.classList.add('active');
     }
     
-    // ===== 탭별 처리 =====
     if (tabId === 'tab-route') {
         setTimeout(function() {
             if (kakaoMap) {
@@ -157,7 +156,6 @@ function getRegionCenter(region) {
             return REGION_CENTERS[key];
         }
     }
-    // 등록되지 않은 지역은 서울 기준 (사용자에게 안내)
     showTabStatus('tab-settings', 'ℹ️ "' + region + '" 지역의 중심 좌표가 없어 서울 기준으로 표시됩니다.', 'info');
     return { lat: 37.5665, lng: 126.9780 };
 }
@@ -301,7 +299,7 @@ function savePlaces() {
     scheduleAutoSync();
 }
 
-// ⭐⭐ 핵심: 저장된 지역 목록만 드롭다운에 표시 (기본값 없음)
+// ⭐⭐ 핵심 수정: 기본 지역 완전 제거
 function loadRegionList() {
     var select = document.getElementById('regionSelect');
     select.innerHTML = '';
@@ -317,9 +315,8 @@ function loadRegionList() {
         }
     }
     
-    // ⭐ 저장된 지역이 없으면 드롭다운을 비워둠
+    // ⭐ 저장된 지역이 없으면 드롭다운을 비워둠 (기본값 없음)
     if (regions.length === 0) {
-        // 기본 옵션 추가 안 함 → 빈 드롭다운
         return;
     }
     
@@ -330,14 +327,12 @@ function loadRegionList() {
         select.appendChild(opt);
     }
     
-    // currentRegion이 유효하면 선택
     if (currentRegion && regions.includes(currentRegion)) {
         select.value = currentRegion;
     } else {
-        // currentRegion이 없거나 유효하지 않으면 첫 번째 지역 선택
-        select.value = regions[0];
-        currentRegion = regions[0];
-        localStorage.setItem(SELECTED_REGION_KEY, currentRegion);
+        select.value = '';
+        currentRegion = '';
+        localStorage.removeItem(SELECTED_REGION_KEY);
     }
 }
 
@@ -531,7 +526,7 @@ async function uploadToGitHub(silent) {
 }
 
 // ============================================================
-// 8. GitHub 다운로드
+// 8. GitHub 다운로드 (수정: 지역 입력 추가)
 // ============================================================
 
 async function downloadFromGitHub() {
@@ -540,6 +535,46 @@ async function downloadFromGitHub() {
         showTabStatus('tab-settings', '⚠️ GitHub 토큰이 없습니다.', 'warning');
         return;
     }
+    
+    // ⭐⭐ currentRegion이 없으면 사용자에게 입력받기
+    var region = currentRegion;
+    if (!region) {
+        region = prompt('다운로드할 지역명을 입력하세요:', '');
+        if (!region || !region.trim()) {
+            showTabStatus('tab-settings', '⚠️ 지역명이 필요합니다.', 'warning');
+            return;
+        }
+        region = region.trim().replace(/[\/\\:*?"<>|]/g, '');
+        if (!region) {
+            showTabStatus('tab-settings', '⚠️ 사용할 수 없는 지역명입니다. (특수문자 제외)', 'warning');
+            return;
+        }
+        // 드롭다운에 추가
+        var select = document.getElementById('regionSelect');
+        // 중복 체크
+        var exists = false;
+        for (var i = 0; i < select.options.length; i++) {
+            if (select.options[i].value === region) {
+                exists = true;
+                break;
+            }
+        }
+        if (exists) {
+            showTabStatus('tab-settings', '⚠️ 이미 존재하는 지역입니다.', 'warning');
+            return;
+        }
+        // localStorage에 빈 배열 생성
+        var key = getStorageKey(region);
+        localStorage.setItem(key, JSON.stringify([]));
+        var opt = document.createElement('option');
+        opt.value = region;
+        opt.textContent = region;
+        select.appendChild(opt);
+        select.value = region;
+        currentRegion = region;
+        localStorage.setItem(SELECTED_REGION_KEY, region);
+    }
+    
     try {
         showTabStatus('tab-settings', '☁️ GitHub 다운로드 중...', 'info');
         var userRes = await fetch('https://api.github.com/user', {
@@ -550,13 +585,13 @@ async function downloadFromGitHub() {
         var username = user.login;
         
         var repoName = 'route-data';
-        var fileName = currentRegion + '.json';
+        var fileName = region + '.json';
         var fileUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents/' + encodeURIComponent(fileName);
         var fileRes = await fetch(fileUrl, {
             headers: { 'Authorization': 'token ' + token }
         });
         if (fileRes.status === 404) {
-            showTabStatus('tab-settings', '📭 GitHub에 저장된 데이터가 없습니다.', 'warning');
+            showTabStatus('tab-settings', '📭 GitHub에 "' + region + '" 지역의 데이터가 없습니다.', 'warning');
             return;
         }
         if (!fileRes.ok) throw new Error('다운로드 실패');
@@ -2605,37 +2640,31 @@ async function fetchWeather() {
 // ============================================================
 
 document.addEventListener('DOMContentLoaded', function() {
-    // localStorage에 저장된 지역이 없으면 currentRegion을 빈 문자열로 유지
-    if (!currentRegion) {
-        // 기본 지역 없이 시작
-        loadSettings();
-        loadRegionList(); // 드롭다운에 저장된 지역만 표시 (없으면 비움)
-        renderPlaces();
-        renderWaypointList();
-        setOptimizeMode(optimizeMode);
-        updateStorageInfo();
-        setTimeout(initMap, 500);
-        registerServiceWorker();
-        setTimeout(fetchWeather, 3000);
-        return;
-    }
-    
     loadSettings();
     loadRegionList();
-    var key = getStorageKey(currentRegion);
-    var data = localStorage.getItem(key);
-    places = data ? JSON.parse(data) : [];
+    
+    // currentRegion이 없으면 빈 상태로 시작
+    if (currentRegion) {
+        var key = getStorageKey(currentRegion);
+        var data = localStorage.getItem(key);
+        places = data ? JSON.parse(data) : [];
+    } else {
+        places = [];
+    }
+    
     renderPlaces();
     renderWaypointList();
     setOptimizeMode(optimizeMode);
     updateStorageInfo();
     setTimeout(initMap, 500);
+    
     setTimeout(function() {
         if (!kakaoMap && !sdkLoading) { initMap(); }
     }, 3000);
     setTimeout(function() {
         if (!kakaoMap && !sdkLoading) { initMap(); }
     }, 6000);
+    
     registerServiceWorker();
     setTimeout(fetchWeather, 3000);
 });
