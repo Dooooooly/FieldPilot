@@ -1735,7 +1735,14 @@ function showRouteList() {
         return;
     }
 
-    var html = '<div style="font-weight:600;font-size:14px;margin-bottom:8px;">📋 최적 경로</div>';
+    var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
+    html += '<div style="font-weight:600;font-size:14px;">📋 최적 경로</div>';
+    // 🔥 전체 경로 카카오맵 열기 버튼
+    html += `
+        <button class="btn btn-primary btn-sm" onclick="openKakaoMap()" style="font-size:11px;padding:4px 12px;">
+            🗺️ 전체 경로 지도에서 보기
+        </button>
+    </div>`;
 
     // ===== 출발지 =====
     html += `
@@ -1745,11 +1752,6 @@ function showRouteList() {
                 <div class="name">${escapeHtml(startPoint.name)}</div>
                 <div class="addr">${escapeHtml(startPoint.address || '')}</div>
             </div>
-            <button class="btn btn-sm btn-outline" style="margin-left:4px;padding:2px 6px;font-size:10px;flex-shrink:0;" 
-                    onclick="event.stopPropagation(); openKakaoMap('${escapeHtml(startPoint.name)}', ${startPoint.lat || 0}, ${startPoint.lng || 0})" 
-                    title="카카오맵에서 상세보기">
-                🗺️
-            </button>
         </div>
     `;
 
@@ -1764,7 +1766,6 @@ function showRouteList() {
             <div class="route-item" 
                  data-lat="${p.lat}" 
                  data-lng="${p.lng}"
-                 data-name="${escapeHtml(p.name)}"
                  onclick="moveToRoutePoint(this)"
                  title="클릭하면 지도에서 해당 위치로 이동합니다">
                 <div class="idx">${i + 1}</div>
@@ -1773,11 +1774,6 @@ function showRouteList() {
                     <div class="addr">${escapeHtml(p.address || '')}</div>
                 </div>
                 <div class="dist">${segDist.toFixed(1)}km</div>
-                <button class="btn btn-sm btn-outline" style="margin-left:4px;padding:2px 6px;font-size:10px;flex-shrink:0;" 
-                        onclick="event.stopPropagation(); openKakaoMap('${escapeHtml(p.name)}', ${p.lat || 0}, ${p.lng || 0})" 
-                        title="카카오맵에서 상세보기">
-                    🗺️
-                </button>
             </div>
         `;
     }
@@ -2806,26 +2802,33 @@ async function showWeekWeather() {
 // 카카오맵 앱/웹 열기 (좌표 기반 정확한 위치)
 // ============================================================
 
-function openKakaoMap(name, lat, lng) {
-    if (!name) {
-        showTabStatus('tab-route', '⚠️ 장소명이 없습니다.', 'warning');
+// ============================================================
+// 카카오맵에 전체 최적 경로 표시 (출발지 + 모든 경유지)
+// ============================================================
+
+function openKakaoMap() {
+    // 전역 routeResult에서 경로 데이터 가져오기
+    if (!routeResult || !routeResult.places || routeResult.places.length === 0) {
+        showTabStatus('tab-route', '⚠️ 먼저 경로 최적화를 실행하세요.', 'warning');
         return;
     }
-    
-    // 좌표가 없으면 검색 기반 URL 사용
-    var url;
-    if (lat && lng && lat !== 0 && lng !== 0) {
-        // 좌표가 있으면 정확한 위치로 연결 (카카오맵 앱 실행 or 웹)
-        url = 'https://map.kakao.com/link/map/' + encodeURIComponent(name) + ',' + lat + ',' + lng;
-    } else {
-        // 좌표가 없으면 장소명 검색 결과로 연결
-        url = 'https://map.kakao.com/?q=' + encodeURIComponent(name);
+
+    var start = routeResult.startPoint;
+    var places = routeResult.places;
+
+    // 검색어 구성: "출발지 → 1경유지 → 2경유지 → ... → 도착지"
+    var searchQuery = start.name;
+    for (var i = 0; i < places.length; i++) {
+        searchQuery += ' → ' + places[i].name;
     }
-    
-    // 새 창(또는 새 탭)으로 열기
+
+    // 카카오맵 검색 URL (경로 검색 결과 표시)
+    var url = 'https://map.kakao.com/?q=' + encodeURIComponent(searchQuery);
+
+    // 새 창으로 열기
     window.open(url, '_blank');
-    
-    showTabStatus('tab-route', '🗺️ 카카오맵이 열렸습니다: ' + name, 'info');
+
+    showTabStatus('tab-route', '🗺️ 카카오맵에서 전체 경로를 확인하세요!', 'info');
 }
 // ============================================================
 // 39. 초기화 실행
