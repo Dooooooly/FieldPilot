@@ -95,20 +95,21 @@ function haversineKm(lat1, lng1, lat2, lng2) {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// ============================================================
+// 1. 탭 전환
+// ============================================================
+
 function switchTab(tabId) {
-    // 모든 탭 콘텐츠 숨기기
     var contents = document.querySelectorAll('.tab-content');
     for (var i = 0; i < contents.length; i++) {
         contents[i].classList.remove('active');
     }
     
-    // 모든 하단 탭 버튼 비활성화
     var tabs = document.querySelectorAll('.bottom-tab');
     for (var i = 0; i < tabs.length; i++) {
         tabs[i].classList.remove('active');
     }
     
-    // 선택한 탭 활성화
     var targetContent = document.getElementById(tabId);
     if (targetContent) {
         targetContent.classList.add('active');
@@ -121,14 +122,14 @@ function switchTab(tabId) {
     
     // ===== 탭별 처리 =====
     
-    // 경로탭: 지도 갱신
+    // ⭐ 경로탭: 지도만 표시 (개소 마커 표시 안 함!)
     if (tabId === 'tab-route') {
         setTimeout(function() {
             if (kakaoMap) {
                 kakaoMap.relayout();
                 kakaoMap.setDraggable(true);
                 kakaoMap.setZoomable(true);
-                showPlaceMarkers();
+                // ⭐ showPlaceMarkers() 호출 제거! (개소 마커 안 뜸)
             } else {
                 initMap();
             }
@@ -136,27 +137,24 @@ function switchTab(tabId) {
         return;
     }
     
-    // 개소탭: 개소 목록 렌더링 (⭐ 유일하게 renderPlaces() 호출)
+    // ⭐ 개소탭: 개소 목록 렌더링 (유일하게 renderPlaces() 호출)
     if (tabId === 'tab-list') {
         renderPlaces();
         return;
     }
     
-    // 장소탭: 아무것도 안 함 (출발지/경유지는 이미 표시됨)
+    // ⭐ 장소탭: 아무것도 안 함
     if (tabId === 'tab-places') {
-        // renderPlaces() 호출 금지!
         return;
     }
     
-    // 설정탭: 아무것도 안 함
+    // ⭐ 설정탭: 아무것도 안 함
     if (tabId === 'tab-settings') {
-        // renderPlaces() 호출 금지!
         return;
     }
     
-    // 도움말탭: 아무것도 안 함
+    // ⭐ 도움말탭: 아무것도 안 함
     if (tabId === 'tab-help') {
-        // renderPlaces() 호출 금지!
         return;
     }
 }
