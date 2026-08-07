@@ -418,59 +418,103 @@
         .search-results .result-item .source { font-size: 10px; color: #a0aec0; margin-left: 4px; }
         
         /* ===== 개소리스트 스크롤 ===== */
-        .place-scroll {
-            flex: 1;
-            overflow-y: auto;
-            min-height: 0;
-            max-height: none;
-            padding-right: 4px;
-        }
-        .place-scroll::-webkit-scrollbar {
-            width: 4px;
-        }
-        .place-scroll::-webkit-scrollbar-thumb {
-            background: #cbd5e0;
-            border-radius: 4px;
-        }
-        .place-scroll::-webkit-scrollbar-track {
-            background: #f7fafc;
-        }
-        
-        /* ===== 개소탭 ===== */
-        #tab-list {
-            display: flex;
-            flex-direction: column;
-            height: calc(100vh - 160px);
-            padding: 8px 10px;
-            overflow: hidden;
-        }
-        #tab-list .card {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-            padding: 8px 10px;
-            margin-bottom: 4px;
-        }
-        #tab-list .card .flex-row {
-            flex-shrink: 0;
-            margin-bottom: 4px;
-        }
-        #tab-list .card #searchPlace {
-            flex-shrink: 0;
-            margin-bottom: 4px;
-        }
-        
-        #githubHistory {
-            display: none;
-            margin-top: 6px;
-            max-height: 150px;
-            overflow-y: auto;
-            font-size: 12px;
-            background: #f7fafc;
-            border-radius: 6px;
-            padding: 8px;
-        }
+.place-scroll {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+    max-height: 300px;  /* ⭐ 최대 높이 제한! */
+    padding-right: 4px;
+}
+.place-scroll::-webkit-scrollbar {
+    width: 4px;
+}
+.place-scroll::-webkit-scrollbar-thumb {
+    background: #cbd5e0;
+    border-radius: 4px;
+}
+.place-scroll::-webkit-scrollbar-track {
+    background: #f7fafc;
+}
+
+/* ===== 개소탭 ===== */
+#tab-list {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    max-height: calc(100vh - 180px);
+    padding: 8px 10px;
+    overflow: hidden;
+}
+#tab-list .card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 8px 10px;
+    margin-bottom: 4px;
+}
+#tab-list .card .flex-row {
+    flex-shrink: 0;
+    margin-bottom: 4px;
+}
+#tab-list .card #searchPlace {
+    flex-shrink: 0;
+    margin-bottom: 4px;
+}
+
+/* ===== 개소 아이템 (크기 줄임) ===== */
+.place-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2px 5px;
+    background: #f7fafc;
+    border-radius: 4px;
+    margin-bottom: 2px;
+    border-left: 3px solid #2b6cb0;
+    gap: 4px;
+    min-height: 24px;
+}
+.place-item .info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: nowrap;
+    overflow: hidden;
+}
+.place-item .info .name {
+    font-weight: 600;
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.place-item .info .addr {
+    font-size: 10px;
+    color: #718096;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.place-item .info .addr:empty { display: none; }
+.place-item .actions {
+    display: flex;
+    gap: 2px;
+    flex-shrink: 0;
+    align-items: center;
+}
+.place-item .actions button {
+    background: none;
+    border: none;
+    font-size: 10px;
+    cursor: pointer;
+    padding: 1px 3px;
+    color: #a0aec0;
+    border-radius: 3px;
+    transition: color 0.2s;
+}
         
         /* ===== 경로 리스트 ===== */
         .route-item {
