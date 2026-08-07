@@ -417,13 +417,13 @@
         .search-results .result-item .addr { font-size: 11px; color: #718096; }
         .search-results .result-item .source { font-size: 10px; color: #a0aec0; margin-left: 4px; }
         
-        /* ===== ⭐ 개소리스트 스크롤 영역 (수정됨) ===== */
+        /* ===== 개소리스트 스크롤 ===== */
         .place-scroll {
-            max-height: calc(100vh - 280px);
-            min-height: 200px;
-            overflow-y: auto;
-            padding-right: 4px;
             flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+            max-height: none;
+            padding-right: 4px;
         }
         .place-scroll::-webkit-scrollbar {
             width: 4px;
@@ -436,58 +436,30 @@
             background: #f7fafc;
         }
         
-        /* ===== 개소탭 전체 높이 고정 ===== */
-#tab-list {
-    display: flex;
-    flex-direction: column;
-    height: calc(100vh - 160px); /* 헤더+탭 높이 제외 */
-    padding: 8px 10px;
-    overflow: hidden; /* 전체 스크롤 방지 */
-}
-
-/* ===== 개소 카드 ===== */
-#tab-list .card {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    padding: 8px 10px;
-    margin-bottom: 4px;
-}
-
-/* ===== 입력 영역 (고정) ===== */
-#tab-list .card .flex-row {
-    flex-shrink: 0; /* 줄어들지 않음 */
-    margin-bottom: 4px;
-}
-
-#tab-list .card #searchPlace {
-    flex-shrink: 0;
-    margin-bottom: 4px;
-    padding: 4px 8px;
-    font-size: 12px;
-}
-
-/* ===== 개소리스트만 스크롤 ===== */
-#tab-list .card .place-scroll {
-    flex: 1;
-    overflow-y: auto;
-    min-height: 0;
-    max-height: none;
-    padding-right: 4px;
-}
-
-/* ===== 스크롤바 스타일 ===== */
-.place-scroll::-webkit-scrollbar {
-    width: 4px;
-}
-.place-scroll::-webkit-scrollbar-thumb {
-    background: #cbd5e0;
-    border-radius: 4px;
-}
-.place-scroll::-webkit-scrollbar-track {
-    background: #f7fafc;
-}
+        /* ===== 개소탭 ===== */
+        #tab-list {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 160px);
+            padding: 8px 10px;
+            overflow: hidden;
+        }
+        #tab-list .card {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            padding: 8px 10px;
+            margin-bottom: 4px;
+        }
+        #tab-list .card .flex-row {
+            flex-shrink: 0;
+            margin-bottom: 4px;
+        }
+        #tab-list .card #searchPlace {
+            flex-shrink: 0;
+            margin-bottom: 4px;
+        }
         
         #githubHistory {
             display: none;
@@ -610,7 +582,7 @@
             #map { height: 280px; }
             .bottom-tab { font-size: 9px; padding: 4px 2px 3px; }
             .bottom-tab .tab-icon { font-size: 16px; }
-            .place-scroll { max-height: calc(100vh - 300px); min-height: 150px; }
+            #tab-list { height: calc(100vh - 150px); }
             .place-item .info .addr {
                 max-width: 100px;
                 overflow: hidden;
@@ -719,39 +691,34 @@
         </div>
 
         <!-- ===== 탭: 개소리스트 ===== -->
-      <!-- ===== 탭: 개소리스트 ===== -->
-<div id="tab-list" class="tab-content">
-    <div class="card">
-        <div class="card-title">📋 개소리스트 <span id="listCount" style="font-size:12px;color:#a0aec0;font-weight:400;"></span></div>
-        
-        <!-- 엑셀 버튼 (고정) -->
-        <div class="flex-row" style="margin-bottom:4px; flex-shrink:0;">
-            <button class="btn btn-outline btn-sm" style="flex:1;" onclick="document.getElementById('fileInput').click()" aria-label="엑셀 가져오기">📥 엑셀 가져오기</button>
-            <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFile(event)">
-            <button class="btn btn-outline btn-sm" style="flex:1;" onclick="exportData()" aria-label="엑셀 내보내기">📤 엑셀 내보내기</button>
-        </div>
-        <div id="uploadResult"></div>
-        
-        <!-- 개소 추가 (고정) -->
-        <div class="flex-row" style="margin-bottom:4px; flex-shrink:0;">
-            <input type="text" id="newPlaceName" aria-label="개소명" placeholder="개소명" class="flex-1" style="padding:6px 10px; border:2px solid #e2e8f0; border-radius:6px; font-size:13px;">
-            <div style="position:relative; flex:1.5;">
-                <input type="text" id="newPlaceAddr" aria-label="주소" placeholder="주소 입력" style="width:100%; padding:6px 10px; border:2px solid #e2e8f0; border-radius:6px; font-size:13px;" oninput="searchAddressForPlace(this.value)" onkeydown="handleAddrKeydown(event)">
-                <div id="addrSearchResults" class="search-results"></div>
+        <div id="tab-list" class="tab-content">
+            <div class="card">
+                <div class="card-title">📋 개소리스트 <span id="listCount" style="font-size:12px;color:#a0aec0;font-weight:400;"></span></div>
+                
+                <div class="flex-row" style="margin-bottom:4px; flex-shrink:0;">
+                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="document.getElementById('fileInput').click()" aria-label="엑셀 가져오기">📥 엑셀 가져오기</button>
+                    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFile(event)">
+                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="exportData()" aria-label="엑셀 내보내기">📤 엑셀 내보내기</button>
+                </div>
+                <div id="uploadResult"></div>
+                
+                <div class="flex-row" style="margin-bottom:4px; flex-shrink:0;">
+                    <input type="text" id="newPlaceName" aria-label="개소명" placeholder="개소명" class="flex-1" style="padding:6px 10px; border:2px solid #e2e8f0; border-radius:6px; font-size:13px;">
+                    <div style="position:relative; flex:1.5;">
+                        <input type="text" id="newPlaceAddr" aria-label="주소" placeholder="주소 입력" style="width:100%; padding:6px 10px; border:2px solid #e2e8f0; border-radius:6px; font-size:13px;" oninput="searchAddressForPlace(this.value)" onkeydown="handleAddrKeydown(event)">
+                        <div id="addrSearchResults" class="search-results"></div>
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="addPlace()" aria-label="개소 추가">추가</button>
+                </div>
+                
+                <div style="margin-bottom:4px; flex-shrink:0;">
+                    <input type="text" id="searchPlace" aria-label="개소 검색" placeholder="🔍 개소 검색" style="width:100%; padding:4px 8px; border:2px solid #e2e8f0; border-radius:4px; font-size:12px;" oninput="searchPlaces()">
+                </div>
+                
+                <div id="placeList" class="place-scroll"></div>
+                <div id="listStatus" class="tab-status"></div>
             </div>
-            <button class="btn btn-primary btn-sm" onclick="addPlace()" aria-label="개소 추가">추가</button>
         </div>
-        
-        <!-- 검색 (고정) -->
-        <div style="margin-bottom:4px; flex-shrink:0;">
-            <input type="text" id="searchPlace" aria-label="개소 검색" placeholder="🔍 개소 검색" style="width:100%; padding:4px 8px; border:2px solid #e2e8f0; border-radius:4px; font-size:12px;" oninput="searchPlaces()">
-        </div>
-        
-        <!-- 개소리스트 (스크롤) -->
-        <div id="placeList" class="place-scroll"></div>
-        <div id="listStatus" class="tab-status"></div>
-    </div>
-</div>
 
         <!-- ===== 탭: 설정 ===== -->
         <div id="tab-settings" class="tab-content">
