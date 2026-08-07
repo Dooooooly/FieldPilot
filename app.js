@@ -2523,7 +2523,7 @@ function registerServiceWorker() {
 }
 
 // ============================================================
-// 37. 날씨 정보 가져오기
+// 날씨 정보 가져오기 (위도/경도 강제 사용)
 // ============================================================
 
 async function fetchWeather() {
@@ -2535,11 +2535,16 @@ async function fetchWeather() {
 
     try {
         var apiKey = 'b84c1b9a09d8316b679320cceb3a1097';
+        
+        // ⭐⭐⭐ 강제로 위도/경도 사용 (도시명 절대 사용 금지!)
         var center = getRegionCenter(currentRegion);
         var lat = center.lat;
         var lon = center.lng;
         
+        // ⭐⭐⭐ URL에 q=용산이 절대 안 들어가게!
         var url = 'https://api.openweathermap.org/data/2.5/weather?lat=' + lat + '&lon=' + lon + '&appid=' + apiKey + '&units=metric&lang=kr';
+        
+        console.log('📡 요청 URL (위도/경도):', url); // 여기서 q=용산인지 확인!
         
         var response = await fetch(url);
         if (!response.ok) {
@@ -2567,7 +2572,6 @@ async function fetchWeather() {
         weatherEl.innerHTML = '<span>⏳</span><span class="temp">--°C</span><span>날씨</span>';
     }
 }
-
 // ============================================================
 // 38. 초기화 실행
 // ============================================================
