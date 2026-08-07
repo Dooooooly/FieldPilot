@@ -2363,54 +2363,39 @@ function registerServiceWorker() {
 }
 
 // ============================================================
-// 35. 날씨 정보 가져오기 (완전 새로 작성)
+// 35. 날씨 정보 가져오기 (위도/경도 강제 사용)
 // ============================================================
 
 async function fetchWeather() {
-    console.log('🌤️ fetchWeather 실행 시작');
-    
-    // 1. 날씨 표시 요소 확인
     var weatherEl = document.getElementById('weatherDisplay');
     if (!weatherEl) {
-        console.error('❌ weatherDisplay 요소를 찾을 수 없습니다!');
+        console.warn('⚠️ 날씨 표시 요소 없음');
         return;
     }
-    console.log('✅ weatherDisplay 요소 찾음:', weatherEl);
 
     try {
-        // 2. API 키 (사용자가 직접 발급받은 키로 교체)
         var apiKey = 'b84c1b9a09d8316b679320cceb3a1097';
         
-        // 3. 현재 지역 위도/경도 가져오기
+        // ⭐⭐⭐ 강제로 위도/경도 사용 (도시명 절대 사용 금지!)
         var center = getRegionCenter(currentRegion);
-        if (!center || !center.lat || !center.lng) {
-            console.error('❌ 지역 중심 좌표를 가져올 수 없음:', currentRegion);
-            weatherEl.innerHTML = '<span>⏳</span><span class="temp">--°C</span><span>위치 오류</span>';
-            return;
-        }
-        console.log('📍 지역 중심 좌표:', center.lat, center.lng);
-
-        // 4. 날씨 API 요청 URL
-        var url = 'https://api.openweathermap.org/data/2.5/weather?lat=' + center.lat + '&lon=' + center.lng + '&appid=' + apiKey + '&units=metric&lang=kr';
-        console.log('📡 날씨 요청 URL:', url);
-
-        // 5. API 호출
+        var lat = center.lat;
+        var lon = center.lng;
+        
+        // ⭐⭐⭐ URL에 q=용산이 절대 안 들어가게!
+        var url = 'https://api.openweathermap.org/data/2.5/weather?lat=' + lat + '&lon=' + lon + '&appid=' + apiKey + '&units=metric&lang=kr';
+        
+        console.log('📡 요청 URL (위도/경도):', url); // 여기서 q=용산인지 확인!
+        
         var response = await fetch(url);
-        console.log('📡 API 응답 상태:', response.status);
-
         if (!response.ok) {
             throw new Error('날씨 API 호출 실패 (상태: ' + response.status + ')');
         }
-
+        
         var data = await response.json();
-        console.log('✅ 날씨 데이터 수신 성공:', data);
-
-        // 6. 날씨 정보 추출
         var temp = Math.round(data.main.temp);
         var desc = data.weather[0].description;
         var icon = data.weather[0].icon;
 
-        // 7. 아이콘 이모지 매핑
         var iconEmoji = {
             '01d': '☀️', '01n': '🌙', '02d': '⛅', '02n': '☁️',
             '03d': '☁️', '03n': '☁️', '04d': '☁️', '04n': '☁️',
@@ -2419,15 +2404,12 @@ async function fetchWeather() {
             '50d': '🌫️', '50n': '🌫️'
         };
 
-        var emoji = iconEmoji[icon] || '🌡️';
-
-        // 8. ✅ HTML 업데이트 (확실하게!)
-        weatherEl.innerHTML = '<span>' + emoji + '</span><span class="temp">' + temp + '°C</span><span>' + desc + '</span>';
-        console.log('✅ 날씨 표시 완료:', temp + '°C ' + desc);
+        weatherEl.innerHTML = '<span>' + (iconEmoji[icon] || '🌡️') + '</span><span class="temp">' + temp + '°C</span><span>' + desc + '</span>';
+        console.log('✅ 날씨 표시 성공:', temp + '°C');
 
     } catch (error) {
-        console.error('❌ 날씨 오류 발생:', error.message);
-        weatherEl.innerHTML = '<span>⏳</span><span class="temp">--°C</span><span>오류</span>';
+        console.error('❌ 날씨 오류:', error);
+        weatherEl.innerHTML = '<span>⏳</span><span class="temp">--°C</span><span>날씨</span>';
     }
 }
 // ============================================================
