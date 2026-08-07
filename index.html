@@ -436,40 +436,58 @@
             background: #f7fafc;
         }
         
-        /* ===== ⭐ 개소리스트 카드 여백 최소화 (수정됨) ===== */
-        #tab-list .card {
-            padding: 8px 10px;
-            margin-bottom: 4px;
-            display: flex;
-            flex-direction: column;
-            flex: 1;
-        }
-        #tab-list .card .flex-row {
-            margin-bottom: 4px;
-        }
-        #tab-list .card #searchPlace {
-            margin-bottom: 4px;
-            padding: 4px 8px;
-            font-size: 12px;
-        }
-        
-        /* ===== 전체 개소리스트 탭 높이 활용 ===== */
-        #tab-list {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            padding: 8px 10px;
-        }
-        #tab-list .card {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-        #tab-list .card .place-scroll {
-            flex: 1;
-            max-height: none;
-            min-height: 300px;
-        }
+        /* ===== 개소탭 전체 높이 고정 ===== */
+#tab-list {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 160px); /* 헤더+탭 높이 제외 */
+    padding: 8px 10px;
+    overflow: hidden; /* 전체 스크롤 방지 */
+}
+
+/* ===== 개소 카드 ===== */
+#tab-list .card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 8px 10px;
+    margin-bottom: 4px;
+}
+
+/* ===== 입력 영역 (고정) ===== */
+#tab-list .card .flex-row {
+    flex-shrink: 0; /* 줄어들지 않음 */
+    margin-bottom: 4px;
+}
+
+#tab-list .card #searchPlace {
+    flex-shrink: 0;
+    margin-bottom: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+/* ===== 개소리스트만 스크롤 ===== */
+#tab-list .card .place-scroll {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+    max-height: none;
+    padding-right: 4px;
+}
+
+/* ===== 스크롤바 스타일 ===== */
+.place-scroll::-webkit-scrollbar {
+    width: 4px;
+}
+.place-scroll::-webkit-scrollbar-thumb {
+    background: #cbd5e0;
+    border-radius: 4px;
+}
+.place-scroll::-webkit-scrollbar-track {
+    background: #f7fafc;
+}
         
         #githubHistory {
             display: none;
