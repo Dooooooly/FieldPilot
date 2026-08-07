@@ -8,7 +8,7 @@ const SELECTED_REGION_KEY = 'selectedRegion';
 const SETTINGS_KEY = 'app_settings';
 const OPTIMIZE_MODE_KEY = 'optimizeMode';
 
-// --- 지역별 중심 좌표 ---
+// --- 지역별 중심 좌표 (지도용) ---
 const REGION_CENTERS = {
     '서울': { lat: 37.5665, lng: 126.9780 },
     '부산': { lat: 35.1796, lng: 129.0756 },
@@ -44,7 +44,7 @@ const REGION_CENTERS = {
 };
 
 // --- 상태 ---
-let currentRegion = localStorage.getItem(SELECTED_REGION_KEY) || '서울';
+let currentRegion = localStorage.getItem(SELECTED_REGION_KEY) || '';
 let places = [];
 let waypoints = [];
 let routeResult = null;
@@ -121,15 +121,12 @@ function switchTab(tabId) {
     }
     
     // ===== 탭별 처리 =====
-    
-    // ⭐ 경로탭: 지도만 표시 (개소 마커 표시 안 함!)
     if (tabId === 'tab-route') {
         setTimeout(function() {
             if (kakaoMap) {
                 kakaoMap.relayout();
                 kakaoMap.setDraggable(true);
                 kakaoMap.setZoomable(true);
-                // ⭐ showPlaceMarkers() 호출 제거! (개소 마커 안 뜸)
             } else {
                 initMap();
             }
@@ -137,24 +134,12 @@ function switchTab(tabId) {
         return;
     }
     
-    // ⭐ 개소탭: 개소 목록 렌더링 (유일하게 renderPlaces() 호출)
     if (tabId === 'tab-list') {
         renderPlaces();
         return;
     }
     
-    // ⭐ 장소탭: 아무것도 안 함
-    if (tabId === 'tab-places') {
-        return;
-    }
-    
-    // ⭐ 설정탭: 아무것도 안 함
-    if (tabId === 'tab-settings') {
-        return;
-    }
-    
-    // ⭐ 도움말탭: 아무것도 안 함
-    if (tabId === 'tab-help') {
+    if (tabId === 'tab-places' || tabId === 'tab-settings' || tabId === 'tab-help') {
         return;
     }
 }
@@ -172,6 +157,7 @@ function getRegionCenter(region) {
             return REGION_CENTERS[key];
         }
     }
+    // 등록되지 않은 지역은 서울 기준 (사용자에게 안내)
     showTabStatus('tab-settings', 'ℹ️ "' + region + '" 지역의 중심 좌표가 없어 서울 기준으로 표시됩니다.', 'info');
     return { lat: 37.5665, lng: 126.9780 };
 }
@@ -315,6 +301,7 @@ function savePlaces() {
     scheduleAutoSync();
 }
 
+// ⭐⭐ 핵심: 저장된 지역 목록만 드롭다운에 표시 (기본값 없음)
 function loadRegionList() {
     var select = document.getElementById('regionSelect');
     select.innerHTML = '';
@@ -330,14 +317,10 @@ function loadRegionList() {
         }
     }
     
+    // ⭐ 저장된 지역이 없으면 드롭다운을 비워둠
     if (regions.length === 0) {
-        regions = ['서울', '부산', '제주'];
-        for (var i = 0; i < regions.length; i++) {
-            var key = getStorageKey(regions[i]);
-            if (!localStorage.getItem(key)) {
-                localStorage.setItem(key, JSON.stringify([]));
-            }
-        }
+        // 기본 옵션 추가 안 함 → 빈 드롭다운
+        return;
     }
     
     for (var i = 0; i < regions.length; i++) {
@@ -347,9 +330,11 @@ function loadRegionList() {
         select.appendChild(opt);
     }
     
+    // currentRegion이 유효하면 선택
     if (currentRegion && regions.includes(currentRegion)) {
         select.value = currentRegion;
     } else {
+        // currentRegion이 없거나 유효하지 않으면 첫 번째 지역 선택
         select.value = regions[0];
         currentRegion = regions[0];
         localStorage.setItem(SELECTED_REGION_KEY, currentRegion);
@@ -384,6 +369,13 @@ function switchRegion(region) {
     document.getElementById('totalTime').textContent = '0 분';
     document.getElementById('optimizeMode').textContent = '-';
     document.getElementById('routeList').innerHTML = '';
+    
+    if (kakaoMap) {
+        var center = getRegionCenter(region);
+        kakaoMap.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
+        kakaoMap.setLevel(5);
+    }
+    
     showTabStatus('tab-settings', '📍 ' + region + ' 지역으로 전환', 'info');
 }
 
@@ -878,7 +870,6 @@ async function setStartPoint() {
 // 14. 검색 결과 선택
 // ============================================================
 
-// ⭐ 최근 출발지 저장 함수
 function getRecentStartPoints() {
     try {
         var data = localStorage.getItem('recentStartPoints');
@@ -894,11 +885,9 @@ function saveRecentStartPoint(name, address, lat, lng) {
     localStorage.setItem('recentStartPoints', JSON.stringify(recent));
 }
 
-// ⭐ 수정된 searchStartPoint - 최근 출발지 표시
 async function searchStartPoint(query) {
     var container = document.getElementById('startSearchResults');
     
-    // ⭐ 입력이 없으면 최근 출발지 3개 표시
     if (!query || query.length === 0) {
         var recent = getRecentStartPoints();
         if (recent.length === 0) {
@@ -918,7 +907,6 @@ async function searchStartPoint(query) {
         return;
     }
     
-    // 입력이 있으면 기존 검색 로직 실행
     if (query.length < 2) {
         container.style.display = 'none';
         return;
@@ -975,7 +963,6 @@ function selectStartPoint(name, address, lat, lng) {
         return;
     }
     
-    // ⭐ 최근 출발지 저장
     saveRecentStartPoint(name, address, lat, lng);
     
     startPoint = { name: name, address: address, lat: lat, lng: lng };
@@ -1330,7 +1317,6 @@ function showPlaceOnMap(id) {
     
     var pos = new kakao.maps.LatLng(place.lat, place.lng);
     
-    // ⭐ 강조된 반투명 단일 개소 오버레이
     var content = `
         <div style="
             background: rgba(255, 255, 255, 0.92);
@@ -1366,6 +1352,7 @@ function showPlaceOnMap(id) {
     switchTab('tab-route');
     showTabStatus('tab-route', '📍 "' + place.name + '" 위치 표시 중', 'info');
 }
+
 function clearSingleMarker() {
     if (singlePlaceMarker) {
         try { singlePlaceMarker.setMap(null); } catch(e) {}
@@ -1376,6 +1363,7 @@ function clearSingleMarker() {
         singlePlaceInfoWindow = null;
     }
 }
+
 // ============================================================
 // 22. 지오코딩
 // ============================================================
@@ -1634,7 +1622,6 @@ async function runOptimize() {
             addRouteMarker(p.lat, p.lng, (i + 1) + '. ' + p.name, false);
         }
         
-        // 도로 경로 요청
         var routeData = await callKakaoMobilityRoute(allPoints, restKey);
         if (routeData) {
             drawRoadRoute(routeData);
@@ -1830,15 +1817,14 @@ function drawRoadRoute(routeData) {
             kakaoPolyline = null;
         }
         
-        // ⭐ 파스텔 반투명 색상 (16진수 + 투명도)
         var pastelColors = [
-            'rgba(255, 150, 150, 0.7)',  // 연한 빨강
-            'rgba(255, 200, 150, 0.7)',  // 연한 주황
-            'rgba(255, 230, 150, 0.7)',  // 연한 노랑
-            'rgba(150, 220, 150, 0.7)',  // 연한 초록
-            'rgba(150, 200, 255, 0.7)',  // 연한 파랑
-            'rgba(200, 150, 255, 0.7)',  // 연한 보라
-            'rgba(255, 150, 200, 0.7)'   // 연한 핑크
+            'rgba(255, 150, 150, 0.7)',
+            'rgba(255, 200, 150, 0.7)',
+            'rgba(255, 230, 150, 0.7)',
+            'rgba(150, 220, 150, 0.7)',
+            'rgba(150, 200, 255, 0.7)',
+            'rgba(200, 150, 255, 0.7)',
+            'rgba(255, 150, 200, 0.7)'
         ];
         
         var totalBounds = new kakao.maps.LatLngBounds();
@@ -1878,7 +1864,6 @@ function drawRoadRoute(routeData) {
                     strokeStyle: 'solid'
                 });
                 
-                // ⭐ 화살표도 반투명
                 if (sectionPath.length > 2) {
                     var lastIdx = sectionPath.length - 1;
                     var prevIdx = lastIdx - 1;
@@ -2069,6 +2054,7 @@ function createMap(container) {
         showTabStatus('tab-settings', '⚠️ 지도 생성 실패', 'error');
     }
 }
+
 // ============================================================
 // 28. 마커 관리 (반투명 커스텀 오버레이)
 // ============================================================
@@ -2117,12 +2103,12 @@ function addRouteMarker(lat, lng, title, isStart) {
         console.error('커스텀 오버레이 추가 실패:', e);
     }
 }
+
 // ============================================================
 // 29. 경로 마커 제거
 // ============================================================
 
 function clearRouteMarkers() {
-    // 기존 경로 마커 제거
     for (var i = 0; i < routeMarkers.length; i++) {
         try { routeMarkers[i].setMap(null); } catch(e) {}
     }
@@ -2132,7 +2118,6 @@ function clearRouteMarkers() {
     routeMarkers = [];
     routeInfoWindows = [];
     
-    // 구간별 폴리라인 제거
     if (window._sectionPolylines) {
         for (var i = 0; i < window._sectionPolylines.length; i++) {
             try { window._sectionPolylines[i].setMap(null); } catch(e) {}
@@ -2140,7 +2125,6 @@ function clearRouteMarkers() {
         window._sectionPolylines = [];
     }
     
-    // 기존 단일 폴리라인 제거
     if (kakaoPolyline) {
         try { kakaoPolyline.setMap(null); } catch(e) {}
         kakaoPolyline = null;
@@ -2148,8 +2132,9 @@ function clearRouteMarkers() {
     
     isShowingRouteMarkers = false;
 }
+
 // ============================================================
-// 29. 개소 마커 표시 (반투명 커스텀 오버레이)
+// 30. 개소 마커 표시 (반투명 커스텀 오버레이)
 // ============================================================
 
 function showPlaceMarkers() {
@@ -2182,7 +2167,6 @@ function showPlaceMarkers() {
         var pos = new kakao.maps.LatLng(p.lat, p.lng);
         bounds.extend(pos);
         
-        // ⭐ 반투명 블러 효과 커스텀 오버레이
         var content = `
             <div style="
                 background: rgba(255, 255, 255, 0.88);
@@ -2220,8 +2204,9 @@ function showPlaceMarkers() {
     
     kakaoMap.setBounds(bounds);
 }
+
 // ============================================================
-// 30. 엑셀 파일 처리
+// 31. 엑셀 파일 처리
 // ============================================================
 
 function parseCSVLine(line) {
@@ -2381,7 +2366,7 @@ function showUploadResult(msg, type) {
 }
 
 // ============================================================
-// 31. 엑셀 내보내기
+// 32. 엑셀 내보내기
 // ============================================================
 
 function exportData() {
@@ -2415,7 +2400,7 @@ function exportData() {
 }
 
 // ============================================================
-// 32. 설정 내보내기/가져오기
+// 33. 설정 내보내기/가져오기
 // ============================================================
 
 function exportSettings() {
@@ -2464,7 +2449,7 @@ function importSettings(event) {
 }
 
 // ============================================================
-// 33. 공유
+// 34. 공유
 // ============================================================
 
 function shareRoute() {
@@ -2498,7 +2483,7 @@ function shareRoute() {
 }
 
 // ============================================================
-// 34. 초기화
+// 35. 초기화
 // ============================================================
 
 function resetAll() {
@@ -2541,7 +2526,7 @@ function resetAll() {
 }
 
 // ============================================================
-// 35. UI 헬퍼
+// 36. UI 헬퍼
 // ============================================================
 
 function showModal(title, body) {
@@ -2555,7 +2540,7 @@ function closeModal() {
 }
 
 // ============================================================
-// 36. Service Worker 등록
+// 37. Service Worker 등록
 // ============================================================
 
 function registerServiceWorker() {
@@ -2571,7 +2556,7 @@ function registerServiceWorker() {
 }
 
 // ============================================================
-// 날씨 정보 가져오기 (위도/경도 강제 사용)
+// 38. 날씨 정보 가져오기
 // ============================================================
 
 async function fetchWeather() {
@@ -2583,16 +2568,10 @@ async function fetchWeather() {
 
     try {
         var apiKey = 'b84c1b9a09d8316b679320cceb3a1097';
-        
-        // ⭐⭐⭐ 강제로 위도/경도 사용 (도시명 절대 사용 금지!)
         var center = getRegionCenter(currentRegion);
         var lat = center.lat;
         var lon = center.lng;
-        
-        // ⭐⭐⭐ URL에 q=용산이 절대 안 들어가게!
         var url = 'https://api.openweathermap.org/data/2.5/weather?lat=' + lat + '&lon=' + lon + '&appid=' + apiKey + '&units=metric&lang=kr';
-        
-        console.log('📡 요청 URL (위도/경도):', url); // 여기서 q=용산인지 확인!
         
         var response = await fetch(url);
         if (!response.ok) {
@@ -2620,16 +2599,27 @@ async function fetchWeather() {
         weatherEl.innerHTML = '<span>⏳</span><span class="temp">--°C</span><span>날씨</span>';
     }
 }
+
 // ============================================================
-// 38. 초기화 실행
+// 39. 초기화 실행
 // ============================================================
 
 document.addEventListener('DOMContentLoaded', function() {
+    // localStorage에 저장된 지역이 없으면 currentRegion을 빈 문자열로 유지
     if (!currentRegion) {
-        currentRegion = '서울';
-        localStorage.setItem(SELECTED_REGION_KEY, currentRegion);
+        // 기본 지역 없이 시작
+        loadSettings();
+        loadRegionList(); // 드롭다운에 저장된 지역만 표시 (없으면 비움)
+        renderPlaces();
+        renderWaypointList();
+        setOptimizeMode(optimizeMode);
+        updateStorageInfo();
+        setTimeout(initMap, 500);
+        registerServiceWorker();
+        setTimeout(fetchWeather, 3000);
+        return;
     }
-    startPoint = null;
+    
     loadSettings();
     loadRegionList();
     var key = getStorageKey(currentRegion);
