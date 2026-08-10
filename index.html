@@ -593,36 +593,42 @@
 
     <div class="main">
 
-     <!-- ===== 탭: 장소 ===== -->
+<!-- ===== 탭: 장소 ===== -->
 <div id="tab-places" class="tab-content active">
     
-    <!-- 출발지 카드 -->
+    <!-- ===== 1. 출발지 카드 ===== -->
     <div class="card">
         <div class="card-title">🚩 출발지</div>
         <div style="position:relative;">
             <div class="flex-row">
                 <input type="text" id="startPoint" aria-label="출발지" placeholder="출발지 입력" class="flex-1" 
-                       style="padding:6px 10px; border:2px solid #e2e8f0; border-radius:6px; font-size:13px;" 
+                       style="padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:14px;" 
                        oninput="searchStartPoint(this.value)" 
                        onclick="searchStartPoint(this.value)" 
                        onkeydown="handleStartKeydown(event)">
-                <button class="btn btn-primary btn-sm" onclick="setStartPoint()" aria-label="출발지 설정">설정</button>
+                <button class="btn btn-primary" onclick="setStartPoint()" 
+                        style="padding:8px 16px; font-size:13px; border-radius:8px; white-space:nowrap;">
+                    설정
+                </button>
             </div>
             <div id="startSearchResults" class="search-results"></div>
         </div>
-        <div id="startInfo" style="font-size:12px; color:#718096; margin-top:4px;">⏳ 출발지를 검색하고 설정하세요</div>
+        <div id="startInfo" style="font-size:12px; color:#718096; margin-top:6px;">⏳ 출발지를 검색하고 설정하세요</div>
     </div>
     
-    <!-- 경유지 카드 -->
+    <!-- ===== 2. 경유지 카드 ===== -->
     <div class="card">
         <div class="card-title">📍 경유지 <span id="wpCount" style="font-size:12px;color:#a0aec0;font-weight:400;"></span></div>
         <div style="position:relative;">
             <div class="flex-row" style="margin-bottom:4px;">
                 <input type="text" id="waypointInput" aria-label="경유지" placeholder="경유지 입력" class="flex-1" 
-                       style="padding:6px 10px; border:2px solid #e2e8f0; border-radius:6px; font-size:13px;" 
+                       style="padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:14px;" 
                        oninput="searchWaypoint(this.value)" 
                        onkeydown="handleWaypointKeydown(event)">
-                <button class="btn btn-success btn-sm" onclick="addWaypoint()" aria-label="경유지 추가">추가</button>
+                <button class="btn btn-success" onclick="addWaypoint()" 
+                        style="padding:8px 16px; font-size:13px; border-radius:8px; white-space:nowrap;">
+                    추가
+                </button>
             </div>
             <div id="waypointSearchResults" class="search-results"></div>
         </div>
@@ -631,31 +637,66 @@
         </ul>
     </div>
     
-    <!-- 버튼들 -->
-    <div class="flex-row">
-        <button class="btn btn-primary btn-block" onclick="runOptimize()">⚡ 경로 최적화</button>
-        <button class="btn btn-success btn-block" onclick="addPreset()">💾 프리셋 저장</button>
-        <button class="btn btn-danger btn-block" onclick="resetRoute()">🔄 경로 초기화</button>
-        <button class="btn btn-success btn-block" onclick="shareRoute()">📤 공유</button>
-    </div>
-    
-   <!-- 최적화 방식 -->
-<div class="card" style="margin-top:6px;">
-    <div class="flex-row" style="align-items:center;">
-        <span style="font-size:12px; font-weight:600; color:#4a5568;">📐 최적화 방식:</span>
-        <button class="btn btn-sm btn-primary" id="modeNearest" onclick="setOptimizeMode('Nearest')" style="flex:1;" aria-label="가까운순 최적화">가까운순</button>
-        <button class="btn btn-sm btn-outline" id="modeFarthest" onclick="setOptimizeMode('Farthest')" style="flex:1;" aria-label="먼순 최적화">먼순</button>
-    </div>
-    <div id="modeInfo" style="font-size:11px; color:#718096; margin-top:4px; text-align:center;">현재: 가까운순</div>
-</div>
-
-    <!-- ===== 🔥 프리셋 카드는 여기에 (tab-places 내부) ===== -->
-    <div class="card" style="margin-top:6px;">
-        <div class="card-title">📂 저장된 프리셋</div>
-        <div id="presetList" style="max-height:150px; overflow-y:auto;">
-            <div class="empty-msg" style="padding:8px;font-size:12px;">저장된 프리셋이 없습니다</div>
+    <!-- ===== 3. 메인 액션 버튼 (최적화 + 초기화) ===== -->
+    <div style="display:flex; flex-direction:column; gap:6px; margin-top:4px;">
+        <!-- 최적화 버튼 (가장 강조) -->
+        <button class="btn btn-primary" onclick="runOptimize()" 
+                style="width:100%; padding:14px; font-size:16px; font-weight:700; border-radius:10px; 
+                       background: linear-gradient(135deg, #2b6cb0, #1a365d); 
+                       box-shadow: 0 4px 12px rgba(43,108,176,0.3);">
+            ⚡ 경로 최적화
+        </button>
+        
+        <!-- 보조 버튼들 (2개씩 2줄) -->
+        <div style="display:flex; gap:6px;">
+            <button class="btn btn-outline" onclick="resetRoute()" 
+                    style="flex:1; padding:10px; font-size:13px; border-radius:8px; 
+                           border-color: #e53e3e; color: #e53e3e;">
+                🔄 초기화
+            </button>
+            <button class="btn btn-outline" onclick="shareRoute()" 
+                    style="flex:1; padding:10px; font-size:13px; border-radius:8px; 
+                           border-color: #2b6cb0; color: #2b6cb0;">
+                📤 공유
+            </button>
         </div>
     </div>
+    
+    <!-- ===== 4. 최적화 방식 선택 ===== -->
+    <div class="card" style="margin-top:8px; background:#f7fafc; border:1px solid #e2e8f0;">
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span style="font-size:13px; font-weight:600; color:#4a5568;">📐 최적화 방식</span>
+            <button class="btn btn-sm btn-primary" id="modeNearest" onclick="setOptimizeMode('Nearest')" 
+                    style="flex:1; padding:6px 12px; border-radius:20px; font-size:12px;">
+                가까운순
+            </button>
+            <button class="btn btn-sm btn-outline" id="modeFarthest" onclick="setOptimizeMode('Farthest')" 
+                    style="flex:1; padding:6px 12px; border-radius:20px; font-size:12px; border-color:#2b6cb0; color:#2b6cb0;">
+                먼순
+            </button>
+        </div>
+        <div id="modeInfo" style="font-size:11px; color:#718096; margin-top:4px; text-align:center;">현재: 가까운순</div>
+    </div>
+    
+    <!-- ===== 5. 프리셋 저장 버튼 (별도 영역) ===== -->
+    <div style="margin-top:8px;">
+        <button class="btn btn-success" onclick="addPreset()" 
+                style="width:100%; padding:10px; font-size:14px; font-weight:600; border-radius:8px;
+                       background: linear-gradient(135deg, #38a169, #276749);">
+            💾 현재 경로를 프리셋으로 저장
+        </button>
+    </div>
+    
+    <!-- ===== 6. 프리셋 목록 ===== -->
+    <div class="card" style="margin-top:6px; background:#f7fafc; border:1px solid #e2e8f0;">
+        <div class="card-title" style="font-size:13px;">📂 저장된 프리셋</div>
+        <div id="presetList" style="max-height:150px; overflow-y:auto;">
+            <div class="empty-msg" style="padding:8px;font-size:12px;color:#a0aec0;">저장된 프리셋이 없습니다</div>
+        </div>
+    </div>
+    
+    <!-- ===== 7. 상태 메시지 ===== -->
+    <div id="placesStatus" class="tab-status" style="margin-top:6px;"></div>
 
 </div>   <!-- #tab-places 끝 -->
         <!-- ===== 탭: 경로 ===== -->
