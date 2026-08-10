@@ -417,7 +417,7 @@ function renderSearchResults(container, results, onClickName, isMultiSelect) {
 // ============================================================
 
 function toggleMultiSelect() {
-    multiSelectMode = document.getElementById('multiSelectMode').checked;
+    multiSelectMode = !multiSelectMode;
     
     var toggleBtn = document.getElementById('multiToggleBtn');
     var addBtn = document.getElementById('addWaypointBtn');
@@ -476,11 +476,17 @@ function toggleMultiSelect() {
         
         // 선택 초기화
         selectedWaypoints = [];
-        document.getElementById('waypointSearchResults').style.display = 'none';
+        var resultsContainer = document.getElementById('waypointSearchResults');
+        if (resultsContainer) {
+            resultsContainer.style.display = 'none';
+        }
         
         showTabStatus('tab-places', '일반 모드로 전환됨', 'info');
     }
 }
+// ============================================================
+// 경유지 선택 토글 (체크박스)
+// ============================================================
 
 // ============================================================
 // 경유지 선택 토글 (체크박스)
@@ -499,12 +505,14 @@ function toggleWaypointSelection(name, address, lat, lng) {
     }
     // 체크박스 상태 동기화
     var container = document.getElementById('waypointSearchResults');
-    container.querySelectorAll('.result-item').forEach(function(el) {
-        var cb = el.querySelector('.result-check');
-        if (cb) {
-            cb.checked = selectedWaypoints.some(function(w) { return w.name === el.dataset.name; });
-        }
-    });
+    if (container) {
+        container.querySelectorAll('.result-item').forEach(function(el) {
+            var cb = el.querySelector('.result-check');
+            if (cb) {
+                cb.checked = selectedWaypoints.some(function(w) { return w.name === el.dataset.name; });
+            }
+        });
+    }
 }
 
 function addSelectedWaypoints() {
@@ -753,10 +761,10 @@ function addWaypoint() {
         
         renderWaypointList();
         selectedWaypoints = [];
-        document.getElementById('waypointSearchResults').style.display = 'none';
-        
-        // 자동으로 일반 모드로 전환 (선택사항)
-        // toggleMultiSelect(); // 주석 해제하면 자동으로 일반 모드로 전환
+        var resultsContainer = document.getElementById('waypointSearchResults');
+        if (resultsContainer) {
+            resultsContainer.style.display = 'none';
+        }
         
         var msg = '✅ ' + added + '개 경유지 추가됨';
         if (duplicated > 0) msg += ' (' + duplicated + '개 중복 제외)';
@@ -784,28 +792,10 @@ function addWaypoint() {
     renderWaypointList();
     input.value = '';
     input.focus();
-    document.getElementById('waypointSearchResults').style.display = 'none';
-    showTabStatus('tab-places', '✅ "' + name + '" 추가', 'ok');
-}
-    
-    // ===== 일반 추가 모드 =====
-    if (!name) {
-        showTabStatus('tab-places', '경유지를 입력하세요.', 'warning');
-        return;
+    var resultsContainer = document.getElementById('waypointSearchResults');
+    if (resultsContainer) {
+        resultsContainer.style.display = 'none';
     }
-    if (waypoints.length >= 15) {
-        showTabStatus('tab-places', '⚠️ 최대 15개까지 가능', 'warning');
-        return;
-    }
-    if (waypoints.some(function(ex) { return ex.name === name; })) {
-        showTabStatus('tab-places', '⚠️ "' + name + '"은(는) 이미 경유지에 있습니다.', 'warning');
-        return;
-    }
-    waypoints.push({ name: name, lat: 0, lng: 0 });
-    renderWaypointList();
-    input.value = '';
-    input.focus();
-    document.getElementById('waypointSearchResults').style.display = 'none';
     showTabStatus('tab-places', '✅ "' + name + '" 추가', 'ok');
 }
 
