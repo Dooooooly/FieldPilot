@@ -387,6 +387,10 @@ async function searchKakaoPlaces(query, size) {
     } catch(e) { return []; }
 }
 
+// ============================================================
+// 검색 결과 렌더링 (체크박스 포함)
+// ============================================================
+
 function renderSearchResults(container, results, onClickName, isMultiSelect) {
     if (!results || results.length === 0) {
         container.style.display = 'none';
@@ -416,6 +420,10 @@ function toggleMultiSelect() {
     }
 }
 
+// ============================================================
+// 경유지 선택 토글 (체크박스)
+// ============================================================
+
 function toggleWaypointSelection(name, address, lat, lng) {
     var idx = selectedWaypoints.findIndex(function(w) { return w.name === name; });
     if (idx >= 0) {
@@ -427,6 +435,7 @@ function toggleWaypointSelection(name, address, lat, lng) {
         }
         selectedWaypoints.push({ name: name, address: address, lat: lat, lng: lng });
     }
+    // 체크박스 상태 동기화
     var container = document.getElementById('waypointSearchResults');
     container.querySelectorAll('.result-item').forEach(function(el) {
         var cb = el.querySelector('.result-check');
@@ -610,6 +619,10 @@ function selectWaypointFromSearch(name, address, lat, lng) {
     showTabStatus('tab-places', '✅ "' + name + '" 경유지 추가', 'ok');
 }
 
+// ============================================================
+// 경유지 추가 (일반 + 여러개 통합)
+// ============================================================
+
 function addWaypoint() {
     var input = document.getElementById('waypointInput');
     var name = input.value.trim();
@@ -621,6 +634,7 @@ function addWaypoint() {
             return;
         }
         var added = 0;
+        var errors = 0;
         for (var i = 0; i < selectedWaypoints.length; i++) {
             var w = selectedWaypoints[i];
             if (waypoints.length >= 15) {
@@ -628,8 +642,15 @@ function addWaypoint() {
                 break;
             }
             if (!waypoints.some(function(ex) { return ex.name === w.name; })) {
-                waypoints.push({ name: w.name, lat: w.lat, lng: w.lng, address: w.address });
+                waypoints.push({ 
+                    name: w.name, 
+                    lat: w.lat || 0, 
+                    lng: w.lng || 0, 
+                    address: w.address || '' 
+                });
                 added++;
+            } else {
+                errors++;
             }
         }
         renderWaypointList();
@@ -637,7 +658,13 @@ function addWaypoint() {
         document.getElementById('waypointSearchResults').style.display = 'none';
         document.getElementById('multiSelectMode').checked = false;
         multiSelectMode = false;
-        showTabStatus('tab-places', '✅ ' + added + '개 경유지 추가됨', 'ok');
+        // 버튼 텍스트 복원
+        var addBtn = document.querySelector('#tab-places .btn-success');
+        if (addBtn) addBtn.textContent = '추가';
+        
+        var msg = '✅ ' + added + '개 경유지 추가됨';
+        if (errors > 0) msg += ' (' + errors + '개 중복 제외)';
+        showTabStatus('tab-places', msg, 'ok');
         return;
     }
     
@@ -648,6 +675,10 @@ function addWaypoint() {
     }
     if (waypoints.length >= 15) {
         showTabStatus('tab-places', '⚠️ 최대 15개까지 가능', 'warning');
+        return;
+    }
+    if (waypoints.some(function(ex) { return ex.name === name; })) {
+        showTabStatus('tab-places', '⚠️ "' + name + '"은(는) 이미 경유지에 있습니다.', 'warning');
         return;
     }
     waypoints.push({ name: name, lat: 0, lng: 0 });
@@ -701,17 +732,31 @@ function renderWaypointList() {
     }
 }
 
+// ============================================================
+// 경유지 검색 (체크박스 포함)
+// ============================================================
+
 function searchWaypoint(query) {
     var container = document.getElementById('waypointSearchResults');
-    if (!query || query.length < 1) { container.style.display = 'none'; return; }
+    if (!query || query.length < 1) { 
+        container.style.display = 'none'; 
+        return; 
+    }
     clearTimeout(window._waypointSearchTimer);
     window._waypointSearchTimer = setTimeout(async function() {
         var placeResults = [];
         var lowerQuery = query.toLowerCase();
         for (var i = 0; i < places.length; i++) {
             var p = places[i];
-            if (p.name.toLowerCase().includes(lowerQuery) || (p.address && p.address.toLowerCase().includes(lowerQuery))) {
-                placeResults.push({ place_name: p.name, address_name: p.address || '(주소 없음)', y: p.lat || 0, x: p.lng || 0, _source: '현장리스트' });
+            if (p.name.toLowerCase().includes(lowerQuery) || 
+                (p.address && p.address.toLowerCase().includes(lowerQuery))) {
+                placeResults.push({ 
+                    place_name: p.name, 
+                    address_name: p.address || '(주소 없음)', 
+                    y: p.lat || 0, 
+                    x: p.lng || 0, 
+                    _source: '현장리스트' 
+                });
             }
         }
         placeResults = placeResults.slice(0, 5);
@@ -721,9 +766,16 @@ function searchWaypoint(query) {
         var seenNames = {};
         placeResults.concat(kakaoResults).forEach(function(item) {
             var key = item.place_name + '|' + item.address_name;
-            if (!seenNames[key]) { seenNames[key] = true; allResults.push(item); }
+            if (!seenNames[key]) { 
+                seenNames[key] = true; 
+                allResults.push(item); 
+            }
         });
-        if (allResults.length === 0) { container.style.display = 'none'; return; }
+        if (allResults.length === 0) { 
+            container.style.display = 'none'; 
+            return; 
+        }
+        
         var html = '';
         var isMulti = multiSelectMode;
         for (var i = 0; i < allResults.length; i++) {
@@ -739,12 +791,19 @@ function searchWaypoint(query) {
         }
         container.innerHTML = html;
         container.style.display = 'block';
+        
         container.querySelectorAll('.result-item').forEach(function(el) {
             el.addEventListener('click', function(e) {
                 if (e.target.closest('.result-check')) return;
-                var name = this.dataset.name, address = this.dataset.address, lat = parseFloat(this.dataset.lat), lng = parseFloat(this.dataset.lng);
-                if (multiSelectMode) toggleWaypointSelection(name, address, lat, lng);
-                else selectWaypointFromSearch(name, address, lat, lng);
+                var name = this.dataset.name;
+                var address = this.dataset.address;
+                var lat = parseFloat(this.dataset.lat);
+                var lng = parseFloat(this.dataset.lng);
+                if (multiSelectMode) {
+                    toggleWaypointSelection(name, address, lat, lng);
+                } else {
+                    selectWaypointFromSearch(name, address, lat, lng);
+                }
             });
         });
     }, 300);
