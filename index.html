@@ -29,52 +29,68 @@
         .flex-1 { flex: 1; min-width: 0; }
 
         .header {
-            background: linear-gradient(135deg, #1a365d, #2b6cb0);
-            color: white;
-            padding: 10px 16px;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 6px;
-        }
-        .header h1 { font-size: 17px; font-weight: 700; }
-        .header-right {
-            display: flex;
-            gap: 6px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        .header select {
-            padding: 4px 10px;
-            border: none;
-            border-radius: 6px;
-            font-size: 12px;
-            background: rgba(255,255,255,0.2);
-            color: white;
-            cursor: pointer;
-        }
-        .header select option { color: #2d3748; background: white; }
-        .header .weather {
-            font-size: 13px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            background: rgba(255,255,255,0.15);
-            padding: 2px 10px;
-            border-radius: 20px;
-            white-space: nowrap;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .header .weather:hover {
-            background: rgba(255,255,255,0.25);
-        }
-        .header .weather .temp { font-weight: 700; }
+    background: linear-gradient(135deg, #1a365d, #2b6cb0);
+    color: white;
+    padding: 8px 14px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+.header h1 { 
+    font-size: 16px; 
+    font-weight: 700; 
+}
+.header-right {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.header select {
+    padding: 2px 8px;
+    border: none;
+    border-radius: 4px;
+    font-size: 11px;
+    height: 26px;
+    background: rgba(255,255,255,0.2);
+    color: white;
+    cursor: pointer;
+}
+.header select option { color: #2d3748; background: white; }
+.header .weather {
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255,255,255,0.15);
+    padding: 2px 8px;
+    border-radius: 16px;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.2s;
+    height: 26px;
+}
+.header .weather:hover {
+    background: rgba(255,255,255,0.25);
+}
+.header .weather .temp { 
+    font-weight: 700; 
+}
+.header .btn-sm {
+    height: 26px;
+    padding: 0 10px;
+    font-size: 14px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 
         .main { max-width: 600px; margin: 0 auto; padding: 10px 12px 80px; }
 
@@ -795,18 +811,22 @@
 </head>
 <body>
 
-    <header class="header">
-        <h1>🚗 경로 최적화</h1>
-        <div class="header-right">
-            <div class="weather" id="weatherDisplay" onclick="showWeekWeather()">
-                <span>⏳</span>
-                <span class="temp">--°C</span>
-                <span>날씨</span>
-            </div>
-            <select id="regionSelect" onchange="switchRegion(this.value)"></select>
-            <button class="btn btn-sm" onclick="addRegion()" style="background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.2);padding:2px 8px;font-size:11px;" aria-label="지역 추가">+</button>
+   <header class="header">
+    <h1>🚗 경로 최적화</h1>
+    <div class="header-right">
+        <div class="weather" id="weatherDisplay" onclick="showWeekWeather()">
+            <span>⏳</span>
+            <span class="temp">--°C</span>
+            <span>날씨</span>
         </div>
-    </header>
+        <select id="regionSelect" onchange="switchRegion(this.value)"></select>
+        <button class="btn btn-sm" onclick="addRegion()" 
+                style="background:rgba(255,255,255,0.15); color:white; border:1px solid rgba(255,255,255,0.2); 
+                       padding:2px 10px; font-size:14px; border-radius:6px; height:28px; display:flex; align-items:center; justify-content:center;">
+            +
+        </button>
+    </div>
+</header>
 
     <div class="main">
 
