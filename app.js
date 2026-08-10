@@ -47,6 +47,7 @@ let startMarker = null;
 let routeMarkers = [];
 let placeMarkers = [];
 let singlePlaceMarker = null;
+let singlePlaceInfoWindow = null;
 let autoSyncTimer = null;
 let sdkLoading = false;
 let isShowingRouteMarkers = false;
@@ -409,7 +410,6 @@ function renderSearchResults(container, results, onClickName, isMultiSelect) {
 
 function toggleMultiSelect() {
     multiSelectMode = document.getElementById('multiSelectMode').checked;
-    document.getElementById('addSelectedBtn').style.display = multiSelectMode ? 'inline-flex' : 'none';
     if (!multiSelectMode) {
         selectedWaypoints = [];
         document.getElementById('waypointSearchResults').style.display = 'none';
@@ -613,8 +613,43 @@ function selectWaypointFromSearch(name, address, lat, lng) {
 function addWaypoint() {
     var input = document.getElementById('waypointInput');
     var name = input.value.trim();
-    if (!name) { showTabStatus('tab-places', '경유지를 입력하세요.', 'warning'); return; }
-    if (waypoints.length >= 15) { showTabStatus('tab-places', '⚠️ 최대 15개까지 가능', 'warning'); return; }
+    
+    // ===== 여러개 추가 모드 =====
+    if (multiSelectMode) {
+        if (selectedWaypoints.length === 0) {
+            showTabStatus('tab-places', '선택된 경유지가 없습니다.', 'warning');
+            return;
+        }
+        var added = 0;
+        for (var i = 0; i < selectedWaypoints.length; i++) {
+            var w = selectedWaypoints[i];
+            if (waypoints.length >= 15) {
+                showTabStatus('tab-places', '⚠️ 최대 15개까지 가능', 'warning');
+                break;
+            }
+            if (!waypoints.some(function(ex) { return ex.name === w.name; })) {
+                waypoints.push({ name: w.name, lat: w.lat, lng: w.lng, address: w.address });
+                added++;
+            }
+        }
+        renderWaypointList();
+        selectedWaypoints = [];
+        document.getElementById('waypointSearchResults').style.display = 'none';
+        document.getElementById('multiSelectMode').checked = false;
+        multiSelectMode = false;
+        showTabStatus('tab-places', '✅ ' + added + '개 경유지 추가됨', 'ok');
+        return;
+    }
+    
+    // ===== 일반 추가 모드 =====
+    if (!name) {
+        showTabStatus('tab-places', '경유지를 입력하세요.', 'warning');
+        return;
+    }
+    if (waypoints.length >= 15) {
+        showTabStatus('tab-places', '⚠️ 최대 15개까지 가능', 'warning');
+        return;
+    }
     waypoints.push({ name: name, lat: 0, lng: 0 });
     renderWaypointList();
     input.value = '';
@@ -1326,10 +1361,15 @@ function showPlaceOnMap(id) {
 }
 
 function clearSingleMarker() {
-    if (singlePlaceMarker) { try { singlePlaceMarker.setMap(null); } catch(e) {} singlePlaceMarker = null; }
-    if (singlePlaceInfoWindow) { try { singlePlaceInfoWindow.close(); } catch(e) {} singlePlaceInfoWindow = null; }
+    if (singlePlaceMarker) {
+        try { singlePlaceMarker.setMap(null); } catch(e) {}
+        singlePlaceMarker = null;
+    }
+    if (singlePlaceInfoWindow) {
+        try { singlePlaceInfoWindow.close(); } catch(e) {}
+        singlePlaceInfoWindow = null;
+    }
 }
-
 // ============================================================
 // 12. 카카오모빌리티 API
 // ============================================================
