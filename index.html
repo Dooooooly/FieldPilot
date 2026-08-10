@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🚗 경로 최적화</title>
+    <title>경로 최적화</title>
     
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🚗%3C/text%3E%3C/svg%3E">
@@ -553,25 +553,32 @@
         <!-- ===== 탭: 경로 ===== -->
         <div id="tab-places" class="tab-content active">
             
-            <div class="card">
-                <div class="card-title">🚩 출발지</div>
-                <div style="position:relative;">
-                    <div class="flex-row">
-                        <input type="text" id="startPoint" class="input-field flex-1" 
-                               placeholder="출발지 입력" 
-                               oninput="searchStartPoint(this.value)" 
-                               onclick="searchStartPoint(this.value)" 
-                               onkeydown="handleStartKeydown(event)">
-                        <button class="btn btn-primary" onclick="setStartPoint()" style="font-size:12px; padding:6px 12px; min-height:34px;">설정</button>
-                        <button class="btn btn-success" onclick="setCurrentLocation()" 
-                                style="padding:6px 10px; font-size:11px; min-height:34px; white-space:nowrap;">
-                            📍 현재 위치
-                        </button>
-                    </div>
-                    <div id="startSearchResults" class="search-results"></div>
-                </div>
-                <div id="startInfo" style="font-size:12px; color:#718096; margin-top:4px;">⏳ 출발지를 검색하거나 현재 위치로 설정하세요</div>
-            </div>
+           <!-- ===== 출발지 ===== -->
+<div class="card">
+    <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; width:100%; margin-bottom:8px;">
+        <span>🚩 출발지</span>
+        <button class="btn btn-outline btn-sm" onclick="setCurrentLocation()" 
+                style="font-size:11px; padding:3px 10px; min-height:28px; display:flex; align-items:center; gap:4px; border-color:#cbd5e0; color:#4a5568; background:#f7fafc; border-radius:20px;">
+            <span style="font-size:14px;">🎯</span> 현재 위치
+        </button>
+    </div>
+    <div style="position:relative;">
+        <div class="flex-row" style="gap:6px;">
+            <input type="text" id="startPoint" class="input-field flex-1" 
+                   placeholder="출발지 검색" 
+                   style="min-height:38px;"
+                   oninput="searchStartPoint(this.value)" 
+                   onclick="searchStartPoint(this.value)" 
+                   onkeydown="handleStartKeydown(event)">
+            <button class="btn btn-primary" onclick="setStartPoint()" 
+                    style="font-size:12px; padding:6px 12px; min-height:38px; white-space:nowrap;">
+                설정
+            </button>
+        </div>
+        <div id="startSearchResults" class="search-results"></div>
+    </div>
+    <div id="startInfo" style="font-size:12px; color:#718096; margin-top:4px;">⏳ 출발지를 검색하거나 🎯 현재 위치 버튼을 눌러 설정하세요</div>
+</div>
             
             <div class="card">
                 <div class="flex-between" style="margin-bottom:4px;">
