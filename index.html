@@ -544,7 +544,33 @@
             .segment-control { min-width: 100px; }
             .segment-btn { font-size: 11px; padding: 4px 8px; }
             .search-results .result-item { padding: 6px 10px; font-size: 12px; }
-        }
+        /* ===== 즐겨찾기 별표 ===== */
+.place-item .actions .fav {
+    font-size: 18px;
+    transition: all 0.2s;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 4px 6px;
+    border-radius: 6px;
+    min-width: 34px;
+    min-height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.place-item .actions .fav.active {
+    color: #f6ad55;
+    text-shadow: 0 0 8px rgba(246, 173, 85, 0.3);
+}
+.place-item .actions .fav.inactive {
+    color: #cbd5e0;
+}
+.place-item .actions .fav:hover {
+    transform: scale(1.2);
+    background: rgba(0,0,0,0.04);
+}
+        
     </style>
 </head>
 <body>
