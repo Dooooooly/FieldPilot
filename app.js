@@ -1196,20 +1196,28 @@ function renderPlaces(filtered) {
         if (window.innerWidth < 480 && addressDisplay.length > 20) {
             addressDisplay = addressDisplay.substring(0, 18) + '…';
         }
-        html += '<div class="place-item">';
-        html += '<div class="info">';
-        html += '<span class="name">' + escapeHtml(p.name) + '</span>';
-        if (addressDisplay) {
-            html += '<span class="addr">' + escapeHtml(addressDisplay) + '</span>';
-        }
-        html += '</div>';
-        html += '<div class="actions">';
-        html += '<button class="map" onclick="showPlaceOnMap(\'' + p.id + '\')" aria-label="지도 보기" title="지도 보기">📍</button>';
-        html += '<button class="edit" onclick="openEditModal(\'' + p.id + '\')" aria-label="편집" title="편집">✏️</button>';
-        html += '<button class="add" onclick="addWaypointFromList(\'' + p.id + '\')" aria-label="경유지 추가" title="경유지 추가">➕</button>';
-        html += '<button class="del" onclick="deletePlace(\'' + p.id + '\')" aria-label="삭제" title="삭제">🗑️</button>';
-        html += '</div>';
-        html += '</div>';
+        html += `
+            <div class="place-item">
+                <div class="info">
+                    <span class="name">${escapeHtml(p.name)}</span>
+                    <span class="addr">${escapeHtml(addressDisplay)}</span>
+                </div>
+                <div class="actions">
+                    <button class="map" onclick="showPlaceOnMap('${p.id}')" aria-label="지도 보기" title="지도 보기">
+                        <span style="font-size:18px;">📍</span>
+                    </button>
+                    <button class="edit" onclick="openEditModal('${p.id}')" aria-label="편집" title="편집">
+                        <span style="font-size:16px;">✏️</span>
+                    </button>
+                    <button class="add" onclick="addWaypointFromList('${p.id}')" aria-label="경유지 추가" title="경유지 추가">
+                        <span style="font-size:18px;">➕</span>
+                    </button>
+                    <button class="del" onclick="deletePlace('${p.id}')" aria-label="삭제" title="삭제">
+                        <span style="font-size:16px;">🗑️</span>
+                    </button>
+                </div>
+            </div>
+        `;
     }
     list.innerHTML = html;
 }
