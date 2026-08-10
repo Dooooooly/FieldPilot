@@ -2715,10 +2715,17 @@ async function showWeekWeather() {
         return;
     }
 
+    // ===== 🔥 추가: 모달 열기 전에 현재 날씨 갱신 =====
+    try {
+        await fetchWeather();
+    } catch (e) {
+        console.warn('현재 날씨 갱신 실패,但仍 모달 표시:', e);
+    }
+
     var center = getRegionCenter(currentRegion);
     var lat = center.lat;
     var lon = center.lng;
-    var apiKey = 'b84c1b9a09d8316b679320cceb3a1097'; // 여러분의 키로 변경
+    var apiKey = 'b84c1b9a09d8316b679320cceb3a1097';
 
     try {
         // 5일 예보 API 호출 (3시간 간격, 최대 40개)
