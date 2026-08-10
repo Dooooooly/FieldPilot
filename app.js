@@ -412,11 +412,73 @@ function renderSearchResults(container, results, onClickName, isMultiSelect) {
     container.style.display = 'block';
 }
 
+// ============================================================
+// 여러개 추가 모드 토글 (버튼 스타일)
+// ============================================================
+
 function toggleMultiSelect() {
     multiSelectMode = document.getElementById('multiSelectMode').checked;
-    if (!multiSelectMode) {
+    
+    var toggleBtn = document.getElementById('multiToggleBtn');
+    var addBtn = document.getElementById('addWaypointBtn');
+    var input = document.getElementById('waypointInput');
+    var statusEl = document.getElementById('modeStatus');
+    
+    if (multiSelectMode) {
+        // ===== 여러개 추가 모드 ON =====
+        if (toggleBtn) {
+            toggleBtn.style.background = '#2b6cb0';
+            toggleBtn.style.color = 'white';
+            toggleBtn.style.borderColor = '#2b6cb0';
+            toggleBtn.textContent = '✅ 여러개 추가 ON';
+        }
+        
+        if (addBtn) {
+            addBtn.textContent = '✅ 선택 추가';
+            addBtn.style.background = '#2b6cb0';
+            addBtn.style.border = 'none';
+        }
+        
+        if (input) {
+            input.placeholder = '🔍 검색 후 체크박스로 선택하세요';
+        }
+        
+        if (statusEl) {
+            statusEl.textContent = '📋 여러개 추가 모드 - 검색 결과에서 체크박스로 선택 후 "선택 추가" 버튼 클릭';
+            statusEl.style.color = '#2b6cb0';
+        }
+        
+        showTabStatus('tab-places', '📋 여러개 추가 모드 활성화', 'info');
+        
+    } else {
+        // ===== 일반 모드 =====
+        if (toggleBtn) {
+            toggleBtn.style.background = 'white';
+            toggleBtn.style.color = '#4a5568';
+            toggleBtn.style.borderColor = '#cbd5e0';
+            toggleBtn.textContent = '📋 여러개 추가';
+        }
+        
+        if (addBtn) {
+            addBtn.textContent = '➕ 추가';
+            addBtn.style.background = '#38a169';
+            addBtn.style.border = 'none';
+        }
+        
+        if (input) {
+            input.placeholder = '경유지 입력';
+        }
+        
+        if (statusEl) {
+            statusEl.textContent = '💡 일반 모드 - 경유지를 입력하고 추가하세요';
+            statusEl.style.color = '#a0aec0';
+        }
+        
+        // 선택 초기화
         selectedWaypoints = [];
         document.getElementById('waypointSearchResults').style.display = 'none';
+        
+        showTabStatus('tab-places', '일반 모드로 전환됨', 'info');
     }
 }
 
@@ -662,11 +724,14 @@ function addWaypoint() {
     // ===== 여러개 추가 모드 =====
     if (multiSelectMode) {
         if (selectedWaypoints.length === 0) {
-            showTabStatus('tab-places', '선택된 경유지가 없습니다.', 'warning');
+            showTabStatus('tab-places', '⚠️ 선택된 경유지가 없습니다. 검색 후 체크박스를 선택하세요.', 'warning');
+            input.focus();
             return;
         }
+        
         var added = 0;
-        var errors = 0;
+        var duplicated = 0;
+        
         for (var i = 0; i < selectedWaypoints.length; i++) {
             var w = selectedWaypoints[i];
             if (waypoints.length >= 15) {
@@ -682,23 +747,46 @@ function addWaypoint() {
                 });
                 added++;
             } else {
-                errors++;
+                duplicated++;
             }
         }
+        
         renderWaypointList();
         selectedWaypoints = [];
         document.getElementById('waypointSearchResults').style.display = 'none';
-        document.getElementById('multiSelectMode').checked = false;
-        multiSelectMode = false;
-        // 버튼 텍스트 복원
-        var addBtn = document.querySelector('#tab-places .btn-success');
-        if (addBtn) addBtn.textContent = '추가';
+        
+        // 자동으로 일반 모드로 전환 (선택사항)
+        // toggleMultiSelect(); // 주석 해제하면 자동으로 일반 모드로 전환
         
         var msg = '✅ ' + added + '개 경유지 추가됨';
-        if (errors > 0) msg += ' (' + errors + '개 중복 제외)';
+        if (duplicated > 0) msg += ' (' + duplicated + '개 중복 제외)';
         showTabStatus('tab-places', msg, 'ok');
         return;
     }
+    
+    // ===== 일반 추가 모드 =====
+    if (!name) {
+        showTabStatus('tab-places', '경유지를 입력하세요.', 'warning');
+        input.focus();
+        return;
+    }
+    if (waypoints.length >= 15) {
+        showTabStatus('tab-places', '⚠️ 최대 15개까지 가능', 'warning');
+        return;
+    }
+    if (waypoints.some(function(ex) { return ex.name === name; })) {
+        showTabStatus('tab-places', '⚠️ "' + name + '"은(는) 이미 경유지에 있습니다.', 'warning');
+        input.value = '';
+        input.focus();
+        return;
+    }
+    waypoints.push({ name: name, lat: 0, lng: 0 });
+    renderWaypointList();
+    input.value = '';
+    input.focus();
+    document.getElementById('waypointSearchResults').style.display = 'none';
+    showTabStatus('tab-places', '✅ "' + name + '" 추가', 'ok');
+}
     
     // ===== 일반 추가 모드 =====
     if (!name) {
