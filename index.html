@@ -599,13 +599,36 @@
     <!-- 출발지 카드 -->
     <div class="card">
         <div class="card-title">🚩 출발지</div>
-        <!-- ... -->
+        <div style="position:relative;">
+            <div class="flex-row">
+                <input type="text" id="startPoint" aria-label="출발지" placeholder="출발지 입력" class="flex-1" 
+                       style="padding:6px 10px; border:2px solid #e2e8f0; border-radius:6px; font-size:13px;" 
+                       oninput="searchStartPoint(this.value)" 
+                       onclick="searchStartPoint(this.value)" 
+                       onkeydown="handleStartKeydown(event)">
+                <button class="btn btn-primary btn-sm" onclick="setStartPoint()" aria-label="출발지 설정">설정</button>
+            </div>
+            <div id="startSearchResults" class="search-results"></div>
+        </div>
+        <div id="startInfo" style="font-size:12px; color:#718096; margin-top:4px;">⏳ 출발지를 검색하고 설정하세요</div>
     </div>
     
     <!-- 경유지 카드 -->
     <div class="card">
         <div class="card-title">📍 경유지 <span id="wpCount" style="font-size:12px;color:#a0aec0;font-weight:400;"></span></div>
-        <!-- ... -->
+        <div style="position:relative;">
+            <div class="flex-row" style="margin-bottom:4px;">
+                <input type="text" id="waypointInput" aria-label="경유지" placeholder="경유지 입력" class="flex-1" 
+                       style="padding:6px 10px; border:2px solid #e2e8f0; border-radius:6px; font-size:13px;" 
+                       oninput="searchWaypoint(this.value)" 
+                       onkeydown="handleWaypointKeydown(event)">
+                <button class="btn btn-success btn-sm" onclick="addWaypoint()" aria-label="경유지 추가">추가</button>
+            </div>
+            <div id="waypointSearchResults" class="search-results"></div>
+        </div>
+        <ul class="waypoint-list" id="waypointList">
+            <li class="empty-msg">경유지를 추가하세요</li>
+        </ul>
     </div>
     
     <!-- 버튼들 -->
