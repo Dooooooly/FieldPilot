@@ -551,16 +551,34 @@ function selectStartPoint(name, address, lat, lng) {
     showTabStatus('tab-places', '✅ 출발지 "' + name + '" 설정 완료', 'ok');
 }
 
+// ============================================================
+// 현재 위치로 출발지 설정 (GPS)
+// ============================================================
+
 function setCurrentLocation() {
     if (!navigator.geolocation) {
         showTabStatus('tab-places', '⚠️ 이 브라우저는 GPS를 지원하지 않습니다.', 'warning');
         return;
     }
+    
+    var btn = document.querySelector('.btn-outline[onclick*="setCurrentLocation"]');
+    if (btn) {
+        btn.innerHTML = '<span style="font-size:14px;">⏳</span> 위치 확인 중...';
+        btn.disabled = true;
+    }
+    
     showTabStatus('tab-places', '📍 GPS 위치 가져오는 중...', 'info');
+    
     navigator.geolocation.getCurrentPosition(
         function(position) {
             var lat = position.coords.latitude;
             var lng = position.coords.longitude;
+            
+            if (btn) {
+                btn.innerHTML = '<span style="font-size:14px;">🎯</span> 현재 위치';
+                btn.disabled = false;
+            }
+            
             var restKey = settings.kakaoRestKey;
             if (restKey) {
                 fetch('https://dapi.kakao.com/v2/local/geo/coord2address.json?x=' + lng + '&y=' + lat, {
@@ -571,26 +589,40 @@ function setCurrentLocation() {
                     var address = '현재 위치';
                     if (data.documents && data.documents.length > 0) {
                         var doc = data.documents[0];
-                        if (doc.road_address) address = doc.road_address.address_name;
-                        else if (doc.address) address = doc.address.address_name;
+                        if (doc.road_address) {
+                            address = doc.road_address.address_name;
+                        } else if (doc.address) {
+                            address = doc.address.address_name;
+                        }
                     }
-                    selectStartPoint('현재 위치', address, lat, lng);
-                    showTabStatus('tab-places', '✅ 현재 위치로 출발지 설정됨', 'ok');
+                    var shortAddr = shortenAddress(address);
+                    selectStartPoint('🎯 내 위치', shortAddr || address, lat, lng);
+                    showTabStatus('tab-places', '✅ 현재 위치로 설정됨: ' + (shortAddr || address), 'ok');
                 })
                 .catch(function() {
-                    selectStartPoint('현재 위치', 'GPS 좌표', lat, lng);
-                    showTabStatus('tab-places', '✅ 현재 위치로 출발지 설정됨', 'ok');
+                    selectStartPoint('🎯 내 위치', 'GPS 좌표', lat, lng);
+                    showTabStatus('tab-places', '✅ 현재 위치로 설정됨', 'ok');
                 });
             } else {
-                selectStartPoint('현재 위치', 'GPS 좌표', lat, lng);
-                showTabStatus('tab-places', '✅ 현재 위치로 출발지 설정됨', 'ok');
+                selectStartPoint('🎯 내 위치', 'GPS 좌표', lat, lng);
+                showTabStatus('tab-places', '✅ 현재 위치로 설정됨', 'ok');
             }
         },
         function(error) {
+            if (btn) {
+                btn.innerHTML = '<span style="font-size:14px;">🎯</span> 현재 위치';
+                btn.disabled = false;
+            }
+            
+            console.error('GPS 오류:', error);
             var msg = 'GPS 위치를 가져올 수 없습니다.';
-            if (error.code === 1) msg = '⚠️ GPS 권한을 허용해주세요.';
-            else if (error.code === 2) msg = '⚠️ GPS 신호를 잡을 수 없습니다.';
-            else if (error.code === 3) msg = '⚠️ GPS 요청 시간이 초과되었습니다.';
+            if (error.code === 1) {
+                msg = '⚠️ GPS 권한이 필요합니다. 설정 → 개인정보 보호 → 위치 서비스에서 허용해주세요.';
+            } else if (error.code === 2) {
+                msg = '⚠️ GPS 신호가 약합니다. 야외로 이동해보세요.';
+            } else if (error.code === 3) {
+                msg = '⚠️ GPS 요청 시간이 초과되었습니다. 다시 시도해주세요.';
+            }
             showTabStatus('tab-places', msg, 'warning');
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
