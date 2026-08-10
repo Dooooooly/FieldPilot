@@ -2664,7 +2664,7 @@ async function fetchWeather() {
     var weatherEl = document.getElementById('weatherDisplay');
     if (!weatherEl) {
         console.warn('⚠️ 날씨 표시 요소 없음');
-        return;
+        return false;
     }
 
     try {
@@ -2694,10 +2694,12 @@ async function fetchWeather() {
 
         weatherEl.innerHTML = '<span>' + (iconEmoji[icon] || '🌡️') + '</span><span class="temp">' + temp + '°C</span><span>' + desc + '</span>';
         console.log('✅ 날씨 표시 성공:', temp + '°C');
+        return true;
 
     } catch (error) {
         console.error('❌ 날씨 오류:', error);
         weatherEl.innerHTML = '<span>⏳</span><span class="temp">--°C</span><span>날씨</span>';
+        return false;
     }
 }
 // ============================================================
@@ -2715,7 +2717,7 @@ async function showWeekWeather() {
         return;
     }
 
-    // ===== 🔥 추가: 모달 열기 전에 현재 날씨 갱신 =====
+    // 모달 열기 전에 현재 날씨 갱신
     try {
         await fetchWeather();
     } catch (e) {
@@ -2728,16 +2730,16 @@ async function showWeekWeather() {
     var apiKey = 'b84c1b9a09d8316b679320cceb3a1097';
 
     try {
-        // 5일 예보 API 호출 (3시간 간격, 최대 40개)
+        // 5일 예보 API 호출
         var url = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&lang=kr`;
         var response = await fetch(url);
         if (!response.ok) throw new Error('예보 조회 실패');
         var data = await response.json();
 
-        // 날짜별로 그룹화 (하루에 8개의 3시간 데이터가 있음)
+        // 날짜별로 그룹화
         var dailyMap = {};
         data.list.forEach(function(item) {
-            var date = item.dt_txt.split(' ')[0]; // '2026-08-10'
+            var date = item.dt_txt.split(' ')[0];
             if (!dailyMap[date]) {
                 dailyMap[date] = {
                     temps: [],
@@ -2751,7 +2753,6 @@ async function showWeekWeather() {
             dailyMap[date].descs.push(item.weather[0].description);
         });
 
-        // 객체를 배열로 변환하고, 최대 5일만 표시
         var dailyList = Object.values(dailyMap).slice(0, 5);
 
         // 모달 HTML 생성
@@ -2795,11 +2796,8 @@ async function showWeekWeather() {
         };
 
         dailyList.forEach(function(day) {
-            // 하루 평균 기온 계산
-            var avgTemp = day.temps.reduce((a,b) => a + b, 0) / day.temps.length;
             var minTemp = Math.round(Math.min.apply(null, day.temps));
             var maxTemp = Math.round(Math.max.apply(null, day.temps));
-            // 가장 자주 등장한 아이콘 찾기 (간단히 첫 번째로 대체)
             var iconCode = day.icons[0] || '01d';
             var iconEmoji = iconMap[iconCode] || '🌡️';
             var desc = day.descs[0] || '';
@@ -3108,5 +3106,27 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 6000);
     
     registerServiceWorker();
-    setTimeout(fetchWeather, 3000);
+    
+    // ===== 🔥 날씨 자동 로드 + 재시도 =====
+    async function initWeather() {
+        var success = await fetchWeather();
+        if (!success) {
+            console.log('🔄 날씨 로드 실패, 5초 후 재시도...');
+            setTimeout(initWeather, 5000);
+        } else {
+            console.log('✅ 날씨 로드 성공');
+        }
+    }
+
+    // 3초 후 첫 시도
+    setTimeout(initWeather, 3000);
+    
+    // 10초 후에도 안 나오면 강제 재시도 (백업)
+    setTimeout(function() {
+        var weatherEl = document.getElementById('weatherDisplay');
+        if (weatherEl && weatherEl.innerHTML.includes('--°C')) {
+            console.log('🔄 10초 후 강제 재시도...');
+            fetchWeather();
+        }
+    }, 10000);
 });
