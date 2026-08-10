@@ -1186,34 +1186,42 @@ function renderPlaces(filtered) {
     var data = filtered || places;
     document.getElementById('listCount').textContent = '(' + data.length + '개)';
     if (data.length === 0) {
-        list.innerHTML = '<div class="empty-msg">등록된 개소가 없습니다</div>';
+        list.innerHTML = '<div class="empty-msg" style="padding:8px;font-size:12px;">등록된 개소가 없습니다</div>';
         return;
     }
     var html = '';
     for (var i = 0; i < data.length; i++) {
         var p = data[i];
         var addressDisplay = p.address || '';
-        if (window.innerWidth < 480 && addressDisplay.length > 20) {
-            addressDisplay = addressDisplay.substring(0, 18) + '…';
+        if (window.innerWidth < 480 && addressDisplay.length > 15) {
+            addressDisplay = addressDisplay.substring(0, 14) + '…';
         }
         html += `
-            <div class="place-item">
-                <div class="info">
-                    <span class="name">${escapeHtml(p.name)}</span>
-                    <span class="addr">${escapeHtml(addressDisplay)}</span>
+            <div class="place-item" style="padding:4px 6px; min-height:32px; border-radius:4px; margin-bottom:2px;">
+                <div class="info" style="gap:2px;">
+                    <span class="name" style="font-size:12px;">${escapeHtml(p.name)}</span>
+                    <span class="addr" style="font-size:10px;">${escapeHtml(addressDisplay)}</span>
                 </div>
-                <div class="actions">
-                    <button class="map" onclick="showPlaceOnMap('${p.id}')" aria-label="지도 보기" title="지도 보기">
-                        <span style="font-size:18px;">📍</span>
+                <div class="actions" style="gap:2px;">
+                    <button class="map" onclick="showPlaceOnMap('${p.id}')" 
+                            style="padding:2px 4px; min-width:28px; min-height:28px;" 
+                            aria-label="지도 보기" title="지도 보기">
+                        <span style="font-size:14px;">📍</span>
                     </button>
-                    <button class="edit" onclick="openEditModal('${p.id}')" aria-label="편집" title="편집">
-                        <span style="font-size:16px;">✏️</span>
+                    <button class="edit" onclick="openEditModal('${p.id}')" 
+                            style="padding:2px 4px; min-width:28px; min-height:28px;" 
+                            aria-label="편집" title="편집">
+                        <span style="font-size:12px;">✏️</span>
                     </button>
-                    <button class="add" onclick="addWaypointFromList('${p.id}')" aria-label="경유지 추가" title="경유지 추가">
-                        <span style="font-size:18px;">➕</span>
+                    <button class="add" onclick="addWaypointFromList('${p.id}')" 
+                            style="padding:2px 4px; min-width:28px; min-height:28px;" 
+                            aria-label="경유지 추가" title="경유지 추가">
+                        <span style="font-size:14px;">➕</span>
                     </button>
-                    <button class="del" onclick="deletePlace('${p.id}')" aria-label="삭제" title="삭제">
-                        <span style="font-size:16px;">🗑️</span>
+                    <button class="del" onclick="deletePlace('${p.id}')" 
+                            style="padding:2px 4px; min-width:28px; min-height:28px;" 
+                            aria-label="삭제" title="삭제">
+                        <span style="font-size:12px;">🗑️</span>
                     </button>
                 </div>
             </div>
