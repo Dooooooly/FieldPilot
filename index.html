@@ -9,7 +9,7 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🚗%3C/text%3E%3C/svg%3E">
     <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🚗%3C/text%3E%3C/svg%3E">
     
-    <meta name="theme-color" content="#2b6cb0">
+    <meta name="theme-color" content="#4f7eb3">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -17,340 +17,312 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     
     <style>
+        /* ===== 리셋 & 기본 ===== */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f0f2f5;
-            color: #2d3748;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: #f7f8fc;
+            color: #1a202c;
             padding-bottom: 70px;
+            -webkit-font-smoothing: antialiased;
         }
-
-        .flex-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+        
+        /* ===== 공통 ===== */
+        .flex-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
         .flex-1 { flex: 1; min-width: 0; }
-
+        
+        /* ===== 헤더 ===== */
         .header {
-    background: linear-gradient(135deg, #1a365d, #2b6cb0);
-    color: white;
-    padding: 8px 14px;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 4px;
-}
-.header h1 { 
-    font-size: 16px; 
-    font-weight: 700; 
-}
-.header-right {
-    display: flex;
-    gap: 4px;
-    align-items: center;
-    flex-wrap: wrap;
-}
-.header select {
-    padding: 2px 8px;
-    border: none;
-    border-radius: 4px;
-    font-size: 11px;
-    height: 26px;
-    background: rgba(255,255,255,0.2);
-    color: white;
-    cursor: pointer;
-}
-.header select option { color: #2d3748; background: white; }
-.header .weather {
-    font-size: 11px;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    background: rgba(255,255,255,0.15);
-    padding: 2px 8px;
-    border-radius: 16px;
-    white-space: nowrap;
-    cursor: pointer;
-    transition: background 0.2s;
-    height: 26px;
-}
-.header .weather:hover {
-    background: rgba(255,255,255,0.25);
-}
-.header .weather .temp { 
-    font-weight: 700; 
-}
-.header .btn-sm {
-    height: 26px;
-    padding: 2px 8px;
-    font-size: 11px;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-        .main { max-width: 600px; margin: 0 auto; padding: 10px 12px 80px; }
-
-        .tab-content { display: none; }
+            background: linear-gradient(135deg, #2d3748, #4a5568);
+            color: white;
+            padding: 10px 16px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .header-left h1 {
+            font-size: 17px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        /* ===== 날씨 ===== */
+        .weather {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(255,255,255,0.1);
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            border: 1px solid rgba(255,255,255,0.06);
+            height: 32px;
+        }
+        .weather:hover {
+            background: rgba(255,255,255,0.18);
+            transform: translateY(-1px);
+        }
+        .weather .temp {
+            font-weight: 700;
+            font-size: 13px;
+        }
+        
+        /* ===== 구분선 ===== */
+        .header-divider {
+            width: 1px;
+            height: 20px;
+            background: rgba(255,255,255,0.15);
+            flex-shrink: 0;
+        }
+        
+        /* ===== 지역 선택 ===== */
+        .region-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 30px;
+            padding: 2px 4px 2px 12px;
+            border: 1px solid rgba(255,255,255,0.06);
+            height: 32px;
+        }
+        .region-wrapper select {
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 12px;
+            padding: 2px 4px;
+            cursor: pointer;
+            outline: none;
+            height: 28px;
+            min-width: 60px;
+        }
+        .region-wrapper select option {
+            background: #2d3748;
+            color: white;
+        }
+        .region-wrapper .btn-add {
+            background: rgba(255,255,255,0.12);
+            border: none;
+            color: white;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            font-size: 16px;
+            font-weight: 300;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+        .region-wrapper .btn-add:hover {
+            background: rgba(255,255,255,0.22);
+            transform: scale(1.05);
+        }
+        .region-wrapper .btn-add:active {
+            transform: scale(0.92);
+        }
+        
+        /* ===== 메인 ===== */
+        .main { max-width: 600px; margin: 0 auto; padding: 12px 14px 80px; }
+        
+        /* ===== 탭 ===== */
+        .tab-content { display: none; animation: fadeUp 0.3s ease; }
         .tab-content.active { display: block; }
-
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* ===== 카드 ===== */
         .card {
             background: white;
-            border-radius: 10px;
-            padding: 12px 14px;
-            margin-bottom: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border-radius: 12px;
+            padding: 14px 16px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.02);
+            transition: box-shadow 0.2s;
         }
         .card-title {
             font-size: 14px;
             font-weight: 700;
-            color: #2d3748;
-            margin-bottom: 6px;
+            color: #1a202c;
+            margin-bottom: 8px;
             display: flex;
             align-items: center;
             gap: 6px;
         }
-
+        
+        /* ===== 버튼 (통일된 디자인) ===== */
         .btn {
-            padding: 6px 14px;
+            padding: 8px 16px;
             border: none;
-            border-radius: 6px;
-            font-size: 12px;
+            border-radius: 8px;
+            font-size: 13px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.2s ease;
             display: inline-flex;
             align-items: center;
-            gap: 4px;
+            gap: 6px;
             justify-content: center;
+            min-height: 36px;
+            text-decoration: none;
         }
-        .btn:active { transform: scale(0.97); }
+        .btn:active { transform: scale(0.96); }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
+        
         .btn-primary {
-            background: #2b6cb0;
+            background: #4f7eb3;
             color: white;
-            border: none;
         }
-        .btn-primary:hover:not(:disabled) { background: #1a365d; }
-
+        .btn-primary:hover:not(:disabled) {
+            background: #3d6a9e;
+            box-shadow: 0 4px 12px rgba(79,126,179,0.3);
+        }
+        
         .btn-success {
-            background: #38a169;
+            background: #5a9e6f;
             color: white;
-            border: none;
         }
-        .btn-success:hover:not(:disabled) { background: #276749; }
-
+        .btn-success:hover:not(:disabled) {
+            background: #4a8a5e;
+            box-shadow: 0 4px 12px rgba(90,158,111,0.3);
+        }
+        
         .btn-danger {
             background: #e53e3e;
             color: white;
-            border: none;
         }
-        .btn-danger:hover:not(:disabled) { background: #c53030; }
-
+        .btn-danger:hover:not(:disabled) {
+            background: #c53030;
+            box-shadow: 0 4px 12px rgba(229,62,62,0.3);
+        }
+        
         .btn-outline {
-            background: white;
-            border: 2px solid #cbd5e0;
+            background: transparent;
             color: #4a5568;
+            border: 2px solid #e2e8f0;
         }
         .btn-outline:hover:not(:disabled) {
             background: #f7fafc;
-            border-color: #a0aec0;
+            border-color: #cbd5e0;
         }
-
-        .btn-sm { padding: 4px 10px; font-size: 11px; }
+        
+        .btn-sm {
+            padding: 4px 12px;
+            font-size: 11px;
+            min-height: 30px;
+            border-radius: 6px;
+        }
         .btn-block { width: 100%; }
-
+        .btn-lg {
+            padding: 14px 20px;
+            font-size: 16px;
+            min-height: 50px;
+            border-radius: 10px;
+        }
+        
+        /* ===== 입력 필드 ===== */
+        .input-field {
+            padding: 8px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 13px;
+            transition: all 0.2s;
+            background: white;
+            min-height: 38px;
+            width: 100%;
+            color: #1a202c;
+        }
+        .input-field:focus {
+            border-color: #4f7eb3;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(79,126,179,0.15);
+        }
+        .input-field::placeholder {
+            color: #a0aec0;
+        }
+        
+        /* ===== 개소/경유지 아이템 ===== */
         .place-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 4px 8px;
+            padding: 6px 10px;
             background: #f7fafc;
-            border-radius: 4px;
-            margin-bottom: 3px;
-            border-left: 3px solid #2b6cb0;
-            gap: 6px;
-            min-height: 32px;
+            border-radius: 8px;
+            margin-bottom: 4px;
+            border-left: 3px solid #4f7eb3;
+            gap: 8px;
+            min-height: 40px;
         }
-        /* ===== 토글 버튼 (가까운순/먼순) ===== */
-.btn-toggle {
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    border: 2px solid #cbd5e0;
-    background: white;
-    color: #4a5568;
-    flex: 1;
-    text-align: center;
-}
-.btn-toggle:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-}
-.btn-toggle.active {
-    border: 2px solid #2b6cb0;
-    background: #2b6cb0;
-    color: white;
-}
-.btn-toggle.inactive {
-    border: 2px solid #cbd5e0;
-    background: white;
-    color: #4a5568;
-}
-        /* ===== 개소탭 모바일 최적화 ===== */
-#tab-list .place-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 12px;
-    background: #f7fafc;
-    border-radius: 8px;
-    margin-bottom: 4px;
-    border-left: 4px solid #2b6cb0;
-    gap: 8px;
-    min-height: 56px;
-}
-#tab-list .place-item .info {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    overflow: hidden;
-}
-#tab-list .place-item .info .name {
-    font-weight: 600;
-    font-size: 14px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-#tab-list .place-item .info .addr {
-    font-size: 12px;
-    color: #718096;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-#tab-list .place-item .actions {
-    display: flex;
-    gap: 4px;
-    flex-shrink: 0;
-    align-items: center;
-}
-#tab-list .place-item .actions button {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 6px 8px;
-    border-radius: 6px;
-    transition: background 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 40px;
-    min-height: 40px;
-}
-#tab-list .place-item .actions button:active {
-    transform: scale(0.92);
-}
-#tab-list .place-item .actions button.map:hover { background: #ebf8ff; }
-#tab-list .place-item .actions button.edit:hover { background: #ebf8ff; }
-#tab-list .place-item .actions button.add:hover { background: #f0fff4; }
-#tab-list .place-item .actions button.del:hover { background: #fff5f5; }
-
-/* ===== 개소탭 모바일 최적화 (소형) ===== */
-#tab-list .card {
-    padding: 8px 10px !important;
-}
-
-#tab-list .place-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 4px 6px;
-    background: #f7fafc;
-    border-radius: 4px;
-    margin-bottom: 2px;
-    border-left: 3px solid #2b6cb0;
-    gap: 4px;
-    min-height: 32px;
-}
-#tab-list .place-item .info {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    overflow: hidden;
-}
-#tab-list .place-item .info .name {
-    font-weight: 600;
-    font-size: 12px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-#tab-list .place-item .info .addr {
-    font-size: 10px;
-    color: #718096;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-#tab-list .place-item .actions {
-    display: flex;
-    gap: 2px;
-    flex-shrink: 0;
-    align-items: center;
-}
-#tab-list .place-item .actions button {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 2px 4px;
-    border-radius: 4px;
-    transition: background 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 28px;
-    min-height: 28px;
-}
-#tab-list .place-item .actions button:active {
-    transform: scale(0.92);
-}
-#tab-list .place-item .actions button.map:hover { background: #ebf8ff; }
-#tab-list .place-item .actions button.edit:hover { background: #ebf8ff; }
-#tab-list .place-item .actions button.add:hover { background: #f0fff4; }
-#tab-list .place-item .actions button.del:hover { background: #fff5f5; }
-
-/* ===== 개소탭 입력 필드 축소 ===== */
-#tab-list input {
-    font-size: 12px !important;
-    padding: 5px 8px !important;
-    min-height: 30px;
-    border-radius: 4px !important;
-}
-#tab-list .btn {
-    font-size: 11px !important;
-    padding: 4px 10px !important;
-    min-height: 30px;
-    border-radius: 4px !important;
-}
-#tab-list .btn-sm {
-    font-size: 11px !important;
-    padding: 4px 8px !important;
-    min-height: 28px;
-}
-
+        .place-item .info {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: nowrap;
+            overflow: hidden;
+        }
+        .place-item .info .name {
+            font-weight: 600;
+            font-size: 13px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .place-item .info .addr {
+            font-size: 11px;
+            color: #718096;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .place-item .actions {
+            display: flex;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+        .place-item .actions button {
+            background: none;
+            border: none;
+            font-size: 14px;
+            cursor: pointer;
+            padding: 4px 6px;
+            border-radius: 6px;
+            transition: background 0.2s;
+            min-width: 32px;
+            min-height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .place-item .actions button:hover { background: rgba(0,0,0,0.04); }
+        .place-item .actions button:active { transform: scale(0.92); }
+        .place-item .actions .add:hover { color: #5a9e6f; }
+        .place-item .actions .del:hover { color: #e53e3e; }
+        .place-item .actions .edit:hover { color: #4f7eb3; }
+        .place-item .actions .map:hover { color: #4f7eb3; }
+        
+        /* ===== 경유지 목록 ===== */
         .waypoint-list {
             list-style: none;
             max-height: 160px;
@@ -360,97 +332,207 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 4px 8px;
+            padding: 6px 10px;
             background: #f7fafc;
-            border-radius: 4px;
-            margin-bottom: 2px;
+            border-radius: 6px;
+            margin-bottom: 3px;
             font-size: 13px;
             cursor: pointer;
+            transition: background 0.2s;
         }
-        .waypoint-list li:hover { background: #ebf8ff; }
+        .waypoint-list li:hover { background: #edf2f7; }
         .waypoint-list li .idx {
-            background: #2b6cb0;
+            background: #4f7eb3;
             color: white;
-            width: 18px;
-            height: 18px;
+            width: 20px;
+            height: 20px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 9px;
+            font-size: 10px;
             font-weight: 700;
-            margin-right: 6px;
+            margin-right: 8px;
             flex-shrink: 0;
         }
         .waypoint-list li .remove {
             color: #e53e3e;
             cursor: pointer;
             font-weight: 700;
-            padding: 0 4px;
+            padding: 0 6px;
         }
-        .empty-msg { text-align: center; color: #a0aec0; padding: 16px; font-size: 13px; }
-
+        .empty-msg {
+            text-align: center;
+            color: #a0aec0;
+            padding: 16px;
+            font-size: 13px;
+        }
+        
+        /* ===== 요약 ===== */
         .summary {
-            background: #ebf8ff;
-            border-radius: 8px;
-            padding: 10px 12px;
+            background: linear-gradient(135deg, #ebf8ff, #e6f0fa);
+            border-radius: 10px;
+            padding: 12px 16px;
             margin-top: 8px;
         }
         .summary-row {
             display: flex;
             justify-content: space-between;
-            padding: 2px 0;
+            padding: 3px 0;
             font-size: 13px;
         }
         .summary-row .label { color: #4a5568; }
-        .summary-row .value { font-weight: 700; color: #2b6cb0; }
-
+        .summary-row .value { font-weight: 700; color: #2d3748; }
+        
+        /* ===== 상태 메시지 ===== */
         .tab-status {
             display: none;
-            padding: 6px 10px;
-            border-radius: 6px;
+            padding: 8px 12px;
+            border-radius: 8px;
             font-size: 12px;
             margin-top: 6px;
-            animation: fadeSlideIn 0.3s ease;
+            animation: fadeSlide 0.3s ease;
         }
         .tab-status.show { display: block !important; }
-        .tab-status.ok { background: #c6f6d5; color: #22543d; }
+        .tab-status.ok,
+        .tab-status.success { background: #c6f6d5; color: #22543d; }
         .tab-status.error { background: #fed7d7; color: #9b2c2c; }
         .tab-status.warning { background: #fefcbf; color: #975a16; }
         .tab-status.info { background: #bee3f8; color: #2a4365; }
-        .tab-status.success { background: #c6f6d5; color: #22543d; }
-
-        @keyframes fadeSlideIn {
+        @keyframes fadeSlide {
             from { opacity: 0; transform: translateY(-6px); }
             to { opacity: 1; transform: translateY(0); }
         }
-
-        #uploadResult {
-            display: none;
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 12px;
-            margin-top: 4px;
-        }
-
+        
+        /* ===== 지도 ===== */
         #map {
             width: 100%;
             height: 340px;
-            border-radius: 10px;
+            border-radius: 12px;
             background: #e2e8f0;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
             touch-action: auto;
+            overflow: hidden;
         }
-
+        
+        /* ===== 검색 결과 ===== */
+        .search-results {
+            position: absolute;
+            width: 100%;
+            max-height: 200px;
+            overflow-y: auto;
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            display: none;
+            z-index: 50;
+            margin-top: -2px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .search-results .result-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 13px;
+            border-bottom: 1px solid #f0f2f5;
+            transition: background 0.15s;
+        }
+        .search-results .result-item:hover { background: #ebf8ff; }
+        .search-results .result-item .addr { font-size: 11px; color: #718096; }
+        .search-results .result-item .source { font-size: 10px; color: #a0aec0; margin-left: 6px; }
+        
+        /* ===== 경로 아이템 ===== */
+        .route-item {
+            background: white;
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 3px solid #5a9e6f;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 13px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        }
+        .route-item:hover { background: #f0fff4; }
+        .route-item .idx {
+            background: #5a9e6f;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+            flex-shrink: 0;
+            margin-right: 10px;
+        }
+        .route-item .info { flex: 1; min-width: 0; }
+        .route-item .info .name { font-weight: 600; }
+        .route-item .info .addr { font-size: 11px; color: #718096; }
+        .route-item .dist {
+            font-size: 12px;
+            color: #5a9e6f;
+            font-weight: 600;
+            text-align: right;
+            flex-shrink: 0;
+        }
+        .route-start {
+            border-left-color: #4f7eb3;
+        }
+        .route-start .idx { background: #4f7eb3; }
+        .route-start:hover { background: #ebf8ff; }
+        
+        /* ===== 프리셋 ===== */
+        .preset-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 4px;
+            cursor: pointer;
+            border-left: 3px solid #4f7eb3;
+            transition: all 0.2s;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        }
+        .preset-item:hover {
+            background: #ebf8ff;
+            transform: translateX(3px);
+        }
+        .preset-item .preset-info { flex: 1; }
+        .preset-item .preset-name { font-weight: 600; font-size: 13px; }
+        .preset-item .preset-detail { font-size: 11px; color: #718096; }
+        .preset-item .preset-delete {
+            background: none;
+            border: none;
+            color: #a0aec0;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .preset-item .preset-delete:hover {
+            color: #e53e3e;
+            background: #fff5f5;
+        }
+        
+        /* ===== 설정 ===== */
         .setting-group {
             background: #f7fafc;
             border-radius: 10px;
-            padding: 12px 14px;
-            margin-bottom: 8px;
+            padding: 14px 16px;
+            margin-bottom: 10px;
         }
         .setting-group h4 {
             font-size: 13px;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
             display: flex;
             align-items: center;
             gap: 6px;
@@ -470,23 +552,23 @@
         .setting-group .row input {
             flex: 1;
             min-width: 100px;
-            padding: 5px 8px;
+            padding: 6px 10px;
             border: 2px solid #e2e8f0;
             border-radius: 6px;
             font-size: 12px;
         }
-        .setting-group .row input:focus { border-color: #2b6cb0; outline: none; }
-
+        .setting-group .row input:focus { border-color: #4f7eb3; outline: none; }
         .badge {
             font-size: 11px;
-            padding: 2px 8px;
-            border-radius: 4px;
+            padding: 2px 10px;
+            border-radius: 20px;
             display: inline-block;
         }
         .badge-ok { background: #c6f6d5; color: #22543d; }
         .badge-wait { background: #e2e8f0; color: #4a5568; }
         .badge-fail { background: #fed7d7; color: #9b2c2c; }
-
+        
+        /* ===== 하단 탭 ===== */
         .bottom-tabs {
             position: fixed;
             bottom: 0;
@@ -496,11 +578,12 @@
             display: flex;
             border-top: 1px solid #e2e8f0;
             z-index: 100;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+            box-shadow: 0 -2px 20px rgba(0,0,0,0.04);
+            padding-top: 2px;
         }
         .bottom-tab {
             flex: 1;
-            padding: 6px 2px 4px;
+            padding: 8px 2px 6px;
             text-align: center;
             font-size: 10px;
             font-weight: 600;
@@ -513,16 +596,19 @@
             border-left: none;
             border-right: none;
         }
-        .bottom-tab .tab-icon { font-size: 18px; display: block; }
-        .bottom-tab.active { color: #2b6cb0; border-top-color: #2b6cb0; }
+        .bottom-tab .tab-icon { font-size: 20px; display: block; margin-bottom: 2px; }
+        .bottom-tab.active { color: #4f7eb3; border-top-color: #4f7eb3; }
         .bottom-tab.help-tab { color: #805ad5; }
         .bottom-tab.help-tab.active { color: #805ad5; border-top-color: #805ad5; }
-
+        
+        /* ===== 모달 ===== */
         .modal-overlay {
             display: none;
             position: fixed;
             inset: 0;
             background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
             z-index: 200;
             justify-content: center;
             align-items: center;
@@ -531,149 +617,35 @@
         .modal-overlay.active { display: flex; }
         .modal {
             background: white;
-            border-radius: 12px;
-            padding: 18px;
+            border-radius: 16px;
+            padding: 24px;
             max-width: 360px;
             width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
         }
-        .modal h3 { font-size: 16px; margin-bottom: 10px; }
-        .modal .btn-row { margin-top: 10px; }
+        .modal h3 { font-size: 17px; margin-bottom: 12px; }
+        .modal .btn-row { margin-top: 12px; }
         .modal input {
             width: 100%;
-            padding: 6px 10px;
+            padding: 8px 12px;
             border: 2px solid #e2e8f0;
-            border-radius: 6px;
+            border-radius: 8px;
             font-size: 13px;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
         }
-        .modal input:focus { border-color: #2b6cb0; outline: none; }
-
-        .search-results {
-            position: relative;
-            width: 100%;
-            max-height: 200px;
-            overflow-y: auto;
-            background: white;
-            border: 2px solid #e2e8f0;
-            border-top: none;
-            border-radius: 0 0 6px 6px;
-            display: none;
-            z-index: 50;
-            margin-top: -4px;
-        }
-        .search-results .result-item {
-            padding: 6px 10px;
-            cursor: pointer;
-            font-size: 13px;
-            border-bottom: 1px solid #f0f2f5;
-        }
-        .search-results .result-item:hover { background: #ebf8ff; }
-        .search-results .result-item .addr { font-size: 11px; color: #718096; }
-        .search-results .result-item .source { font-size: 10px; color: #a0aec0; margin-left: 4px; }
-
-        .place-scroll {
-            flex: 1;
-            overflow-y: auto;
-            min-height: 0;
-            padding-right: 4px;
-        }
-        .place-scroll::-webkit-scrollbar {
-            width: 4px;
-        }
-        .place-scroll::-webkit-scrollbar-thumb {
-            background: #cbd5e0;
-            border-radius: 4px;
-        }
-        .place-scroll::-webkit-scrollbar-track {
-            background: #f7fafc;
-        }
-
-        #tab-list.active {
-            display: flex;
-            flex-direction: column;
-            height: auto;
-            max-height: calc(100vh - 130px);
-            padding: 8px 10px;
-            overflow: hidden;
-        }
-        #tab-list.active .card {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-            padding: 8px 10px;
-            margin-bottom: 4px;
-        }
-        #tab-list.active .card .flex-row {
-            flex-shrink: 0;
-            margin-bottom: 4px;
-        }
-        #tab-list.active .card #searchPlace {
-            flex-shrink: 0;
-            margin-bottom: 4px;
-        }
-        #tab-list.active .place-scroll {
-            flex: 1;
-            overflow-y: auto;
-            min-height: 0;
-            padding-right: 4px;
-        }
-
-        .route-item {
-            background: white;
-            border-radius: 6px;
-            padding: 6px 10px;
-            margin-bottom: 3px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-left: 3px solid #38a169;
-            cursor: pointer;
-            transition: background 0.2s;
-            font-size: 13px;
-        }
-        .route-item:hover { background: #f0fff4; }
-        .route-item .idx {
-            background: #38a169;
-            color: white;
-            width: 22px;
-            height: 22px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-            font-weight: 700;
-            flex-shrink: 0;
-            margin-right: 8px;
-        }
-        .route-item .info { flex: 1; min-width: 0; }
-        .route-item .info .name { font-weight: 600; }
-        .route-item .info .addr { font-size: 11px; color: #718096; }
-        .route-item .dist {
-            font-size: 12px;
-            color: #38a169;
-            font-weight: 600;
-            text-align: right;
-            flex-shrink: 0;
-        }
-        .route-start {
-            border-left-color: #2b6cb0;
-            cursor: pointer;
-        }
-        .route-start .idx { background: #2b6cb0; }
-        .route-start:hover { background: #ebf8ff; }
-
+        .modal input:focus { border-color: #4f7eb3; outline: none; }
+        
+        /* ===== 도움말 ===== */
         .help-section {
-            margin-bottom: 12px;
-            padding-bottom: 12px;
+            margin-bottom: 14px;
+            padding-bottom: 14px;
             border-bottom: 1px solid #e2e8f0;
         }
         .help-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
         .help-section .help-title {
             font-weight: 700;
             font-size: 14px;
-            color: #2b6cb0;
+            color: #4f7eb3;
             margin-bottom: 4px;
             display: flex;
             align-items: center;
@@ -685,187 +657,84 @@
             line-height: 1.7;
             padding-left: 4px;
         }
-        .help-section .help-body .step { display: block; padding: 2px 0; }
-        .help-section .help-body .step .num {
-            display: inline-block;
-            width: 18px;
-            height: 18px;
-            background: #2b6cb0;
-            color: white;
-            border-radius: 50%;
-            text-align: center;
-            font-size: 10px;
-            font-weight: 700;
-            line-height: 18px;
-            margin-right: 4px;
-        }
-        .help-section .help-body .badge-example {
-            background: #f7fafc;
-            padding: 4px 8px;
-            border-radius: 4px;
-            margin-top: 4px;
-            font-family: monospace;
-            font-size: 12px;
-            color: #2d3748;
-            border: 1px solid #e2e8f0;
-        }
-        .help-section .help-body .tip { font-size: 12px; color: #a0aec0; margin-top: 2px; }
-
-        #tab-help.active { animation: fadeIn 0.3s ease; }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .preset-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 12px;
-            background: white;
-            border-radius: 8px;
-            margin-bottom: 4px;
-            cursor: pointer;
-            border-left: 3px solid #2b6cb0;
-            transition: all 0.2s;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-        }
-        .preset-item:hover {
-            background: #ebf8ff;
-            transform: translateX(2px);
-        }
-        .preset-item .preset-info {
-            flex: 1;
-        }
-        .preset-item .preset-name {
-            font-weight: 600;
-            font-size: 13px;
-            color: #2d3748;
-        }
-        .preset-item .preset-detail {
-            font-size: 11px;
-            color: #718096;
-        }
-        .preset-item .preset-delete {
-            background: none;
-            border: none;
-            color: #e53e3e;
-            font-size: 16px;
-            cursor: pointer;
-            padding: 4px 8px;
-            border-radius: 6px;
-        }
-        .preset-item .preset-delete:hover {
-            background: #fff5f5;
-        }
-
+        
+        /* ===== 모바일 ===== */
         @media (max-width: 480px) {
-            .header h1 { font-size: 15px; }
-            .header select { font-size: 11px; padding: 3px 8px; }
-            .header .weather { font-size: 11px; padding: 2px 8px; }
-            .main { padding: 8px 10px 70px; }
+            .header { padding: 6px 10px; }
+            .header-left h1 { font-size: 14px; }
+            .weather { font-size: 10px; padding: 2px 8px; height: 26px; }
+            .weather .temp { font-size: 11px; }
+            .region-wrapper { padding: 1px 3px 1px 8px; height: 26px; }
+            .region-wrapper select { font-size: 10px; min-width: 50px; height: 22px; }
+            .region-wrapper .btn-add { width: 22px; height: 22px; font-size: 14px; }
+            .header-divider { height: 16px; }
+            .main { padding: 8px 8px 70px; }
             .card { padding: 10px 12px; }
-            #map { height: 280px; }
-            .bottom-tab { font-size: 9px; padding: 4px 2px 3px; }
-            .bottom-tab .tab-icon { font-size: 16px; }
-            #tab-list.active { max-height: calc(100vh - 120px); }
-
-            .btn {
-                font-size: 13px !important;
-                padding: 10px 8px !important;
-                min-height: 44px;
-            }
-            .btn-sm {
-                font-size: 11px !important;
-                padding: 6px 10px !important;
-                min-height: 34px;
-            }
-            #tab-places .card {
-                padding: 10px 12px;
-            }
-            .flex-row input {
-                font-size: 14px !important;
-                padding: 10px 12px !important;
-            }
-
-            .place-item {
-                padding: 3px 6px;
-                min-height: 28px;
-            }
-            .place-item .info .name {
-                font-size: 12px;
-            }
-            .place-item .info .addr {
-                font-size: 10px;
-            }
-            .place-item .actions button {
-                font-size: 11px;
-                padding: 1px 3px;
-            }
-            .place-item .info .addr { max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        }
-        @media (max-width: 400px) {
-            .place-item .info .addr { max-width: 60px; }
+            .btn { font-size: 12px; padding: 6px 12px; min-height: 32px; border-radius: 6px; }
+            .btn-lg { font-size: 14px; padding: 12px 16px; min-height: 44px; }
+            .input-field { font-size: 12px; padding: 6px 10px; min-height: 32px; }
+            #map { height: 260px; }
+            .bottom-tab { font-size: 9px; padding: 6px 2px 4px; }
+            .bottom-tab .tab-icon { font-size: 18px; }
+            .place-item { padding: 4px 8px; min-height: 34px; }
+            .place-item .info .name { font-size: 12px; }
+            .place-item .info .addr { font-size: 10px; }
+            .place-item .actions button { font-size: 12px; min-width: 28px; min-height: 28px; }
         }
     </style>
 </head>
 <body>
 
-   <header class="header">
-    <h1>🚗 경로 최적화</h1>
-    <div class="header-right">
-        <div class="weather" id="weatherDisplay" onclick="showWeekWeather()">
-            <span>⏳</span>
-            <span class="temp">--°C</span>
-            <span>날씨</span>
+    <!-- ===== 헤더 ===== -->
+    <header class="header">
+        <div class="header-left">
+            <h1>🚗 경로 최적화</h1>
         </div>
-        <select id="regionSelect" onchange="switchRegion(this.value)"></select>
-        <button class="btn btn-sm" onclick="addRegion()" 
-                style="background:rgba(255,255,255,0.15); color:white; border:1px solid rgba(255,255,255,0.2); 
-                       padding:2px 10px; font-size:14px; border-radius:6px; height:28px; display:flex; align-items:center; justify-content:center;">
-            +
-        </button>
-    </div>
-</header>
+        <div class="header-right">
+            <div class="weather" id="weatherDisplay" onclick="showWeekWeather()">
+                <span>⏳</span>
+                <span class="temp">--°C</span>
+            </div>
+            <span class="header-divider"></span>
+            <div class="region-wrapper">
+                <select id="regionSelect" onchange="switchRegion(this.value)"></select>
+                <button class="btn-add" onclick="addRegion()" aria-label="지역 추가">+</button>
+            </div>
+        </div>
+    </header>
 
     <div class="main">
 
         <!-- ===== 탭: 장소 ===== -->
         <div id="tab-places" class="tab-content active">
             
-            <!-- 출발지 카드 -->
+            <!-- 출발지 -->
             <div class="card">
                 <div class="card-title">🚩 출발지</div>
                 <div style="position:relative;">
                     <div class="flex-row">
-                        <input type="text" id="startPoint" aria-label="출발지" placeholder="출발지 입력" class="flex-1" 
-                               style="padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:14px;" 
+                        <input type="text" id="startPoint" class="input-field flex-1" 
+                               placeholder="출발지 입력" 
                                oninput="searchStartPoint(this.value)" 
                                onclick="searchStartPoint(this.value)" 
                                onkeydown="handleStartKeydown(event)">
-                        <button class="btn btn-primary" onclick="setStartPoint()" 
-                                style="padding:8px 16px; font-size:13px; border-radius:8px; white-space:nowrap;">
-                            설정
-                        </button>
+                        <button class="btn btn-primary" onclick="setStartPoint()">설정</button>
                     </div>
                     <div id="startSearchResults" class="search-results"></div>
                 </div>
-                <div id="startInfo" style="font-size:12px; color:#718096; margin-top:6px;">⏳ 출발지를 검색하고 설정하세요</div>
+                <div id="startInfo" style="font-size:12px; color:#718096; margin-top:4px;">⏳ 출발지를 검색하고 설정하세요</div>
             </div>
             
-            <!-- 경유지 카드 -->
+            <!-- 경유지 -->
             <div class="card">
                 <div class="card-title">📍 경유지 <span id="wpCount" style="font-size:12px;color:#a0aec0;font-weight:400;"></span></div>
                 <div style="position:relative;">
                     <div class="flex-row" style="margin-bottom:4px;">
-                        <input type="text" id="waypointInput" aria-label="경유지" placeholder="경유지 입력" class="flex-1" 
-                               style="padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:14px;" 
+                        <input type="text" id="waypointInput" class="input-field flex-1" 
+                               placeholder="경유지 입력" 
                                oninput="searchWaypoint(this.value)" 
                                onkeydown="handleWaypointKeydown(event)">
-                        <button class="btn btn-success" onclick="addWaypoint()" 
-                                style="padding:8px 16px; font-size:13px; border-radius:8px; white-space:nowrap;">
-                            추가
-                        </button>
+                        <button class="btn btn-success" onclick="addWaypoint()">추가</button>
                     </div>
                     <div id="waypointSearchResults" class="search-results"></div>
                 </div>
@@ -874,174 +743,112 @@
                 </ul>
             </div>
             
-            <!-- 메인 액션 버튼 (최적화 + 초기화) -->
-            <div style="display:flex; flex-direction:column; gap:6px; margin-top:4px;">
-                <!-- 최적화 버튼 (가장 강조) -->
-                <button class="btn btn-primary" onclick="runOptimize()" 
-                        style="width:100%; padding:14px; font-size:16px; font-weight:700; border-radius:10px; 
-                               background: linear-gradient(135deg, #2b6cb0, #1a365d); 
-                               box-shadow: 0 4px 12px rgba(43,108,176,0.3);">
-                    ⚡ 경로 최적화
-                </button>
-                
-                <!-- 보조 버튼들 (2개씩 1줄) -->
-                <div style="display:flex; gap:6px;">
-                    <button class="btn btn-outline" onclick="resetRoute()" 
-                            style="flex:1; padding:10px; font-size:13px; border-radius:8px; 
-                                   border-color: #e53e3e; color: #e53e3e;">
-                        🔄 초기화
-                    </button>
-                    <button class="btn btn-outline" onclick="shareRoute()" 
-                            style="flex:1; padding:10px; font-size:13px; border-radius:8px; 
-                                   border-color: #2b6cb0; color: #2b6cb0;">
-                        📤 공유
-                    </button>
+            <!-- 메인 액션 -->
+            <div style="display:flex; flex-direction:column; gap:6px;">
+                <button class="btn btn-primary btn-lg" onclick="runOptimize()">⚡ 경로 최적화</button>
+                <div class="flex-row" style="gap:6px;">
+                    <button class="btn btn-outline" style="flex:1; border-color:#e53e3e; color:#e53e3e;" onclick="resetRoute()">🔄 초기화</button>
+                    <button class="btn btn-outline" style="flex:1;" onclick="shareRoute()">📤 공유</button>
                 </div>
             </div>
             
-<!-- 최적화 방식 선택 (통일된 디자인) -->
-<div class="card" style="margin-top:8px; background:#f7fafc; border:1px solid #e2e8f0; padding:10px 14px;">
-    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-        <span style="font-size:13px; font-weight:600; color:#4a5568; margin-right:4px;">📐 최적화 방식</span>
-        <div style="display:flex; gap:4px; flex:1; min-width:120px;">
-            <button class="btn-toggle" id="modeNearest" onclick="setOptimizeMode('Nearest')" 
-                    style="flex:1; padding:6px 12px; border-radius:20px; font-size:12px; font-weight:600;
-                           border:2px solid #2b6cb0; background:#2b6cb0; color:white;
-                           cursor:pointer; transition:all 0.2s;">
-                가까운순
-            </button>
-            <button class="btn-toggle" id="modeFarthest" onclick="setOptimizeMode('Farthest')" 
-                    style="flex:1; padding:6px 12px; border-radius:20px; font-size:12px; font-weight:600;
-                           border:2px solid #cbd5e0; background:white; color:#4a5568;
-                           cursor:pointer; transition:all 0.2s;">
-                먼순
-            </button>
-        </div>
-    </div>
-    <div id="modeInfo" style="font-size:11px; color:#718096; margin-top:6px; text-align:center;">현재: 가까운순</div>
-</div>
-            <!-- 프리셋 저장 버튼 (별도 영역) -->
-            <div style="margin-top:8px;">
-                <button class="btn btn-success" onclick="addPreset()" 
-                        style="width:100%; padding:10px; font-size:14px; font-weight:600; border-radius:8px;
-                               background: linear-gradient(135deg, #38a169, #276749);">
-                    💾 현재 경로를 프리셋으로 저장
-                </button>
+            <!-- 최적화 방식 -->
+            <div class="card" style="background:#f7fafc; border:1px solid #e2e8f0;">
+                <div class="flex-row" style="gap:8px;">
+                    <span style="font-size:13px; font-weight:600; color:#4a5568;">📐 최적화</span>
+                    <button class="btn-toggle active" id="modeNearest" onclick="setOptimizeMode('Nearest')">가까운순</button>
+                    <button class="btn-toggle" id="modeFarthest" onclick="setOptimizeMode('Farthest')">먼순</button>
+                </div>
+                <div id="modeInfo" style="font-size:11px; color:#718096; margin-top:4px; text-align:center;">현재: 가까운순</div>
             </div>
             
+            <!-- 프리셋 저장 -->
+            <button class="btn btn-success btn-block" onclick="addPreset()" 
+                    style="padding:10px; font-size:14px; font-weight:600;">💾 현재 경로를 프리셋으로 저장</button>
+            
             <!-- 프리셋 목록 -->
-            <div class="card" style="margin-top:6px; background:#f7fafc; border:1px solid #e2e8f0;">
+            <div class="card" style="background:#f7fafc; border:1px solid #e2e8f0;">
                 <div class="card-title" style="font-size:13px;">📂 저장된 프리셋</div>
                 <div id="presetList" style="max-height:150px; overflow-y:auto;">
                     <div class="empty-msg" style="padding:8px;font-size:12px;color:#a0aec0;">저장된 프리셋이 없습니다</div>
                 </div>
             </div>
             
-            <!-- 상태 메시지 -->
-            <div id="placesStatus" class="tab-status" style="margin-top:6px;"></div>
-
-        </div>   <!-- #tab-places 끝 -->
+            <div id="placesStatus" class="tab-status"></div>
+        </div>
 
         <!-- ===== 탭: 경로 ===== -->
         <div id="tab-route" class="tab-content">
             <div id="map"></div>
-            
             <div class="summary">
-                <div class="summary-row">
-                    <span class="label">📍 방문지</span>
-                    <span class="value" id="placeCount">0개소</span>
-                </div>
-                <div class="summary-row">
-                    <span class="label">📏 총 거리</span>
-                    <span class="value" id="totalDistance">0.00 km</span>
-                </div>
-                <div class="summary-row">
-                    <span class="label">⏱️ 총 시간</span>
-                    <span class="value" id="totalTime">0 분</span>
-                </div>
-                <div class="summary-row">
-                    <span class="label">📐 최적화</span>
-                    <span class="value" id="optimizeMode">-</span>
-                </div>
+                <div class="summary-row"><span class="label">📍 방문지</span><span class="value" id="placeCount">0개소</span></div>
+                <div class="summary-row"><span class="label">📏 총 거리</span><span class="value" id="totalDistance">0.00 km</span></div>
+                <div class="summary-row"><span class="label">⏱️ 총 시간</span><span class="value" id="totalTime">0 분</span></div>
+                <div class="summary-row"><span class="label">📐 최적화</span><span class="value" id="optimizeMode">-</span></div>
             </div>
-            
             <div id="routeList" style="margin-top:8px;"></div>
             <div id="routeStatus" class="tab-status"></div>
         </div>
 
-<!-- ===== 탭: 개소리스트 ===== -->
-<div id="tab-list" class="tab-content">
-    <div class="card" style="padding:8px 10px;">
-        <div class="card-title" style="font-size:13px; margin-bottom:4px;">📋 개소리스트 <span id="listCount" style="font-size:11px;color:#a0aec0;font-weight:400;"></span></div>
-        
-        <!-- 엑셀 가져오기/내보내기 -->
-        <div style="display:flex; gap:4px; margin-bottom:4px;">
-            <button class="btn btn-outline btn-sm" style="flex:1; padding:5px 4px; font-size:11px; border-radius:4px;" 
-                    onclick="document.getElementById('fileInput').click()">📥 엑셀 가져오기</button>
-            <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFile(event)">
-            <button class="btn btn-outline btn-sm" style="flex:1; padding:5px 4px; font-size:11px; border-radius:4px;" 
-                    onclick="exportData()">📤 엑셀 내보내기</button>
+        <!-- ===== 탭: 개소리스트 ===== -->
+        <div id="tab-list" class="tab-content">
+            <div class="card">
+                <div class="card-title">📋 개소리스트 <span id="listCount" style="font-size:12px;color:#a0aec0;font-weight:400;"></span></div>
+                
+                <div class="flex-row" style="margin-bottom:6px;">
+                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="document.getElementById('fileInput').click()">📥 엑셀 가져오기</button>
+                    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFile(event)">
+                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="exportData()">📤 엑셀 내보내기</button>
+                </div>
+                <div id="uploadResult"></div>
+                
+                <div class="flex-row" style="margin-bottom:4px;">
+                    <input type="text" id="newPlaceName" class="input-field" placeholder="개소명" style="flex:1; min-height:34px;">
+                    <div style="position:relative; flex:1.5;">
+                        <input type="text" id="newPlaceAddr" class="input-field" placeholder="주소" style="min-height:34px;" oninput="searchAddressForPlace(this.value)" onkeydown="handleAddrKeydown(event)">
+                        <div id="addrSearchResults" class="search-results"></div>
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="addPlace()" style="min-height:34px;">추가</button>
+                </div>
+                
+                <input type="text" id="searchPlace" class="input-field" placeholder="🔍 개소 검색" style="margin-bottom:4px; min-height:34px;" oninput="searchPlaces()">
+                
+                <div id="placeList" class="place-scroll" style="max-height:280px; overflow-y:auto;"></div>
+                <div id="listStatus" class="tab-status"></div>
+            </div>
         </div>
-        <div id="uploadResult" style="font-size:11px; padding:2px 6px;"></div>
-        
-        <!-- 개소 추가 -->
-        <div style="display:flex; gap:4px; margin-bottom:4px;">
-            <input type="text" id="newPlaceName" placeholder="개소명" 
-                   style="flex:1; padding:5px 8px; border:2px solid #e2e8f0; border-radius:4px; font-size:12px; min-height:30px;">
-            <button class="btn btn-primary btn-sm" onclick="addPlace()" 
-                    style="padding:4px 10px; font-size:11px; border-radius:4px; min-height:30px;">추가</button>
-        </div>
-        <div style="display:flex; gap:4px; position:relative; margin-bottom:4px;">
-            <input type="text" id="newPlaceAddr" placeholder="주소 입력" 
-                   style="flex:1; padding:5px 8px; border:2px solid #e2e8f0; border-radius:4px; font-size:12px; min-height:30px;" 
-                   oninput="searchAddressForPlace(this.value)" onkeydown="handleAddrKeydown(event)">
-            <div id="addrSearchResults" class="search-results"></div>
-        </div>
-        
-        <!-- 개소 검색 -->
-        <input type="text" id="searchPlace" placeholder="🔍 개소 검색" 
-               style="width:100%; padding:5px 8px; border:2px solid #e2e8f0; border-radius:4px; font-size:12px; min-height:30px; margin-bottom:4px;" 
-               oninput="searchPlaces()">
-        
-        <!-- 개소 목록 -->
-        <div id="placeList" class="place-scroll" style="max-height:300px;"></div>
-        <div id="listStatus" class="tab-status" style="font-size:11px; padding:3px 8px; margin-top:2px;"></div>
-    </div>
-</div>
 
         <!-- ===== 탭: 설정 ===== -->
         <div id="tab-settings" class="tab-content">
-            
             <div class="setting-group">
                 <h4>🔐 GitHub 연동</h4>
                 <div class="row">
-                    <label for="githubToken">GitHub Token</label>
+                    <label for="githubToken">Token</label>
                     <input type="password" id="githubToken" autocomplete="off" placeholder="GitHub Personal Access Token">
-                    <button class="btn btn-primary btn-sm" onclick="saveGitHubToken()" aria-label="GitHub 토큰 저장">저장</button>
-                    <button class="btn btn-outline btn-sm" onclick="testGitHubToken()" aria-label="GitHub 토큰 테스트">테스트</button>
+                    <button class="btn btn-primary btn-sm" onclick="saveGitHubToken()">저장</button>
+                    <button class="btn btn-outline btn-sm" onclick="testGitHubToken()">테스트</button>
                 </div>
                 <div class="flex-row" style="margin-top:6px;">
-                    <button class="btn btn-success btn-sm" style="flex:1;" onclick="uploadToGitHub()" aria-label="GitHub 업로드">📤 업로드</button>
-                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="downloadFromGitHub()" aria-label="GitHub 다운로드">📥 다운로드</button>
-                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="showGitHubHistory()" aria-label="GitHub 히스토리">📋 히스토리</button>
+                    <button class="btn btn-success btn-sm" style="flex:1;" onclick="uploadToGitHub()">📤 업로드</button>
+                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="downloadFromGitHub()">📥 다운로드</button>
+                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="showGitHubHistory()">📋 히스토리</button>
                 </div>
                 <div id="githubStatus" class="badge badge-wait" style="margin-top:6px;">⏳ 토큰 미설정</div>
                 <div id="githubHistory"></div>
-                <div style="font-size:11px; color:#a0aec0; margin-top:4px;">⚠️ 토큰은 이 브라우저에만 저장되며, 민감정보이니 주의하세요.</div>
             </div>
             
             <div class="setting-group">
                 <h4>🗺️ 카카오 API</h4>
                 <div class="row">
-                    <label for="kakaoJsKey">JavaScript 키</label>
-                    <input type="password" id="kakaoJsKey" autocomplete="off" placeholder="JavaScript 키 입력">
+                    <label for="kakaoJsKey">JS 키</label>
+                    <input type="password" id="kakaoJsKey" autocomplete="off" placeholder="JavaScript 키">
                 </div>
                 <div class="row" style="margin-top:4px;">
-                    <label for="kakaoRestKey">REST API 키</label>
-                    <input type="password" id="kakaoRestKey" autocomplete="off" placeholder="REST API 키 입력">
+                    <label for="kakaoRestKey">REST 키</label>
+                    <input type="password" id="kakaoRestKey" autocomplete="off" placeholder="REST API 키">
                 </div>
                 <div class="row" style="margin-top:6px;">
-                    <button class="btn btn-primary btn-sm" onclick="saveKakaoKeys()" aria-label="카카오 API 키 저장">저장</button>
+                    <button class="btn btn-primary btn-sm" onclick="saveKakaoKeys()">저장</button>
                 </div>
                 <div id="kakaoStatus" class="badge badge-wait" style="margin-top:6px;">⏳ API 키 미설정</div>
             </div>
@@ -1049,15 +856,15 @@
             <div class="setting-group">
                 <h4>⚙️ 설정 관리</h4>
                 <div class="flex-row">
-                    <button class="btn btn-outline btn-sm btn-block" onclick="exportSettings()" aria-label="설정 내보내기">📤 설정 내보내기</button>
-                    <button class="btn btn-outline btn-sm btn-block" onclick="document.getElementById('settingsInput').click()" aria-label="설정 가져오기">📥 설정 가져오기</button>
+                    <button class="btn btn-outline btn-sm btn-block" onclick="exportSettings()">📤 내보내기</button>
+                    <button class="btn btn-outline btn-sm btn-block" onclick="document.getElementById('settingsInput').click()">📥 가져오기</button>
                     <input type="file" id="settingsInput" accept=".json" style="display:none" onchange="importSettings(event)">
                 </div>
             </div>
             
             <div class="setting-group">
-                <h4>💾 데이터 관리</h4>
-                <button class="btn btn-danger btn-sm btn-block" onclick="resetAll()" aria-label="모든 데이터 초기화">🗑️ 모든 데이터 초기화</button>
+                <h4>💾 데이터</h4>
+                <button class="btn btn-danger btn-sm btn-block" onclick="resetAll()">🗑️ 모든 데이터 초기화</button>
                 <div style="font-size:11px; color:#a0aec0; margin-top:4px;" id="storageInfo">저장소 사용량: 계산 중...</div>
             </div>
             <div id="settingsStatus" class="tab-status"></div>
@@ -1067,68 +874,37 @@
         <div id="tab-help" class="tab-content">
             <div class="card">
                 <div class="card-title">📖 사용 가이드</div>
-                
                 <div class="help-section">
                     <div class="help-title">📍 장소 탭</div>
                     <div class="help-body">
-                        <span class="step"><span class="num">1</span><strong>출발지</strong>를 검색하고 설정하세요</span>
-                        <span class="step"><span class="num">2</span><strong>경유지</strong>를 추가하세요 (최대 15개)</span>
-                        <span class="step"><span class="num">3</span><strong>경로 최적화</strong> 버튼으로 최적 경로 계산</span>
-                        <span class="step"><span class="num">4</span><strong>가까운순/먼순</strong> 중 최적화 방식을 선택하세요</span>
+                        <div class="step">1. <strong>출발지</strong>를 검색하고 설정하세요</div>
+                        <div class="step">2. <strong>경유지</strong>를 추가하세요 (최대 15개)</div>
+                        <div class="step">3. <strong>경로 최적화</strong> 버튼으로 최적 경로 계산</div>
+                        <div class="step">4. <strong>가까운순/먼순</strong> 중 최적화 방식을 선택하세요</div>
                     </div>
                 </div>
-                
                 <div class="help-section">
                     <div class="help-title">🗺️ 경로 탭</div>
                     <div class="help-body">
-                        <span class="step">📍 최적화된 경로를 <strong>지도</strong>로 확인하세요</span>
-                        <span class="step">📊 <strong>방문지 개수, 총 거리, 총 시간</strong>을 한눈에 확인</span>
-                        <span class="step">📋 각 구간별 <strong>거리</strong>와 <strong>순서</strong>를 확인하세요</span>
-                        <span class="step">🔄 지도는 <strong>드래그</strong>와 <strong>확대/축소</strong>가 가능합니다</span>
-                        <span class="step">📍 개소리스트에서 <strong>지도 보기</strong> 버튼으로 해당 위치로 이동</span>
-                        <span class="step">📋 경로 목록 클릭하면 해당 위치로 <strong>지도 이동</strong></span>
+                        <div class="step">📍 최적화된 경로를 <strong>지도</strong>로 확인하세요</div>
+                        <div class="step">📋 각 구간별 <strong>거리</strong>와 <strong>시간</strong>을 확인하세요</div>
+                        <div class="step">🔄 지도는 <strong>드래그</strong>와 <strong>확대/축소</strong>가 가능합니다</div>
                     </div>
                 </div>
-                
                 <div class="help-section">
-                    <div class="help-title">📋 개소리스트 탭</div>
+                    <div class="help-title">📋 개소리스트</div>
                     <div class="help-body">
-                        <span class="step">📤 <strong>엑셀 가져오기</strong>로 개소를 일괄 등록하세요</span>
-                        <span class="step">📥 <strong>엑셀 내보내기</strong>로 데이터를 백업하세요</span>
-                        <span class="step">➕ <strong>개소명</strong>과 <strong>주소</strong>를 직접 추가하세요</span>
-                        <span class="step">🔍 <strong>검색</strong>으로 개소를 빠르게 찾으세요</span>
-                        <span class="step">✏️ <strong>편집</strong> 버튼으로 개소 정보를 수정하세요</span>
-                        <span class="step">📍 <strong>지도 보기</strong> 버튼으로 해당 위치를 지도에서 확인하세요</span>
+                        <div class="step">📤 <strong>엑셀 가져오기</strong>로 개소를 일괄 등록하세요</div>
+                        <div class="step">🔍 <strong>검색</strong>으로 개소를 빠르게 찾으세요</div>
+                        <div class="step">📍 <strong>지도 보기</strong> 버튼으로 위치를 확인하세요</div>
                     </div>
                 </div>
-                
                 <div class="help-section">
-                    <div class="help-title">⚙️ 설정 탭</div>
+                    <div class="help-title">💡 팁</div>
                     <div class="help-body">
-                        <span class="step">🔐 <strong>GitHub Token</strong>을 입력하면 데이터가 자동 백업됩니다</span>
-                        <span class="step">🗺️ <strong>카카오 JavaScript 키</strong>와 <strong>REST API 키</strong>를 입력하세요</span>
-                        <span class="step">💾 <strong>설정 내보내기/가져오기</strong>로 설정을 백업하세요</span>
-                        <span class="step">🗑️ <strong>모든 데이터 초기화</strong>로 데이터를 삭제하세요</span>
-                    </div>
-                </div>
-                
-                <div class="help-section">
-                    <div class="help-title">📊 엑셀 파일 양식</div>
-                    <div class="help-body">
-                        <span class="step">엑셀 파일은 다음 컬럼을 포함해야 합니다:</span>
-                        <div class="badge-example">개소명 | 도로명주소 | 비고(선택) | 위도(선택) | 경도(선택)</div>
-                        <span class="tip">💡 위도/경도가 없으면 주소로 자동 변환됩니다</span>
-                    </div>
-                </div>
-                
-                <div class="help-section">
-                    <div class="help-title">💡 유용한 팁</div>
-                    <div class="help-body">
-                        <span class="step">🔍 출발지/경유지 입력 시 <strong>개소리스트 + 카카오맵</strong> 자동완성</span>
-                        <span class="step">⌨️ 검색 결과는 <strong>↑↓ 키</strong>로 이동하고 <strong>Enter</strong>로 선택</span>
-                        <span class="step">📱 <strong>모바일</strong>에서도 최적화된 화면으로 사용 가능</span>
-                        <span class="step">☁️ <strong>GitHub</strong>에 데이터를 백업하면 다른 기기에서도 불러올 수 있음</span>
-                        <span class="step">📍 <strong>개소탭 지도 버튼</strong>으로 원하는 장소를 바로 확인</span>
+                        <div class="step">🔍 출발지/경유지 입력 시 <strong>개소리스트 + 카카오맵</strong> 자동완성</div>
+                        <div class="step">⌨️ 검색 결과는 <strong>↑↓ 키</strong>로 이동, <strong>Enter</strong>로 선택</div>
+                        <div class="step">☁️ <strong>GitHub</strong>에 데이터를 백업하면 다른 기기에서도 불러오기 가능</div>
                     </div>
                 </div>
             </div>
@@ -1137,19 +913,19 @@
 
     <!-- ===== 하단 탭 ===== -->
     <div class="bottom-tabs">
-        <button class="bottom-tab active" data-tab="tab-places" onclick="switchTab('tab-places')" aria-label="장소 탭">
+        <button class="bottom-tab active" data-tab="tab-places" onclick="switchTab('tab-places')">
             <span class="tab-icon">📍</span> 장소
         </button>
-        <button class="bottom-tab" data-tab="tab-route" onclick="switchTab('tab-route')" aria-label="경로 탭">
+        <button class="bottom-tab" data-tab="tab-route" onclick="switchTab('tab-route')">
             <span class="tab-icon">🗺️</span> 경로
         </button>
-        <button class="bottom-tab" data-tab="tab-list" onclick="switchTab('tab-list')" aria-label="개소리스트 탭">
+        <button class="bottom-tab" data-tab="tab-list" onclick="switchTab('tab-list')">
             <span class="tab-icon">📋</span> 개소
         </button>
-        <button class="bottom-tab" data-tab="tab-settings" onclick="switchTab('tab-settings')" aria-label="설정 탭">
+        <button class="bottom-tab" data-tab="tab-settings" onclick="switchTab('tab-settings')">
             <span class="tab-icon">⚙️</span> 설정
         </button>
-        <button class="bottom-tab help-tab" data-tab="tab-help" onclick="switchTab('tab-help')" aria-label="도움말 탭">
+        <button class="bottom-tab help-tab" data-tab="tab-help" onclick="switchTab('tab-help')">
             <span class="tab-icon">❓</span> 도움말
         </button>
     </div>
@@ -1159,11 +935,11 @@
         <div class="modal">
             <h3 id="modalTitle">✏️ 개소 편집</h3>
             <input type="text" id="modalName" placeholder="개소명">
-            <input type="text" id="modalAddress" placeholder="도로명주소">
+            <input type="text" id="modalAddress" placeholder="주소">
             <input type="hidden" id="modalId">
             <div class="btn-row flex-row" style="justify-content:flex-end;">
-                <button class="btn btn-outline btn-sm" onclick="closeModal()" aria-label="취소">취소</button>
-                <button class="btn btn-primary btn-sm" onclick="saveModal()" aria-label="저장">저장</button>
+                <button class="btn btn-outline btn-sm" onclick="closeModal()">취소</button>
+                <button class="btn btn-primary btn-sm" onclick="saveModal()">저장</button>
             </div>
         </div>
     </div>
