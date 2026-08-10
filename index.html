@@ -749,22 +749,27 @@
                 </div>
             </div>
             
-            <!-- 최적화 방식 선택 -->
-            <div class="card" style="margin-top:8px; background:#f7fafc; border:1px solid #e2e8f0;">
-                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                    <span style="font-size:13px; font-weight:600; color:#4a5568;">📐 최적화 방식</span>
-                    <button class="btn btn-sm btn-primary" id="modeNearest" onclick="setOptimizeMode('Nearest')" 
-                            style="flex:1; padding:6px 12px; border-radius:20px; font-size:12px;">
-                        가까운순
-                    </button>
-                    <button class="btn btn-sm btn-outline" id="modeFarthest" onclick="setOptimizeMode('Farthest')" 
-                            style="flex:1; padding:6px 12px; border-radius:20px; font-size:12px; border-color:#2b6cb0; color:#2b6cb0;">
-                        먼순
-                    </button>
-                </div>
-                <div id="modeInfo" style="font-size:11px; color:#718096; margin-top:4px; text-align:center;">현재: 가까운순</div>
-            </div>
-            
+<!-- 최적화 방식 선택 (통일된 디자인) -->
+<div class="card" style="margin-top:8px; background:#f7fafc; border:1px solid #e2e8f0; padding:10px 14px;">
+    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <span style="font-size:13px; font-weight:600; color:#4a5568; margin-right:4px;">📐 최적화 방식</span>
+        <div style="display:flex; gap:4px; flex:1; min-width:120px;">
+            <button class="btn-toggle" id="modeNearest" onclick="setOptimizeMode('Nearest')" 
+                    style="flex:1; padding:6px 12px; border-radius:20px; font-size:12px; font-weight:600;
+                           border:2px solid #2b6cb0; background:#2b6cb0; color:white;
+                           cursor:pointer; transition:all 0.2s;">
+                가까운순
+            </button>
+            <button class="btn-toggle" id="modeFarthest" onclick="setOptimizeMode('Farthest')" 
+                    style="flex:1; padding:6px 12px; border-radius:20px; font-size:12px; font-weight:600;
+                           border:2px solid #cbd5e0; background:white; color:#4a5568;
+                           cursor:pointer; transition:all 0.2s;">
+                먼순
+            </button>
+        </div>
+    </div>
+    <div id="modeInfo" style="font-size:11px; color:#718096; margin-top:6px; text-align:center;">현재: 가까운순</div>
+</div>
             <!-- 프리셋 저장 버튼 (별도 영역) -->
             <div style="margin-top:8px;">
                 <button class="btn btn-success" onclick="addPreset()" 
