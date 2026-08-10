@@ -160,6 +160,34 @@
             gap: 6px;
             min-height: 32px;
         }
+        /* ===== 토글 버튼 (가까운순/먼순) ===== */
+.btn-toggle {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2px solid #cbd5e0;
+    background: white;
+    color: #4a5568;
+    flex: 1;
+    text-align: center;
+}
+.btn-toggle:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.btn-toggle.active {
+    border: 2px solid #2b6cb0;
+    background: #2b6cb0;
+    color: white;
+}
+.btn-toggle.inactive {
+    border: 2px solid #cbd5e0;
+    background: white;
+    color: #4a5568;
+}
         .place-item .info {
             flex: 1;
             min-width: 0;
