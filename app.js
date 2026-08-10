@@ -2,6 +2,18 @@
 // 경로 최적화 PWA - VBA 완벽 포팅 (보안 및 성능 개선)
 // ============================================================
 
+// ============================================================
+// GitHub 자동 동기화 (누락됨)
+// ============================================================
+
+function scheduleAutoSync() {
+    clearTimeout(autoSyncTimer);
+    if (!settings.githubToken) return;
+    autoSyncTimer = setTimeout(function() {
+        uploadToGitHub(true);
+    }, 5000);
+}
+
 // --- 저장소 키 ---
 const STORAGE_KEY_PREFIX = 'places_';
 const SELECTED_REGION_KEY = 'selectedRegion';
@@ -997,7 +1009,9 @@ function renderPlaces(filtered) {
     for (var i = 0; i < data.length; i++) {
         var p = data[i];
         var shortAddr = shortenAddress(p.address || '');
-        var favClass = p.favorite ? 'active' : 'inactive';
+        // 🔥 즐겨찾기 별표: 채워짐/비어짐
+        var starIcon = p.favorite ? '★' : '☆';
+        var starClass = p.favorite ? 'fav active' : 'fav inactive';
         html += `
             <div class="place-item" onclick="openEditModal('${p.id}')" title="클릭하여 편집">
                 <div class="info">
@@ -1008,7 +1022,7 @@ function renderPlaces(filtered) {
                     <button class="map" onclick="showPlaceOnMap('${p.id}')" title="지도 보기">📍</button>
                     <button class="add" onclick="addWaypointFromList('${p.id}')" title="경유지 추가">➕</button>
                     <button class="del" onclick="deletePlace('${p.id}')" title="삭제">🗑️</button>
-                    <button class="fav ${favClass}" onclick="toggleFavorite('${p.id}')" title="즐겨찾기">⭐</button>
+                    <button class="${starClass}" onclick="toggleFavorite('${p.id}')" title="즐겨찾기">${starIcon}</button>
                 </div>
             </div>
         `;
@@ -1557,28 +1571,75 @@ function showRouteList() {
         container.innerHTML = '<div style="text-align:center;padding:20px;color:#a0aec0;">최적화된 경로가 없습니다.</div>';
         return;
     }
-    var html = '<div style="font-weight:600;font-size:14px;margin-bottom:8px;">📋 최적 경로</div>';
+    
+    var html = '<div style="font-weight:600;font-size:14px;margin-bottom:8px;">📋 최적 경로 (드래그로 순서 변경 가능)</div>';
+    html += '<div id="routeSortable">';
     html += '<div class="route-item route-start" data-lat="' + startPoint.lat + '" data-lng="' + startPoint.lng + '" data-name="' + escapeHtml(startPoint.name) + '" onclick="moveToRoutePoint(this)" style="cursor:pointer;">';
-    html += '<div class="idx" style="background:#4f7eb3;">🚩</div>';
+    html += '<div class="idx" style="background:#4a5568;color:white;">🚩</div>';
     html += '<div class="info"><div class="name">' + escapeHtml(startPoint.name) + '</div><div class="addr">' + escapeHtml(startPoint.address || '') + '</div></div>';
     html += '</div>';
+    
+    var colors = ['#FF6B6B', '#FF9F43', '#FECA57', '#48DBFB', '#0ABDE3', '#10AC84', '#EE5A24', '#5F27CD', '#1DD1A1', '#F368E0', '#00D2D3', '#54A0FF', '#FF9FF3', '#F368E0'];
     for (var i = 0; i < sorted.length; i++) {
         var p = sorted[i];
         var prev = i === 0 ? startPoint : sorted[i - 1];
         var segDist = haversineKm(prev.lat, prev.lng, p.lat, p.lng);
         var segTime = Math.round(segDist / 40 * 60);
-        var colors = ['#FF6B6B', '#FF9F43', '#FECA57', '#48DBFB', '#0ABDE3', '#10AC84', '#EE5A24', '#5F27CD', '#1DD1A1', '#F368E0'];
         var color = colors[i % colors.length];
-        html += '<div class="route-item" data-lat="' + p.lat + '" data-lng="' + p.lng + '" data-name="' + escapeHtml(p.name) + '" onclick="moveToRoutePoint(this)">';
-        html += '<div class="idx" style="background:' + color + ';">' + (i + 1) + '</div>';
+        html += '<div class="route-item sortable-item" data-index="' + i + '" data-lat="' + p.lat + '" data-lng="' + p.lng + '" data-name="' + escapeHtml(p.name) + '" onclick="moveToRoutePoint(this)" style="cursor:grab;border-left-color:' + color + ';">';
+        html += '<div class="idx" style="background:' + color + ';color:white;">' + (i + 1) + '</div>';
         html += '<div class="info"><div class="name">' + escapeHtml(p.name) + '</div><div class="addr">' + escapeHtml(p.address || '') + '</div></div>';
         html += '<div class="dist" style="text-align:right;font-size:12px;font-weight:600;flex-shrink:0;min-width:70px;color:' + color + ';">';
         html += segDist.toFixed(1) + 'km<br><span style="font-size:10px;color:#718096;">' + segTime + '분</span>';
         html += '</div>';
-        html += '<button class="btn btn-outline" style="margin-left:4px;padding:2px 6px;font-size:10px;flex-shrink:0;min-height:28px;border-radius:4px;" onclick="event.stopPropagation(); openKakaoMap(\'' + escapeHtml(prev.name) + '\', ' + prev.lat + ', ' + prev.lng + ', \'' + escapeHtml(p.name) + '\', ' + p.lat + ', ' + p.lng + ')">🗺️</button>';
+        html += '<span style="color:#a0aec0;font-size:12px;margin-left:4px;">⠿</span>';
         html += '</div>';
     }
+    html += '</div>';
     container.innerHTML = html;
+    
+    // 🔥 SortableJS 적용 (드래그로 순서 변경)
+    var sortableEl = document.getElementById('routeSortable');
+    if (sortableEl && window.Sortable) {
+        if (window._routeSortable) {
+            window._routeSortable.destroy();
+        }
+        window._routeSortable = new Sortable(sortableEl, {
+            handle: '.sortable-item',
+            animation: 150,
+            onEnd: function(evt) {
+                var oldIndex = evt.oldIndex - 1; // 출발지 제외
+                var newIndex = evt.newIndex - 1;
+                if (oldIndex === newIndex || oldIndex < 0 || newIndex < 0) return;
+                var moved = routeResult.places.splice(oldIndex, 1)[0];
+                routeResult.places.splice(newIndex, 0, moved);
+                // 경로 재계산 (순서만 변경)
+                showRouteList();
+                // 지도 경로 다시 그리기
+                var allPoints = [{ name: startPoint.name, lat: startPoint.lat, lng: startPoint.lng }].concat(routeResult.places);
+                clearRouteMarkers();
+                addRouteMarker(startPoint.lat, startPoint.lng, '🚩 ' + startPoint.name, true);
+                for (var i = 0; i < routeResult.places.length; i++) {
+                    var p = routeResult.places[i];
+                    addRouteMarker(p.lat, p.lng, (i + 1) + '. ' + p.name, false);
+                }
+                // 도로 경로 다시 요청
+                var restKey = settings.kakaoRestKey;
+                if (restKey) {
+                    callKakaoMobilityRoute(allPoints, restKey).then(function(routeData) {
+                        if (routeData) {
+                            drawRoadRoute(routeData);
+                        } else {
+                            drawRoute(allPoints);
+                        }
+                    });
+                } else {
+                    drawRoute(allPoints);
+                }
+                showTabStatus('tab-route', '🔄 경로 순서 변경됨, 재계산 완료', 'ok');
+            }
+        });
+    }
 }
 
 function moveToRoutePoint(el) {
@@ -2635,10 +2696,19 @@ function addRouteMarker(lat, lng, title, isStart) {
             }
         }
         var pos = new kakao.maps.LatLng(lat, lng);
-        var icon = isStart ? '🚩' : '📍';
-        var bgColor = isStart ? 'rgba(220, 38, 38, 0.9)' : 'rgba(37, 99, 235, 0.9)';
-        var shadowColor = isStart ? 'rgba(220, 38, 38, 0.3)' : 'rgba(37, 99, 235, 0.3)';
-        var content = '<div style="background:' + bgColor + ';padding:6px 14px;border-radius:20px;box-shadow:0 4px 16px ' + shadowColor + ',0 2px 8px rgba(0,0,0,0.1);font-size:13px;font-weight:700;color:white;white-space:nowrap;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,0.2);letter-spacing:0.3px;">' + icon + ' ' + escapeHtml(title) + '</div>';
+        var content;
+        
+        if (isStart) {
+            // ===== 출발지: 흰색 배경 + 검정 글자 =====
+            content = '<div style="background:white;padding:6px 14px;border-radius:20px;box-shadow:0 4px 16px rgba(0,0,0,0.15),0 2px 8px rgba(0,0,0,0.08);font-size:13px;font-weight:700;color:#1a202c;white-space:nowrap;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;border:2px solid #2d3748;letter-spacing:0.3px;">🚩 ' + escapeHtml(title) + '</div>';
+        } else {
+            // ===== 경유지: 경로 색상에 맞춤 (index로 색상 결정) =====
+            var colors = ['#FF6B6B', '#FF9F43', '#FECA57', '#48DBFB', '#0ABDE3', '#10AC84', '#EE5A24', '#5F27CD', '#1DD1A1', '#F368E0', '#00D2D3', '#54A0FF', '#FF9FF3', '#F368E0'];
+            var idx = routeMarkers.length; // 현재 마커 개수 = 인덱스
+            var color = colors[idx % colors.length];
+            content = '<div style="background:' + color + ';padding:6px 14px;border-radius:20px;box-shadow:0 4px 16px rgba(0,0,0,0.15),0 2px 8px rgba(0,0,0,0.08);font-size:13px;font-weight:700;color:white;white-space:nowrap;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;border:1px solid rgba(255,255,255,0.3);letter-spacing:0.3px;">📍 ' + escapeHtml(title) + '</div>';
+        }
+        
         var customOverlay = new kakao.maps.CustomOverlay({
             map: kakaoMap,
             position: pos,
@@ -2804,6 +2874,97 @@ async function fetchWeather() {
         console.error('❌ 날씨 오류:', error);
         weatherEl.innerHTML = '<span>⏳</span><span class="temp">--°C</span><span>날씨</span>';
         return false;
+    }
+}
+async function uploadToGitHub(silent) {
+    silent = silent || false;
+    var token = settings.githubToken;
+    if (!token) {
+        if (!silent) showTabStatus('tab-settings', '⚠️ GitHub 토큰이 없습니다.', 'warning');
+        return;
+    }
+    var btn = document.querySelector('.btn-success[onclick*="uploadToGitHub"]');
+    if (btn) btn.disabled = true;
+    try {
+        if (!silent) showTabStatus('tab-settings', '☁️ GitHub 업로드 중...', 'info');
+        var userRes = await fetch('https://api.github.com/user', {
+            headers: { 'Authorization': 'token ' + token }
+        });
+        if (!userRes.ok) throw new Error('토큰 인증 실패');
+        var user = await userRes.json();
+        var username = user.login;
+        var repoName = 'route-data';
+        var fileName = currentRegion + '.json';
+        var content = JSON.stringify(places, null, 2);
+        var b64Content = utf8ToBase64(content);
+        var repoUrl = 'https://api.github.com/repos/' + username + '/' + repoName;
+        var repoRes = await fetch(repoUrl, {
+            headers: { 'Authorization': 'token ' + token }
+        });
+        if (repoRes.status === 404) {
+            var isPrivate = confirm('📢 GitHub 저장소를 비공개로 생성하시겠습니까?\n(취소 시 공개 저장소로 생성됩니다)');
+            var createRes = await fetch('https://api.github.com/user/repos', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'token ' + token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: repoName,
+                    description: '경로 최적화 데이터 저장소',
+                    private: isPrivate,
+                    auto_init: true
+                })
+            });
+            if (!createRes.ok) throw new Error('저장소 생성 실패');
+            if (!silent) showTabStatus('tab-settings', '✅ 저장소 생성됨: ' + repoName + (isPrivate ? ' (비공개)' : ' (공개)'), 'ok');
+            await new Promise(resolve => setTimeout(resolve, 3000));
+        } else if (!repoRes.ok) {
+            throw new Error('저장소 확인 실패: ' + repoRes.status);
+        }
+        var fileUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents/' + encodeURIComponent(fileName);
+        var fileRes = await fetch(fileUrl, {
+            headers: { 'Authorization': 'token ' + token }
+        });
+        var sha = null;
+        if (fileRes.ok) {
+            var fileData = await fileRes.json();
+            sha = fileData.sha;
+        }
+        var putData = {
+            message: 'Auto sync: ' + currentRegion + ' (' + new Date().toLocaleString() + ')',
+            content: b64Content
+        };
+        if (sha) putData.sha = sha;
+        var putRes = await fetch(fileUrl, {
+            method: 'PUT',
+            headers: {
+                'Authorization': 'token ' + token,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(putData)
+        });
+        if (!putRes.ok) throw new Error('업로드 실패');
+        if (!silent) {
+            showTabStatus('tab-settings', '✅ GitHub 업로드 완료! (' + places.length + '개)', 'ok');
+        }
+    } catch (error) {
+        console.error('GitHub 업로드 오류:', error);
+        if (!silent) {
+            showTabStatus('tab-settings', '❌ 업로드 실패: ' + error.message, 'error');
+        }
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
+function utf8ToBase64(str) {
+    try {
+        var bytes = new TextEncoder().encode(str);
+        var binString = String.fromCodePoint.apply(null, bytes);
+        return btoa(binString);
+    } catch (e) {
+        return btoa(unescape(encodeURIComponent(str)));
     }
 }
 
