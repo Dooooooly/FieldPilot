@@ -691,9 +691,38 @@ async function showGitHubHistory() {
 function setOptimizeMode(mode) {
     optimizeMode = mode;
     localStorage.setItem(OPTIMIZE_MODE_KEY, mode);
-    document.getElementById('modeNearest').className = 'btn btn-sm' + (mode === 'Nearest' ? ' btn-primary' : ' btn-outline');
-    document.getElementById('modeFarthest').className = 'btn btn-sm' + (mode === 'Farthest' ? ' btn-primary' : ' btn-outline');
-    document.getElementById('modeInfo').textContent = '현재: ' + (mode === 'Nearest' ? '가까운순' : '먼순');
+    
+    var nearestBtn = document.getElementById('modeNearest');
+    var farthestBtn = document.getElementById('modeFarthest');
+    
+    if (!nearestBtn || !farthestBtn) {
+        console.warn('⚠️ 최적화 모드 버튼을 찾을 수 없습니다.');
+        return;
+    }
+    
+    // ===== 🔥 통일된 토글 스타일 적용 =====
+    if (mode === 'Nearest') {
+        nearestBtn.style.border = '2px solid #2b6cb0';
+        nearestBtn.style.background = '#2b6cb0';
+        nearestBtn.style.color = 'white';
+        
+        farthestBtn.style.border = '2px solid #cbd5e0';
+        farthestBtn.style.background = 'white';
+        farthestBtn.style.color = '#4a5568';
+    } else {
+        farthestBtn.style.border = '2px solid #2b6cb0';
+        farthestBtn.style.background = '#2b6cb0';
+        farthestBtn.style.color = 'white';
+        
+        nearestBtn.style.border = '2px solid #cbd5e0';
+        nearestBtn.style.background = 'white';
+        nearestBtn.style.color = '#4a5568';
+    }
+    
+    var infoEl = document.getElementById('modeInfo');
+    if (infoEl) {
+        infoEl.textContent = '현재: ' + (mode === 'Nearest' ? '가까운순' : '먼순');
+    }
 }
 
 // ============================================================
