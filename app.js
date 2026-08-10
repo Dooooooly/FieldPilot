@@ -2674,6 +2674,8 @@ async function fetchWeather() {
         var lon = center.lng;
         var url = 'https://api.openweathermap.org/data/2.5/weather?lat=' + lat + '&lon=' + lon + '&appid=' + apiKey + '&units=metric&lang=kr';
         
+        console.log('🌤️ 날씨 API 호출:', url);
+        
         var response = await fetch(url);
         if (!response.ok) {
             throw new Error('날씨 API 호출 실패 (상태: ' + response.status + ')');
@@ -2693,7 +2695,7 @@ async function fetchWeather() {
         };
 
         weatherEl.innerHTML = '<span>' + (iconEmoji[icon] || '🌡️') + '</span><span class="temp">' + temp + '°C</span><span>' + desc + '</span>';
-        console.log('✅ 날씨 표시 성공:', temp + '°C');
+        console.log('✅ 날씨 표시 성공:', temp + '°C', desc);
         return true;
 
     } catch (error) {
