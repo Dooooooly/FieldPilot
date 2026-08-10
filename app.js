@@ -2534,3 +2534,330 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, 10000);
 });
+// ============================================================
+// 지도 초기화 및 관련 함수 (누락됨)
+// ============================================================
+
+function initMap() {
+    var container = document.getElementById('map');
+    if (!container) {
+        console.warn('❌ 지도 컨테이너 없음');
+        return;
+    }
+    var jsKey = settings.kakaoJsKey;
+    if (!jsKey) {
+        container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;color:#e53e3e;font-size:14px;background:#fff5f5;border-radius:12px;padding:20px;text-align:center;">⚠️ 설정 탭에서<br>카카오 JavaScript 키를 입력하세요</div>';
+        showTabStatus('tab-settings', '⚠️ 카카오 JavaScript 키가 필요합니다.', 'warning');
+        return;
+    }
+    container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;color:#d69e2e;font-size:14px;background:#fffff0;border-radius:12px;">⏳ 카카오 지도 로딩 중...</div>';
+    
+    if (typeof kakao === 'undefined' || !kakao.maps) {
+        if (sdkLoading) {
+            console.log('⏳ SDK 이미 로딩 중, 중복 방지');
+            return;
+        }
+        sdkLoading = true;
+        var script = document.createElement('script');
+        script.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=' + jsKey + '&autoload=false&libraries=services';
+        script.async = true;
+        script.defer = true;
+        script.onload = function() {
+            sdkLoading = false;
+            kakao.maps.load(function() {
+                createMap(container);
+            });
+        };
+        script.onerror = function() {
+            sdkLoading = false;
+            container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;color:#e53e3e;font-size:14px;background:#fff5f5;border-radius:12px;padding:20px;text-align:center;">❌ SDK 로드 실패<br><span style="font-size:12px;">네트워크를 확인하세요</span></div>';
+            showTabStatus('tab-settings', '❌ SDK 로드 실패', 'error');
+        };
+        document.head.appendChild(script);
+        return;
+    }
+    kakao.maps.load(function() {
+        createMap(container);
+    });
+}
+
+function createMap(container) {
+    try {
+        var region = currentRegion || '서울';
+        var centerInfo = getRegionCenter(region);
+        var centerLat = centerInfo.lat;
+        var centerLng = centerInfo.lng;
+        var zoomLevel = 5;
+        var isStartValid = startPoint &&
+                           typeof startPoint.lat === 'number' &&
+                           typeof startPoint.lng === 'number' &&
+                           startPoint.lat > 33 && startPoint.lat < 39 &&
+                           startPoint.lng > 124 && startPoint.lng < 132 &&
+                           !(startPoint.lat === 0 && startPoint.lng === 0);
+        if (isStartValid && !singlePlaceMarker && !isShowingRouteMarkers) {
+            centerLat = startPoint.lat;
+            centerLng = startPoint.lng;
+        }
+        var options = {
+            center: new kakao.maps.LatLng(centerLat, centerLng),
+            level: zoomLevel,
+            draggable: true,
+            zoomable: true,
+            zoomControl: true,
+            scrollwheel: true,
+            disableKineticPan: false
+        };
+        kakaoMap = new kakao.maps.Map(container, options);
+        if ('ontouchstart' in window) {
+            kakaoMap.setDraggable(true);
+            kakaoMap.setZoomable(true);
+        }
+        var zoomControl = new kakao.maps.ZoomControl();
+        kakaoMap.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
+        showTabStatus('tab-route', '🗺️ 지도 로드 완료', 'ok');
+    } catch (e) {
+        console.error('지도 생성 실패:', e);
+        container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;color:#e53e3e;font-size:14px;background:#fff5f5;border-radius:12px;padding:20px;text-align:center;">❌ 지도 생성 실패<br><span style="font-size:12px;">' + e.message + '</span></div>';
+        showTabStatus('tab-settings', '⚠️ 지도 생성 실패', 'error');
+    }
+}
+
+function addRouteMarker(lat, lng, title, isStart) {
+    if (!kakaoMap) return;
+    try {
+        if (isStart && startMarker) {
+            try { startMarker.setMap(null); } catch(e) {}
+            startMarker = null;
+            for (var i = routeMarkers.length - 1; i >= 0; i--) {
+                if (routeMarkers[i] === startMarker) {
+                    routeMarkers.splice(i, 1);
+                }
+            }
+        }
+        var pos = new kakao.maps.LatLng(lat, lng);
+        var icon = isStart ? '🚩' : '📍';
+        var bgColor = isStart ? 'rgba(220, 38, 38, 0.9)' : 'rgba(37, 99, 235, 0.9)';
+        var shadowColor = isStart ? 'rgba(220, 38, 38, 0.3)' : 'rgba(37, 99, 235, 0.3)';
+        var content = '<div style="background:' + bgColor + ';padding:6px 14px;border-radius:20px;box-shadow:0 4px 16px ' + shadowColor + ',0 2px 8px rgba(0,0,0,0.1);font-size:13px;font-weight:700;color:white;white-space:nowrap;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,0.2);letter-spacing:0.3px;">' + icon + ' ' + escapeHtml(title) + '</div>';
+        var customOverlay = new kakao.maps.CustomOverlay({
+            map: kakaoMap,
+            position: pos,
+            content: content,
+            yAnchor: 1.4,
+            xAnchor: 0.5
+        });
+        if (isStart) {
+            startMarker = customOverlay;
+        }
+        routeMarkers.push(customOverlay);
+        return customOverlay;
+    } catch (e) {
+        console.error('커스텀 오버레이 추가 실패:', e);
+    }
+}
+
+function clearRouteMarkers() {
+    for (var i = 0; i < routeMarkers.length; i++) {
+        try { routeMarkers[i].setMap(null); } catch(e) {}
+    }
+    for (var i = 0; i < routeInfoWindows.length; i++) {
+        try { routeInfoWindows[i].close(); } catch(e) {}
+    }
+    routeMarkers = [];
+    routeInfoWindows = [];
+    if (startMarker) {
+        try { startMarker.setMap(null); } catch(e) {}
+        startMarker = null;
+    }
+    if (singlePlaceMarker) {
+        try { singlePlaceMarker.setMap(null); } catch(e) {}
+        singlePlaceMarker = null;
+    }
+    if (singlePlaceInfoWindow) {
+        try { singlePlaceInfoWindow.close(); } catch(e) {}
+        singlePlaceInfoWindow = null;
+    }
+    if (window._sectionPolylines) {
+        for (var i = 0; i < window._sectionPolylines.length; i++) {
+            try { window._sectionPolylines[i].setMap(null); } catch(e) {}
+        }
+        window._sectionPolylines = [];
+    }
+    if (kakaoPolyline) {
+        try { kakaoPolyline.setMap(null); } catch(e) {}
+        kakaoPolyline = null;
+    }
+    isShowingRouteMarkers = false;
+}
+
+function showPlaceMarkers() {
+    if (!kakaoMap) return;
+    for (var i = 0; i < placeMarkers.length; i++) {
+        try { placeMarkers[i].setMap(null); } catch(e) {}
+    }
+    for (var i = 0; i < placeInfoWindows.length; i++) {
+        try { placeInfoWindows[i].close(); } catch(e) {}
+    }
+    placeMarkers = [];
+    placeInfoWindows = [];
+    var placesWithCoords = places.filter(function(p) {
+        return p.lat && p.lng && p.lat !== 0 && p.lng !== 0;
+    });
+    if (placesWithCoords.length === 0) {
+        var center = getRegionCenter(currentRegion);
+        kakaoMap.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
+        kakaoMap.setLevel(5);
+        return;
+    }
+    var bounds = new kakao.maps.LatLngBounds();
+    for (var i = 0; i < placesWithCoords.length; i++) {
+        var p = placesWithCoords[i];
+        var pos = new kakao.maps.LatLng(p.lat, p.lng);
+        bounds.extend(pos);
+        var content = '<div style="background:rgba(255,255,255,0.9);padding:5px 12px;border-radius:16px;border:1.5px solid rgba(37,99,235,0.3);box-shadow:0 4px 16px rgba(0,0,0,0.08);font-size:12px;font-weight:600;color:#1a202c;white-space:nowrap;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);" onmouseover="this.style.transform=\'scale(1.05)\';this.style.boxShadow=\'0 6px 20px rgba(0,0,0,0.12)\'" onmouseout="this.style.transform=\'scale(1)\';this.style.boxShadow=\'0 4px 16px rgba(0,0,0,0.08)\'" onclick="showPlaceOnMap(\'' + p.id + '\')">📍 ' + escapeHtml(p.name) + '</div>';
+        var customOverlay = new kakao.maps.CustomOverlay({
+            map: kakaoMap,
+            position: pos,
+            content: content,
+            yAnchor: 1.2,
+            xAnchor: 0.5
+        });
+        placeMarkers.push(customOverlay);
+    }
+    kakaoMap.setBounds(bounds);
+}
+
+// ============================================================
+// 지오코딩 배치 처리 (누락됨)
+// ============================================================
+
+async function geocodeBatch(rows, restKey, batchSize, onProgress) {
+    batchSize = batchSize || 5;
+    var results = [];
+    for (var i = 0; i < rows.length; i += batchSize) {
+        var batch = rows.slice(i, i + batchSize);
+        var batchResults = await Promise.all(batch.map(function(row) {
+            return geocodeAddress(row.address, restKey, 1).then(function(geo) {
+                row.geo = geo;
+                return geo;
+            });
+        }));
+        results = results.concat(batchResults);
+        if (onProgress) {
+            onProgress(i + batch.length, rows.length);
+        }
+    }
+    return results;
+}
+
+// ============================================================
+// Service Worker 등록 (누락됨)
+// ============================================================
+
+function registerServiceWorker() {
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/route-optimizer-pwa/sw.js')
+            .then(function(reg) {
+                console.log('✅ Service Worker 등록 성공');
+            })
+            .catch(function(err) {
+                console.log('❌ Service Worker 등록 실패:', err);
+            });
+    }
+}
+
+// ============================================================
+// 날씨 관련 함수 (누락됨)
+// ============================================================
+
+async function fetchWeather() {
+    var weatherEl = document.getElementById('weatherDisplay');
+    if (!weatherEl) {
+        console.warn('⚠️ 날씨 표시 요소 없음');
+        return false;
+    }
+    try {
+        var apiKey = 'b84c1b9a09d8316b679320cceb3a1097';
+        var center = getRegionCenter(currentRegion);
+        var lat = center.lat;
+        var lon = center.lng;
+        var url = 'https://api.openweathermap.org/data/2.5/weather?lat=' + lat + '&lon=' + lon + '&appid=' + apiKey + '&units=metric&lang=kr';
+        var response = await fetch(url);
+        if (!response.ok) {
+            throw new Error('날씨 API 호출 실패 (상태: ' + response.status + ')');
+        }
+        var data = await response.json();
+        var temp = Math.round(data.main.temp);
+        var desc = data.weather[0].description;
+        var icon = data.weather[0].icon;
+        var iconEmoji = {
+            '01d': '☀️', '01n': '🌙', '02d': '⛅', '02n': '☁️',
+            '03d': '☁️', '03n': '☁️', '04d': '☁️', '04n': '☁️',
+            '09d': '🌧️', '09n': '🌧️', '10d': '🌦️', '10n': '🌦️',
+            '11d': '⛈️', '11n': '⛈️', '13d': '❄️', '13n': '❄️',
+            '50d': '🌫️', '50n': '🌫️'
+        };
+        weatherEl.innerHTML = '<span>' + (iconEmoji[icon] || '🌡️') + '</span><span class="temp">' + temp + '°C</span><span>' + desc + '</span>';
+        console.log('✅ 날씨 표시 성공:', temp + '°C');
+        return true;
+    } catch (error) {
+        console.error('❌ 날씨 오류:', error);
+        weatherEl.innerHTML = '<span>⏳</span><span class="temp">--°C</span><span>날씨</span>';
+        return false;
+    }
+}
+
+async function showWeekWeather() {
+    var weatherEl = document.getElementById('weatherDisplay');
+    if (!weatherEl) return;
+    var existingModal = document.getElementById('weekWeatherModal');
+    if (existingModal) {
+        existingModal.remove();
+        return;
+    }
+    try {
+        await fetchWeather();
+    } catch (e) {
+        console.warn('현재 날씨 갱신 실패:', e);
+    }
+    var center = getRegionCenter(currentRegion);
+    var lat = center.lat;
+    var lon = center.lng;
+    var apiKey = 'b84c1b9a09d8316b679320cceb3a1097';
+    try {
+        var url = 'https://api.openweathermap.org/data/2.5/forecast?lat=' + lat + '&lon=' + lon + '&appid=' + apiKey + '&units=metric&lang=kr';
+        var response = await fetch(url);
+        if (!response.ok) throw new Error('예보 조회 실패');
+        var data = await response.json();
+        var dailyMap = {};
+        data.list.forEach(function(item) {
+            var date = item.dt_txt.split(' ')[0];
+            if (!dailyMap[date]) {
+                dailyMap[date] = { temps: [], icons: [], descs: [], date: date };
+            }
+            dailyMap[date].temps.push(item.main.temp);
+            dailyMap[date].icons.push(item.weather[0].icon);
+            dailyMap[date].descs.push(item.weather[0].description);
+        });
+        var dailyList = Object.values(dailyMap).slice(0, 5);
+        var modalHtml = '<div id="weekWeatherModal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:9999;display:flex;justify-content:center;align-items:center;animation:fadeIn 0.3s ease;padding:20px;" onclick="this.remove()"><div style="background:white;border-radius:24px;padding:24px 20px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:80vh;overflow-y:auto;" onclick="event.stopPropagation()"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><h3 style="font-size:18px;font-weight:700;color:#2d3748;">📅 5일 예보 (' + currentRegion + ')</h3><button onclick="document.getElementById(\'weekWeatherModal\').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#a0aec0;">&times;</button></div><div style="display:flex;flex-direction:column;gap:10px;">';
+        var iconMap = { '01d':'☀️','01n':'🌙','02d':'⛅','02n':'☁️','03d':'☁️','03n':'☁️','04d':'☁️','04n':'☁️','09d':'🌧️','09n':'🌧️','10d':'🌦️','10n':'🌦️','11d':'⛈️','11n':'⛈️','13d':'❄️','13n':'❄️','50d':'🌫️','50n':'🌫️' };
+        dailyList.forEach(function(day) {
+            var minTemp = Math.round(Math.min.apply(null, day.temps));
+            var maxTemp = Math.round(Math.max.apply(null, day.temps));
+            var iconCode = day.icons[0] || '01d';
+            var iconEmoji = iconMap[iconCode] || '🌡️';
+            var desc = day.descs[0] || '';
+            var dateObj = new Date(day.date + 'T00:00:00');
+            var weekdays = ['일','월','화','수','목','금','토'];
+            var dayLabel = weekdays[dateObj.getDay()] + '요일';
+            var dateLabel = (dateObj.getMonth() + 1) + '/' + dateObj.getDate();
+            modalHtml += '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f7fafc;border-radius:14px;border-left:4px solid #2563eb;"><div style="display:flex;align-items:center;gap:12px;min-width:80px;"><span style="font-size:22px;">' + iconEmoji + '</span><div><div style="font-weight:600;font-size:14px;">' + dayLabel + '</div><div style="font-size:11px;color:#a0aec0;">' + dateLabel + '</div></div></div><div style="text-align:center;flex:1;"><span style="font-size:13px;color:#718096;">' + desc + '</span></div><div style="text-align:right;font-weight:700;font-size:15px;">' + maxTemp + '° <span style="color:#a0aec0;font-weight:400;">/</span> ' + minTemp + '°</div></div>';
+        });
+        modalHtml += '</div><div style="margin-top:14px;font-size:11px;color:#a0aec0;text-align:center;">* 3시간 간격 예보를 평균/최고/최저로 표시했어요</div></div></div>';
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    } catch (error) {
+        console.error('예보 오류:', error);
+        alert('날씨 예보를 불러오지 못했습니다. 네트워크를 확인해주세요.');
+    }
+}
