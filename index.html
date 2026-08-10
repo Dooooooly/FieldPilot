@@ -14,12 +14,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
-    <!-- SortableJS -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     
     <style>
-        /* ===== 리셋 & 기본 ===== */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
@@ -29,11 +27,10 @@
             -webkit-font-smoothing: antialiased;
         }
         
-        .flex-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+        .flex-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
         .flex-1 { flex: 1; min-width: 0; }
-        .flex-between { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; }
         
-        /* ===== 헤더 ===== */
         .header {
             background: linear-gradient(135deg, #4a6fa5, #6b9bd2);
             color: white;
@@ -109,10 +106,8 @@
         .region-wrapper .btn-add:hover { background: rgba(255,255,255,0.25); transform: scale(1.05); }
         .region-wrapper .btn-add:active { transform: scale(0.92); }
         
-        /* ===== 메인 ===== */
         .main { max-width: 600px; margin: 0 auto; padding: 12px 14px 80px; }
         
-        /* ===== 탭 ===== */
         .tab-content { display: none; animation: fadeUp 0.3s ease; }
         .tab-content.active { display: block; }
         @keyframes fadeUp {
@@ -120,17 +115,15 @@
             to { opacity: 1; transform: translateY(0); }
         }
         
-        /* ===== 카드 ===== */
         .card {
             background: white;
             border-radius: 12px;
-            padding: 14px 16px;
+            padding: 12px 14px;
             margin-bottom: 10px;
             box-shadow: 0 1px 4px rgba(0,0,0,0.04);
         }
-        .card-title { font-size: 14px; font-weight: 700; color: #1a202c; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .card-title { font-size: 14px; font-weight: 700; color: #1a202c; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
         
-        /* ===== 버튼 ===== */
         .btn {
             padding: 8px 16px;
             border: none;
@@ -164,26 +157,25 @@
         }
         .btn-outline:hover:not(:disabled) { background: #f7fafc; border-color: #cbd5e0; }
         
-        .btn-sm { padding: 4px 12px; font-size: 11px; min-height: 30px; border-radius: 6px; }
+        .btn-sm { padding: 4px 10px; font-size: 11px; min-height: 30px; border-radius: 6px; }
         .btn-block { width: 100%; }
         .btn-lg { padding: 14px 20px; font-size: 16px; min-height: 50px; border-radius: 10px; }
         
-        /* ===== 입력 필드 ===== */
         .input-field {
-            padding: 8px 12px;
+            padding: 6px 10px;
             border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 13px;
+            border-radius: 6px;
+            font-size: 12px;
             transition: all 0.2s;
             background: white;
-            min-height: 38px;
+            min-height: 34px;
             width: 100%;
             color: #1a202c;
         }
         .input-field:focus { border-color: #4f7eb3; outline: none; box-shadow: 0 0 0 3px rgba(79,126,179,0.15); }
         .input-field::placeholder { color: #a0aec0; }
+        .input-field-sm { min-height: 30px; font-size: 11px; padding: 4px 8px; }
         
-        /* ===== 세그먼트 컨트롤 ===== */
         .segment-control {
             display: flex;
             border-radius: 8px;
@@ -206,18 +198,17 @@
         .segment-btn.active { background: #4f7eb3; color: white; }
         .segment-btn:hover:not(.active) { background: #edf2f7; }
         
-        /* ===== 현장/경유지 아이템 ===== */
         .place-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 8px 10px;
+            padding: 6px 10px;
             background: #f7fafc;
             border-radius: 8px;
-            margin-bottom: 4px;
+            margin-bottom: 3px;
             border-left: 3px solid #4f7eb3;
-            gap: 8px;
-            min-height: 44px;
+            gap: 6px;
+            min-height: 40px;
             cursor: pointer;
             transition: background 0.15s;
         }
@@ -227,29 +218,29 @@
             min-width: 0;
             display: flex;
             align-items: center;
-            gap: 8px;
-            flex-wrap: nowrap;
+            gap: 6px;
+            flex-wrap: wrap;
             overflow: hidden;
         }
         .place-item .info .name { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .place-item .info .addr { font-size: 11px; color: #718096; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .place-item .info .remark { font-size: 10px; color: #a0aec0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .place-item .info .remark { font-size: 10px; color: #a0aec0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60px; }
         .place-item .actions {
             display: flex;
-            gap: 4px;
+            gap: 2px;
             flex-shrink: 0;
             align-items: center;
         }
         .place-item .actions button {
             background: none;
             border: none;
-            font-size: 16px;
+            font-size: 14px;
             cursor: pointer;
-            padding: 4px 6px;
+            padding: 4px 4px;
             border-radius: 6px;
             transition: all 0.2s;
-            min-width: 34px;
-            min-height: 34px;
+            min-width: 30px;
+            min-height: 30px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -259,12 +250,11 @@
         .place-item .actions .add:hover { color: #5a9e6f; }
         .place-item .actions .del:hover { color: #e53e3e; }
         .place-item .actions .map:hover { color: #4f7eb3; }
-        .place-item .actions .fav { font-size: 18px; transition: all 0.2s; }
-        .place-item .actions .fav.active { color: #f6ad55; text-shadow: 0 0 8px rgba(246, 173, 85, 0.3); }
+        .place-item .actions .fav { font-size: 16px; transition: all 0.2s; }
+        .place-item .actions .fav.active { color: #f6ad55; text-shadow: 0 0 8px rgba(246,173,85,0.3); }
         .place-item .actions .fav.inactive { color: #cbd5e0; }
         .place-item .actions .fav:hover { transform: scale(1.15); background: rgba(0,0,0,0.04); }
         
-        /* ===== 경유지 목록 (드래그) ===== */
         .waypoint-list {
             list-style: none;
             max-height: 200px;
@@ -282,7 +272,6 @@
             cursor: grab;
             transition: background 0.2s;
             border: 1px solid transparent;
-            flex-wrap: wrap;
         }
         .waypoint-list li:hover { background: #edf2f7; }
         .waypoint-list li:active { cursor: grabbing; }
@@ -306,19 +295,9 @@
             margin-right: 8px;
             flex-shrink: 0;
         }
-        .waypoint-list li .wp-info {
-            flex: 1;
-            min-width: 0;
-            display: flex;
-            flex-direction: column;
-            gap: 1px;
-        }
-        .waypoint-list li .wp-info .wp-name { font-weight: 600; font-size: 13px; }
-        .waypoint-list li .wp-info .wp-addr { font-size: 10px; color: #718096; }
-        .waypoint-list li .remove { color: #e53e3e; cursor: pointer; font-weight: 700; padding: 0 6px; flex-shrink: 0; }
+        .waypoint-list li .remove { color: #e53e3e; cursor: pointer; font-weight: 700; padding: 0 6px; }
         .empty-msg { text-align: center; color: #a0aec0; padding: 16px; font-size: 13px; }
         
-        /* ===== 검색 결과 (체크박스 포함) ===== */
         .search-results {
             position: absolute;
             width: 100%;
@@ -337,24 +316,18 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 8px 12px;
+            padding: 6px 10px;
             cursor: pointer;
             font-size: 13px;
             border-bottom: 1px solid #f0f2f5;
             transition: background 0.15s;
         }
         .search-results .result-item:hover { background: #ebf8ff; }
-        .search-results .result-item .result-check {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-            flex-shrink: 0;
-        }
+        .search-results .result-item .result-check { width: 16px; height: 16px; cursor: pointer; flex-shrink: 0; }
         .search-results .result-item .result-info { flex: 1; min-width: 0; }
         .search-results .result-item .result-info .addr { font-size: 11px; color: #718096; }
-        .search-results .result-item .result-info .source { font-size: 10px; color: #a0aec0; margin-left: 6px; }
+        .search-results .result-item .result-info .source { font-size: 10px; color: #a0aec0; margin-left: 4px; }
         
-        /* ===== 요약 ===== */
         .summary {
             background: linear-gradient(135deg, #ebf8ff, #e6f0fa);
             border-radius: 10px;
@@ -365,10 +338,9 @@
         .summary-row .label { color: #4a5568; }
         .summary-row .value { font-weight: 700; color: #2d3748; }
         
-        /* ===== 상태 메시지 ===== */
         .tab-status {
             display: none;
-            padding: 8px 12px;
+            padding: 6px 10px;
             border-radius: 8px;
             font-size: 12px;
             margin-top: 6px;
@@ -384,14 +356,12 @@
             to { opacity: 1; transform: translateY(0); }
         }
         
-        /* ===== 지도 ===== */
         #map { width: 100%; height: 340px; border-radius: 12px; background: #e2e8f0; margin-bottom: 10px; touch-action: auto; overflow: hidden; }
         
-        /* ===== 경로 아이템 ===== */
         .route-item {
             background: white;
             border-radius: 8px;
-            padding: 8px 12px;
+            padding: 6px 10px;
             margin-bottom: 4px;
             display: flex;
             justify-content: space-between;
@@ -401,8 +371,6 @@
             transition: all 0.2s;
             font-size: 13px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-            flex-wrap: wrap;
-            gap: 4px;
         }
         .route-item:hover { background: #f0fff4; }
         .route-item .idx {
@@ -416,18 +384,17 @@
             font-size: 11px;
             font-weight: 700;
             flex-shrink: 0;
-            margin-right: 10px;
+            margin-right: 8px;
         }
         .route-item .info { flex: 1; min-width: 0; }
         .route-item .info .name { font-weight: 600; }
         .route-item .info .addr { font-size: 11px; color: #718096; }
-        .route-item .info .remark { font-size: 10px; color: #a0aec0; }
+        .route-item .info .remark { font-size: 10px; color: #a0aec0; margin-left: 4px; }
         .route-item .dist { font-size: 12px; font-weight: 600; text-align: right; flex-shrink: 0; }
         .route-start { border-left-color: #4f7eb3; }
         .route-start .idx { background: #4f7eb3; }
         .route-start:hover { background: #ebf8ff; }
         
-        /* ===== 프리셋 ===== */
         .preset-item {
             display: flex;
             justify-content: space-between;
@@ -457,7 +424,6 @@
         }
         .preset-item .preset-delete:hover { color: #e53e3e; background: #fff5f5; }
         
-        /* ===== 설정 ===== */
         .setting-group { background: #f7fafc; border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; }
         .setting-group h4 { font-size: 13px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
         .setting-group .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
@@ -469,7 +435,6 @@
         .badge-wait { background: #e2e8f0; color: #4a5568; }
         .badge-fail { background: #fed7d7; color: #9b2c2c; }
         
-        /* ===== 하단 탭 ===== */
         .bottom-tabs {
             position: fixed;
             bottom: 0;
@@ -500,7 +465,6 @@
         .bottom-tab.help-tab { color: #805ad5; }
         .bottom-tab.help-tab.active { color: #805ad5; border-top-color: #805ad5; }
         
-        /* ===== 모달 ===== */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -527,13 +491,11 @@
         .modal input { width: 100%; padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 13px; margin-bottom: 8px; }
         .modal input:focus { border-color: #4f7eb3; outline: none; }
         
-        /* ===== 도움말 ===== */
         .help-section { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid #e2e8f0; }
         .help-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
         .help-section .help-title { font-weight: 700; font-size: 14px; color: #4f7eb3; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
         .help-section .help-body { font-size: 13px; color: #4a5568; line-height: 1.7; padding-left: 4px; }
         
-        /* ===== 반응형 ===== */
         @media (max-width: 480px) {
             .header { padding: 6px 10px; }
             .header-left h1 { font-size: 14px; }
@@ -547,26 +509,28 @@
             .card { padding: 10px 12px; }
             .btn { font-size: 12px; padding: 6px 12px; min-height: 32px; border-radius: 6px; }
             .btn-lg { font-size: 14px; padding: 12px 16px; min-height: 44px; }
-            .input-field { font-size: 12px; padding: 6px 10px; min-height: 32px; }
+            .input-field { font-size: 12px; padding: 5px 8px; min-height: 30px; }
             #map { height: 260px; }
             .bottom-tab { font-size: 9px; padding: 6px 2px 4px; }
             .bottom-tab .tab-icon { font-size: 18px; }
-            .place-item { padding: 6px 8px; min-height: 38px; }
+            .place-item { padding: 4px 6px; min-height: 34px; }
             .place-item .info .name { font-size: 12px; }
             .place-item .info .addr { font-size: 10px; }
-            .place-item .actions button { font-size: 14px; min-width: 30px; min-height: 30px; }
+            .place-item .info .remark { font-size: 9px; max-width: 40px; }
+            .place-item .actions button { font-size: 12px; min-width: 26px; min-height: 26px; }
             .segment-control { min-width: 100px; }
             .segment-btn { font-size: 11px; padding: 4px 8px; }
-            .search-results .result-item { padding: 6px 10px; font-size: 12px; }
+            .search-results .result-item { padding: 5px 8px; font-size: 12px; }
+            .route-item { font-size: 12px; padding: 4px 8px; }
+            .route-item .idx { width: 20px; height: 20px; font-size: 10px; }
             .route-item .info .addr { font-size: 10px; }
             .route-item .info .remark { font-size: 9px; }
-            .waypoint-list li .wp-info .wp-addr { font-size: 9px; }
+            .modal { padding: 16px; }
         }
     </style>
 </head>
 <body>
 
-    <!-- ===== 헤더 ===== -->
     <header class="header">
         <div class="header-left">
             <h1>🚗 경로 최적화</h1>
@@ -589,7 +553,6 @@
         <!-- ===== 탭: 경로 ===== -->
         <div id="tab-places" class="tab-content active">
             
-            <!-- 출발지 -->
             <div class="card">
                 <div class="card-title">🚩 출발지</div>
                 <div style="position:relative;">
@@ -599,22 +562,21 @@
                                oninput="searchStartPoint(this.value)" 
                                onclick="searchStartPoint(this.value)" 
                                onkeydown="handleStartKeydown(event)">
-                        <button class="btn btn-primary" onclick="setStartPoint()">설정</button>
+                        <button class="btn btn-primary" onclick="setStartPoint()" style="font-size:12px; padding:6px 12px; min-height:34px;">설정</button>
                         <button class="btn btn-success" onclick="setCurrentLocation()" 
-                                style="padding:6px 10px; font-size:12px; min-height:36px;" 
-                                title="현재 위치로 설정">📍 현재 위치</button>
+                                style="padding:6px 10px; font-size:11px; min-height:34px; white-space:nowrap;">
+                            📍 현재 위치
+                        </button>
                     </div>
                     <div id="startSearchResults" class="search-results"></div>
                 </div>
                 <div id="startInfo" style="font-size:12px; color:#718096; margin-top:4px;">⏳ 출발지를 검색하거나 현재 위치로 설정하세요</div>
             </div>
             
-            <!-- 경유지 (드래그 + 체크박스 통합) -->
             <div class="card">
-                <div class="flex-between" style="margin-bottom:6px;">
+                <div class="flex-between" style="margin-bottom:4px;">
                     <div class="card-title" style="margin-bottom:0;">📍 경유지 <span id="wpCount" style="font-size:12px;color:#a0aec0;font-weight:400;"></span></div>
                     <div style="display:flex; gap:4px; align-items:center;">
-                        <!-- 🔥 "여러개 추가" 체크박스만 남기고 "선택 추가" 버튼은 제거 -->
                         <label style="font-size:11px; color:#718096; display:flex; align-items:center; gap:4px;">
                             <input type="checkbox" id="multiSelectMode" onchange="toggleMultiSelect()">
                             여러개 추가
@@ -627,8 +589,9 @@
                                placeholder="경유지 입력" 
                                oninput="searchWaypoint(this.value)" 
                                onkeydown="handleWaypointKeydown(event)">
-                        <!-- 🔥 일반 "추가" 버튼 - 선택된 항목들도 함께 추가 -->
-                        <button class="btn btn-success" onclick="addWaypoint()">추가</button>
+                        <button class="btn btn-success" onclick="addWaypoint()" style="font-size:12px; padding:6px 12px; min-height:34px;">추가</button>
+                        <button class="btn btn-primary" onclick="addSelectedWaypoints()" id="addSelectedBtn" 
+                                style="display:none; font-size:11px; padding:6px 10px; min-height:34px;">선택 추가</button>
                     </div>
                     <div id="waypointSearchResults" class="search-results"></div>
                 </div>
@@ -637,7 +600,6 @@
                 </ul>
             </div>
             
-            <!-- 메인 액션 -->
             <div style="display:flex; flex-direction:column; gap:6px;">
                 <button class="btn btn-primary btn-lg" onclick="runOptimize()">⚡ 경로 최적화</button>
                 <div class="flex-row" style="gap:6px;">
@@ -646,7 +608,6 @@
                 </div>
             </div>
             
-            <!-- 최적화 방식 -->
             <div class="card" style="background:#f7fafc; border:1px solid #e2e8f0; padding:8px 12px;">
                 <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                     <span style="font-size:13px; font-weight:600; color:#4a5568;">📐 최적화</span>
@@ -658,11 +619,9 @@
                 <div id="modeInfo" style="font-size:11px; color:#a0aec0; margin-top:4px; text-align:center;">현재: 가까운순</div>
             </div>
             
-            <!-- 프리셋 저장 -->
             <button class="btn btn-success btn-block" onclick="addPreset()" 
                     style="padding:10px; font-size:14px; font-weight:600;">💾 현재 경로를 프리셋으로 저장</button>
             
-            <!-- 프리셋 목록 -->
             <div class="card" style="background:#f7fafc; border:1px solid #e2e8f0;">
                 <div class="card-title" style="font-size:13px;">📂 저장된 프리셋</div>
                 <div id="presetList" style="max-height:150px; overflow-y:auto;">
@@ -689,11 +648,11 @@
         <!-- ===== 탭: 현장 ===== -->
         <div id="tab-list" class="tab-content">
             <div class="card">
-                <div class="flex-between" style="margin-bottom:6px;">
-                    <span class="card-title" style="margin-bottom:0;">📋 현장리스트 <span id="listCount" style="font-size:12px;color:#a0aec0;font-weight:400;"></span></span>
+                <div class="flex-between" style="margin-bottom:4px;">
+                    <span class="card-title" style="margin-bottom:0; font-size:13px;">📋 현장리스트 <span id="listCount" style="font-size:11px;color:#a0aec0;font-weight:400;"></span></span>
                     <div style="display:flex; gap:4px; align-items:center;">
                         <label style="font-size:11px; color:#718096;">정렬:</label>
-                        <select id="sortPlaces" onchange="applySort()" style="padding:4px 8px; border:2px solid #e2e8f0; border-radius:6px; font-size:11px; background:white; height:30px;">
+                        <select id="sortPlaces" onchange="applySort()" style="padding:3px 6px; border:2px solid #e2e8f0; border-radius:6px; font-size:11px; background:white; height:28px;">
                             <option value="name-asc">이름 ↑</option>
                             <option value="name-desc">이름 ↓</option>
                             <option value="favorite">⭐ 즐겨찾기</option>
@@ -701,25 +660,24 @@
                     </div>
                 </div>
                 
-                <div class="flex-row" style="margin-bottom:6px;">
-                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="document.getElementById('fileInput').click()">📥 엑셀 가져오기</button>
-                    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFile(event)">
-                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="exportData()">📤 엑셀 내보내기</button>
-                </div>
-                <div id="uploadResult"></div>
-                
-                <!-- 🔥 현장 추가에 비고 필드 추가 -->
                 <div class="flex-row" style="margin-bottom:4px;">
-                    <input type="text" id="newPlaceName" class="input-field" placeholder="현장명" style="flex:1; min-height:34px;">
-                    <div style="position:relative; flex:1.5;">
-                        <input type="text" id="newPlaceAddr" class="input-field" placeholder="주소" style="min-height:34px;" oninput="searchAddressForPlace(this.value)" onkeydown="handleAddrKeydown(event)">
+                    <button class="btn btn-outline btn-sm" style="flex:1; font-size:11px; padding:4px 6px;" onclick="document.getElementById('fileInput').click()">📥 엑셀 가져오기</button>
+                    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFile(event)">
+                    <button class="btn btn-outline btn-sm" style="flex:1; font-size:11px; padding:4px 6px;" onclick="exportData()">📤 엑셀 내보내기</button>
+                </div>
+                <div id="uploadResult" style="font-size:11px; padding:2px 6px;"></div>
+                
+                <div class="flex-row" style="margin-bottom:4px;">
+                    <input type="text" id="newPlaceName" class="input-field input-field-sm" placeholder="현장명" style="flex:1; min-height:28px;">
+                    <div style="position:relative; flex:1.2;">
+                        <input type="text" id="newPlaceAddr" class="input-field input-field-sm" placeholder="주소" style="min-height:28px;" oninput="searchAddressForPlace(this.value)" onkeydown="handleAddrKeydown(event)">
                         <div id="addrSearchResults" class="search-results"></div>
                     </div>
-                    <input type="text" id="newPlaceRemark" class="input-field" placeholder="비고" style="flex:0.8; min-height:34px; font-size:11px;">
-                    <button class="btn btn-primary btn-sm" onclick="addPlace()" style="min-height:34px;">추가</button>
+                    <input type="text" id="newPlaceRemark" class="input-field input-field-sm" placeholder="비고" style="flex:0.6; min-height:28px;">
+                    <button class="btn btn-primary btn-sm" onclick="addPlace()" style="min-height:28px; font-size:11px; padding:4px 10px;">추가</button>
                 </div>
                 
-                <input type="text" id="searchPlace" class="input-field" placeholder="🔍 현장 검색" style="margin-bottom:4px; min-height:34px;" oninput="searchPlaces()">
+                <input type="text" id="searchPlace" class="input-field input-field-sm" placeholder="🔍 현장 검색" style="margin-bottom:4px; min-height:28px;" oninput="searchPlaces()">
                 
                 <div id="placeList" style="max-height:380px; overflow-y:auto; min-height:100px;"></div>
                 <div id="listStatus" class="tab-status"></div>
@@ -785,33 +743,32 @@
                 <div class="help-section">
                     <div class="help-title">🗺️ 경로 탭</div>
                     <div class="help-body">
-                        <div class="step">1. <strong>출발지</strong>를 검색하거나 <strong>현재 위치</strong>로 설정하세요</div>
-                        <div class="step">2. <strong>경유지</strong>를 추가하세요 (드래그로 순서 변경 가능)</div>
-                        <div class="step">3. <strong>여러개 추가</strong> 모드로 한 번에 여러 경유지를 추가할 수 있어요</div>
-                        <div class="step">4. <strong>경로 최적화</strong> 버튼으로 최적 경로 계산</div>
+                        <div>1. <strong>출발지</strong>를 검색하거나 <strong>현재 위치</strong>로 설정하세요</div>
+                        <div>2. <strong>경유지</strong>를 추가하세요 (드래그로 순서 변경 가능)</div>
+                        <div>3. <strong>여러개 추가</strong> 모드로 한 번에 여러 경유지를 추가할 수 있어요</div>
+                        <div>4. <strong>경로 최적화</strong> 버튼으로 최적 경로 계산</div>
                     </div>
                 </div>
                 <div class="help-section">
                     <div class="help-title">📍 지도 탭</div>
                     <div class="help-body">
-                        <div class="step">📍 최적화된 경로를 <strong>지도</strong>로 확인하세요</div>
-                        <div class="step">🌈 각 구간별로 <strong>다른 색상</strong>으로 표시되어 구분이 쉬워요</div>
-                        <div class="step">🔄 지도는 <strong>드래그</strong>와 <strong>확대/축소</strong>가 가능합니다</div>
+                        <div>📍 최적화된 경로를 <strong>지도</strong>로 확인하세요</div>
+                        <div>🌈 각 구간별로 <strong>다른 색상</strong>으로 표시되어 구분이 쉬워요</div>
+                        <div>📋 각 경유지에 <strong>주소</strong>와 <strong>비고</strong>가 표시됩니다</div>
                     </div>
                 </div>
                 <div class="help-section">
                     <div class="help-title">📋 현장 탭</div>
                     <div class="help-body">
-                        <div class="step">⭐ <strong>즐겨찾기</strong> 버튼으로 자주 가는 현장을 상단에 고정하세요</div>
-                        <div class="step">📤 <strong>엑셀 가져오기</strong>로 현장을 일괄 등록하세요</div>
-                        <div class="step">👆 현장을 <strong>클릭</strong>하면 바로 편집할 수 있어요</div>
+                        <div>⭐ <strong>즐겨찾기</strong> 버튼으로 자주 가는 현장을 상단에 고정하세요</div>
+                        <div>📤 <strong>엑셀 가져오기</strong>로 현장을 일괄 등록하세요</div>
+                        <div>👆 현장을 <strong>클릭</strong>하면 바로 편집할 수 있어요</div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- ===== 하단 탭 ===== -->
     <div class="bottom-tabs">
         <button class="bottom-tab active" data-tab="tab-places" onclick="switchTab('tab-places')">
             <span class="tab-icon">🗺️</span> 경로
@@ -830,7 +787,6 @@
         </button>
     </div>
 
-    <!-- ===== 모달 (비고 포함) ===== -->
     <div class="modal-overlay" id="modal">
         <div class="modal">
             <h3 id="modalTitle">✏️ 현장 편집</h3>
