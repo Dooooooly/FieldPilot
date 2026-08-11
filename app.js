@@ -316,12 +316,13 @@ function loadRegionList() {
         }
     }
     
-    // 🔥 지역이 없으면 "지역 선택" 표시
+    // 🔥 지역이 없으면 "지역 선택"만 표시
     if (regions.length === 0) {
         var defaultOpt = document.createElement('option');
         defaultOpt.value = '';
         defaultOpt.textContent = '📍 지역 선택';
         defaultOpt.selected = true;
+        defaultOpt.disabled = true;
         select.appendChild(defaultOpt);
         return;
     }
@@ -336,13 +337,11 @@ function loadRegionList() {
     
     // 🔥 저장된 지역 선택
     var savedRegion = localStorage.getItem(SELECTED_REGION_KEY);
-    
     if (savedRegion && regions.includes(savedRegion)) {
         select.value = savedRegion;
         currentRegion = savedRegion;
         console.log('✅ 저장된 지역 선택:', savedRegion);
     } else {
-        // 첫 번째 지역 선택
         select.value = regions[0];
         currentRegion = regions[0];
         localStorage.setItem(SELECTED_REGION_KEY, currentRegion);
@@ -428,7 +427,6 @@ function switchRegion(region) {
     }
     fetchWeather();
     console.log('✅ 지역 전환 완료:', region, '현장 수:', places.length);
-}
 function addRegion() {
     var existing = document.getElementById('customRegionModal');
     if (existing) existing.remove();
@@ -516,8 +514,6 @@ function addRegion() {
         opt.value = region;
         opt.textContent = region;
         select.appendChild(opt);
-        
-        // 🔥 새 지역 선택
         select.value = region;
         
         switchRegion(region);
@@ -534,8 +530,9 @@ function deleteRegion() {
         return;
     }
     
+    // 🔥 옵션이 1개 이하인 경우 (기본 옵션만 있는 경우)
     if (select.options.length <= 1) {
-        showTabStatus('tab-settings', '⚠️ 마지막 남은 지역은 삭제할 수 없습니다.', 'warning');
+        showTabStatus('tab-settings', '⚠️ 삭제할 지역이 없습니다.', 'warning');
         return;
     }
     
@@ -546,6 +543,7 @@ function deleteRegion() {
             var key = getStorageKey(currentRegion);
             localStorage.removeItem(key);
             
+            // 드롭다운에서 옵션 제거
             for (var i = 0; i < select.options.length; i++) {
                 if (select.options[i].value === currentRegion) {
                     select.remove(i);
@@ -557,16 +555,22 @@ function deleteRegion() {
                 var newRegion = select.options[0].value;
                 select.value = newRegion;
                 switchRegion(newRegion);
+                showTabStatus('tab-settings', '✅ "' + currentRegion + '" 지역 삭제됨', 'ok');
             } else {
-                select.value = '';
+                // 모든 지역 삭제 시
+                select.innerHTML = '';
+                var defaultOpt = document.createElement('option');
+                defaultOpt.value = '';
+                defaultOpt.textContent = '📍 지역 선택';
+                defaultOpt.selected = true;
+                defaultOpt.disabled = true;
+                select.appendChild(defaultOpt);
                 currentRegion = '';
                 localStorage.removeItem(SELECTED_REGION_KEY);
                 places = [];
                 renderPlaces();
                 showTabStatus('tab-settings', '📭 모든 지역이 삭제되었습니다.', 'info');
             }
-            
-            showTabStatus('tab-settings', '✅ "' + currentRegion + '" 지역 삭제됨', 'ok');
         }
     );
 }
@@ -1564,7 +1568,6 @@ function searchAddressForModal(query) {
 // ============================================================
 
 function showConfirmModal(title, message, onConfirm, onCancel) {
-    // 기존 confirm 모달이 있으면 제거
     var existing = document.getElementById('confirmModal');
     if (existing) existing.remove();
     
@@ -1575,7 +1578,7 @@ function showConfirmModal(title, message, onConfirm, onCancel) {
             background: rgba(0,0,0,0.5);
             backdrop-filter: blur(4px);
             -webkit-backdrop-filter: blur(4px);
-            z-index: 9999;
+            z-index: 999999;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -1601,7 +1604,6 @@ function showConfirmModal(title, message, onConfirm, onCancel) {
     `;
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
-
 // ============================================================
 // 기존 confirm 사용 함수들을 모달로 변경
 // ============================================================
