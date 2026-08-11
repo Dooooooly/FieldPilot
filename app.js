@@ -152,6 +152,10 @@ function getStorageKey(region) { return STORAGE_KEY_PREFIX + region; }
 
 function normalizeName(name) { return name.trim().toLowerCase(); }
 
+function isMobile() {
+    return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+}
+
 // ============================================================
 // 2. 탭 전환
 // ============================================================
