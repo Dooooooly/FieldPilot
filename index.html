@@ -552,9 +552,25 @@
             </div>
             <span class="header-divider"></span>
             <div class="region-wrapper">
-                <select id="regionSelect" onchange="switchRegion(this.value)"></select>
-                <button class="btn-add" onclick="addRegion()" aria-label="지역 추가">+</button>
-            </div>
+                <  <!-- 🔥 드롭다운을 클릭하면 팝업 열리도록 -->
+    <div id="regionDisplay" onclick="openRegionManager()" style="
+        background: transparent;
+        border: none;
+        color: white;
+        font-size: 12px;
+        padding: 2px 8px;
+        cursor: pointer;
+        min-width: 60px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    ">
+        <span id="currentRegionDisplay">지역 선택</span>
+        <span style="font-size:10px; opacity:0.6;">▼</span>
+    </div>
+    <!-- 실제 select는 숨김 (값 저장용) -->
+    <select id="regionSelect" style="display:none;" onchange="switchRegion(this.value)"></select>
+</div>
         </div>
     </header>
 
