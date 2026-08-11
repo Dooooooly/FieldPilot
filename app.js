@@ -2644,7 +2644,11 @@ async function uploadToGitHub(silent) {
 // ============================================================
 
 async function downloadFromGitHub() {
+    console.log('📥 downloadFromGitHub 호출됨');
+    
     var token = settings.githubToken;
+    console.log('🔑 토큰:', token ? '있음 (길이: ' + token.length + ')' : '없음');
+    
     if (!token) {
         showTabStatus('tab-settings', '⚠️ GitHub 토큰이 없습니다.', 'warning');
         return;
@@ -2652,21 +2656,29 @@ async function downloadFromGitHub() {
     
     try {
         showTabStatus('tab-settings', '☁️ GitHub 저장소 목록 불러오는 중...', 'info');
+        console.log('📡 GitHub 저장소 목록 요청 시작...');
         
-        // 1. 사용자 정보 확인
         var userRes = await fetch('https://api.github.com/user', {
             headers: { 'Authorization': 'token ' + token }
         });
-        if (!userRes.ok) throw new Error('토큰 인증 실패');
+        console.log('📡 사용자 정보 응답:', userRes.status);
+        
+        if (!userRes.ok) {
+            showTabStatus('tab-settings', '❌ 토큰 인증 실패', 'error');
+            return;
+        }
         var user = await userRes.json();
         var username = user.login;
+        console.log('✅ 인증 성공:', username);
         
-        // 2. 저장소 파일 목록 조회
         var repoName = 'route-data';
         var repoUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents';
+        console.log('📡 저장소 URL:', repoUrl);
+        
         var repoRes = await fetch(repoUrl, {
             headers: { 'Authorization': 'token ' + token }
         });
+        console.log('📡 저장소 응답:', repoRes.status);
         
         if (repoRes.status === 404) {
             showTabStatus('tab-settings', '📭 GitHub에 저장된 데이터가 없습니다.\n먼저 "업로드"를 실행하세요.', 'warning');
@@ -2678,13 +2690,14 @@ async function downloadFromGitHub() {
         }
         
         var files = await repoRes.json();
+        console.log('📂 파일 목록:', files);
         
-        // 3. .json 파일만 필터링 → 지역명 추출
         var regions = [];
         files.forEach(function(file) {
             if (file.name.endsWith('.json') && file.name !== '.json') {
                 var region = file.name.replace('.json', '');
                 regions.push(region);
+                console.log('📌 발견된 지역:', region);
             }
         });
         
@@ -2693,8 +2706,9 @@ async function downloadFromGitHub() {
             return;
         }
         
-        // 4. 지역 선택 모달 표시 (드롭다운)
+        console.log('📋 표시할 지역 목록:', regions);
         showRegionSelectModal(regions, function(selectedRegion) {
+            console.log('📥 선택된 지역:', selectedRegion);
             if (selectedRegion) {
                 processDownloadFromGitHub(selectedRegion);
             }
@@ -2754,10 +2768,17 @@ function showRegionSelectModal(regions, onSelect) {
                 <div style="display:flex; gap:8px; justify-content:flex-end;">
                     <button class="btn btn-outline btn-sm" onclick="document.getElementById('regionSelectModal').remove();" style="padding:6px 16px;">취소</button>
                     <button class="btn btn-primary btn-sm" onclick="
+                        console.log('🔄 다운로드 버튼 클릭됨');
                         var select = document.getElementById('regionSelectDropdown');
                         var selected = select.value;
+                        console.log('📥 선택된 지역:', selected);
                         document.getElementById('regionSelectModal').remove();
-                        if(selected && typeof onSelect === 'function') onSelect(selected);
+                        if(selected && typeof onSelect === 'function') {
+                            console.log('✅ onSelect 함수 호출됨');
+                            onSelect(selected);
+                        } else {
+                            console.log('❌ onSelect 함수 없음 또는 선택 안 됨');
+                        }
                     " style="padding:6px 16px;">다운로드</button>
                 </div>
             </div>
@@ -3318,66 +3339,84 @@ function addPreset() {
 // ============================================================
 
 async function processDownloadFromGitHub(region) {
-    console.log('🔄 processDownloadFromGitHub 시작, 지역:', region);
+    console.log('🔄 processDownloadFromGitHub 시작됨! 지역:', region);
     
     var token = settings.githubToken;
+    console.log('🔑 토큰:', token ? '있음 (길이: ' + token.length + ')' : '없음');
+    
     if (!token) {
         showTabStatus('tab-settings', '⚠️ GitHub 토큰이 없습니다.', 'warning');
+        console.log('❌ 토큰 없음');
         return;
     }
     
     try {
         showTabStatus('tab-settings', '☁️ GitHub 다운로드 중...', 'info');
+        console.log('📡 GitHub API 요청 시작...');
         
-        // 1. 토큰 인증
+        // 1. 사용자 정보 확인
+        console.log('🔄 사용자 정보 요청 중...');
         var userRes = await fetch('https://api.github.com/user', {
             headers: { 'Authorization': 'token ' + token }
         });
+        console.log('📡 사용자 정보 응답 상태:', userRes.status);
         
         if (!userRes.ok) {
+            var errorText = await userRes.text();
+            console.error('❌ 토큰 인증 실패:', userRes.status, errorText);
             showTabStatus('tab-settings', '❌ 토큰 인증 실패 (상태: ' + userRes.status + ')', 'error');
             return;
         }
-        
         var user = await userRes.json();
+        console.log('✅ 인증 성공:', user.login);
         var username = user.login;
         
         // 2. 파일 요청
         var repoName = 'route-data';
         var fileName = region + '.json';
         var fileUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents/' + encodeURIComponent(fileName);
+        console.log('📡 파일 요청 URL:', fileUrl);
         
         var fileRes = await fetch(fileUrl, {
             headers: { 'Authorization': 'token ' + token },
             cache: 'no-store'
         });
+        console.log('📡 파일 응답 상태:', fileRes.status);
         
         if (fileRes.status === 404) {
+            console.log('📭 파일 없음:', fileName);
             showTabStatus('tab-settings', '📭 GitHub에 "' + region + '" 지역의 데이터가 없습니다.', 'warning');
             return;
         }
         
         if (!fileRes.ok) {
+            console.error('❌ 파일 요청 실패:', fileRes.status);
             showTabStatus('tab-settings', '❌ 다운로드 실패 (상태: ' + fileRes.status + ')', 'error');
             return;
         }
         
         // 3. 파일 내용 디코딩
+        console.log('📄 파일 내용 디코딩 중...');
         var data = await fileRes.json();
+        console.log('📄 파일 SHA:', data.sha);
+        
         var binaryString = atob(data.content);
         var bytes = new Uint8Array(binaryString.length);
         for (var i = 0; i < binaryString.length; i++) {
             bytes[i] = binaryString.charCodeAt(i);
         }
         var content = new TextDecoder('utf-8').decode(bytes);
-        var loadedPlaces = JSON.parse(content);
+        console.log('📄 디코딩된 내용 길이:', content.length);
         
-        // 4. 덮어쓰기 확인 (내부 모달)
+        var loadedPlaces = JSON.parse(content);
+        console.log('📊 로드된 현장 수:', loadedPlaces.length);
+        
+        // 4. 덮어쓰기 확인
         showConfirmModal(
             '📥 데이터 덮어쓰기',
             '현재 ' + places.length + '개 데이터를 ' + loadedPlaces.length + '개로 덮어쓰시겠습니까?',
             function() {
-                // 덮어쓰기 실행
+                console.log('✅ 덮어쓰기 확인됨');
                 places = loadedPlaces;
                 savePlaces();
                 
@@ -3402,11 +3441,13 @@ async function processDownloadFromGitHub(region) {
                 
                 renderPlaces();
                 showTabStatus('tab-settings', '✅ GitHub 다운로드 완료! (' + loadedPlaces.length + '개)', 'ok');
+                console.log('✅ 다운로드 완료!');
             }
         );
         
     } catch(error) {
         console.error('❌ GitHub 다운로드 오류:', error);
+        console.error('❌ 오류 스택:', error.stack);
         showTabStatus('tab-settings', '❌ 다운로드 실패: ' + error.message, 'error');
     }
 }
