@@ -2693,7 +2693,7 @@ async function downloadFromGitHub() {
             return;
         }
         
-        // 4. 지역 선택 모달 표시
+        // 4. 지역 선택 모달 표시 (드롭다운)
         showRegionSelectModal(regions, function(selectedRegion) {
             if (selectedRegion) {
                 processDownloadFromGitHub(selectedRegion);
@@ -3345,8 +3345,6 @@ async function downloadFromGitHub() {
 }
 
 async function processDownloadFromGitHub(region) {
-    console.log('🔄 processDownloadFromGitHub 시작, 지역:', region);
-    
     var token = settings.githubToken;
     if (!token) {
         showTabStatus('tab-settings', '⚠️ GitHub 토큰이 없습니다.', 'warning');
