@@ -304,15 +304,31 @@ function updateStorageInfo() {
 function loadRegionList() {
     var select = document.getElementById('regionSelect');
     select.innerHTML = '';
+    
+    // 🔥 기본 옵션 추가 (지역 선택)
+    var defaultOpt = document.createElement('option');
+    defaultOpt.value = '';
+    defaultOpt.textContent = '📍 지역 선택';
+    defaultOpt.disabled = true;  // 선택 불가
+    defaultOpt.selected = true;  // 기본 선택
+    select.appendChild(defaultOpt);
+    
     var regions = [];
     for (var i = 0; i < localStorage.length; i++) {
         var key = localStorage.key(i);
         if (key && key.startsWith(STORAGE_KEY_PREFIX)) {
             var region = key.replace(STORAGE_KEY_PREFIX, '');
-            if (region && !regions.includes(region)) regions.push(region);
+            if (region && !regions.includes(region)) {
+                regions.push(region);
+            }
         }
     }
-    if (regions.length === 0) return;
+    
+    if (regions.length === 0) {
+        // 🔥 지역이 없으면 "지역 선택▼"만 표시
+        return;
+    }
+    
     regions.sort();
     for (var i = 0; i < regions.length; i++) {
         var opt = document.createElement('option');
@@ -320,8 +336,20 @@ function loadRegionList() {
         opt.textContent = regions[i];
         select.appendChild(opt);
     }
-    if (currentRegion && regions.includes(currentRegion)) select.value = currentRegion;
-    else { select.value = ''; currentRegion = ''; localStorage.removeItem(SELECTED_REGION_KEY); }
+    
+    // currentRegion이 있으면 선택
+    if (currentRegion && regions.includes(currentRegion)) {
+        select.value = currentRegion;
+    } else {
+        // 첫 번째 지역 선택 (기본 옵션 제거)
+        select.value = regions[0];
+        currentRegion = regions[0];
+        localStorage.setItem(SELECTED_REGION_KEY, currentRegion);
+        var key = getStorageKey(currentRegion);
+        var data = localStorage.getItem(key);
+        places = data ? JSON.parse(data) : [];
+        renderPlaces();
+    }
 }
 
 function switchRegion(region) {
@@ -380,13 +408,9 @@ function switchRegion(region) {
     console.log('✅ 지역 전환 완료:', region, '현장 수:', places.length);
 }
 function addRegion() {
-    console.log('🔄 addRegion 호출됨');
-    
-    // 기존 모달 제거
     var existing = document.getElementById('customRegionModal');
     if (existing) existing.remove();
     
-    // 🔥 자체 모달 HTML 생성 (showPromptModal 의존 없음)
     var modalHtml = `
         <div id="customRegionModal" style="
             position: fixed;
@@ -413,7 +437,7 @@ function addRegion() {
                 <p style="font-size:14px; color:#4a5568; margin-bottom:16px; line-height:1.6;">
                     새 지역명을 입력하세요:
                 </p>
-                <input id="customRegionInput" type="text" placeholder="예: 용산" 
+                <input id="customRegionInput" type="text" placeholder="예: 강남구" 
                        style="width:100%; padding:10px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:14px; margin-bottom:16px;"
                        onkeydown="if(event.key==='Enter') document.getElementById('customRegionConfirmBtn').click();">
                 <div style="display:flex; gap:8px; justify-content:flex-end;">
@@ -425,7 +449,6 @@ function addRegion() {
     `;
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     
-    // 입력창에 포커스
     setTimeout(function() {
         var input = document.getElementById('customRegionInput');
         if (input) {
@@ -434,13 +457,10 @@ function addRegion() {
         }
     }, 100);
     
-    // 🔥 확인 버튼 클릭 이벤트
     document.getElementById('customRegionConfirmBtn').addEventListener('click', function() {
         var input = document.getElementById('customRegionInput');
         var name = input ? input.value.trim() : '';
         document.getElementById('customRegionModal').remove();
-        
-        console.log('📥 입력된 지역명:', name);
         
         if (!name) {
             showTabStatus('tab-settings', '⚠️ 지역명을 입력하세요.', 'warning');
@@ -455,37 +475,82 @@ function addRegion() {
         
         var select = document.getElementById('regionSelect');
         if (!select) {
-            console.error('❌ regionSelect 요소 없음');
             showTabStatus('tab-settings', '⚠️ 오류 발생, 새로고침 후 다시 시도하세요.', 'error');
             return;
         }
         
-        // 중복 체크
-        for (var i = 0; i < select.options.length; i++) {
+        // 중복 체크 (기본 옵션 제외)
+        for (var i = 1; i < select.options.length; i++) {
             if (select.options[i].value === region) {
                 showTabStatus('tab-settings', '⚠️ 이미 존재하는 지역입니다.', 'warning');
                 return;
             }
         }
         
-        // 지역 저장
         var key = getStorageKey(region);
         localStorage.setItem(key, JSON.stringify([]));
-        console.log('💾 localStorage 저장 완료:', key);
         
-        // 드롭다운에 추가
+        // 🔥 기본 옵션 제거 (지역 선택)
+        if (select.options.length === 1 && select.options[0].value === '') {
+            select.remove(0);
+        }
+        
         var opt = document.createElement('option');
         opt.value = region;
         opt.textContent = region;
         select.appendChild(opt);
         select.value = region;
-        console.log('✅ 드롭다운에 추가됨:', region);
         
-        // 지역 전환
         switchRegion(region);
         showTabStatus('tab-settings', '✅ "' + region + '" 지역 추가됨', 'ok');
-        console.log('✅ 지역 추가 완료!');
     });
+}
+function deleteRegion() {
+    var select = document.getElementById('regionSelect');
+    if (!select) return;
+    
+    var currentRegion = select.value;
+    if (!currentRegion) {
+        showTabStatus('tab-settings', '⚠️ 삭제할 지역을 선택하세요.', 'warning');
+        return;
+    }
+    
+    if (select.options.length <= 2) { // 기본 옵션 + 1개
+        showTabStatus('tab-settings', '⚠️ 마지막 남은 지역은 삭제할 수 없습니다.', 'warning');
+        return;
+    }
+    
+    showConfirmModal(
+        '🗑️ 지역 삭제',
+        '"' + currentRegion + '" 지역을 삭제하시겠습니까?\n해당 지역의 모든 현장 데이터도 함께 삭제됩니다.',
+        function() {
+            var key = getStorageKey(currentRegion);
+            localStorage.removeItem(key);
+            
+            for (var i = 0; i < select.options.length; i++) {
+                if (select.options[i].value === currentRegion) {
+                    select.remove(i);
+                    break;
+                }
+            }
+            
+            if (select.options.length > 1) { // 기본 옵션 제외 1개 이상
+                var newRegion = select.options[1].value; // 기본 옵션(0번) 다음
+                select.value = newRegion;
+                switchRegion(newRegion);
+            } else {
+                // 🔥 지역이 없으면 "지역 선택▼" 표시
+                select.value = '';
+                currentRegion = '';
+                localStorage.removeItem(SELECTED_REGION_KEY);
+                places = [];
+                renderPlaces();
+                showTabStatus('tab-settings', '📭 모든 지역이 삭제되었습니다.', 'info');
+            }
+            
+            showTabStatus('tab-settings', '✅ "' + currentRegion + '" 지역 삭제됨', 'ok');
+        }
+    );
 }
 // ============================================================
 // 5. 설정 내보내기/가져오기
