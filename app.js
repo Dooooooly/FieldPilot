@@ -1146,27 +1146,283 @@ function searchPlaces() {
     renderPlaces(sortedResults);
 }
 
-function addPlace() {
-    var name = document.getElementById('newPlaceName').value.trim();
-    var address = document.getElementById('newPlaceAddr').value.trim();
-    var remark = document.getElementById('newPlaceRemark').value.trim();
-    if (!name) { showTabStatus('tab-list', '현장명을 입력하세요.', 'warning'); return; }
-    if (places.some(function(p) { return normalizeName(p.name) === normalizeName(name); })) {
-        showTabStatus('tab-list', '⚠️ 이미 존재하는 현장명입니다.', 'warning');
+// ============================================================
+// 현장추가 모달 (내부 팝업)
+// ============================================================
+
+function openAddPlaceModal() {
+    document.getElementById('addPlaceModal').classList.add('active');
+    document.getElementById('modalPlaceName').value = '';
+    document.getElementById('modalPlaceAddr').value = '';
+    document.getElementById('modalPlaceRemark').value = '';
+    document.getElementById('modalPlaceName').focus();
+}
+
+function closeAddPlaceModal() {
+    document.getElementById('addPlaceModal').classList.remove('active');
+    document.getElementById('modalAddrSearchResults').style.display = 'none';
+}
+
+function saveAddPlaceModal() {
+    var name = document.getElementById('modalPlaceName').value.trim();
+    var address = document.getElementById('modalPlaceAddr').value.trim();
+    var remark = document.getElementById('modalPlaceRemark').value.trim();
+    
+    if (!name) {
+        showTabStatus('tab-list', '⚠️ 현장명을 입력하세요.', 'warning');
+        document.getElementById('modalPlaceName').focus();
         return;
     }
+    
+    // 중복 체크
+    if (places.some(function(p) { return normalizeName(p.name) === normalizeName(name); })) {
+        showTabStatus('tab-list', '⚠️ 이미 존재하는 현장명입니다.', 'warning');
+        document.getElementById('modalPlaceName').focus();
+        return;
+    }
+    
     var lat = 0, lng = 0, fullAddress = address;
     var restKey = settings.kakaoRestKey;
+    
     if (address && restKey) {
         geocodeAddress(address, restKey).then(function(geo) {
             if (geo) {
-                lat = geo.lat; lng = geo.lng; fullAddress = geo.address || address;
+                lat = geo.lat;
+                lng = geo.lng;
+                fullAddress = geo.address || address;
             }
-            savePlace(name, fullAddress, lat, lng, remark);
+            savePlaceFromModal(name, fullAddress, lat, lng, remark);
         });
     } else {
-        savePlace(name, fullAddress, lat, lng, remark);
+        savePlaceFromModal(name, fullAddress, lat, lng, remark);
     }
+}
+
+function savePlaceFromModal(name, address, lat, lng, remark) {
+    places.push({
+        id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+        name: name,
+        address: address,
+        lat: lat,
+        lng: lng,
+        remark: remark || '',
+        favorite: false
+    });
+    savePlaces();
+    closeAddPlaceModal();
+    showTabStatus('tab-list', '✅ "' + name + '" 추가됨', 'ok');
+}
+
+// ============================================================
+// 모달 주소 검색
+// ============================================================
+
+function searchAddressForModal(query) {
+    var container = document.getElementById('modalAddrSearchResults');
+    if (!query || query.length < 2) {
+        container.style.display = 'none';
+        return;
+    }
+    clearTimeout(window._modalAddrSearchTimer);
+    window._modalAddrSearchTimer = setTimeout(async function() {
+        var results = await searchKakaoPlaces(query);
+        if (results.length === 0) {
+            container.style.display = 'none';
+            return;
+        }
+        var html = '';
+        for (var i = 0; i < results.length; i++) {
+            var item = results[i];
+            html += '<div class="result-item" data-address="' + escapeHtml(item.address_name) + '" data-name="' + escapeHtml(item.place_name) + '" data-lat="' + item.y + '" data-lng="' + item.x + '">';
+            html += '<div class="result-info"><div>' + escapeHtml(item.place_name) + ' <span class="source">카카오맵</span></div>';
+            html += '<div class="addr">' + escapeHtml(item.address_name) + '</div></div></div>';
+        }
+        container.innerHTML = html;
+        container.style.display = 'block';
+        
+        container.querySelectorAll('.result-item').forEach(function(el) {
+            el.addEventListener('click', function() {
+                var name = this.dataset.name;
+                var address = this.dataset.address;
+                var lat = parseFloat(this.dataset.lat);
+                var lng = parseFloat(this.dataset.lng);
+                // 주소 입력창에 채우기
+                document.getElementById('modalPlaceAddr').value = address;
+                if (!document.getElementById('modalPlaceName').value.trim()) {
+                    document.getElementById('modalPlaceName').value = name;
+                }
+                container.style.display = 'none';
+            });
+        });
+    }, 300);
+}
+
+// ============================================================
+// 시스템 팝업 → 내부 모달로 변환 (confirm 대체)
+// ============================================================
+
+function showConfirmModal(title, message, onConfirm, onCancel) {
+    // 기존 confirm 모달이 있으면 제거
+    var existing = document.getElementById('confirmModal');
+    if (existing) existing.remove();
+    
+    var modalHtml = `
+        <div id="confirmModal" style="
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            animation: fadeIn 0.2s ease;
+        " onclick="if(event.target===this) this.remove()">
+            <div style="
+                background: white;
+                border-radius: 16px;
+                padding: 24px;
+                max-width: 360px;
+                width: 100%;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            ">
+                <h3 style="font-size:17px; font-weight:700; color:#1a202c; margin-bottom:8px;">${escapeHtml(title)}</h3>
+                <p style="font-size:14px; color:#4a5568; margin-bottom:20px; line-height:1.6;">${escapeHtml(message)}</p>
+                <div style="display:flex; gap:8px; justify-content:flex-end;">
+                    <button class="btn btn-outline btn-sm" onclick="document.getElementById('confirmModal').remove(); if(typeof onCancel==='function') onCancel();" style="padding:6px 16px;">취소</button>
+                    <button class="btn btn-primary btn-sm" onclick="document.getElementById('confirmModal').remove(); if(typeof onConfirm==='function') onConfirm();" style="padding:6px 16px;">확인</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+// ============================================================
+// 기존 confirm 사용 함수들을 모달로 변경
+// ============================================================
+
+// 예: deletePlace 함수 수정
+function deletePlace(id) {
+    var target = places.find(function(p) { return p.id === id; });
+    if (!target) return;
+    
+    showConfirmModal(
+        '🗑️ 현장 삭제',
+        '"' + target.name + '" 현장을 삭제하시겠습니까?',
+        function() {
+            places = places.filter(function(p) { return p.id !== id; });
+            waypoints = waypoints.filter(function(w) { return w.name !== target.name; });
+            renderWaypointList();
+            if (singlePlaceMarker && singlePlaceMarker._placeId === id) clearSingleMarker();
+            savePlaces();
+            showTabStatus('tab-list', '✅ 삭제 완료', 'ok');
+        }
+    );
+}
+
+// resetRoute 함수 수정
+function resetRoute() {
+    showConfirmModal(
+        '🔄 경로 초기화',
+        '출발지, 경유지, 최적화 결과를 모두 초기화하시겠습니까?',
+        function() {
+            startPoint = null;
+            document.getElementById('startPoint').value = '';
+            document.getElementById('startInfo').textContent = '⏳ 출발지를 검색하거나 현재 위치 버튼을 눌러 설정하세요';
+            document.getElementById('startInfo').style.color = '#718096';
+            waypoints = [];
+            renderWaypointList();
+            document.getElementById('waypointInput').value = '';
+            routeResult = null;
+            document.getElementById('placeCount').textContent = '0개소';
+            document.getElementById('totalDistance').textContent = '0.00 km';
+            document.getElementById('totalTime').textContent = '0 분';
+            document.getElementById('optimizeMode').textContent = '-';
+            document.getElementById('routeList').innerHTML = '';
+            clearRouteMarkers();
+            clearSingleMarker();
+            isShowingRouteMarkers = false;
+            if (kakaoMap && currentRegion) {
+                var center = getRegionCenter(currentRegion);
+                kakaoMap.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
+                kakaoMap.setLevel(5);
+                kakaoMap.relayout();
+            }
+            showTabStatus('tab-places', '🔄 모든 경로 데이터가 초기화되었습니다.', 'ok');
+        }
+    );
+}
+
+// loadPreset 함수 수정
+function loadPreset(index) {
+    var preset = presets[index];
+    if (!preset) return;
+    
+    showConfirmModal(
+        '📂 프리셋 불러오기',
+        '"' + preset.name + '" 프리셋을 불러오시겠습니까?\n현재 데이터는 초기화됩니다.',
+        function() {
+            var sp = preset.startPoint;
+            if (sp && sp.lat && sp.lng) {
+                selectStartPoint(sp.name, sp.address, sp.lat, sp.lng);
+            } else {
+                showTabStatus('tab-places', '⚠️ 출발지 정보가 없습니다.', 'warning');
+                return;
+            }
+            waypoints = [];
+            for (var i = 0; i < preset.waypoints.length; i++) {
+                var w = preset.waypoints[i];
+                waypoints.push({ name: w.name, address: w.address || '', lat: w.lat || 0, lng: w.lng || 0 });
+            }
+            renderWaypointList();
+            routeResult = null;
+            document.getElementById('placeCount').textContent = '0개소';
+            document.getElementById('totalDistance').textContent = '0.00 km';
+            document.getElementById('totalTime').textContent = '0 분';
+            document.getElementById('optimizeMode').textContent = '-';
+            document.getElementById('routeList').innerHTML = '';
+            clearRouteMarkers(); clearSingleMarker(); isShowingRouteMarkers = false;
+            if (kakaoMap && sp && sp.lat && sp.lng) {
+                kakaoMap.setCenter(new kakao.maps.LatLng(sp.lat, sp.lng));
+                kakaoMap.setLevel(5);
+                kakaoMap.relayout();
+            }
+            showTabStatus('tab-places', '✅ 프리셋 "' + preset.name + '" 불러오기 완료!', 'ok');
+        }
+    );
+}
+
+// resetAll 함수 수정
+function resetAll() {
+    showConfirmModal(
+        '⚠️ 모든 데이터 초기화',
+        '모든 데이터를 초기화하시겠습니까?\n(현장리스트, 경로, 설정 모두 삭제됩니다)',
+        function() {
+            var keys = [];
+            for (var i = 0; i < localStorage.length; i++) {
+                var key = localStorage.key(i);
+                if (key && (key.startsWith(STORAGE_KEY_PREFIX) || key === SETTINGS_KEY || key === SELECTED_REGION_KEY || key === OPTIMIZE_MODE_KEY || key === PRESETS_KEY)) {
+                    keys.push(key);
+                }
+            }
+            for (var i = 0; i < keys.length; i++) localStorage.removeItem(keys[i]);
+            places = []; waypoints = []; routeResult = null; startPoint = null; presets = [];
+            renderPlaces(); renderWaypointList(); renderPresets();
+            clearRouteMarkers(); clearSingleMarker();
+            document.getElementById('placeCount').textContent = '0개소';
+            document.getElementById('totalDistance').textContent = '0.00 km';
+            document.getElementById('totalTime').textContent = '0 분';
+            document.getElementById('optimizeMode').textContent = '-';
+            document.getElementById('routeList').innerHTML = '';
+            document.getElementById('startInfo').textContent = '⏳ 출발지를 검색하거나 현재 위치 버튼을 눌러 설정하세요';
+            updateStorageInfo();
+            showTabStatus('tab-settings', '✅ 초기화 완료', 'ok');
+            loadRegionList();
+        }
+    );
 }
 
 function savePlace(name, address, lat, lng, remark) {
@@ -1654,13 +1910,13 @@ function showRouteList() {
     html += '<div class="info"><div class="name">' + escapeHtml(startPoint.name) + '</div><div class="addr">' + escapeHtml(startPoint.address || '') + '</div></div>';
     html += '</div>';
     
-    // ===== 경유지들 =====
+    // ===== 경유지들 (API 거리/시간 표시) =====
     var colors = ['#FF6B6B','#FF9F43','#FECA57','#48DBFB','#0ABDE3','#10AC84','#EE5A24','#5F27CD','#1DD1A1','#F368E0','#00D2D3','#54A0FF','#FF9FF3','#F368E0'];
     for (var i = 0; i < sorted.length; i++) {
         var p = sorted[i];
         var prev = i === 0 ? startPoint : sorted[i - 1];
         
-        // 🔥 API 기반 거리/시간 사용 (없으면 haversine)
+        // 🔥 API 기반 거리/시간 우선 사용 (없으면 haversine)
         var segDist = p._segDist || haversineKm(prev.lat, prev.lng, p.lat, p.lng);
         var segTime = p._segTime || Math.round(segDist / 40 * 60);
         var color = colors[i % colors.length];
@@ -1670,7 +1926,7 @@ function showRouteList() {
         html += '<div class="route-item sortable-item" data-index="' + i + '" data-lat="' + p.lat + '" data-lng="' + p.lng + '" data-name="' + escapeHtml(p.name) + '" onclick="moveToRoutePoint(this)" style="cursor:grab;border-left-color:' + color + ';">';
         html += '<div class="idx" style="background:' + color + ';color:white;">' + (i + 1) + '</div>';
         html += '<div class="info"><div class="name">' + escapeHtml(p.name) + ' ' + remarkDisplay + '</div>' + addrDisplay + '</div>';
-        html += '<div class="dist" style="text-align:right;font-size:12px;font-weight:600;flex-shrink:0;min-width:70px;color:' + color + ';">';
+        html += '<div class="dist" style="text-align:right;font-size:12px;font-weight:600;flex-shrink:0;min-width:80px;color:' + color + ';">';
         html += segDist.toFixed(1) + 'km<br><span style="font-size:10px;color:#718096;">' + segTime + '분</span></div>';
         
         // ===== 카카오맵 버튼 =====
