@@ -1574,8 +1574,13 @@ function searchAddressForModal(query) {
 // ============================================================
 
 function showConfirmModal(title, message, onConfirm, onCancel) {
+    // 기존 모달 제거
     var existing = document.getElementById('confirmModal');
     if (existing) existing.remove();
+    
+    // 🔥 전역 임시 저장 (onConfirm 참조용)
+    window._tempConfirm = onConfirm || null;
+    window._tempCancel = onCancel || null;
     
     var modalHtml = `
         <div id="confirmModal" style="
@@ -1584,13 +1589,13 @@ function showConfirmModal(title, message, onConfirm, onCancel) {
             background: rgba(0,0,0,0.5);
             backdrop-filter: blur(4px);
             -webkit-backdrop-filter: blur(4px);
-            z-index: 9999999;
+            z-index: 999999;
             display: flex;
             justify-content: center;
             align-items: center;
             padding: 20px;
             animation: fadeIn 0.2s ease;
-        " onclick="if(event.target===this) this.remove()">
+        " onclick="if(event.target===this) { document.getElementById('confirmModal').remove(); if(window._tempCancel) window._tempCancel(); }">
             <div style="
                 background: white;
                 border-radius: 16px;
@@ -1598,26 +1603,30 @@ function showConfirmModal(title, message, onConfirm, onCancel) {
                 max-width: 360px;
                 width: 100%;
                 box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-            ">
+            " onclick="event.stopPropagation()">
                 <h3 style="font-size:17px; font-weight:700; color:#1a202c; margin-bottom:8px;">${escapeHtml(title)}</h3>
                 <p style="font-size:14px; color:#4a5568; margin-bottom:20px; line-height:1.6;">${escapeHtml(message)}</p>
                 <div style="display:flex; gap:8px; justify-content:flex-end;">
-                    <button class="btn btn-outline btn-sm" onclick="document.getElementById('confirmModal').remove(); if(typeof onCancel==='function') onCancel();" style="padding:6px 16px;">취소</button>
-                    <button class="btn btn-primary btn-sm" onclick="
-                        document.getElementById('confirmModal').remove(); 
-                        if(typeof onConfirm==='function') {
-                            console.log('✅ 확인 버튼 클릭 - onConfirm 실행');
-                            onConfirm();
-                        } else {
-                            console.log('❌ onConfirm 함수 없음');
-                        }
-                    " style="padding:6px 16px;">확인</button>
+                    <button class="btn btn-outline btn-sm" onclick="
+                        document.getElementById('confirmModal').remove();
+                        if(window._tempCancel) window._tempCancel();
+                    " style="padding:6px 16px; border:1px solid #cbd5e0; border-radius:8px; background:white; cursor:pointer;">취소</button>
+                    <button class="btn btn-primary btn-sm" id="confirmModalOkBtn" style="padding:6px 16px; background:#4f7eb3; color:white; border:none; border-radius:8px; cursor:pointer;">확인</button>
                 </div>
             </div>
         </div>
     `;
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-    console.log('✅ confirmModal 표시됨');
+    
+    // 🔥 확인 버튼 이벤트 (addEventListener 사용)
+    document.getElementById('confirmModalOkBtn').addEventListener('click', function() {
+        document.getElementById('confirmModal').remove();
+        if (window._tempConfirm) {
+            window._tempConfirm();
+        }
+        window._tempConfirm = null;
+        window._tempCancel = null;
+    });
 }
 // ============================================================
 // 기존 confirm 사용 함수들을 모달로 변경
@@ -3972,9 +3981,13 @@ function deleteRegionFromPopup() {
         '🗑️ 지역 삭제',
         '"' + currentRegion + '" 지역을 삭제하시겠습니까?\n해당 지역의 모든 현장 데이터도 함께 삭제됩니다.',
         function() {
+            // 🔥 실제 삭제 로직
+            console.log('🗑️ 지역 삭제 확인됨:', currentRegion);
+            
             var key = getStorageKey(currentRegion);
             localStorage.removeItem(key);
             
+            var select = document.getElementById('regionSelect');
             for (var i = 0; i < select.options.length; i++) {
                 if (select.options[i].value === currentRegion) {
                     select.remove(i);
@@ -3988,6 +4001,12 @@ function deleteRegionFromPopup() {
                 switchRegion(newRegion);
             } else {
                 select.innerHTML = '';
+                var defaultOpt = document.createElement('option');
+                defaultOpt.value = '';
+                defaultOpt.textContent = '📍 지역 선택';
+                defaultOpt.selected = true;
+                defaultOpt.disabled = true;
+                select.appendChild(defaultOpt);
                 currentRegion = '';
                 localStorage.removeItem(SELECTED_REGION_KEY);
                 places = [];
@@ -3997,9 +4016,13 @@ function deleteRegionFromPopup() {
             updateRegionDisplay();
             showTabStatus('tab-settings', '✅ "' + currentRegion + '" 지역 삭제됨', 'ok');
             
+            // 팝업 새로고침
             var modal = document.getElementById('regionManagerModal');
             if (modal) modal.remove();
             openRegionManager();
+        },
+        function() {
+            console.log('❌ 지역 삭제 취소됨');
         }
     );
 }
