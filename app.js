@@ -2639,6 +2639,10 @@ async function uploadToGitHub(silent) {
     }
 }
 
+// ============================================================
+// GitHub 다운로드 (지역 선택 드롭다운)
+// ============================================================
+
 async function downloadFromGitHub() {
     var token = settings.githubToken;
     if (!token) {
@@ -2646,30 +2650,120 @@ async function downloadFromGitHub() {
         return;
     }
     
-    var region = currentRegion;
-    
-    if (!region) {
-        showPromptModal(
-            '📥 GitHub 다운로드',
-            '다운로드할 지역명을 입력하세요:',
-            '',
-            function(regionInput) {
-                if (!regionInput || !regionInput.trim()) {
-                    showTabStatus('tab-settings', '⚠️ 지역명이 필요합니다.', 'warning');
-                    return;
-                }
-                regionInput = regionInput.trim().replace(/[\/\\:*?"<>|]/g, '');
-                if (!regionInput) {
-                    showTabStatus('tab-settings', '⚠️ 사용할 수 없는 지역명입니다.', 'warning');
-                    return;
-                }
-                processDownloadFromGitHub(regionInput);
+    try {
+        showTabStatus('tab-settings', '☁️ GitHub 저장소 목록 불러오는 중...', 'info');
+        
+        // 1. 사용자 정보 확인
+        var userRes = await fetch('https://api.github.com/user', {
+            headers: { 'Authorization': 'token ' + token }
+        });
+        if (!userRes.ok) throw new Error('토큰 인증 실패');
+        var user = await userRes.json();
+        var username = user.login;
+        
+        // 2. 저장소 파일 목록 조회
+        var repoName = 'route-data';
+        var repoUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents';
+        var repoRes = await fetch(repoUrl, {
+            headers: { 'Authorization': 'token ' + token }
+        });
+        
+        if (repoRes.status === 404) {
+            showTabStatus('tab-settings', '📭 GitHub에 저장된 데이터가 없습니다.\n먼저 "업로드"를 실행하세요.', 'warning');
+            return;
+        }
+        
+        if (!repoRes.ok) {
+            throw new Error('저장소 조회 실패: ' + repoRes.status);
+        }
+        
+        var files = await repoRes.json();
+        
+        // 3. .json 파일만 필터링 → 지역명 추출
+        var regions = [];
+        files.forEach(function(file) {
+            if (file.name.endsWith('.json') && file.name !== '.json') {
+                var region = file.name.replace('.json', '');
+                regions.push(region);
             }
-        );
-        return;
+        });
+        
+        if (regions.length === 0) {
+            showTabStatus('tab-settings', '📭 GitHub에 저장된 지역 데이터가 없습니다.', 'warning');
+            return;
+        }
+        
+        // 4. 지역 선택 모달 표시
+        showRegionSelectModal(regions, function(selectedRegion) {
+            if (selectedRegion) {
+                processDownloadFromGitHub(selectedRegion);
+            }
+        });
+        
+    } catch(error) {
+        console.error('❌ GitHub 목록 조회 오류:', error);
+        showTabStatus('tab-settings', '❌ 목록 조회 실패: ' + error.message, 'error');
     }
+}
+// ============================================================
+// 지역 선택 모달 (드롭다운)
+// ============================================================
+
+function showRegionSelectModal(regions, onSelect) {
+    var existing = document.getElementById('regionSelectModal');
+    if (existing) existing.remove();
     
-    processDownloadFromGitHub(region);
+    var optionsHtml = '';
+    regions.forEach(function(region) {
+        optionsHtml += '<option value="' + escapeHtml(region) + '">' + escapeHtml(region) + '</option>';
+    });
+    
+    var modalHtml = `
+        <div id="regionSelectModal" style="
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            animation: fadeIn 0.2s ease;
+        " onclick="if(event.target===this) this.remove()">
+            <div style="
+                background: white;
+                border-radius: 16px;
+                padding: 24px;
+                max-width: 380px;
+                width: 100%;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            " onclick="event.stopPropagation()">
+                <h3 style="font-size:17px; font-weight:700; color:#1a202c; margin-bottom:8px;">📥 다운로드할 지역 선택</h3>
+                <p style="font-size:14px; color:#4a5568; margin-bottom:16px; line-height:1.6;">
+                    GitHub에 저장된 지역 중 선택하세요:
+                </p>
+                <select id="regionSelectDropdown" style="
+                    width:100%; padding:10px 12px; border:2px solid #e2e8f0; border-radius:8px; 
+                    font-size:14px; margin-bottom:16px; background:white; cursor:pointer;
+                ">
+                    <option value="">-- 지역 선택 --</option>
+                    ${optionsHtml}
+                </select>
+                <div style="display:flex; gap:8px; justify-content:flex-end;">
+                    <button class="btn btn-outline btn-sm" onclick="document.getElementById('regionSelectModal').remove();" style="padding:6px 16px;">취소</button>
+                    <button class="btn btn-primary btn-sm" onclick="
+                        var select = document.getElementById('regionSelectDropdown');
+                        var selected = select.value;
+                        document.getElementById('regionSelectModal').remove();
+                        if(selected && typeof onSelect === 'function') onSelect(selected);
+                    " style="padding:6px 16px;">다운로드</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
 async function showGitHubHistory() {
     var token = settings.githubToken;
@@ -3251,6 +3345,8 @@ async function downloadFromGitHub() {
 }
 
 async function processDownloadFromGitHub(region) {
+    console.log('🔄 processDownloadFromGitHub 시작, 지역:', region);
+    
     var token = settings.githubToken;
     if (!token) {
         showTabStatus('tab-settings', '⚠️ GitHub 토큰이 없습니다.', 'warning');
@@ -3260,20 +3356,13 @@ async function processDownloadFromGitHub(region) {
     try {
         showTabStatus('tab-settings', '☁️ GitHub 다운로드 중...', 'info');
         
-        // 1. 토큰 인증
         var userRes = await fetch('https://api.github.com/user', {
             headers: { 'Authorization': 'token ' + token }
         });
-        
-        if (!userRes.ok) {
-            showTabStatus('tab-settings', '❌ 토큰 인증 실패 (상태: ' + userRes.status + ')', 'error');
-            return;
-        }
-        
+        if (!userRes.ok) throw new Error('토큰 인증 실패');
         var user = await userRes.json();
         var username = user.login;
         
-        // 2. 파일 요청
         var repoName = 'route-data';
         var fileName = region + '.json';
         var fileUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents/' + encodeURIComponent(fileName);
@@ -3289,11 +3378,9 @@ async function processDownloadFromGitHub(region) {
         }
         
         if (!fileRes.ok) {
-            showTabStatus('tab-settings', '❌ 다운로드 실패 (상태: ' + fileRes.status + ')', 'error');
-            return;
+            throw new Error('다운로드 실패: ' + fileRes.status);
         }
         
-        // 3. 파일 내용 디코딩
         var data = await fileRes.json();
         var binaryString = atob(data.content);
         var bytes = new Uint8Array(binaryString.length);
@@ -3303,7 +3390,6 @@ async function processDownloadFromGitHub(region) {
         var content = new TextDecoder('utf-8').decode(bytes);
         var loadedPlaces = JSON.parse(content);
         
-        // 4. 덮어쓰기 확인
         showConfirmModal(
             '📥 데이터 덮어쓰기',
             '현재 ' + places.length + '개 데이터를 ' + loadedPlaces.length + '개로 덮어쓰시겠습니까?',
@@ -3311,7 +3397,6 @@ async function processDownloadFromGitHub(region) {
                 places = loadedPlaces;
                 savePlaces();
                 
-                // 드롭다운에 지역 추가
                 var select = document.getElementById('regionSelect');
                 var exists = false;
                 for (var i = 0; i < select.options.length; i++) {
