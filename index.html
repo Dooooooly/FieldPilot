@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>🚗 경로 최적화</title>
+    <title>경로 최적화</title>
     
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🚗%3C/text%3E%3C/svg%3E">
@@ -46,11 +46,7 @@
             flex-wrap: wrap;
             gap: 4px;
         }
-        .header-left h1 {
-            font-size: 16px;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-        }
+        .header-left h1 { font-size: 16px; font-weight: 700; letter-spacing: -0.5px; }
         .header-right {
             display: flex;
             align-items: center;
@@ -78,27 +74,12 @@
             background: rgba(255,255,255,0.25);
             transform: translateY(-1px);
         }
-        .weather .temp {
-            font-weight: 700;
-            font-size: 13px;
-        }
+        .weather .temp { font-weight: 700; font-size: 13px; }
         
-        /* ===== 지역관리 내부 ===== */
-        .weather #currentRegionLabel {
-            font-weight: 400;
-            font-size: inherit;
-        }
-        .weather #currentRegionName {
-            font-weight: 700;
-            font-size: inherit;
-        }
-        .weather .region-arrow {
-            font-size: 10px;
-            opacity: 0.6;
-            margin-left: 2px;
-        }
+        .weather #currentRegionLabel { font-weight: 400; font-size: inherit; }
+        .weather #currentRegionName { font-weight: 700; font-size: inherit; }
+        .weather .region-arrow { font-size: 10px; opacity: 0.6; margin-left: 2px; }
         
-        /* ===== 구분선 ===== */
         .header-divider {
             width: 1px;
             height: 20px;
@@ -125,15 +106,7 @@
             margin-bottom: 10px;
             box-shadow: 0 1px 4px rgba(0,0,0,0.04);
         }
-        .card-title {
-            font-size: 14px;
-            font-weight: 700;
-            color: #1a202c;
-            margin-bottom: 6px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
+        .card-title { font-size: 14px; font-weight: 700; color: #1a202c; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
         
         /* ===== 버튼 ===== */
         .btn {
@@ -538,20 +511,11 @@
                 height: 26px;
                 gap: 3px;
             }
-            .weather .temp {
-                font-size: 11px;
-            }
+            .weather .temp { font-size: 11px; }
             .weather #currentRegionLabel,
-            .weather #currentRegionName {
-                font-size: 11px;
-            }
-            .weather .region-arrow {
-                font-size: 9px;
-            }
-            .header-divider {
-                height: 16px;
-                margin: 0 4px;
-            }
+            .weather #currentRegionName { font-size: 11px; }
+            .weather .region-arrow { font-size: 9px; }
+            .header-divider { height: 16px; margin: 0 4px; }
             
             .main { padding: 8px 8px 70px; }
             .card { padding: 10px 12px; }
@@ -614,6 +578,13 @@
             <!-- 출발지 -->
             <div class="card">
                 <div class="card-title">🚩 출발지</div>
+                
+                <!-- 🔥 내 위치 버튼 (출발지 검색창 위에 별도 배치) -->
+                <button class="btn btn-success" onclick="setCurrentLocation()" 
+                        style="width:100%; padding:8px 12px; font-size:13px; font-weight:600; margin-bottom:8px; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:6px;">
+                    📍 내 위치로 설정
+                </button>
+                
                 <div style="position:relative;">
                     <div class="flex-row">
                         <input type="text" id="startPoint" class="input-field flex-1" 
@@ -626,14 +597,10 @@
                                 style="font-size:12px; padding:6px 12px; min-height:38px; white-space:nowrap;">
                             설정
                         </button>
-                        <button class="btn btn-success" onclick="setCurrentLocation()" 
-                                style="font-size:12px; padding:6px 10px; min-height:38px; white-space:nowrap; display:flex; align-items:center; gap:4px;">
-                            🎯 GPS
-                        </button>
                     </div>
                     <div id="startSearchResults" class="search-results"></div>
                 </div>
-                <div id="startInfo" style="font-size:12px; color:#718096; margin-top:4px;">⏳ 출발지를 검색하거나 GPS 버튼으로 현재 위치를 설정하세요</div>
+                <div id="startInfo" style="font-size:12px; color:#718096; margin-top:4px;">⏳ 출발지를 검색하거나 내 위치 버튼으로 설정하세요</div>
             </div>
             
             <!-- 경유지 -->
@@ -643,10 +610,11 @@
                         📍 경유지 <span id="wpCount" style="font-size:12px;color:#a0aec0;font-weight:400;"></span>
                     </div>
                     <div style="display:flex; gap:6px; align-items:center;">
-                        <label style="font-size:11px; color:#4a5568; display:flex; align-items:center; gap:4px; cursor:pointer; background:#f7fafc; padding:3px 10px; border-radius:14px; border:1px solid #e2e8f0;">
-                            <input type="checkbox" id="multiSelectMode" onchange="toggleMultiSelect()" style="margin:0;">
+                        <!-- 🔥 여러개 추가 토글 -->
+                        <button id="multiToggleBtn" onclick="toggleMultiSelect()" 
+                                style="font-size:11px; padding:4px 14px; min-height:30px; border-radius:16px; border:2px solid #cbd5e0; background:white; color:#4a5568; cursor:pointer; transition:all 0.2s; font-weight:600; display:flex; align-items:center; gap:4px;">
                             📋 여러개 추가
-                        </label>
+                        </button>
                     </div>
                 </div>
                 <div style="position:relative;">
@@ -656,8 +624,8 @@
                                style="min-height:38px;"
                                oninput="searchWaypoint(this.value)" 
                                onkeydown="handleWaypointKeydown(event)">
-                        <button class="btn btn-success" onclick="addWaypoint()" 
-                                style="font-size:13px; padding:6px 16px; min-height:38px; font-weight:600; white-space:nowrap;">
+                        <button id="addWaypointBtn" class="btn btn-success" onclick="addWaypoint()" 
+                                style="font-size:13px; padding:6px 16px; min-height:38px; font-weight:600; white-space:nowrap; transition:all 0.3s;">
                             ➕ 추가
                         </button>
                     </div>
