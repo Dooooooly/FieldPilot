@@ -2341,16 +2341,16 @@ function openKakaoMap(fromName, fromLat, fromLng, toName, toLat, toLng) {
         + '/to/' 
         + encodeURIComponent(toName) + ',' + toLat + ',' + toLng;
     
-    // 🔥 모바일에서는 카카오맵 앱 스킴 사용
-    var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if (isMobile) {
-        var appUrl = url.replace('https://map.kakao.com/link/', 'kakaomap://');
+    // 🔥 모바일: 앱 스킴만 실행 (웹 절대 열지 않음)
+    if (isMobile()) {
+        var appUrl = 'kakaomap://from/' 
+            + encodeURIComponent(fromName) + ',' + fromLat + ',' + fromLng 
+            + '/to/' 
+            + encodeURIComponent(toName) + ',' + toLat + ',' + toLng;
         window.location.href = appUrl;
-        // 앱이 없으면 웹으로 fallback
-        setTimeout(function() {
-            window.open(url, '_blank');
-        }, 500);
+        // ❌ 웹 fallback 제거 (앱이 없으면 아무 일도 안 일어남)
     } else {
+        // 🔥 PC: 웹 URL로 새 창 열기
         window.open(url, '_blank');
     }
     
@@ -3781,22 +3781,55 @@ function openKakaoMapFromPlace(id) {
         showTabStatus('tab-list', '🗺️ 카카오맵에서 "' + place.name + '" 위치 열기', 'info');
     }
     
-    // 🔥 모바일에서는 카카오맵 앱 스킴 사용
-    var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if (isMobile) {
+    if (isMobile()) {
         var appUrl = url.replace('https://map.kakao.com/link/', 'kakaomap://');
         window.location.href = appUrl;
-        // 앱이 없으면 웹으로 fallback
-        setTimeout(function() {
-            window.open(url, '_blank');
-        }, 500);
     } else {
         window.open(url, '_blank');
     }
 }
 // ============================================================
-// 지역 관리 팝업 (추가 + 삭제 + 선택)
+// 지도탭 - 현재 표시된 현장을 카카오맵에서 열기
 // ============================================================
+
+function openCurrentPlaceInKakaoMap() {
+    if (!currentPlaceId) {
+        showTabStatus('tab-route', '⚠️ 표시된 현장이 없습니다.', 'warning');
+        return;
+    }
+    
+    var place = places.find(function(p) { return p.id === currentPlaceId; });
+    if (!place) {
+        showTabStatus('tab-route', '❌ 현장을 찾을 수 없습니다.', 'error');
+        return;
+    }
+    
+    if (!place.lat || !place.lng || place.lat === 0 || place.lng === 0) {
+        showTabStatus('tab-route', '⚠️ "' + place.name + '"의 좌표가 없습니다.', 'warning');
+        return;
+    }
+    
+    var url;
+    if (startPoint && startPoint.lat && startPoint.lng) {
+        url = 'https://map.kakao.com/link/from/' 
+            + encodeURIComponent(startPoint.name) + ',' + startPoint.lat + ',' + startPoint.lng 
+            + '/to/' 
+            + encodeURIComponent(place.name) + ',' + place.lat + ',' + place.lng;
+        showTabStatus('tab-route', '🗺️ 카카오맵 길찾기: ' + startPoint.name + ' → ' + place.name, 'info');
+    } else {
+        url = 'https://map.kakao.com/link/map/' + encodeURIComponent(place.name) + ',' + place.lat + ',' + place.lng;
+        showTabStatus('tab-route', '🗺️ 카카오맵에서 "' + place.name + '" 위치 열기', 'info');
+    }
+    
+    // 🔥 모바일: 앱 스킴만 실행 (웹 안 열림)
+    if (isMobile()) {
+        var appUrl = url.replace('https://map.kakao.com/link/', 'kakaomap://');
+        window.location.href = appUrl;
+    } else {
+        // 🔥 PC: 웹 URL로 새 창 열기
+        window.open(url, '_blank');
+    }
+}
 
 // ============================================================
 // 지역 관리 팝업
