@@ -1249,7 +1249,7 @@ function selectAddress(name, address, lat, lng) {
 // 7. 현장 관리
 // ============================================================
 
-ffunction applySort() {
+function applySort() {
     var sortSelect = document.getElementById('sortPlaces');
     if (sortSelect) {
         var newSort = sortSelect.value;
@@ -1261,7 +1261,6 @@ ffunction applySort() {
 }
 
 function getSortedPlaces() {
-    // 🔥 places가 없으면 빈 배열 반환
     if (!places || places.length === 0) {
         return [];
     }
@@ -1299,7 +1298,6 @@ function renderPlaces(filtered) {
     
     var data = filtered || getSortedPlaces();
     
-    // 🔥 데이터가 없으면 빈 메시지 표시
     if (!data || data.length === 0) {
         list.innerHTML = '<div class="empty-msg">등록된 현장이 없습니다</div>';
         var countEl = document.getElementById('listCount');
@@ -1307,7 +1305,6 @@ function renderPlaces(filtered) {
         return;
     }
     
-    // 🔥 카운트 업데이트
     var countEl = document.getElementById('listCount');
     if (countEl) countEl.textContent = '(' + data.length + '개)';
     
@@ -1343,7 +1340,6 @@ function searchPlaces() {
         return (p.name && p.name.includes(keyword)) || (p.address && p.address.includes(keyword));
     });
     
-    // 🔥 검색 결과도 정렬 적용 (즐겨찾기 우선)
     var sortedResults = [...results];
     if (currentSort === 'name-asc' || currentSort === 'favorite') {
         sortedResults.sort(function(a, b) {
