@@ -140,11 +140,20 @@ function switchTab(tabId) {
     if (targetContent) targetContent.classList.add('active');
     var targetTab = document.querySelector('.bottom-tab[data-tab="' + tabId + '"]');
     if (targetTab) targetTab.classList.add('active');
+    
     if (tabId === 'tab-route') {
         setTimeout(function() {
-            if (kakaoMap) { kakaoMap.relayout(); } 
-            else { initMap(); }
+            if (kakaoMap) {
+                // ===== 🔥 지도 탭 전환 시 드래그 강제 활성화 =====
+                kakaoMap.setDraggable(true);
+                kakaoMap.setZoomable(true);
+                kakaoMap.relayout();
+                console.log('🗺️ 지도 탭 전환 - 드래그 활성화');
+            } else {
+                initMap();
+            }
         }, 100);
+        return;
     }
     if (tabId === 'tab-list') renderPlaces();
 }
@@ -738,9 +747,10 @@ function selectStartPoint(name, address, lat, lng) {
         clearRouteMarkers();
         clearSingleMarker();
         isShowingRouteMarkers = false;
-        addRouteMarker(startPoint.lat, startPoint.lng, '🚩 ' + name, true);
+        addRouteMarker(startPoint.lat, startPoint.lng, '🚩 ' + name, true, -1);
         kakaoMap.setCenter(new kakao.maps.LatLng(startPoint.lat, startPoint.lng));
         kakaoMap.setLevel(5);
+        kakaoMap.relayout();
     }
     showTabStatus('tab-places', '✅ 출발지 "' + name + '" 설정 완료', 'ok');
 }
@@ -1773,6 +1783,15 @@ async function runOptimize() {
         clearRouteMarkers();
         clearSingleMarker();
         isShowingRouteMarkers = true;
+
+        // 출발지 마커 (색상 인덱스 -1)
+        addRouteMarker(startPoint.lat, startPoint.lng, '🚩 ' + startPoint.name, true, -1);
+        
+        // 경유지 마커 (0부터 시작하는 인덱스 전달)
+        for (var i = 0; i < sorted.length; i++) {
+            var p = sorted[i];
+            addRouteMarker(p.lat, p.lng, (i + 1) + '. ' + p.name, false, i);
+        }
         
         var allPoints = [{ 
             name: startPoint.name, 
@@ -1966,10 +1985,11 @@ function showRouteList() {
                 
                 var allPoints = [{ name: startPoint.name, lat: startPoint.lat, lng: startPoint.lng }].concat(routeResult.places);
                 clearRouteMarkers();
-                addRouteMarker(startPoint.lat, startPoint.lng, '🚩 ' + startPoint.name, true);
+                // 🔥 마커 재생성 시 인덱스 전달
+                addRouteMarker(startPoint.lat, startPoint.lng, '🚩 ' + startPoint.name, true, -1);
                 for (var i = 0; i < routeResult.places.length; i++) {
                     var p = routeResult.places[i];
-                    addRouteMarker(p.lat, p.lng, (i + 1) + '. ' + p.name, false);
+                    addRouteMarker(p.lat, p.lng, (i + 1) + '. ' + p.name, false, i);
                 }
                 var restKey = settings.kakaoRestKey;
                 if (restKey) {
@@ -2258,6 +2278,7 @@ function createMap(container) {
                            startPoint.lat > 33 && startPoint.lat < 39 && startPoint.lng > 124 && startPoint.lng < 132 &&
                            !(startPoint.lat === 0 && startPoint.lng === 0);
         if (isStartValid && !singlePlaceMarker && !isShowingRouteMarkers) { centerLat = startPoint.lat; centerLng = startPoint.lng; }
+        
         var options = {
             center: new kakao.maps.LatLng(centerLat, centerLng),
             level: zoomLevel,
@@ -2268,18 +2289,30 @@ function createMap(container) {
             disableKineticPan: false
         };
         kakaoMap = new kakao.maps.Map(container, options);
-        if ('ontouchstart' in window) { kakaoMap.setDraggable(true); kakaoMap.setZoomable(true); }
+        
+        // ===== 🔥 PC 드래그 강제 활성화 =====
+        kakaoMap.setDraggable(true);
+        kakaoMap.setZoomable(true);
+        
+        // ===== 🔥 드래그 이벤트 강제 실행 =====
+        kakaoMap.setCenter(new kakao.maps.LatLng(centerLat, centerLng));
+        kakaoMap.relayout();
+        
         var zoomControl = new kakao.maps.ZoomControl();
         kakaoMap.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
+        
+        // ===== 🔥 추가: mousewheel 이벤트 활성화 =====
+        kakaoMap.setZoomable(true);
+        
         showTabStatus('tab-route', '🗺️ 지도 로드 완료', 'ok');
+        console.log('🗺️ 지도 생성 완료:', centerLat, centerLng);
     } catch(e) {
         console.error('지도 생성 실패:', e);
         container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;color:#e53e3e;font-size:14px;background:#fff5f5;border-radius:12px;padding:20px;text-align:center;">❌ 지도 생성 실패</div>';
         showTabStatus('tab-settings', '⚠️ 지도 생성 실패', 'error');
     }
 }
-
-function addRouteMarker(lat, lng, title, isStart) {
+function addRouteMarker(lat, lng, title, isStart, colorIndex) {
     if (!kakaoMap) return;
     try {
         if (isStart && startMarker) {
@@ -2293,9 +2326,11 @@ function addRouteMarker(lat, lng, title, isStart) {
         var content;
         
         if (isStart) {
+            // ===== 출발지: 흰색 배경 + 검정 글자 (고정) =====
             content = '<div style="background:white;padding:6px 14px;border-radius:20px;box-shadow:0 4px 16px rgba(0,0,0,0.15);font-size:13px;font-weight:700;color:#1a202c;white-space:nowrap;border:2px solid #2d3748;z-index:10;">🚩 ' + escapeHtml(title) + '</div>';
         } else {
-            var idx = routeMarkers.length;
+            // ===== 경유지: 전달받은 인덱스로 색상 선택 =====
+            var idx = (colorIndex !== undefined && colorIndex !== null) ? colorIndex : routeMarkers.length;
             var color = COLORS[idx % COLORS.length];
             content = '<div style="background:' + color + ';padding:6px 14px;border-radius:20px;box-shadow:0 4px 16px rgba(0,0,0,0.15);font-size:13px;font-weight:700;color:white;white-space:nowrap;border:1px solid rgba(255,255,255,0.3);z-index:5;">📍 ' + escapeHtml(title) + '</div>';
         }
