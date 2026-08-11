@@ -65,3 +65,34 @@ self.addEventListener('fetch', function(e) {
             })
     );
 });
+
+self.addEventListener('install', function(event) {
+    event.waitUntil(
+        caches.open(CACHE_NAME).then(function(cache) {
+            return cache.addAll([
+                '/',
+                '/index.html',
+                '/app.js',
+                '/manifest.json'
+            ]);
+        })
+    );
+    // 🔥 새 Service Worker가 설치되면 즉시 활성화
+    self.skipWaiting();
+});
+
+self.addEventListener('activate', function(event) {
+    event.waitUntil(
+        caches.keys().then(function(cacheNames) {
+            return Promise.all(
+                cacheNames.map(function(cacheName) {
+                    if (cacheName !== CACHE_NAME) {
+                        return caches.delete(cacheName);
+                    }
+                })
+            );
+        })
+    );
+    // 🔥 기존 클라이언트를 새 버전으로 제어
+    return self.clients.claim();
+});
