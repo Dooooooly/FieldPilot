@@ -48,61 +48,46 @@
         .header-left h1 { font-size: 17px; font-weight: 700; letter-spacing: -0.5px; }
         .header-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         
-        .weather {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            background: rgba(255,255,255,0.15);
-            padding: 4px 12px;
-            border-radius: 30px;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.25s ease;
-            border: 1px solid rgba(255,255,255,0.08);
-            height: 32px;
-        }
-        .weather:hover { background: rgba(255,255,255,0.25); transform: translateY(-1px); }
-        .weather .temp { font-weight: 700; font-size: 13px; }
-        
-        .header-divider { width: 1px; height: 20px; background: rgba(255,255,255,0.2); flex-shrink: 0; }
-        
-        .region-wrapper {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 30px;
-            padding: 2px 4px 2px 12px;
-            border: 1px solid rgba(255,255,255,0.08);
-            height: 32px;
-        }
-        .region-wrapper select {
-            background: transparent;
-            border: none;
-            color: white;
-            font-size: 12px;
-            padding: 2px 4px;
-            cursor: pointer;
-            outline: none;
-            height: 28px;
-            min-width: 60px;
-        }
-        .region-wrapper select option { background: #2d3748; color: white; }
-        .region-wrapper .btn-add {
-            background: rgba(255,255,255,0.15);
-            border: none;
-            color: white;
-            width: 26px;
-            height: 26px;
-            border-radius: 50%;
-            font-size: 16px;
-            font-weight: 300;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+/* ===== 공통 ===== */
+.weather {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255,255,255,0.15);
+    padding: 4px 12px;
+    border-radius: 30px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    border: 1px solid rgba(255,255,255,0.08);
+    height: 32px;
+}
+.weather:hover { background: rgba(255,255,255,0.25); transform: translateY(-1px); }
+.weather .temp { font-weight: 700; font-size: 13px; }
+
+.header-divider { width: 1px; height: 20px; background: rgba(255,255,255,0.2); flex-shrink: 0; }
+.header-right { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+/* ===== 모바일 ===== */
+@media (max-width: 480px) {
+    .weather {
+        font-size: 11px;
+        padding: 2px 8px;
+        height: 26px;
+    }
+    .weather .temp {
+        font-size: 11px;
+    }
+    .weather #currentRegionName {
+        font-size: 11px;
+    }
+    .weather #currentRegionLabel {
+        font-size: 11px;
+    }
+    .header-divider {
+        height: 16px;
+    }
+}
         .region-wrapper .btn-add:hover { background: rgba(255,255,255,0.25); transform: scale(1.05); }
         .region-wrapper .btn-add:active { transform: scale(0.92); }
         
