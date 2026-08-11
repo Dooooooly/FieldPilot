@@ -2723,15 +2723,22 @@ async function downloadFromGitHub() {
 // 지역 선택 모달 (드롭다운)
 // ============================================================
 
+// ============================================================
+// 지역 선택 드롭다운 모달
+// ============================================================
+
 function showRegionSelectModal(regions, onSelect) {
+    // 기존 모달 제거
     var existing = document.getElementById('regionSelectModal');
     if (existing) existing.remove();
     
+    // 지역 목록을 옵션으로 변환
     var optionsHtml = '';
     regions.forEach(function(region) {
         optionsHtml += '<option value="' + escapeHtml(region) + '">' + escapeHtml(region) + '</option>';
     });
     
+    // 모달 HTML 생성
     var modalHtml = `
         <div id="regionSelectModal" style="
             position: fixed;
@@ -2745,7 +2752,7 @@ function showRegionSelectModal(regions, onSelect) {
             align-items: center;
             padding: 20px;
             animation: fadeIn 0.2s ease;
-        " onclick="if(event.target===this) this.remove()">
+        " onclick="if(event.target===this) { console.log('🔄 모달 배경 클릭 - 닫기'); this.remove(); }">
             <div style="
                 background: white;
                 border-radius: 16px;
@@ -2766,25 +2773,47 @@ function showRegionSelectModal(regions, onSelect) {
                     ${optionsHtml}
                 </select>
                 <div style="display:flex; gap:8px; justify-content:flex-end;">
-                    <button class="btn btn-outline btn-sm" onclick="document.getElementById('regionSelectModal').remove();" style="padding:6px 16px;">취소</button>
-                    <button class="btn btn-primary btn-sm" onclick="
-                        console.log('🔄 다운로드 버튼 클릭됨');
-                        var select = document.getElementById('regionSelectDropdown');
-                        var selected = select.value;
-                        console.log('📥 선택된 지역:', selected);
+                    <button class="btn btn-outline btn-sm" onclick="
+                        console.log('🔄 취소 버튼 클릭 - 닫기');
                         document.getElementById('regionSelectModal').remove();
-                        if(selected && typeof onSelect === 'function') {
-                            console.log('✅ onSelect 함수 호출됨');
-                            onSelect(selected);
-                        } else {
-                            console.log('❌ onSelect 함수 없음 또는 선택 안 됨');
-                        }
-                    " style="padding:6px 16px;">다운로드</button>
+                    " style="padding:6px 16px;">취소</button>
+                    <button class="btn btn-primary btn-sm" id="confirmDownloadBtn" style="padding:6px 16px;">다운로드</button>
                 </div>
             </div>
         </div>
     `;
     document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // 🔥 다운로드 버튼 클릭 이벤트 (addEventListener 사용)
+    var confirmBtn = document.getElementById('confirmDownloadBtn');
+    if (confirmBtn) {
+        // 중복 이벤트 방지를 위해 기존 이벤트 제거 후 추가
+        confirmBtn.replaceWith(confirmBtn.cloneNode(true));
+        var newBtn = document.getElementById('confirmDownloadBtn');
+        newBtn.addEventListener('click', function() {
+            console.log('🔄 다운로드 버튼 클릭됨');
+            var select = document.getElementById('regionSelectDropdown');
+            var selected = select ? select.value : '';
+            console.log('📥 선택된 지역:', selected);
+            
+            // 모달 닫기
+            var modal = document.getElementById('regionSelectModal');
+            if (modal) modal.remove();
+            
+            // 선택된 지역이 있으면 onSelect 콜백 실행
+            if (selected && typeof onSelect === 'function') {
+                console.log('✅ onSelect 함수 호출됨');
+                onSelect(selected);
+            } else {
+                console.log('❌ onSelect 함수 없음 또는 선택 안 됨');
+                if (!selected) {
+                    showTabStatus('tab-settings', '⚠️ 다운로드할 지역을 선택해주세요.', 'warning');
+                }
+            }
+        });
+    } else {
+        console.error('❌ confirmDownloadBtn 요소를 찾을 수 없음');
+    }
 }
 async function showGitHubHistory() {
     var token = settings.githubToken;
