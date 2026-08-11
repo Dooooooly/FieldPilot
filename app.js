@@ -52,6 +52,13 @@ let autoSyncTimer = null;
 let sdkLoading = false;
 let isShowingRouteMarkers = false;
 
+//  검색 인덱스 상태 (키보드 네비게이션용)
+const searchIndexState = {
+    selected: -1,
+    waypoint: -1,
+    addr: -1
+};
+
 // ============================================================
 // 1. 유틸리티 함수
 // ============================================================
