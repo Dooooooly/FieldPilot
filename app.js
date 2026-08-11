@@ -2742,45 +2742,134 @@ async function uploadToGitHub(silent) {
         if (!silent) showTabStatus('tab-settings', '⚠️ GitHub 토큰이 없습니다.', 'warning');
         return;
     }
+    
+    if (!currentRegion || currentRegion.trim() === '') {
+        if (!silent) showTabStatus('tab-settings', '⚠️ 현재 선택된 지역이 없습니다.', 'warning');
+        return;
+    }
+    
     try {
         if (!silent) showTabStatus('tab-settings', '☁️ GitHub 업로드 중...', 'info');
-        var userRes = await fetch('https://api.github.com/user', { headers: { 'Authorization': 'token ' + token } });
-        if (!userRes.ok) throw new Error('토큰 인증 실패');
+        
+        // 1. 토큰 인증
+        var userRes = await fetch('https://api.github.com/user', {
+            headers: { 'Authorization': 'token ' + token }
+        });
+        if (!userRes.ok) {
+            throw new Error('토큰 인증 실패: ' + userRes.status);
+        }
         var user = await userRes.json();
         var username = user.login;
+        
         var repoName = 'route-data';
         var fileName = currentRegion + '.json';
         var content = JSON.stringify(places, null, 2);
         var b64Content = utf8ToBase64(content);
+        
+        // 2. 저장소 확인 (없으면 생성)
         var repoUrl = 'https://api.github.com/repos/' + username + '/' + repoName;
-        var repoRes = await fetch(repoUrl, { headers: { 'Authorization': 'token ' + token } });
+        var repoRes = await fetch(repoUrl, {
+            headers: { 'Authorization': 'token ' + token }
+        });
+        
         if (repoRes.status === 404) {
             var isPrivate = confirm('📢 GitHub 저장소를 비공개로 생성하시겠습니까?\n(취소 시 공개 저장소로 생성됩니다)');
             var createRes = await fetch('https://api.github.com/user/repos', {
                 method: 'POST',
-                headers: { 'Authorization': 'token ' + token, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: repoName, description: '경로 최적화 데이터 저장소', private: isPrivate, auto_init: true })
+                headers: {
+                    'Authorization': 'token ' + token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: repoName,
+                    description: '경로 최적화 데이터 저장소',
+                    private: !!isPrivate,
+                    auto_init: true
+                })
             });
             if (!createRes.ok) throw new Error('저장소 생성 실패');
-            if (!silent) showTabStatus('tab-settings', '✅ 저장소 생성됨: ' + repoName + (isPrivate ? ' (비공개)' : ' (공개)'), 'ok');
-            await new Promise(resolve => setTimeout(resolve, 3000));
-        } else if (!repoRes.ok) throw new Error('저장소 확인 실패: ' + repoRes.status);
+            if (!silent) showTabStatus('tab-settings', '✅ 저장소 생성됨: ' + repoName, 'ok');
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        } else if (!repoRes.ok) {
+            throw new Error('저장소 확인 실패: ' + repoRes.status);
+        }
+        
+        // 3. 파일 업로드 (SHA 가져오기)
         var fileUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents/' + encodeURIComponent(fileName);
-        var fileRes = await fetch(fileUrl, { headers: { 'Authorization': 'token ' + token } });
+        var fileRes = await fetch(fileUrl, {
+            headers: { 'Authorization': 'token ' + token }
+        });
+        
         var sha = null;
-        if (fileRes.ok) { var fileData = await fileRes.json(); sha = fileData.sha; }
-        var putData = { message: 'Auto sync: ' + currentRegion + ' (' + new Date().toLocaleString() + ')', content: b64Content };
+        if (fileRes.ok) {
+            var fileData = await fileRes.json();
+            sha = fileData.sha;
+        }
+        
+        // 4. PUT 요청 준비
+        var putData = {
+            message: 'Auto sync: ' + currentRegion + ' (' + new Date().toLocaleString() + ')',
+            content: b64Content
+        };
         if (sha) putData.sha = sha;
+        
         var putRes = await fetch(fileUrl, {
             method: 'PUT',
-            headers: { 'Authorization': 'token ' + token, 'Content-Type': 'application/json' },
+            headers: {
+                'Authorization': 'token ' + token,
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify(putData)
         });
-        if (!putRes.ok) throw new Error('업로드 실패');
-        if (!silent) showTabStatus('tab-settings', '✅ GitHub 업로드 완료! (' + places.length + '개)', 'ok');
+        
+        // ===== 🔥 409 Conflict 처리 =====
+        if (putRes.status === 409) {
+            console.warn('⚠️ 409 Conflict 발생, 최신 SHA 재조회 후 재시도...');
+            
+            // 최신 SHA 다시 가져오기
+            var retryFileRes = await fetch(fileUrl, {
+                headers: { 'Authorization': 'token ' + token }
+            });
+            if (retryFileRes.ok) {
+                var retryData = await retryFileRes.json();
+                putData.sha = retryData.sha;
+                
+                // 재시도
+                putRes = await fetch(fileUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': 'token ' + token,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(putData)
+                });
+                
+                if (!putRes.ok) {
+                    var errorText = await putRes.text();
+                    throw new Error('재시도 실패: ' + putRes.status + ' - ' + errorText);
+                }
+            } else {
+                throw new Error('SHA 재조회 실패: ' + retryFileRes.status);
+            }
+        }
+        
+        // ===== 기타 오류 처리 =====
+        if (!putRes.ok) {
+            var errorText = await putRes.text();
+            throw new Error('업로드 실패: ' + putRes.status + ' - ' + errorText);
+        }
+        
+        // ===== 성공 =====
+        if (!silent) {
+            showTabStatus('tab-settings', '✅ GitHub 업로드 완료! (' + places.length + '개)', 'ok');
+        }
+        console.log('✅ GitHub 업로드 성공:', currentRegion);
+        
     } catch(error) {
-        console.error('GitHub 업로드 오류:', error);
-        if (!silent) showTabStatus('tab-settings', '❌ 업로드 실패: ' + error.message, 'error');
+        console.error('❌ GitHub 업로드 오류:', error);
+        if (!silent) {
+            showTabStatus('tab-settings', '❌ 업로드 실패: ' + error.message, 'error');
+        }
     }
 }
 
