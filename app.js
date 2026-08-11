@@ -369,24 +369,58 @@ function importSettings(event) {
 }
 
 // ============================================================
-// 6. 검색 및 출발지/경유지 관리
+// 검색 결과 렌더링 (onclick 강화)
 // ============================================================
 
-async function searchKakaoPlaces(query, size) {
-    size = size || 5;
-    var restKey = settings.kakaoRestKey;
-    if (!query || query.length < 2 || !restKey) return [];
-    try {
-        var res = await fetch(
-            'https://dapi.kakao.com/v2/local/search/keyword.json?query=' + encodeURIComponent(query) + '&size=' + size,
-            { headers: { 'Authorization': 'KakaoAK ' + restKey } }
-        );
-        if (!res.ok) return [];
-        var data = await res.json();
-        return data.documents || [];
-    } catch(e) { return []; }
+function renderSearchResults(container, results, onClickName, isMultiSelect) {
+    if (!results || results.length === 0) {
+        container.style.display = 'none';
+        return;
+    }
+    var html = '';
+    for (var i = 0; i < results.length; i++) {
+        var item = results[i];
+        var sourceLabel = item._source || '카카오맵';
+        var checked = selectedWaypoints.some(function(w) { return w.name === item.place_name; });
+        html += '<div class="result-item" data-name="' + escapeHtml(item.place_name) + '" data-address="' + escapeHtml(item.address_name) + '" data-lat="' + item.y + '" data-lng="' + item.x + '" data-index="' + i + '">';
+        if (isMultiSelect) {
+            html += '<input type="checkbox" class="result-check" ' + (checked ? 'checked' : '') + ' onclick="event.stopPropagation(); toggleWaypointSelection(\'' + escapeHtml(item.place_name) + '\', \'' + escapeHtml(item.address_name) + '\', ' + item.y + ', ' + item.x + ')">';
+        }
+        html += '<div class="result-info"><div>' + escapeHtml(item.place_name) + ' <span class="source">' + sourceLabel + '</span></div>';
+        html += '<div class="addr">' + escapeHtml(item.address_name) + '</div></div></div>';
+    }
+    container.innerHTML = html;
+    container.style.display = 'block';
+    
+    // 🔥 onclick 이벤트 직접 연결 (강화)
+    container.querySelectorAll('.result-item').forEach(function(el) {
+        el.addEventListener('click', function(e) {
+            // 체크박스 클릭은 제외
+            if (e.target.closest('.result-check')) return;
+            
+            var name = this.dataset.name;
+            var address = this.dataset.address;
+            var lat = parseFloat(this.dataset.lat);
+            var lng = parseFloat(this.dataset.lng);
+            
+            // 출발지 검색 결과면 selectStartPoint 호출
+            if (onClickName === 'selectStartPoint') {
+                selectStartPoint(name, address, lat, lng);
+            }
+            // 주소 검색 결과면 selectAddress 호출
+            else if (onClickName === 'selectAddress') {
+                selectAddress(name, address, lat, lng);
+            }
+            // 그 외는 window 함수 호출
+            else {
+                var fn = window[onClickName];
+                if (typeof fn === 'function') {
+                    fn(name, address, lat, lng);
+                }
+            }
+        });
+    });
 }
-
 // ============================================================
 // 검색 결과 렌더링 (체크박스 포함)
 // ============================================================
