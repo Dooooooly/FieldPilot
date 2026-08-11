@@ -3976,6 +3976,17 @@ function deleteRegionFromManager(region) {
         }
     );
 }
+function updateRegionDisplay() {
+    var displayEl = document.getElementById('currentRegionDisplay');
+    if (!displayEl) return;
+    
+    var currentRegion = localStorage.getItem(SELECTED_REGION_KEY);
+    if (currentRegion) {
+        displayEl.textContent = '현재: ' + currentRegion;
+    } else {
+        displayEl.textContent = '현재: 지역 선택';
+    }
+}
 
 function addRegionFromManager() {
     var input = document.getElementById('newRegionInput');
