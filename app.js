@@ -2648,7 +2648,6 @@ async function downloadFromGitHub() {
     
     var region = currentRegion;
     
-    // 현재 지역이 없으면 팝업으로 입력받기
     if (!region) {
         showPromptModal(
             '📥 GitHub 다운로드',
@@ -2664,17 +2663,14 @@ async function downloadFromGitHub() {
                     showTabStatus('tab-settings', '⚠️ 사용할 수 없는 지역명입니다.', 'warning');
                     return;
                 }
-                // 🔥 입력받은 지역으로 다운로드 실행
                 processDownloadFromGitHub(regionInput);
             }
         );
         return;
     }
     
-    // 현재 지역이 있으면 바로 다운로드
     processDownloadFromGitHub(region);
 }
-
 async function showGitHubHistory() {
     var token = settings.githubToken;
     if (!token) { showTabStatus('tab-settings', '⚠️ GitHub 토큰이 없습니다.', 'warning'); return; }
