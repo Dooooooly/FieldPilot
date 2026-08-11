@@ -316,13 +316,12 @@ function loadRegionList() {
         }
     }
     
-    // 🔥 지역이 없으면 "지역 선택"만 표시
+    // 🔥 지역이 없으면 "지역 선택" 표시 (disabled 없이)
     if (regions.length === 0) {
         var defaultOpt = document.createElement('option');
         defaultOpt.value = '';
         defaultOpt.textContent = '📍 지역 선택';
         defaultOpt.selected = true;
-        defaultOpt.disabled = true;
         select.appendChild(defaultOpt);
         return;
     }
@@ -335,18 +334,27 @@ function loadRegionList() {
         select.appendChild(opt);
     }
     
-    // 🔥 저장된 지역 선택
+    // 🔥 저장된 지역 또는 첫 번째 지역 선택 (기본 옵션 없음)
     var savedRegion = localStorage.getItem(SELECTED_REGION_KEY);
+    var selectedRegion = '';
     if (savedRegion && regions.includes(savedRegion)) {
-        select.value = savedRegion;
-        currentRegion = savedRegion;
-        console.log('✅ 저장된 지역 선택:', savedRegion);
+        selectedRegion = savedRegion;
     } else {
-        select.value = regions[0];
-        currentRegion = regions[0];
-        localStorage.setItem(SELECTED_REGION_KEY, currentRegion);
-        console.log('✅ 첫 번째 지역 선택:', currentRegion);
+        selectedRegion = regions[0];
+        localStorage.setItem(SELECTED_REGION_KEY, selectedRegion);
     }
+    
+    // 🔥 강제 선택
+    select.value = selectedRegion;
+    for (var i = 0; i < select.options.length; i++) {
+        if (select.options[i].value === selectedRegion) {
+            select.selectedIndex = i;
+            break;
+        }
+    }
+    
+    currentRegion = selectedRegion;
+    console.log('✅ 지역 선택 완료:', currentRegion);
     
     // 데이터 로드
     var key = getStorageKey(currentRegion);
@@ -361,8 +369,6 @@ function loadRegionList() {
         kakaoMap.setLevel(5);
         kakaoMap.relayout();
     }
-    
-    console.log('✅ 지역 로드 완료:', currentRegion, '현장 수:', places.length);
 }
 
 function switchRegion(region) {
@@ -531,16 +537,17 @@ function deleteRegion() {
         return;
     }
     
-    // 🔥 옵션이 1개 이하인 경우 (기본 옵션만 있는 경우)
     if (select.options.length <= 1) {
         showTabStatus('tab-settings', '⚠️ 삭제할 지역이 없습니다.', 'warning');
         return;
     }
     
+    // 🔥 showConfirmModal 호출
     showConfirmModal(
         '🗑️ 지역 삭제',
         '"' + currentRegion + '" 지역을 삭제하시겠습니까?\n해당 지역의 모든 현장 데이터도 함께 삭제됩니다.',
         function() {
+            // 🔥 확인 콜백 - 여기서 삭제 실행
             var key = getStorageKey(currentRegion);
             localStorage.removeItem(key);
             
@@ -558,13 +565,11 @@ function deleteRegion() {
                 switchRegion(newRegion);
                 showTabStatus('tab-settings', '✅ "' + currentRegion + '" 지역 삭제됨', 'ok');
             } else {
-                // 모든 지역 삭제 시
                 select.innerHTML = '';
                 var defaultOpt = document.createElement('option');
                 defaultOpt.value = '';
                 defaultOpt.textContent = '📍 지역 선택';
                 defaultOpt.selected = true;
-                defaultOpt.disabled = true;
                 select.appendChild(defaultOpt);
                 currentRegion = '';
                 localStorage.removeItem(SELECTED_REGION_KEY);
@@ -1579,7 +1584,7 @@ function showConfirmModal(title, message, onConfirm, onCancel) {
             background: rgba(0,0,0,0.5);
             backdrop-filter: blur(4px);
             -webkit-backdrop-filter: blur(4px);
-            z-index: 999999;
+            z-index: 9999999;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -1598,12 +1603,21 @@ function showConfirmModal(title, message, onConfirm, onCancel) {
                 <p style="font-size:14px; color:#4a5568; margin-bottom:20px; line-height:1.6;">${escapeHtml(message)}</p>
                 <div style="display:flex; gap:8px; justify-content:flex-end;">
                     <button class="btn btn-outline btn-sm" onclick="document.getElementById('confirmModal').remove(); if(typeof onCancel==='function') onCancel();" style="padding:6px 16px;">취소</button>
-                    <button class="btn btn-primary btn-sm" onclick="document.getElementById('confirmModal').remove(); if(typeof onConfirm==='function') onConfirm();" style="padding:6px 16px;">확인</button>
+                    <button class="btn btn-primary btn-sm" onclick="
+                        document.getElementById('confirmModal').remove(); 
+                        if(typeof onConfirm==='function') {
+                            console.log('✅ 확인 버튼 클릭 - onConfirm 실행');
+                            onConfirm();
+                        } else {
+                            console.log('❌ onConfirm 함수 없음');
+                        }
+                    " style="padding:6px 16px;">확인</button>
                 </div>
             </div>
         </div>
     `;
     document.body.insertAdjacentHTML('beforeend', modalHtml);
+    console.log('✅ confirmModal 표시됨');
 }
 // ============================================================
 // 기존 confirm 사용 함수들을 모달로 변경
@@ -3775,54 +3789,24 @@ function openKakaoMapFromPlace(id) {
 // 지역 관리 팝업 (추가 + 삭제 + 선택)
 // ============================================================
 
+// ============================================================
+// 지역 관리 팝업
+// ============================================================
+
 function openRegionManager() {
     var existing = document.getElementById('regionManagerModal');
-    if (existing) {
-        existing.remove();
-        return;
-    }
+    if (existing) existing.remove();
     
+    // 현재 지역 목록 가져오기
     var select = document.getElementById('regionSelect');
-    var currentRegion = select.value || '';
-    
-    // 지역 목록 가져오기
     var regions = [];
     for (var i = 0; i < select.options.length; i++) {
-        regions.push(select.options[i].value);
-    }
-    
-    var listHtml = '';
-    if (regions.length === 0) {
-        listHtml = '<div style="text-align:center;color:#a0aec0;padding:12px;">등록된 지역이 없습니다</div>';
-    } else {
-        for (var i = 0; i < regions.length; i++) {
-            var r = regions[i];
-            var isActive = (r === currentRegion);
-            listHtml += `
-                <div style="
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    padding: 8px 12px;
-                    margin-bottom: 4px;
-                    background: ${isActive ? '#ebf8ff' : '#f7fafc'};
-                    border-radius: 6px;
-                    border-left: 3px solid ${isActive ? '#4f7eb3' : 'transparent'};
-                    cursor: pointer;
-                    transition: background 0.15s;
-                " onclick="selectRegionFromManager('${escapeHtml(r)}')" 
-                   onmouseover="this.style.background='#edf2f7'" 
-                   onmouseout="this.style.background='${isActive ? '#ebf8ff' : '#f7fafc'}'">
-                    <span style="font-weight:${isActive ? '600' : '400'};">
-                        ${isActive ? '📍 ' : ''}${escapeHtml(r)}
-                    </span>
-                    <button onclick="event.stopPropagation(); deleteRegionFromManager('${escapeHtml(r)}')" 
-                            style="background:none; border:none; color:#e53e3e; font-size:16px; cursor:pointer; padding:0 4px;" 
-                            title="지역 삭제">✕</button>
-                </div>
-            `;
+        if (select.options[i].value) {
+            regions.push(select.options[i].value);
         }
     }
+    
+    var current = currentRegion || '선택된 지역 없음';
     
     var modalHtml = `
         <div id="regionManagerModal" style="
@@ -3831,55 +3815,98 @@ function openRegionManager() {
             background: rgba(0,0,0,0.5);
             backdrop-filter: blur(4px);
             -webkit-backdrop-filter: blur(4px);
-            z-index: 99999;
+            z-index: 999999;
             display: flex;
             justify-content: center;
             align-items: center;
             padding: 20px;
             animation: fadeIn 0.2s ease;
-        " onclick="if(event.target===this) document.getElementById('regionManagerModal').remove()">
+        " onclick="if(event.target===this) this.remove()">
             <div style="
                 background: white;
                 border-radius: 16px;
                 padding: 24px;
-                max-width: 360px;
+                max-width: 400px;
                 width: 100%;
-                max-height: 80vh;
-                display: flex;
-                flex-direction: column;
                 box-shadow: 0 20px 60px rgba(0,0,0,0.2);
             " onclick="event.stopPropagation()">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                    <h3 style="font-size:17px; font-weight:700; color:#1a202c;">📍 지역 관리</h3>
-                    <button onclick="document.getElementById('regionManagerModal').remove()" 
-                            style="background:none; border:none; font-size:20px; cursor:pointer; color:#a0aec0;">&times;</button>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                    <h3 style="font-size:18px; font-weight:700; color:#1a202c;">📍 지역 관리</h3>
+                    <button onclick="document.getElementById('regionManagerModal').remove();" style="background:none; border:none; font-size:22px; cursor:pointer; color:#a0aec0;">&times;</button>
                 </div>
-                
-                <div style="flex:1; overflow-y:auto; margin-bottom:12px; max-height:300px;">
-                    ${listHtml}
+                <p style="font-size:14px; color:#4a5568; margin-bottom:16px;">
+                    현재 지역: <strong>${escapeHtml(current)}</strong>
+                </p>
+                <div style="display:flex; gap:8px; margin-bottom:16px;">
+                    <input id="newRegionInput" type="text" placeholder="새 지역명 입력" 
+                           style="flex:1; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:14px;"
+                           onkeydown="if(event.key==='Enter') document.getElementById('regionAddBtn').click();">
+                    <button id="regionAddBtn" class="btn btn-primary btn-sm" onclick="
+                        var input = document.getElementById('newRegionInput');
+                        var name = input ? input.value.trim() : '';
+                        if(!name){ alert('지역명을 입력하세요.'); return; }
+                        var region = name.replace(/[\/\\:*?\"<>|]/g, '');
+                        if(!region){ alert('사용할 수 없는 지역명입니다.'); return; }
+                        var select = document.getElementById('regionSelect');
+                        for(var i=0;i<select.options.length;i++){
+                            if(select.options[i].value === region){
+                                alert('이미 존재하는 지역입니다.');
+                                return;
+                            }
+                        }
+                        var key = getStorageKey(region);
+                        localStorage.setItem(key, JSON.stringify([]));
+                        var opt = document.createElement('option');
+                        opt.value = region;
+                        opt.textContent = region;
+                        select.appendChild(opt);
+                        select.value = region;
+                        switchRegion(region);
+                        document.getElementById('regionManagerModal').remove();
+                        showTabStatus('tab-settings', '✅ "'+region+'" 지역 추가됨', 'ok');
+                    " style="padding:6px 16px;">추가</button>
                 </div>
-                
-                <div style="border-top:1px solid #e2e8f0; padding-top:12px;">
-                    <div style="display:flex; gap:6px;">
-                        <input id="newRegionInput" type="text" placeholder="새 지역명 입력" 
-                               style="flex:1; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px;"
-                               onkeydown="if(event.key==='Enter') addRegionFromManager()">
-                        <button onclick="addRegionFromManager()" 
-                                style="padding:8px 14px; background:#4f7eb3; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:600;">
-                            추가
-                        </button>
-                    </div>
+                <div style="max-height:200px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:8px;">
+                    ${regions.length === 0 ? '<div style="padding:12px; color:#a0aec0; text-align:center;">등록된 지역이 없습니다</div>' : ''}
+                    ${regions.map(function(r) {
+                        return '<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; border-bottom:1px solid #f0f2f5;">' +
+                            '<span style="font-size:14px; font-weight:500;">' + escapeHtml(r) + (r === current ? ' <span style="font-size:11px; color:#4f7eb3;">(현재)</span>' : '') + '</span>' +
+                            '<button class="btn btn-danger btn-sm" onclick="' +
+                                'if(confirm(\'"' + r + '" 지역을 삭제하시겠습니까? 해당 지역의 모든 데이터가 삭제됩니다.\')){' +
+                                    'var select = document.getElementById(\'regionSelect\');' +
+                                    'var key = getStorageKey(\'' + r + '\'); localStorage.removeItem(key);' +
+                                    'for(var i=0;i<select.options.length;i++){ if(select.options[i].value===\'' + r + '\'){ select.remove(i); break; } }' +
+                                    'if(select.options.length > 0){ var newRegion = select.options[0].value; select.value = newRegion; switchRegion(newRegion); }' +
+                                    'else { select.innerHTML = \'\'; var opt = document.createElement(\'option\'); opt.value = \'\'; opt.textContent = \'📍 지역 선택\'; opt.selected = true; select.appendChild(opt); currentRegion = \'\'; localStorage.removeItem(SELECTED_REGION_KEY); places = []; renderPlaces(); }' +
+                                    'document.getElementById(\'regionManagerModal\').remove();' +
+                                    'showTabStatus(\'tab-settings\', \'✅ "' + r + '" 지역 삭제됨\', \'ok\');' +
+                                '}' +
+                            '" style="padding:2px 10px; font-size:11px; background:#e53e3e; color:white; border:none; border-radius:4px; cursor:pointer;">삭제</button>' +
+                        '</div>';
+                    }).join('')}
+                </div>
+                <div style="margin-top:12px; text-align:center; font-size:12px; color:#a0aec0;">
+                    지역을 클릭하면 해당 지역으로 전환됩니다
+                </div>
+                <div style="margin-top:12px; display:flex; justify-content:flex-end;">
+                    <button class="btn btn-outline btn-sm" onclick="document.getElementById('regionManagerModal').remove();" style="padding:6px 16px;">닫기</button>
                 </div>
             </div>
         </div>
     `;
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     
-    // 입력창에 포커스
-    setTimeout(function() {
-        var input = document.getElementById('newRegionInput');
-        if (input) input.focus();
-    }, 200);
+    // 지역 클릭 시 전환 기능
+    document.querySelectorAll('#regionManagerModal .region-item-click').forEach(function(el) {
+        el.addEventListener('click', function() {
+            var region = this.dataset.region;
+            if (region) {
+                switchRegion(region);
+                document.getElementById('regionManagerModal').remove();
+                showTabStatus('tab-settings', '📍 "' + region + '" 지역으로 전환됨', 'info');
+            }
+        });
+    });
 }
 
 // ============================================================
