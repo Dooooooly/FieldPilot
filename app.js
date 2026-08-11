@@ -2518,3 +2518,35 @@ function handleAddrKeydown(event) {
         results[i].style.background = i === index ? '#bee3f8' : '';
     }
 }
+// ============================================================
+// 검색 결과 팝업 외부 클릭 시 닫기
+// ============================================================
+
+document.addEventListener('click', function(event) {
+    // 출발지 검색 결과
+    var startContainer = document.getElementById('startSearchResults');
+    var startInput = document.getElementById('startPoint');
+    if (startContainer && startContainer.style.display === 'block') {
+        if (!startContainer.contains(event.target) && event.target !== startInput) {
+            startContainer.style.display = 'none';
+        }
+    }
+    
+    // 경유지 검색 결과
+    var waypointContainer = document.getElementById('waypointSearchResults');
+    var waypointInput = document.getElementById('waypointInput');
+    if (waypointContainer && waypointContainer.style.display === 'block') {
+        if (!waypointContainer.contains(event.target) && event.target !== waypointInput) {
+            waypointContainer.style.display = 'none';
+        }
+    }
+    
+    // 주소 검색 결과
+    var addrContainer = document.getElementById('addrSearchResults');
+    var addrInput = document.getElementById('newPlaceAddr');
+    if (addrContainer && addrContainer.style.display === 'block') {
+        if (!addrContainer.contains(event.target) && event.target !== addrInput) {
+            addrContainer.style.display = 'none';
+        }
+    }
+});
