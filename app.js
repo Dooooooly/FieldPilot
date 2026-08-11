@@ -359,35 +359,59 @@ function switchRegion(region) {
 }
 
 function addRegion() {
-    var name = prompt('새 지역명을 입력하세요:', '');
-    if (name && name.trim()) {
-        var region = name.trim().replace(/[\/\\:*?"<>|]/g, '');
-        if (!region) {
-            showTabStatus('tab-settings', '⚠️ 사용할 수 없는 지역명입니다.', 'warning');
-            return;
-        }
-        var select = document.getElementById('regionSelect');
-        if (!select) {
-            console.error('❌ regionSelect 요소 없음');
-            showTabStatus('tab-settings', '⚠️ 오류 발생, 새로고침 후 다시 시도하세요.', 'error');
-            return;
-        }
-        for (var i = 0; i < select.options.length; i++) {
-            if (select.options[i].value === region) {
-                showTabStatus('tab-settings', '⚠️ 이미 존재하는 지역입니다.', 'warning');
+    console.log('🔄 addRegion 호출됨');
+    
+    // 🔥 내부 모달로 변경 (prompt 대신)
+    showPromptModal(
+        '📍 지역 추가',
+        '새 지역명을 입력하세요:',
+        '',
+        function(region) {
+            console.log('📥 입력된 지역명:', region);
+            
+            if (!region || !region.trim()) {
+                showTabStatus('tab-settings', '⚠️ 지역명을 입력하세요.', 'warning');
                 return;
             }
+            
+            region = region.trim().replace(/[\/\\:*?"<>|]/g, '');
+            if (!region) {
+                showTabStatus('tab-settings', '⚠️ 사용할 수 없는 지역명입니다. (특수문자 제외)', 'warning');
+                return;
+            }
+            
+            var select = document.getElementById('regionSelect');
+            if (!select) {
+                console.error('❌ regionSelect 요소 없음');
+                showTabStatus('tab-settings', '⚠️ 오류가 발생했습니다. 새로고침 후 다시 시도하세요.', 'error');
+                return;
+            }
+            
+            // 중복 체크
+            for (var i = 0; i < select.options.length; i++) {
+                if (select.options[i].value === region) {
+                    showTabStatus('tab-settings', '⚠️ 이미 존재하는 지역입니다.', 'warning');
+                    return;
+                }
+            }
+            
+            // 지역 저장
+            var key = getStorageKey(region);
+            localStorage.setItem(key, JSON.stringify([]));
+            
+            // 드롭다운에 추가
+            var opt = document.createElement('option');
+            opt.value = region;
+            opt.textContent = region;
+            select.appendChild(opt);
+            select.value = region;
+            
+            // 지역 전환
+            switchRegion(region);
+            showTabStatus('tab-settings', '✅ "' + region + '" 지역 추가됨', 'ok');
+            console.log('✅ 지역 추가 완료:', region);
         }
-        var key = getStorageKey(region);
-        localStorage.setItem(key, JSON.stringify([]));
-        var opt = document.createElement('option');
-        opt.value = region;
-        opt.textContent = region;
-        select.appendChild(opt);
-        select.value = region;
-        switchRegion(region);
-        showTabStatus('tab-settings', '✅ "' + region + '" 지역 추가됨', 'ok');
-    }
+    );
 }
 
 // ============================================================
@@ -2655,11 +2679,7 @@ async function uploadToGitHub(silent) {
 // ============================================================
 
 async function downloadFromGitHub() {
-    console.log('📥 downloadFromGitHub 호출됨');
-    
     var token = settings.githubToken;
-    console.log('🔑 토큰:', token ? '있음 (길이: ' + token.length + ')' : '없음');
-    
     if (!token) {
         showTabStatus('tab-settings', '⚠️ GitHub 토큰이 없습니다.', 'warning');
         return;
@@ -2667,29 +2687,19 @@ async function downloadFromGitHub() {
     
     try {
         showTabStatus('tab-settings', '☁️ GitHub 저장소 목록 불러오는 중...', 'info');
-        console.log('📡 GitHub 저장소 목록 요청 시작...');
         
         var userRes = await fetch('https://api.github.com/user', {
             headers: { 'Authorization': 'token ' + token }
         });
-        console.log('📡 사용자 정보 응답:', userRes.status);
-        
-        if (!userRes.ok) {
-            showTabStatus('tab-settings', '❌ 토큰 인증 실패', 'error');
-            return;
-        }
+        if (!userRes.ok) throw new Error('토큰 인증 실패');
         var user = await userRes.json();
         var username = user.login;
-        console.log('✅ 인증 성공:', username);
         
         var repoName = 'route-data';
         var repoUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents';
-        console.log('📡 저장소 URL:', repoUrl);
-        
         var repoRes = await fetch(repoUrl, {
             headers: { 'Authorization': 'token ' + token }
         });
-        console.log('📡 저장소 응답:', repoRes.status);
         
         if (repoRes.status === 404) {
             showTabStatus('tab-settings', '📭 GitHub에 저장된 데이터가 없습니다.\n먼저 "업로드"를 실행하세요.', 'warning');
@@ -2701,14 +2711,11 @@ async function downloadFromGitHub() {
         }
         
         var files = await repoRes.json();
-        console.log('📂 파일 목록:', files);
-        
         var regions = [];
         files.forEach(function(file) {
             if (file.name.endsWith('.json') && file.name !== '.json') {
                 var region = file.name.replace('.json', '');
                 regions.push(region);
-                console.log('📌 발견된 지역:', region);
             }
         });
         
@@ -2717,9 +2724,7 @@ async function downloadFromGitHub() {
             return;
         }
         
-        console.log('📋 표시할 지역 목록:', regions);
         showRegionSelectModal(regions, function(selectedRegion) {
-            console.log('📥 선택된 지역:', selectedRegion);
             if (selectedRegion) {
                 processDownloadFromGitHub(selectedRegion);
             }
@@ -2730,26 +2735,20 @@ async function downloadFromGitHub() {
         showTabStatus('tab-settings', '❌ 목록 조회 실패: ' + error.message, 'error');
     }
 }
-// ============================================================
-// 지역 선택 모달 (드롭다운)
-// ============================================================
 
 // ============================================================
 // 지역 선택 드롭다운 모달
 // ============================================================
 
 function showRegionSelectModal(regions, onSelect) {
-    // 기존 모달 제거
     var existing = document.getElementById('regionSelectModal');
     if (existing) existing.remove();
     
-    // 지역 목록을 옵션으로 변환
     var optionsHtml = '';
     regions.forEach(function(region) {
         optionsHtml += '<option value="' + escapeHtml(region) + '">' + escapeHtml(region) + '</option>';
     });
     
-    // 모달 HTML 생성
     var modalHtml = `
         <div id="regionSelectModal" style="
             position: fixed;
@@ -2763,7 +2762,7 @@ function showRegionSelectModal(regions, onSelect) {
             align-items: center;
             padding: 20px;
             animation: fadeIn 0.2s ease;
-        " onclick="if(event.target===this) { console.log('🔄 모달 배경 클릭 - 닫기'); this.remove(); }">
+        " onclick="if(event.target===this) this.remove()">
             <div style="
                 background: white;
                 border-radius: 16px;
@@ -2784,10 +2783,7 @@ function showRegionSelectModal(regions, onSelect) {
                     ${optionsHtml}
                 </select>
                 <div style="display:flex; gap:8px; justify-content:flex-end;">
-                    <button class="btn btn-outline btn-sm" onclick="
-                        console.log('🔄 취소 버튼 클릭 - 닫기');
-                        document.getElementById('regionSelectModal').remove();
-                    " style="padding:6px 16px;">취소</button>
+                    <button class="btn btn-outline btn-sm" onclick="document.getElementById('regionSelectModal').remove();" style="padding:6px 16px;">취소</button>
                     <button class="btn btn-primary btn-sm" id="confirmDownloadBtn" style="padding:6px 16px;">다운로드</button>
                 </div>
             </div>
@@ -2795,36 +2791,16 @@ function showRegionSelectModal(regions, onSelect) {
     `;
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     
-    // 🔥 다운로드 버튼 클릭 이벤트 (addEventListener 사용)
-    var confirmBtn = document.getElementById('confirmDownloadBtn');
-    if (confirmBtn) {
-        // 중복 이벤트 방지를 위해 기존 이벤트 제거 후 추가
-        confirmBtn.replaceWith(confirmBtn.cloneNode(true));
-        var newBtn = document.getElementById('confirmDownloadBtn');
-        newBtn.addEventListener('click', function() {
-            console.log('🔄 다운로드 버튼 클릭됨');
-            var select = document.getElementById('regionSelectDropdown');
-            var selected = select ? select.value : '';
-            console.log('📥 선택된 지역:', selected);
-            
-            // 모달 닫기
-            var modal = document.getElementById('regionSelectModal');
-            if (modal) modal.remove();
-            
-            // 선택된 지역이 있으면 onSelect 콜백 실행
-            if (selected && typeof onSelect === 'function') {
-                console.log('✅ onSelect 함수 호출됨');
-                onSelect(selected);
-            } else {
-                console.log('❌ onSelect 함수 없음 또는 선택 안 됨');
-                if (!selected) {
-                    showTabStatus('tab-settings', '⚠️ 다운로드할 지역을 선택해주세요.', 'warning');
-                }
-            }
-        });
-    } else {
-        console.error('❌ confirmDownloadBtn 요소를 찾을 수 없음');
-    }
+    document.getElementById('confirmDownloadBtn').addEventListener('click', function() {
+        var select = document.getElementById('regionSelectDropdown');
+        var selected = select.value;
+        document.getElementById('regionSelectModal').remove();
+        if (selected && typeof onSelect === 'function') {
+            onSelect(selected);
+        } else if (!selected) {
+            showTabStatus('tab-settings', '⚠️ 다운로드할 지역을 선택해주세요.', 'warning');
+        }
+    });
 }
 async function showGitHubHistory() {
     var token = settings.githubToken;
