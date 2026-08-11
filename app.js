@@ -389,14 +389,14 @@ function addRegion() {
             
             region = region.trim().replace(/[\/\\:*?"<>|]/g, '');
             if (!region) {
-                showTabStatus('tab-settings', '⚠️ 사용할 수 없는 지역명입니다. (특수문자 제외)', 'warning');
+                showTabStatus('tab-settings', '⚠️ 사용할 수 없는 지역명입니다.', 'warning');
                 return;
             }
             
             var select = document.getElementById('regionSelect');
             if (!select) {
                 console.error('❌ regionSelect 요소 없음');
-                showTabStatus('tab-settings', '⚠️ 오류가 발생했습니다. 새로고침 후 다시 시도하세요.', 'error');
+                showTabStatus('tab-settings', '⚠️ 오류 발생, 새로고침 후 다시 시도하세요.', 'error');
                 return;
             }
             
@@ -408,10 +408,9 @@ function addRegion() {
                 }
             }
             
-            // 🔥 빈 데이터로 지역 저장
+            // 지역 저장
             var key = getStorageKey(region);
             localStorage.setItem(key, JSON.stringify([]));
-            console.log('💾 새 지역 생성:', region);
             
             // 드롭다운에 추가
             var opt = document.createElement('option');
@@ -420,21 +419,8 @@ function addRegion() {
             select.appendChild(opt);
             select.value = region;
             
-            // 🔥 지역 전환 (renderPlaces 호출됨)
-            currentRegion = region;
-            localStorage.setItem(SELECTED_REGION_KEY, region);
-            places = [];
-            renderPlaces();
-            updateStorageInfo();
-            
-            // 지도 이동
-            if (kakaoMap) {
-                var center = getRegionCenter(region);
-                kakaoMap.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
-                kakaoMap.setLevel(5);
-                kakaoMap.relayout();
-            }
-            
+            // 지역 전환
+            switchRegion(region);
             showTabStatus('tab-settings', '✅ "' + region + '" 지역 추가됨', 'ok');
             console.log('✅ 지역 추가 완료:', region);
         }
@@ -2184,10 +2170,33 @@ function moveToRoutePoint(el) {
 }
 
 function openKakaoMap(fromName, fromLat, fromLng, toName, toLat, toLng) {
-    if (!toName || !toLat || !toLng) { showTabStatus('tab-route', '⚠️ 목적지 정보가 없습니다.', 'warning'); return; }
-    if (!fromName || !fromLat || !fromLng) { showTabStatus('tab-route', '⚠️ 출발지 정보가 없습니다.', 'warning'); return; }
-    var url = 'https://map.kakao.com/link/from/' + encodeURIComponent(fromName) + ',' + fromLat + ',' + fromLng + '/to/' + encodeURIComponent(toName) + ',' + toLat + ',' + toLng;
-    window.open(url, '_blank');
+    if (!toName || !toLat || !toLng) { 
+        showTabStatus('tab-route', '⚠️ 목적지 정보가 없습니다.', 'warning'); 
+        return; 
+    }
+    if (!fromName || !fromLat || !fromLng) { 
+        showTabStatus('tab-route', '⚠️ 출발지 정보가 없습니다.', 'warning'); 
+        return; 
+    }
+    
+    var url = 'https://map.kakao.com/link/from/' 
+        + encodeURIComponent(fromName) + ',' + fromLat + ',' + fromLng 
+        + '/to/' 
+        + encodeURIComponent(toName) + ',' + toLat + ',' + toLng;
+    
+    // 🔥 모바일에서는 카카오맵 앱 스킴 사용
+    var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile) {
+        var appUrl = url.replace('https://map.kakao.com/link/', 'kakaomap://');
+        window.location.href = appUrl;
+        // 앱이 없으면 웹으로 fallback
+        setTimeout(function() {
+            window.open(url, '_blank');
+        }, 500);
+    } else {
+        window.open(url, '_blank');
+    }
+    
     showTabStatus('tab-route', '🗺️ 카카오맵 길찾기: ' + fromName + ' → ' + toName, 'info');
 }
 
@@ -3341,8 +3350,14 @@ function showPromptModal(title, message, defaultValue, onConfirm, onCancel) {
         </div>
     `;
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-    document.getElementById('promptInput').focus();
-    document.getElementById('promptInput').select();
+    
+    var input = document.getElementById('promptInput');
+    if (input) {
+        setTimeout(function() {
+            input.focus();
+            input.select();
+        }, 100);
+    }
 }
 function addPreset() {
     if (!startPoint || !startPoint.name) {
@@ -3488,6 +3503,47 @@ async function processDownloadFromGitHub(region) {
     } catch(error) {
         console.error('❌ GitHub 다운로드 오류:', error);
         showTabStatus('tab-settings', '❌ 다운로드 실패: ' + error.message, 'error');
+    }
+}
+// ============================================================
+// 현장탭에서 카카오맵 열기 (모바일 앱 지원)
+// ============================================================
+
+function openKakaoMapFromPlace(id) {
+    var place = places.find(function(p) { return p.id === id; });
+    if (!place) {
+        showTabStatus('tab-list', '❌ 현장을 찾을 수 없습니다.', 'error');
+        return;
+    }
+    
+    if (!place.lat || !place.lng || place.lat === 0 || place.lng === 0) {
+        showTabStatus('tab-list', '⚠️ "' + place.name + '"의 좌표가 없습니다.', 'warning');
+        return;
+    }
+    
+    var url;
+    if (startPoint && startPoint.lat && startPoint.lng) {
+        url = 'https://map.kakao.com/link/from/' 
+            + encodeURIComponent(startPoint.name) + ',' + startPoint.lat + ',' + startPoint.lng 
+            + '/to/' 
+            + encodeURIComponent(place.name) + ',' + place.lat + ',' + place.lng;
+        showTabStatus('tab-list', '🗺️ 카카오맵 길찾기: ' + startPoint.name + ' → ' + place.name, 'info');
+    } else {
+        url = 'https://map.kakao.com/link/map/' + encodeURIComponent(place.name) + ',' + place.lat + ',' + place.lng;
+        showTabStatus('tab-list', '🗺️ 카카오맵에서 "' + place.name + '" 위치 열기', 'info');
+    }
+    
+    // 🔥 모바일에서는 카카오맵 앱 스킴 사용
+    var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile) {
+        var appUrl = url.replace('https://map.kakao.com/link/', 'kakaomap://');
+        window.location.href = appUrl;
+        // 앱이 없으면 웹으로 fallback
+        setTimeout(function() {
+            window.open(url, '_blank');
+        }, 500);
+    } else {
+        window.open(url, '_blank');
     }
 }
 // ============================================================
