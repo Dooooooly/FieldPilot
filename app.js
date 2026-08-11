@@ -27,6 +27,27 @@ const REGION_CENTERS = {
     '세종': { lat: 36.4801, lng: 127.2890 }
 };
 
+// ============================================================
+// 전역 색상 배열 (경로/마커 통일)
+// ============================================================
+
+const COLORS = [
+    '#FF6B6B', // 빨강
+    '#FF9F43', // 주황
+    '#FECA57', // 노랑
+    '#48DBFB', // 하늘
+    '#0ABDE3', // 파랑
+    '#10AC84', // 초록
+    '#EE5A24', // 진주황
+    '#5F27CD', // 보라
+    '#1DD1A1', // 민트
+    '#F368E0', // 분홍
+    '#00D2D3', // 청록
+    '#54A0FF', // 파랑
+    '#FF9FF3', // 연분홍
+    '#F368E0'  // 분홍
+];
+
 // --- 상태 변수 ---
 let currentRegion = localStorage.getItem(SELECTED_REGION_KEY) || '';
 let places = [];
@@ -1687,7 +1708,6 @@ async function runOptimize() {
         
         showTabStatus('tab-places', '📍 주소 변환 중...', 'info');
         
-        // ===== 1. 경유지 좌표 변환 =====
         var wpCoords = [];
         var hasError = false;
         
@@ -1698,20 +1718,17 @@ async function runOptimize() {
             var address = wp.address || '';
             
             if (!lat || !lng) {
-                // 현장리스트에서 찾기
                 var found = places.find(function(p) { return p.name === wp.name; });
                 if (found && found.lat && found.lng) {
                     lat = found.lat;
                     lng = found.lng;
                     address = found.address || '';
                 } else {
-                    // 주소로 geocode
                     var geo = await geocodeAddress(wp.name, restKey, 1);
                     if (geo) {
                         lat = geo.lat;
                         lng = geo.lng;
                         address = geo.address || wp.name;
-                        // 찾은 좌표를 places에 저장
                         var place = places.find(function(p) { return p.name === wp.name; });
                         if (place) {
                             place.lat = lat;
@@ -1745,7 +1762,6 @@ async function runOptimize() {
             return;
         }
         
-        // ===== 2. 경로 최적화 (16방향 클러스터링) =====
         showTabStatus('tab-places', '⚡ 16방향 클러스터링 (' + (optimizeMode === 'Nearest' ? '가까운순' : '먼순') + ')', 'info');
         var sorted = optimizeRouteAlgorithm(validPlaces, startPoint.lat, startPoint.lng, optimizeMode);
         
@@ -1754,7 +1770,6 @@ async function runOptimize() {
             return;
         }
         
-        // ===== 3. 지도 초기화 =====
         clearRouteMarkers();
         clearSingleMarker();
         isShowingRouteMarkers = true;
@@ -1766,17 +1781,14 @@ async function runOptimize() {
             address: startPoint.address || ''
         }].concat(sorted);
         
-        // ===== 4. 마커 표시 =====
         addRouteMarker(startPoint.lat, startPoint.lng, '🚩 ' + startPoint.name, true);
         for (var i = 0; i < sorted.length; i++) {
             var p = sorted[i];
             addRouteMarker(p.lat, p.lng, (i + 1) + '. ' + p.name, false);
         }
         
-        // ===== 5. 카카오모빌리티 API 호출 (경로 데이터) =====
         var routeData = await callKakaoMobilityRoute(allPoints, restKey);
         
-        // ===== 6. 경로 그리기 =====
         if (routeData) {
             drawRoadRoute(routeData);
         } else {
@@ -1784,71 +1796,64 @@ async function runOptimize() {
             showTabStatus('tab-route', '⚠️ 도로 경로를 불러올 수 없어 직선으로 표시합니다.', 'warning');
         }
         
-       // ===== 7. 거리/시간 계산 (API 기준 통일) =====
-var totalKm = 0;
-var totalMin = 0;
-var sectionDistances = [];
-var sectionTimes = [];
-
-if (routeData && routeData.routes && routeData.routes[0] && routeData.routes[0].sections) {
-    // 🔥 API 응답이 있으면 API 데이터 사용
-    var route = routeData.routes[0];
-    
-    // 총 거리/시간
-    if (route.summary) {
-        totalKm = route.summary.distance / 1000;
-        totalMin = Math.round(route.summary.duration / 60);
-    }
-    
-    // 각 구간별 거리/시간 저장 (sections 기준)
-    for (var i = 0; i < route.sections.length; i++) {
-        var section = route.sections[i];
-        var distKm = section.distance / 1000;
-        var timeMin = Math.round(section.duration / 60);
-        sectionDistances.push(distKm);
-        sectionTimes.push(timeMin);
-    }
-    
-    // sections 개수와 경유지 개수 맞추기
-    while (sectionDistances.length < sorted.length) {
-        var idx = sectionDistances.length;
-        var prev = idx === 0 ? startPoint : sorted[idx - 1];
-        var curr = sorted[idx];
-        if (prev && curr) {
-            var dist = haversineKm(prev.lat, prev.lng, curr.lat, curr.lng);
-            sectionDistances.push(dist);
-            sectionTimes.push(Math.round(dist / 40 * 60));
-        } else {
-            sectionDistances.push(0);
-            sectionTimes.push(0);
-        }
-    }
-    
-} else {
-    // ===== API 응답이 없으면 haversine으로 계산 (fallback) =====
-    for (var i = 0; i < allPoints.length - 1; i++) {
-        var p1 = allPoints[i];
-        var p2 = allPoints[i + 1];
-        var dist = haversineKm(p1.lat, p1.lng, p2.lat, p2.lng);
-        totalKm += dist;
-        sectionDistances.push(dist);
-        sectionTimes.push(Math.round(dist / 40 * 60));
-    }
-    totalMin = Math.round(totalKm / 40 * 60);
-}
-
-totalKm = parseFloat(totalKm.toFixed(2));
-totalMin = Math.round(totalMin);
-
-// 각 경유지에 구간 거리/시간 저장 (showRouteList에서 사용)
-for (var i = 0; i < sorted.length; i++) {
-    var dist = sectionDistances[i] || 0;
-    var time = sectionTimes[i] || 0;
-    sorted[i]._segDist = parseFloat(dist.toFixed(2));
-    sorted[i]._segTime = Math.round(time);
-}
+        // ===== 거리/시간 계산 (API 기준) =====
+        var totalKm = 0;
+        var totalMin = 0;
+        var sectionDistances = [];
+        var sectionTimes = [];
         
-        // ===== 8. 결과 저장 =====
+        if (routeData && routeData.routes && routeData.routes[0] && routeData.routes[0].sections) {
+            var route = routeData.routes[0];
+            
+            if (route.summary) {
+                totalKm = route.summary.distance / 1000;
+                totalMin = Math.round(route.summary.duration / 60);
+            }
+            
+            for (var i = 0; i < route.sections.length; i++) {
+                var section = route.sections[i];
+                var distKm = section.distance / 1000;
+                var timeMin = Math.round(section.duration / 60);
+                sectionDistances.push(distKm);
+                sectionTimes.push(timeMin);
+            }
+            
+            while (sectionDistances.length < sorted.length) {
+                var idx = sectionDistances.length;
+                var prev = idx === 0 ? startPoint : sorted[idx - 1];
+                var curr = sorted[idx];
+                if (prev && curr) {
+                    var dist = haversineKm(prev.lat, prev.lng, curr.lat, curr.lng);
+                    sectionDistances.push(dist);
+                    sectionTimes.push(Math.round(dist / 40 * 60));
+                } else {
+                    sectionDistances.push(0);
+                    sectionTimes.push(0);
+                }
+            }
+            
+        } else {
+            for (var i = 0; i < allPoints.length - 1; i++) {
+                var p1 = allPoints[i];
+                var p2 = allPoints[i + 1];
+                var dist = haversineKm(p1.lat, p1.lng, p2.lat, p2.lng);
+                totalKm += dist;
+                sectionDistances.push(dist);
+                sectionTimes.push(Math.round(dist / 40 * 60));
+            }
+            totalMin = Math.round(totalKm / 40 * 60);
+        }
+        
+        totalKm = parseFloat(totalKm.toFixed(2));
+        totalMin = Math.round(totalMin);
+        
+        for (var i = 0; i < sorted.length; i++) {
+            var dist = sectionDistances[i] || 0;
+            var time = sectionTimes[i] || 0;
+            sorted[i]._segDist = parseFloat(dist.toFixed(2));
+            sorted[i]._segTime = Math.round(time);
+        }
+        
         routeResult = {
             places: sorted,
             startPoint: startPoint,
@@ -1857,7 +1862,6 @@ for (var i = 0; i < sorted.length; i++) {
             mode: optimizeMode
         };
         
-        // ===== 9. UI 업데이트 =====
         document.getElementById('placeCount').textContent = validPlaces.length + '개소';
         document.getElementById('totalDistance').textContent = totalKm + ' km';
         document.getElementById('totalTime').textContent = totalMin + ' 분';
@@ -1865,7 +1869,6 @@ for (var i = 0; i < sorted.length; i++) {
         
         showRouteList();
         
-        // ===== 10. 지도 중심을 출발지로 이동 =====
         if (kakaoMap && startPoint && startPoint.lat && startPoint.lng) {
             kakaoMap.setCenter(new kakao.maps.LatLng(startPoint.lat, startPoint.lng));
             kakaoMap.setLevel(5);
@@ -1883,7 +1886,6 @@ for (var i = 0; i < sorted.length; i++) {
             }, 500);
         }
         
-        // ===== 11. 지도탭으로 전환 =====
         switchTab('tab-route');
         showTabStatus('tab-route', '✅ 최적화 완료! ' + validPlaces.length + '개소', 'ok');
         
@@ -1911,22 +1913,19 @@ function showRouteList() {
     var html = '<div style="font-weight:600;font-size:14px;margin-bottom:8px;">📋 최적 경로 (드래그로 순서 변경 가능)</div>';
     html += '<div id="routeSortable">';
     
-    // ===== 출발지 (드래그 불가) =====
+    // 출발지 (드래그 불가)
     html += '<div class="route-item route-start" data-no-drag="true" data-lat="' + startPoint.lat + '" data-lng="' + startPoint.lng + '" data-name="' + escapeHtml(startPoint.name) + '" onclick="moveToRoutePoint(this)" style="cursor:pointer;">';
     html += '<div class="idx" style="background:#4a5568;color:white;">🚩</div>';
     html += '<div class="info"><div class="name">' + escapeHtml(startPoint.name) + '</div><div class="addr">' + escapeHtml(startPoint.address || '') + '</div></div>';
     html += '</div>';
     
-    // ===== 경유지들 (드래그 가능) =====
-    var colors = ['#FF6B6B','#FF9F43','#FECA57','#48DBFB','#0ABDE3','#10AC84','#EE5A24','#5F27CD','#1DD1A1','#F368E0','#00D2D3','#54A0FF','#FF9FF3','#F368E0'];
+    // 경유지들
     for (var i = 0; i < sorted.length; i++) {
         var p = sorted[i];
         var prev = i === 0 ? startPoint : sorted[i - 1];
-        
-        // 🔥 API 기반 거리/시간 사용
         var segDist = p._segDist || haversineKm(prev.lat, prev.lng, p.lat, p.lng);
         var segTime = p._segTime || Math.round(segDist / 40 * 60);
-        var color = colors[i % colors.length];
+        var color = COLORS[i % COLORS.length];
         var addrDisplay = p.address ? '<div class="addr">' + escapeHtml(shortenAddress(p.address)) + '</div>' : '';
         var remarkDisplay = p.remark ? '<span class="remark">' + escapeHtml(p.remark) + '</span>' : '';
         
@@ -1935,30 +1934,36 @@ function showRouteList() {
         html += '<div class="info"><div class="name">' + escapeHtml(p.name) + ' ' + remarkDisplay + '</div>' + addrDisplay + '</div>';
         html += '<div class="dist" style="text-align:right;font-size:12px;font-weight:600;flex-shrink:0;min-width:80px;color:' + color + ';">';
         html += segDist.toFixed(1) + 'km<br><span style="font-size:10px;color:#718096;">' + segTime + '분</span></div>';
-        
-        // 카카오맵 버튼
         html += '<button class="btn btn-outline" style="margin-left:4px;padding:2px 6px;font-size:10px;flex-shrink:0;min-height:28px;border-radius:4px;" onclick="event.stopPropagation(); openKakaoMap(\'' + escapeHtml(prev.name) + '\', ' + prev.lat + ', ' + prev.lng + ', \'' + escapeHtml(p.name) + '\', ' + p.lat + ', ' + p.lng + ')" title="카카오맵에서 구간 길찾기">🗺️</button>';
-        
         html += '</div>';
     }
     
     html += '</div>';
     container.innerHTML = html;
     
-    // ===== SortableJS (출발지 제외) =====
+    // SortableJS
     var sortableEl = document.getElementById('routeSortable');
     if (sortableEl && window.Sortable) {
         if (window._routeSortable) window._routeSortable.destroy();
         window._routeSortable = new Sortable(sortableEl, {
-            handle: '.sortable-item',  // 🔥 출발지는 .sortable-item 클래스가 없어서 드래그 불가
+            handle: '.sortable-item',
             animation: 150,
+            onMove: function(evt) {
+                if (evt.toIndex === 0) {
+                    showTabStatus('tab-route', '⚠️ 출발지 위치로는 이동할 수 없습니다.', 'warning');
+                    return false;
+                }
+                return true;
+            },
             onEnd: function(evt) {
                 var oldIndex = evt.oldIndex - 1;
                 var newIndex = evt.newIndex - 1;
                 if (oldIndex === newIndex || oldIndex < 0 || newIndex < 0) return;
+                
                 var moved = routeResult.places.splice(oldIndex, 1)[0];
                 routeResult.places.splice(newIndex, 0, moved);
                 showRouteList();
+                
                 var allPoints = [{ name: startPoint.name, lat: startPoint.lat, lng: startPoint.lng }].concat(routeResult.places);
                 clearRouteMarkers();
                 addRouteMarker(startPoint.lat, startPoint.lng, '🚩 ' + startPoint.name, true);
@@ -2078,7 +2083,6 @@ function drawRoadRoute(routeData) {
         var route = routeData.routes[0];
         if (!route || !route.sections) return;
         
-        // 기존 경로 제거
         if (kakaoPolyline) { kakaoPolyline.setMap(null); kakaoPolyline = null; }
         if (window._sectionPolylines) {
             for (var i = 0; i < window._sectionPolylines.length; i++) {
@@ -2088,7 +2092,6 @@ function drawRoadRoute(routeData) {
         }
         
         var totalBounds = new kakao.maps.LatLngBounds();
-        var sectionColors = ['#FF6B6B','#FF9F43','#FECA57','#48DBFB','#0ABDE3','#10AC84','#EE5A24','#5F27CD','#1DD1A1','#F368E0','#00D2D3','#54A0FF','#FF9FF3','#F368E0'];
         var sectionIndex = 0;
         
         for (var s = 0; s < route.sections.length; s++) {
@@ -2110,9 +2113,8 @@ function drawRoadRoute(routeData) {
                 }
             }
             if (sectionPath.length > 1) {
-                var color = sectionColors[sectionIndex % sectionColors.length];
+                var color = COLORS[sectionIndex % COLORS.length];
                 
-                // 🔥 Polyline z-index 낮게 설정 (마커가 위로 오도록)
                 var polyline = new kakao.maps.Polyline({
                     map: kakaoMap,
                     path: sectionPath,
@@ -2120,10 +2122,9 @@ function drawRoadRoute(routeData) {
                     strokeColor: color,
                     strokeOpacity: 0.85,
                     strokeStyle: 'solid',
-                    zIndex: 1  // 🔥 낮은 z-index
+                    zIndex: 1
                 });
                 
-                // 글로우는 더 낮게
                 var glowPolyline = new kakao.maps.Polyline({
                     map: kakaoMap,
                     path: sectionPath,
@@ -2131,7 +2132,7 @@ function drawRoadRoute(routeData) {
                     strokeColor: color,
                     strokeOpacity: 0.2,
                     strokeStyle: 'solid',
-                    zIndex: 0  // 🔥 가장 낮은 z-index
+                    zIndex: 0
                 });
                 
                 if (!window._sectionPolylines) window._sectionPolylines = [];
@@ -2141,7 +2142,6 @@ function drawRoadRoute(routeData) {
             }
         }
         
-        // 🔥 bounds에 여유 margin 추가 (마커가 잘리지 않도록)
         if (totalBounds.getSouthWest() && totalBounds.getNorthEast()) {
             var sw = totalBounds.getSouthWest();
             var ne = totalBounds.getNorthEast();
@@ -2153,7 +2153,6 @@ function drawRoadRoute(routeData) {
             kakaoMap.setBounds(newBounds);
         }
         
-        // 🔥 지도 렌더링 강제 갱신 (마커가 제대로 표시되도록)
         setTimeout(function() {
             kakaoMap.relayout();
         }, 100);
@@ -2175,7 +2174,6 @@ function drawRoute(path) {
             window._sectionPolylines = [];
         }
         
-        var colors = ['#FF6B6B','#FF9F43','#FECA57','#48DBFB','#0ABDE3','#10AC84','#EE5A24','#5F27CD','#1DD1A1','#F368E0'];
         var bounds = new kakao.maps.LatLngBounds();
         var allPoints = [];
         for (var i = 0; i < path.length; i++) {
@@ -2186,7 +2184,7 @@ function drawRoute(path) {
         }
         
         for (var i = 0; i < allPoints.length - 1; i++) {
-            var color = colors[i % colors.length];
+            var color = COLORS[i % COLORS.length];
             var polyline = new kakao.maps.Polyline({
                 map: kakaoMap,
                 path: [allPoints[i], allPoints[i + 1]],
@@ -2194,7 +2192,7 @@ function drawRoute(path) {
                 strokeColor: color,
                 strokeOpacity: 0.85,
                 strokeStyle: 'solid',
-                zIndex: 1  // 🔥 낮은 z-index
+                zIndex: 1
             });
             if (!window._sectionPolylines) window._sectionPolylines = [];
             window._sectionPolylines.push(polyline);
@@ -2295,13 +2293,10 @@ function addRouteMarker(lat, lng, title, isStart) {
         var content;
         
         if (isStart) {
-            // ===== 출발지: 흰색 배경 + 검정 글자 (고정) =====
             content = '<div style="background:white;padding:6px 14px;border-radius:20px;box-shadow:0 4px 16px rgba(0,0,0,0.15);font-size:13px;font-weight:700;color:#1a202c;white-space:nowrap;border:2px solid #2d3748;z-index:10;">🚩 ' + escapeHtml(title) + '</div>';
         } else {
-            // ===== 경유지: 경로 색상과 동일하게 (무지개) =====
-            var colors = ['#FF6B6B','#FF9F43','#FECA57','#48DBFB','#0ABDE3','#10AC84','#EE5A24','#5F27CD','#1DD1A1','#F368E0','#00D2D3','#54A0FF','#FF9FF3','#F368E0'];
-            var idx = routeMarkers.length; // 현재 마커 개수 = 인덱스
-            var color = colors[idx % colors.length];
+            var idx = routeMarkers.length;
+            var color = COLORS[idx % COLORS.length];
             content = '<div style="background:' + color + ';padding:6px 14px;border-radius:20px;box-shadow:0 4px 16px rgba(0,0,0,0.15);font-size:13px;font-weight:700;color:white;white-space:nowrap;border:1px solid rgba(255,255,255,0.3);z-index:5;">📍 ' + escapeHtml(title) + '</div>';
         }
         
@@ -3022,6 +3017,225 @@ function handleAddrKeydown(event) {
     searchIndexState.addr = index;
     for (var i = 0; i < results.length; i++) {
         results[i].style.background = i === index ? '#bee3f8' : '';
+    }
+}
+function showPromptModal(title, message, defaultValue, onConfirm, onCancel) {
+    var existing = document.getElementById('promptModal');
+    if (existing) existing.remove();
+    
+    var modalHtml = `
+        <div id="promptModal" style="
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            animation: fadeIn 0.2s ease;
+        " onclick="if(event.target===this) { if(typeof onCancel==='function') onCancel(); this.remove(); }">
+            <div style="
+                background: white;
+                border-radius: 16px;
+                padding: 24px;
+                max-width: 380px;
+                width: 100%;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            " onclick="event.stopPropagation()">
+                <h3 style="font-size:17px; font-weight:700; color:#1a202c; margin-bottom:4px;">${escapeHtml(title)}</h3>
+                <p style="font-size:14px; color:#4a5568; margin-bottom:12px; line-height:1.6;">${escapeHtml(message)}</p>
+                <input id="promptInput" type="text" value="${escapeHtml(defaultValue || '')}" 
+                       style="width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:14px; margin-bottom:16px;"
+                       onkeydown="if(event.key==='Enter') document.getElementById('promptConfirmBtn').click();">
+                <div style="display:flex; gap:8px; justify-content:flex-end;">
+                    <button class="btn btn-outline btn-sm" onclick="document.getElementById('promptModal').remove(); if(typeof onCancel==='function') onCancel();" style="padding:6px 16px;">취소</button>
+                    <button id="promptConfirmBtn" class="btn btn-primary btn-sm" onclick="
+                        var input = document.getElementById('promptInput');
+                        var value = input ? input.value.trim() : '';
+                        document.getElementById('promptModal').remove();
+                        if(typeof onConfirm==='function') onConfirm(value);
+                    " style="padding:6px 16px;">확인</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    document.getElementById('promptInput').focus();
+    document.getElementById('promptInput').select();
+}
+function addRegion() {
+    showPromptModal(
+        '📍 지역 추가',
+        '새 지역명을 입력하세요:',
+        '',
+        function(region) {
+            if (!region) {
+                showTabStatus('tab-settings', '⚠️ 지역명을 입력하세요.', 'warning');
+                return;
+            }
+            region = region.trim().replace(/[\/\\:*?"<>|]/g, '');
+            if (!region) {
+                showTabStatus('tab-settings', '⚠️ 사용할 수 없는 지역명입니다.', 'warning');
+                return;
+            }
+            var select = document.getElementById('regionSelect');
+            for (var i = 0; i < select.options.length; i++) {
+                if (select.options[i].value === region) {
+                    showTabStatus('tab-settings', '⚠️ 이미 존재하는 지역입니다.', 'warning');
+                    return;
+                }
+            }
+            var key = getStorageKey(region);
+            localStorage.setItem(key, JSON.stringify([]));
+            var opt = document.createElement('option');
+            opt.value = region;
+            opt.textContent = region;
+            select.appendChild(opt);
+            select.value = region;
+            switchRegion(region);
+            showTabStatus('tab-settings', '✅ "' + region + '" 지역 추가됨', 'ok');
+        }
+    );
+}
+function addPreset() {
+    if (!startPoint || !startPoint.name) {
+        showTabStatus('tab-places', '⚠️ 출발지를 먼저 설정하세요.', 'warning');
+        return;
+    }
+    if (waypoints.length === 0) {
+        showTabStatus('tab-places', '⚠️ 경유지를 최소 1개 이상 추가하세요.', 'warning');
+        return;
+    }
+    
+    showPromptModal(
+        '💾 프리셋 저장',
+        '프리셋 이름을 입력하세요:',
+        '프리셋 ' + (presets.length + 1),
+        function(name) {
+            if (!name || name.trim() === '') {
+                showTabStatus('tab-places', '⚠️ 프리셋 이름을 입력하세요.', 'warning');
+                return;
+            }
+            var preset = {
+                id: Date.now(),
+                name: name.trim(),
+                startPoint: {
+                    name: startPoint.name,
+                    address: startPoint.address || '',
+                    lat: startPoint.lat,
+                    lng: startPoint.lng
+                },
+                waypoints: waypoints.map(function(w) {
+                    return {
+                        name: w.name,
+                        address: w.address || '',
+                        lat: w.lat || 0,
+                        lng: w.lng || 0
+                    };
+                })
+            };
+            presets.push(preset);
+            savePresets();
+            showTabStatus('tab-places', '✅ 프리셋 "' + preset.name + '" 저장됨!', 'ok');
+        }
+    );
+}
+async function downloadFromGitHub() {
+    var token = settings.githubToken;
+    if (!token) {
+        showTabStatus('tab-settings', '⚠️ GitHub 토큰이 없습니다.', 'warning');
+        return;
+    }
+    
+    var region = currentRegion;
+    if (!region) {
+        showPromptModal(
+            '📥 GitHub 다운로드',
+            '다운로드할 지역명을 입력하세요:',
+            '',
+            function(regionInput) {
+                if (!regionInput || !regionInput.trim()) {
+                    showTabStatus('tab-settings', '⚠️ 지역명이 필요합니다.', 'warning');
+                    return;
+                }
+                regionInput = regionInput.trim().replace(/[\/\\:*?"<>|]/g, '');
+                if (!regionInput) {
+                    showTabStatus('tab-settings', '⚠️ 사용할 수 없는 지역명입니다.', 'warning');
+                    return;
+                }
+                processDownloadFromGitHub(regionInput);
+            }
+        );
+        return;
+    }
+    processDownloadFromGitHub(region);
+}
+
+async function processDownloadFromGitHub(region) {
+    var token = settings.githubToken;
+    try {
+        showTabStatus('tab-settings', '☁️ GitHub 다운로드 중...', 'info');
+        var userRes = await fetch('https://api.github.com/user', {
+            headers: { 'Authorization': 'token ' + token }
+        });
+        if (!userRes.ok) throw new Error('토큰 인증 실패');
+        var user = await userRes.json();
+        var username = user.login;
+        
+        var repoName = 'route-data';
+        var fileName = region + '.json';
+        var fileUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents/' + encodeURIComponent(fileName);
+        var fileRes = await fetch(fileUrl, {
+            headers: { 'Authorization': 'token ' + token },
+            cache: 'no-store'
+        });
+        
+        if (fileRes.status === 404) {
+            showTabStatus('tab-settings', '📭 GitHub에 "' + region + '" 지역의 데이터가 없습니다.', 'warning');
+            return;
+        }
+        if (!fileRes.ok) throw new Error('다운로드 실패');
+        var data = await fileRes.json();
+        var binaryString = atob(data.content);
+        var bytes = new Uint8Array(binaryString.length);
+        for (var i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        var content = new TextDecoder('utf-8').decode(bytes);
+        var loadedPlaces = JSON.parse(content);
+        
+        showConfirmModal(
+            '📥 데이터 덮어쓰기',
+            '현재 ' + places.length + '개 데이터를 ' + loadedPlaces.length + '개로 덮어쓰시겠습니까?',
+            function() {
+                places = loadedPlaces;
+                savePlaces();
+                var select = document.getElementById('regionSelect');
+                var exists = false;
+                for (var i = 0; i < select.options.length; i++) {
+                    if (select.options[i].value === region) {
+                        exists = true;
+                        break;
+                    }
+                }
+                if (!exists) {
+                    var opt = document.createElement('option');
+                    opt.value = region;
+                    opt.textContent = region;
+                    select.appendChild(opt);
+                }
+                select.value = region;
+                currentRegion = region;
+                localStorage.setItem(SELECTED_REGION_KEY, region);
+                showTabStatus('tab-settings', '✅ GitHub 다운로드 완료! (' + loadedPlaces.length + '개)', 'ok');
+            }
+        );
+    } catch(error) {
+        console.error('GitHub 다운로드 오류:', error);
+        showTabStatus('tab-settings', '❌ 다운로드 실패: ' + error.message, 'error');
     }
 }
 // ============================================================
