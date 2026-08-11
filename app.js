@@ -593,43 +593,105 @@ function saveRecentStartPoint(name, address, lat, lng) {
     localStorage.setItem(key, JSON.stringify(recent));
 }
 
+// ============================================================
+// 출발지 검색
+// ============================================================
+
 function searchStartPoint(query) {
     var container = document.getElementById('startSearchResults');
+    
     if (!query || query.length === 0) {
         var recent = getRecentStartPoints();
-        if (recent.length === 0) { container.style.display = 'none'; return; }
+        if (recent.length === 0) {
+            container.style.display = 'none';
+            return;
+        }
         var html = '';
         for (var i = 0; i < recent.length; i++) {
             var item = recent[i];
-            html += '<div class="result-item" onclick="selectStartPoint(\'' + escapeHtml(item.name) + '\', \'' + escapeHtml(item.address) + '\', ' + item.lat + ', ' + item.lng + ')">';
+            html += '<div class="result-item" data-name="' + escapeHtml(item.name) + '" data-address="' + escapeHtml(item.address) + '" data-lat="' + item.lat + '" data-lng="' + item.lng + '">';
             html += '<div>🕐 ' + escapeHtml(item.name) + ' <span style="font-size:10px;color:#a0aec0;">최근</span></div>';
             html += '<div class="addr">' + escapeHtml(item.address) + '</div></div>';
         }
         container.innerHTML = html;
         container.style.display = 'block';
+        
+        container.querySelectorAll('.result-item').forEach(function(el) {
+            el.addEventListener('click', function() {
+                var name = this.dataset.name;
+                var address = this.dataset.address;
+                var lat = parseFloat(this.dataset.lat);
+                var lng = parseFloat(this.dataset.lng);
+                selectStartPoint(name, address, lat, lng);
+            });
+        });
         return;
     }
-    if (query.length < 2) { container.style.display = 'none'; return; }
+    
+    if (query.length < 2) {
+        container.style.display = 'none';
+        return;
+    }
+    
     clearTimeout(window._startSearchTimer);
     window._startSearchTimer = setTimeout(async function() {
-        var placeResults = [];
+        var allResults = [];
+        var seenNames = {};
         var lowerQuery = query.toLowerCase();
+        
+        // 현장리스트 검색
         for (var i = 0; i < places.length; i++) {
             var p = places[i];
             if (p.name.toLowerCase().includes(lowerQuery) || (p.address && p.address.toLowerCase().includes(lowerQuery))) {
-                placeResults.push({ place_name: p.name, address_name: p.address || '(주소 없음)', y: p.lat || 0, x: p.lng || 0, _source: '현장리스트' });
+                var key = p.name + '|' + (p.address || '');
+                if (!seenNames[key]) {
+                    seenNames[key] = true;
+                    allResults.push({
+                        place_name: p.name,
+                        address_name: p.address || '(주소 없음)',
+                        y: p.lat || 0,
+                        x: p.lng || 0,
+                        _source: '현장리스트'
+                    });
+                }
             }
         }
-        placeResults = placeResults.slice(0, 5);
+        
+        // 카카오맵 검색
         var kakaoResults = await searchKakaoPlaces(query);
-        kakaoResults = kakaoResults.slice(0, 5);
-        var allResults = [];
-        var seenNames = {};
-        placeResults.concat(kakaoResults).forEach(function(item) {
+        kakaoResults.slice(0, 5).forEach(function(item) {
             var key = item.place_name + '|' + item.address_name;
-            if (!seenNames[key]) { seenNames[key] = true; allResults.push(item); }
+            if (!seenNames[key]) {
+                seenNames[key] = true;
+                allResults.push(item);
+            }
         });
-        renderSearchResults(container, allResults, 'selectStartPoint', false);
+        
+        if (allResults.length === 0) {
+            container.style.display = 'none';
+            return;
+        }
+        
+        var html = '';
+        for (var i = 0; i < allResults.length; i++) {
+            var item = allResults[i];
+            var sourceLabel = item._source || '카카오맵';
+            html += '<div class="result-item" data-name="' + escapeHtml(item.place_name) + '" data-address="' + escapeHtml(item.address_name) + '" data-lat="' + item.y + '" data-lng="' + item.x + '">';
+            html += '<div class="result-info"><div>' + escapeHtml(item.place_name) + ' <span class="source">' + sourceLabel + '</span></div>';
+            html += '<div class="addr">' + escapeHtml(item.address_name) + '</div></div></div>';
+        }
+        container.innerHTML = html;
+        container.style.display = 'block';
+        
+        container.querySelectorAll('.result-item').forEach(function(el) {
+            el.addEventListener('click', function() {
+                var name = this.dataset.name;
+                var address = this.dataset.address;
+                var lat = parseFloat(this.dataset.lat);
+                var lng = parseFloat(this.dataset.lng);
+                selectStartPoint(name, address, lat, lng);
+            });
+        });
     }, 300);
 }
 
