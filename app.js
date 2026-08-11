@@ -325,15 +325,23 @@ function loadRegionList() {
 }
 
 function switchRegion(region) {
+    console.log('🔄 switchRegion 호출됨:', region);
+    
     clearTimeout(autoSyncTimer);
     currentRegion = region;
     localStorage.setItem(SELECTED_REGION_KEY, region);
+    
+    // 🔥 해당 지역 데이터 로드
     var key = getStorageKey(region);
     var data = localStorage.getItem(key);
     places = data ? JSON.parse(data) : [];
+    console.log('📊 로드된 현장 수:', places.length);
+    
+    // 🔥 UI 갱신
     renderPlaces();
     updateStorageInfo();
     document.getElementById('regionSelect').value = region;
+    
     waypoints = [];
     routeResult = null;
     startPoint = null;
@@ -341,27 +349,32 @@ function switchRegion(region) {
     clearRouteMarkers();
     clearSingleMarker();
     isShowingRouteMarkers = false;
-    document.getElementById('startInfo').textContent = '⏳ 출발지를 검색하거나 현재 위치로 설정하세요';
+    
+    document.getElementById('startInfo').textContent = '⏳ 출발지를 검색하거나 현재 위치 버튼을 눌러 설정하세요';
     document.getElementById('startInfo').style.color = '#718096';
     document.getElementById('placeCount').textContent = '0개소';
     document.getElementById('totalDistance').textContent = '0.00 km';
     document.getElementById('totalTime').textContent = '0 분';
     document.getElementById('optimizeMode').textContent = '-';
     document.getElementById('routeList').innerHTML = '';
+    
     if (kakaoMap) {
         var center = getRegionCenter(region);
         kakaoMap.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
         kakaoMap.setLevel(5);
+        kakaoMap.relayout();
     }
+    
     var activeTab = document.querySelector('.tab-content.active');
-    if (activeTab) showTabStatus(activeTab.id, '📍 ' + region + ' 지역으로 전환됨', 'info');
+    if (activeTab) {
+        showTabStatus(activeTab.id, '📍 ' + region + ' 지역으로 전환됨 (' + places.length + '개 현장)', 'info');
+    }
     fetchWeather();
+    console.log('✅ 지역 전환 완료:', region, '현장 수:', places.length);
 }
-
 function addRegion() {
     console.log('🔄 addRegion 호출됨');
     
-    // 🔥 내부 모달로 변경 (prompt 대신)
     showPromptModal(
         '📍 지역 추가',
         '새 지역명을 입력하세요:',
@@ -395,9 +408,10 @@ function addRegion() {
                 }
             }
             
-            // 지역 저장
+            // 🔥 빈 데이터로 지역 저장
             var key = getStorageKey(region);
             localStorage.setItem(key, JSON.stringify([]));
+            console.log('💾 새 지역 생성:', region);
             
             // 드롭다운에 추가
             var opt = document.createElement('option');
@@ -406,14 +420,26 @@ function addRegion() {
             select.appendChild(opt);
             select.value = region;
             
-            // 지역 전환
-            switchRegion(region);
+            // 🔥 지역 전환 (renderPlaces 호출됨)
+            currentRegion = region;
+            localStorage.setItem(SELECTED_REGION_KEY, region);
+            places = [];
+            renderPlaces();
+            updateStorageInfo();
+            
+            // 지도 이동
+            if (kakaoMap) {
+                var center = getRegionCenter(region);
+                kakaoMap.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
+                kakaoMap.setLevel(5);
+                kakaoMap.relayout();
+            }
+            
             showTabStatus('tab-settings', '✅ "' + region + '" 지역 추가됨', 'ok');
             console.log('✅ 지역 추가 완료:', region);
         }
     );
 }
-
 // ============================================================
 // 5. 설정 내보내기/가져오기
 // ============================================================
@@ -1214,13 +1240,24 @@ function getSortedPlaces() {
 }
 
 function renderPlaces(filtered) {
+    console.log('🔄 renderPlaces 호출됨, 현재 지역:', currentRegion);
+    
     var list = document.getElementById('placeList');
+    if (!list) {
+        console.error('❌ placeList 요소 없음');
+        return;
+    }
+    
     var data = filtered || getSortedPlaces();
+    console.log('📊 표시할 현장 수:', data.length);
+    
     document.getElementById('listCount').textContent = '(' + data.length + '개)';
+    
     if (data.length === 0) {
         list.innerHTML = '<div class="empty-msg">등록된 현장이 없습니다</div>';
         return;
     }
+    
     var html = '';
     for (var i = 0; i < data.length; i++) {
         var p = data[i];
@@ -1237,11 +1274,12 @@ function renderPlaces(filtered) {
         html += '<button class="add" onclick="addWaypointFromList(\'' + p.id + '\')" title="경유지 추가">➕</button>';
         html += '<button class="del" onclick="deletePlace(\'' + p.id + '\')" title="삭제">🗑️</button>';
         html += '<button class="' + starClass + '" onclick="toggleFavorite(\'' + p.id + '\')" title="즐겨찾기">' + starIcon + '</button>';
+        html += '<button class="kakao" onclick="openKakaoMapFromPlace(\'' + p.id + '\')" title="카카오맵에서 열기" style="color:#3c1e1e; font-size:16px; background:none; border:none; cursor:pointer; padding:4px 4px;">🗺️</button>';
         html += '</div></div>';
     }
     list.innerHTML = html;
+    console.log('✅ 현장리스트 렌더링 완료:', data.length + '개');
 }
-
 function searchPlaces() {
     var keyword = document.getElementById('searchPlace').value.trim();
     if (!keyword) { renderPlaces(); return; }
@@ -3105,16 +3143,26 @@ function registerServiceWorker() {
 // ============================================================
 
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 페이지 로드 시작');
+    
     loadSettings();
     loadRegionList();
     loadPresets();
+    
+    // 🔥 현재 지역 데이터 로드
     if (currentRegion) {
         var key = getStorageKey(currentRegion);
         var data = localStorage.getItem(key);
         places = data ? JSON.parse(data) : [];
-    } else { places = []; }
+        console.log('📊 초기 로드된 현장 수:', places.length, '지역:', currentRegion);
+    } else {
+        places = [];
+        console.log('📊 현재 지역 없음, 빈 배열');
+    }
+    
     var sortSelect = document.getElementById('sortPlaces');
     if (sortSelect) currentSort = sortSelect.value;
+    
     renderPlaces();
     renderWaypointList();
     setOptimizeMode(optimizeMode);
@@ -3122,12 +3170,15 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(initMap, 500);
     setTimeout(function() { if (!kakaoMap && !sdkLoading) initMap(); }, 3000);
     registerServiceWorker();
+    
     function initWeather() {
         fetchWeather().then(function(success) {
             if (!success) setTimeout(initWeather, 5000);
         });
     }
     setTimeout(initWeather, 3000);
+    
+    console.log('✅ 페이지 로드 완료');
 });
 // ============================================================
 // 카카오맵 장소 검색
@@ -3321,88 +3372,63 @@ function addPreset() {
 // ============================================================
 
 async function processDownloadFromGitHub(region) {
-    console.log('🔄 processDownloadFromGitHub 시작됨! 지역:', region);
-    
     var token = settings.githubToken;
-    console.log('🔑 토큰:', token ? '있음 (길이: ' + token.length + ')' : '없음');
-    
     if (!token) {
         showTabStatus('tab-settings', '⚠️ GitHub 토큰이 없습니다.', 'warning');
-        console.log('❌ 토큰 없음');
         return;
     }
     
     try {
         showTabStatus('tab-settings', '☁️ GitHub 다운로드 중...', 'info');
-        console.log('📡 GitHub API 요청 시작...');
         
-        // 1. 사용자 정보 확인
-        console.log('🔄 사용자 정보 요청 중...');
         var userRes = await fetch('https://api.github.com/user', {
             headers: { 'Authorization': 'token ' + token }
         });
-        console.log('📡 사용자 정보 응답 상태:', userRes.status);
-        
-        if (!userRes.ok) {
-            var errorText = await userRes.text();
-            console.error('❌ 토큰 인증 실패:', userRes.status, errorText);
-            showTabStatus('tab-settings', '❌ 토큰 인증 실패 (상태: ' + userRes.status + ')', 'error');
-            return;
-        }
+        if (!userRes.ok) throw new Error('토큰 인증 실패');
         var user = await userRes.json();
-        console.log('✅ 인증 성공:', user.login);
         var username = user.login;
         
-        // 2. 파일 요청
         var repoName = 'route-data';
         var fileName = region + '.json';
         var fileUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents/' + encodeURIComponent(fileName);
-        console.log('📡 파일 요청 URL:', fileUrl);
         
         var fileRes = await fetch(fileUrl, {
             headers: { 'Authorization': 'token ' + token },
             cache: 'no-store'
         });
-        console.log('📡 파일 응답 상태:', fileRes.status);
         
         if (fileRes.status === 404) {
-            console.log('📭 파일 없음:', fileName);
             showTabStatus('tab-settings', '📭 GitHub에 "' + region + '" 지역의 데이터가 없습니다.', 'warning');
             return;
         }
         
         if (!fileRes.ok) {
-            console.error('❌ 파일 요청 실패:', fileRes.status);
-            showTabStatus('tab-settings', '❌ 다운로드 실패 (상태: ' + fileRes.status + ')', 'error');
-            return;
+            throw new Error('다운로드 실패: ' + fileRes.status);
         }
         
-        // 3. 파일 내용 디코딩
-        console.log('📄 파일 내용 디코딩 중...');
         var data = await fileRes.json();
-        console.log('📄 파일 SHA:', data.sha);
-        
         var binaryString = atob(data.content);
         var bytes = new Uint8Array(binaryString.length);
         for (var i = 0; i < binaryString.length; i++) {
             bytes[i] = binaryString.charCodeAt(i);
         }
         var content = new TextDecoder('utf-8').decode(bytes);
-        console.log('📄 디코딩된 내용 길이:', content.length);
-        
         var loadedPlaces = JSON.parse(content);
-        console.log('📊 로드된 현장 수:', loadedPlaces.length);
+        console.log('📊 GitHub에서 로드된 현장 수:', loadedPlaces.length);
         
-        // 4. 덮어쓰기 확인
         showConfirmModal(
             '📥 데이터 덮어쓰기',
             '현재 ' + places.length + '개 데이터를 ' + loadedPlaces.length + '개로 덮어쓰시겠습니까?',
             function() {
-                console.log('✅ 덮어쓰기 확인됨');
+                // 🔥 데이터 저장
                 places = loadedPlaces;
-                savePlaces();
                 
-                // 드롭다운에 지역 추가
+                // 🔥 로컬스토리지에 저장
+                var key = getStorageKey(region);
+                localStorage.setItem(key, JSON.stringify(places));
+                console.log('💾 로컬스토리지 저장 완료:', key, places.length + '개');
+                
+                // 🔥 드롭다운에 지역 추가 (없는 경우)
                 var select = document.getElementById('regionSelect');
                 var exists = false;
                 for (var i = 0; i < select.options.length; i++) {
@@ -3417,19 +3443,23 @@ async function processDownloadFromGitHub(region) {
                     opt.textContent = region;
                     select.appendChild(opt);
                 }
+                
+                // 🔥 해당 지역으로 자동 전환 (renderPlaces 호출됨)
                 select.value = region;
                 currentRegion = region;
                 localStorage.setItem(SELECTED_REGION_KEY, region);
                 
+                // 🔥 현장리스트 갱신
                 renderPlaces();
+                updateStorageInfo();
+                
                 showTabStatus('tab-settings', '✅ GitHub 다운로드 완료! (' + loadedPlaces.length + '개)', 'ok');
-                console.log('✅ 다운로드 완료!');
+                console.log('✅ 다운로드 완료, 지역 전환됨:', region, '현장 수:', places.length);
             }
         );
         
     } catch(error) {
         console.error('❌ GitHub 다운로드 오류:', error);
-        console.error('❌ 오류 스택:', error.stack);
         showTabStatus('tab-settings', '❌ 다운로드 실패: ' + error.message, 'error');
     }
 }
