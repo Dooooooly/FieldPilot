@@ -427,6 +427,7 @@ function switchRegion(region) {
     }
     fetchWeather();
     console.log('✅ 지역 전환 완료:', region, '현장 수:', places.length);
+}
 function addRegion() {
     var existing = document.getElementById('customRegionModal');
     if (existing) existing.remove();
