@@ -359,59 +359,35 @@ function switchRegion(region) {
 }
 
 function addRegion() {
-    console.log('🔄 addRegion 호출됨');
-    
-    // 🔥 내부 모달로 변경 (prompt 대신)
-    showPromptModal(
-        '📍 지역 추가',
-        '새 지역명을 입력하세요:',
-        '',
-        function(region) {
-            console.log('📥 입력된 지역명:', region);
-            
-            if (!region || !region.trim()) {
-                showTabStatus('tab-settings', '⚠️ 지역명을 입력하세요.', 'warning');
-                return;
-            }
-            
-            region = region.trim().replace(/[\/\\:*?"<>|]/g, '');
-            if (!region) {
-                showTabStatus('tab-settings', '⚠️ 사용할 수 없는 지역명입니다. (특수문자 제외)', 'warning');
-                return;
-            }
-            
-            var select = document.getElementById('regionSelect');
-            if (!select) {
-                console.error('❌ regionSelect 요소 없음');
-                showTabStatus('tab-settings', '⚠️ 오류가 발생했습니다. 새로고침 후 다시 시도하세요.', 'error');
-                return;
-            }
-            
-            // 중복 체크
-            for (var i = 0; i < select.options.length; i++) {
-                if (select.options[i].value === region) {
-                    showTabStatus('tab-settings', '⚠️ 이미 존재하는 지역입니다.', 'warning');
-                    return;
-                }
-            }
-            
-            // 지역 저장
-            var key = getStorageKey(region);
-            localStorage.setItem(key, JSON.stringify([]));
-            
-            // 드롭다운에 추가
-            var opt = document.createElement('option');
-            opt.value = region;
-            opt.textContent = region;
-            select.appendChild(opt);
-            select.value = region;
-            
-            // 지역 전환
-            switchRegion(region);
-            showTabStatus('tab-settings', '✅ "' + region + '" 지역 추가됨', 'ok');
-            console.log('✅ 지역 추가 완료:', region);
+    var name = prompt('새 지역명을 입력하세요:', '');
+    if (name && name.trim()) {
+        var region = name.trim().replace(/[\/\\:*?"<>|]/g, '');
+        if (!region) {
+            showTabStatus('tab-settings', '⚠️ 사용할 수 없는 지역명입니다.', 'warning');
+            return;
         }
-    );
+        var select = document.getElementById('regionSelect');
+        if (!select) {
+            console.error('❌ regionSelect 요소 없음');
+            showTabStatus('tab-settings', '⚠️ 오류 발생, 새로고침 후 다시 시도하세요.', 'error');
+            return;
+        }
+        for (var i = 0; i < select.options.length; i++) {
+            if (select.options[i].value === region) {
+                showTabStatus('tab-settings', '⚠️ 이미 존재하는 지역입니다.', 'warning');
+                return;
+            }
+        }
+        var key = getStorageKey(region);
+        localStorage.setItem(key, JSON.stringify([]));
+        var opt = document.createElement('option');
+        opt.value = region;
+        opt.textContent = region;
+        select.appendChild(opt);
+        select.value = region;
+        switchRegion(region);
+        showTabStatus('tab-settings', '✅ "' + region + '" 지역 추가됨', 'ok');
+    }
 }
 
 // ============================================================
@@ -3320,40 +3296,6 @@ function showPromptModal(title, message, defaultValue, onConfirm, onCancel) {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     document.getElementById('promptInput').focus();
     document.getElementById('promptInput').select();
-}
-function addRegion() {
-    showPromptModal(
-        '📍 지역 추가',
-        '새 지역명을 입력하세요:',
-        '',
-        function(region) {
-            if (!region) {
-                showTabStatus('tab-settings', '⚠️ 지역명을 입력하세요.', 'warning');
-                return;
-            }
-            region = region.trim().replace(/[\/\\:*?"<>|]/g, '');
-            if (!region) {
-                showTabStatus('tab-settings', '⚠️ 사용할 수 없는 지역명입니다.', 'warning');
-                return;
-            }
-            var select = document.getElementById('regionSelect');
-            for (var i = 0; i < select.options.length; i++) {
-                if (select.options[i].value === region) {
-                    showTabStatus('tab-settings', '⚠️ 이미 존재하는 지역입니다.', 'warning');
-                    return;
-                }
-            }
-            var key = getStorageKey(region);
-            localStorage.setItem(key, JSON.stringify([]));
-            var opt = document.createElement('option');
-            opt.value = region;
-            opt.textContent = region;
-            select.appendChild(opt);
-            select.value = region;
-            switchRegion(region);
-            showTabStatus('tab-settings', '✅ "' + region + '" 지역 추가됨', 'ok');
-        }
-    );
 }
 function addPreset() {
     if (!startPoint || !startPoint.name) {
