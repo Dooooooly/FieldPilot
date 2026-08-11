@@ -1249,74 +1249,67 @@ function selectAddress(name, address, lat, lng) {
 // 7. 현장 관리
 // ============================================================
 
-function applySort() {
+ffunction applySort() {
     var sortSelect = document.getElementById('sortPlaces');
-    if (sortSelect) currentSort = sortSelect.value;
-    renderPlaces();
+    if (sortSelect) {
+        var newSort = sortSelect.value;
+        if (newSort !== currentSort) {
+            currentSort = newSort;
+            renderPlaces();
+        }
+    }
 }
 
 function getSortedPlaces() {
+    // 🔥 places가 없으면 빈 배열 반환
+    if (!places || places.length === 0) {
+        return [];
+    }
+    
     var sorted = [...places];
+    
     if (currentSort === 'name-asc') {
         sorted.sort(function(a, b) {
             if (a.favorite && !b.favorite) return -1;
             if (!a.favorite && b.favorite) return 1;
-            return a.name.localeCompare(b.name, 'ko');
+            return (a.name || '').localeCompare(b.name || '', 'ko');
         });
     } else if (currentSort === 'name-desc') {
         sorted.sort(function(a, b) {
             if (a.favorite && !b.favorite) return -1;
             if (!a.favorite && b.favorite) return 1;
-            return b.name.localeCompare(a.name, 'ko');
+            return (b.name || '').localeCompare(a.name || '', 'ko');
         });
     } else if (currentSort === 'favorite') {
         sorted.sort(function(a, b) {
             if (a.favorite && !b.favorite) return -1;
             if (!a.favorite && b.favorite) return 1;
-            return a.name.localeCompare(b.name, 'ko');
+            return (a.name || '').localeCompare(b.name || '', 'ko');
         });
     }
     return sorted;
 }
 
 function renderPlaces(filtered) {
-    console.log('🔄 renderPlaces 호출됨');
-    console.log('📊 현재 places 길이:', places ? places.length : 'undefined');
-    console.log('📍 현재 지역:', currentRegion);
-    
     var list = document.getElementById('placeList');
     if (!list) {
-        console.error('❌ placeList 요소를 찾을 수 없습니다!');
-        // 🔥 placeList가 없으면 생성 시도
-        var card = document.querySelector('#tab-list .card');
-        if (card) {
-            var newList = document.createElement('div');
-            newList.id = 'placeList';
-            newList.className = 'place-scroll';
-            newList.style.maxHeight = '380px';
-            newList.style.overflowY = 'auto';
-            newList.style.minHeight = '100px';
-            card.appendChild(newList);
-            list = newList;
-            console.log('✅ placeList 자동 생성됨');
-        } else {
-            return;
-        }
+        console.warn('⚠️ placeList 요소 없음');
+        return;
     }
     
     var data = filtered || getSortedPlaces();
-    console.log('📊 표시할 데이터 수:', data.length);
     
-    var countEl = document.getElementById('listCount');
-    if (countEl) {
-        countEl.textContent = '(' + data.length + '개)';
-    }
-    
+    // 🔥 데이터가 없으면 빈 메시지 표시
     if (!data || data.length === 0) {
         list.innerHTML = '<div class="empty-msg">등록된 현장이 없습니다</div>';
-        console.log('📭 표시할 현장 없음');
+        var countEl = document.getElementById('listCount');
+        if (countEl) countEl.textContent = '(0개)';
         return;
     }
+    
+    // 🔥 카운트 업데이트
+    var countEl = document.getElementById('listCount');
+    if (countEl) countEl.textContent = '(' + data.length + '개)';
     
     var html = '';
     for (var i = 0; i < data.length; i++) {
@@ -1338,34 +1331,34 @@ function renderPlaces(filtered) {
         html += '</div></div>';
     }
     list.innerHTML = html;
-    console.log('✅ 현장리스트 렌더링 완료:', data.length + '개');
 }
 function searchPlaces() {
     var keyword = document.getElementById('searchPlace').value.trim();
-    if (!keyword) { renderPlaces(); return; }
+    if (!keyword) { 
+        renderPlaces(); 
+        return; 
+    }
+    
     var results = places.filter(function(p) {
-        return p.name.includes(keyword) || (p.address && p.address.includes(keyword));
+        return (p.name && p.name.includes(keyword)) || (p.address && p.address.includes(keyword));
     });
+    
+    // 🔥 검색 결과도 정렬 적용 (즐겨찾기 우선)
     var sortedResults = [...results];
-    if (currentSort === 'name-asc') {
+    if (currentSort === 'name-asc' || currentSort === 'favorite') {
         sortedResults.sort(function(a, b) {
             if (a.favorite && !b.favorite) return -1;
             if (!a.favorite && b.favorite) return 1;
-            return a.name.localeCompare(b.name, 'ko');
+            return (a.name || '').localeCompare(b.name || '', 'ko');
         });
     } else if (currentSort === 'name-desc') {
         sortedResults.sort(function(a, b) {
             if (a.favorite && !b.favorite) return -1;
             if (!a.favorite && b.favorite) return 1;
-            return b.name.localeCompare(a.name, 'ko');
-        });
-    } else if (currentSort === 'favorite') {
-        sortedResults.sort(function(a, b) {
-            if (a.favorite && !b.favorite) return -1;
-            if (!a.favorite && b.favorite) return 1;
-            return a.name.localeCompare(b.name, 'ko');
+            return (b.name || '').localeCompare(a.name || '', 'ko');
         });
     }
+    
     renderPlaces(sortedResults);
 }
 
