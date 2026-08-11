@@ -375,56 +375,110 @@ function switchRegion(region) {
 function addRegion() {
     console.log('🔄 addRegion 호출됨');
     
-    showPromptModal(
-        '📍 지역 추가',
-        '새 지역명을 입력하세요:',
-        '',
-        function(region) {
-            console.log('📥 입력된 지역명:', region);
-            
-            if (!region || !region.trim()) {
-                showTabStatus('tab-settings', '⚠️ 지역명을 입력하세요.', 'warning');
-                return;
-            }
-            
-            region = region.trim().replace(/[\/\\:*?"<>|]/g, '');
-            if (!region) {
-                showTabStatus('tab-settings', '⚠️ 사용할 수 없는 지역명입니다.', 'warning');
-                return;
-            }
-            
-            var select = document.getElementById('regionSelect');
-            if (!select) {
-                console.error('❌ regionSelect 요소 없음');
-                showTabStatus('tab-settings', '⚠️ 오류 발생, 새로고침 후 다시 시도하세요.', 'error');
-                return;
-            }
-            
-            // 중복 체크
-            for (var i = 0; i < select.options.length; i++) {
-                if (select.options[i].value === region) {
-                    showTabStatus('tab-settings', '⚠️ 이미 존재하는 지역입니다.', 'warning');
-                    return;
-                }
-            }
-            
-            // 지역 저장
-            var key = getStorageKey(region);
-            localStorage.setItem(key, JSON.stringify([]));
-            
-            // 드롭다운에 추가
-            var opt = document.createElement('option');
-            opt.value = region;
-            opt.textContent = region;
-            select.appendChild(opt);
-            select.value = region;
-            
-            // 지역 전환
-            switchRegion(region);
-            showTabStatus('tab-settings', '✅ "' + region + '" 지역 추가됨', 'ok');
-            console.log('✅ 지역 추가 완료:', region);
+    // 기존 모달 제거
+    var existing = document.getElementById('customRegionModal');
+    if (existing) existing.remove();
+    
+    // 🔥 자체 모달 HTML 생성 (showPromptModal 의존 없음)
+    var modalHtml = `
+        <div id="customRegionModal" style="
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 99999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            animation: fadeIn 0.2s ease;
+        " onclick="if(event.target===this) this.remove()">
+            <div style="
+                background: white;
+                border-radius: 16px;
+                padding: 24px;
+                max-width: 380px;
+                width: 100%;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            " onclick="event.stopPropagation()">
+                <h3 style="font-size:17px; font-weight:700; color:#1a202c; margin-bottom:8px;">📍 지역 추가</h3>
+                <p style="font-size:14px; color:#4a5568; margin-bottom:16px; line-height:1.6;">
+                    새 지역명을 입력하세요:
+                </p>
+                <input id="customRegionInput" type="text" placeholder="예: 강남구" 
+                       style="width:100%; padding:10px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:14px; margin-bottom:16px;"
+                       onkeydown="if(event.key==='Enter') document.getElementById('customRegionConfirmBtn').click();">
+                <div style="display:flex; gap:8px; justify-content:flex-end;">
+                    <button class="btn btn-outline btn-sm" onclick="document.getElementById('customRegionModal').remove();" style="padding:6px 16px; border:1px solid #cbd5e0; border-radius:8px; background:white; cursor:pointer;">취소</button>
+                    <button id="customRegionConfirmBtn" class="btn btn-primary btn-sm" style="padding:6px 16px; background:#4f7eb3; color:white; border:none; border-radius:8px; cursor:pointer;">추가</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // 입력창에 포커스
+    setTimeout(function() {
+        var input = document.getElementById('customRegionInput');
+        if (input) {
+            input.focus();
+            input.select();
         }
-    );
+    }, 100);
+    
+    // 🔥 확인 버튼 클릭 이벤트
+    document.getElementById('customRegionConfirmBtn').addEventListener('click', function() {
+        var input = document.getElementById('customRegionInput');
+        var name = input ? input.value.trim() : '';
+        document.getElementById('customRegionModal').remove();
+        
+        console.log('📥 입력된 지역명:', name);
+        
+        if (!name) {
+            showTabStatus('tab-settings', '⚠️ 지역명을 입력하세요.', 'warning');
+            return;
+        }
+        
+        var region = name.replace(/[\/\\:*?"<>|]/g, '');
+        if (!region) {
+            showTabStatus('tab-settings', '⚠️ 사용할 수 없는 지역명입니다.', 'warning');
+            return;
+        }
+        
+        var select = document.getElementById('regionSelect');
+        if (!select) {
+            console.error('❌ regionSelect 요소 없음');
+            showTabStatus('tab-settings', '⚠️ 오류 발생, 새로고침 후 다시 시도하세요.', 'error');
+            return;
+        }
+        
+        // 중복 체크
+        for (var i = 0; i < select.options.length; i++) {
+            if (select.options[i].value === region) {
+                showTabStatus('tab-settings', '⚠️ 이미 존재하는 지역입니다.', 'warning');
+                return;
+            }
+        }
+        
+        // 지역 저장
+        var key = getStorageKey(region);
+        localStorage.setItem(key, JSON.stringify([]));
+        console.log('💾 localStorage 저장 완료:', key);
+        
+        // 드롭다운에 추가
+        var opt = document.createElement('option');
+        opt.value = region;
+        opt.textContent = region;
+        select.appendChild(opt);
+        select.value = region;
+        console.log('✅ 드롭다운에 추가됨:', region);
+        
+        // 지역 전환
+        switchRegion(region);
+        showTabStatus('tab-settings', '✅ "' + region + '" 지역 추가됨', 'ok');
+        console.log('✅ 지역 추가 완료!');
+    });
 }
 // ============================================================
 // 5. 설정 내보내기/가져오기
