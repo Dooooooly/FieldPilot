@@ -2414,3 +2414,100 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     setTimeout(initWeather, 3000);
 });
+// ============================================================
+// 카카오맵 장소 검색
+// ============================================================
+
+async function searchKakaoPlaces(query, size) {
+    size = size || 5;
+    var restKey = settings.kakaoRestKey;
+    if (!query || query.length < 2 || !restKey) return [];
+    try {
+        var res = await fetch(
+            'https://dapi.kakao.com/v2/local/search/keyword.json?query=' + encodeURIComponent(query) + '&size=' + size,
+            { headers: { 'Authorization': 'KakaoAK ' + restKey } }
+        );
+        if (!res.ok) return [];
+        var data = await res.json();
+        return data.documents || [];
+    } catch(e) {
+        console.error('카카오맵 검색 오류:', e);
+        return [];
+    }
+}
+
+// ============================================================
+// 키보드 네비게이션 함수들
+// ============================================================
+
+function handleStartKeydown(event) {
+    var results = document.querySelectorAll('#startSearchResults .result-item');
+    if (results.length === 0) return;
+    var index = searchIndexState.selected || -1;
+    if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        index = Math.min(index + 1, results.length - 1);
+    } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        index = Math.max(index - 1, -1);
+    } else if (event.key === 'Enter' && index >= 0) {
+        event.preventDefault();
+        results[index].click();
+        return;
+    } else if (event.key === 'Escape') {
+        document.getElementById('startSearchResults').style.display = 'none';
+        index = -1;
+    }
+    searchIndexState.selected = index;
+    for (var i = 0; i < results.length; i++) {
+        results[i].style.background = i === index ? '#bee3f8' : '';
+    }
+}
+
+function handleWaypointKeydown(event) {
+    var results = document.querySelectorAll('#waypointSearchResults .result-item');
+    if (results.length === 0) return;
+    var index = searchIndexState.waypoint || -1;
+    if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        index = Math.min(index + 1, results.length - 1);
+    } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        index = Math.max(index - 1, -1);
+    } else if (event.key === 'Enter' && index >= 0) {
+        event.preventDefault();
+        results[index].click();
+        return;
+    } else if (event.key === 'Escape') {
+        document.getElementById('waypointSearchResults').style.display = 'none';
+        index = -1;
+    }
+    searchIndexState.waypoint = index;
+    for (var i = 0; i < results.length; i++) {
+        results[i].style.background = i === index ? '#bee3f8' : '';
+    }
+}
+
+function handleAddrKeydown(event) {
+    var results = document.querySelectorAll('#addrSearchResults .result-item');
+    if (results.length === 0) return;
+    var index = searchIndexState.addr || -1;
+    if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        index = Math.min(index + 1, results.length - 1);
+    } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        index = Math.max(index - 1, -1);
+    } else if (event.key === 'Enter' && index >= 0) {
+        event.preventDefault();
+        results[index].click();
+        return;
+    } else if (event.key === 'Escape') {
+        document.getElementById('addrSearchResults').style.display = 'none';
+        index = -1;
+    }
+    searchIndexState.addr = index;
+    for (var i = 0; i < results.length; i++) {
+        results[i].style.background = i === index ? '#bee3f8' : '';
+    }
+}
