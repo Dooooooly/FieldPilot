@@ -551,10 +551,11 @@
                 <span class="temp">--°C</span>
             </div>
             <span class="header-divider"></span>
-               <div id="regionDisplay" onclick="openRegionManager()" style="
+                <!-- 🔥 현재 지역 표시 (클릭하면 팝업) -->
+        <div id="regionDisplay" onclick="openRegionManager()" style="
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
             background: rgba(255,255,255,0.15);
             padding: 4px 12px;
             border-radius: 30px;
@@ -566,11 +567,9 @@
             white-space: nowrap;
             color: white;
         ">
-            <span style="font-weight:600; opacity:0.8;">지역관리</span>
-            <span style="opacity:0.4;">|</span>
             <span id="currentRegionDisplay" style="font-weight:700; font-size:13px;">현재: 지역 선택</span>
+            <span style="font-size:10px; opacity:0.6;">▼</span>
         </div>
-        
         <!-- 실제 select는 숨김 (값 저장용) -->
         <select id="regionSelect" style="display:none;" onchange="switchRegion(this.value)"></select>
     </div>
