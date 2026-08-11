@@ -767,7 +767,12 @@ function selectStartPoint(name, address, lat, lng) {
     document.getElementById('startInfo').textContent = '✅ ' + name + ' (' + address + ')';
     document.getElementById('startInfo').style.color = '#22543d';
     if (kakaoMap) {
-        clearRouteMarkers();
+        // ===== 🔥 마커 배열 초기화 =====
+        routeMarkers = [];
+        if (startMarker) {
+            try { startMarker.setMap(null); } catch(e) {}
+            startMarker = null;
+        }
         clearSingleMarker();
         isShowingRouteMarkers = false;
         addRouteMarker(startPoint.lat, startPoint.lng, '🚩 ' + name, true, -1);
@@ -986,15 +991,46 @@ function renderWaypointList() {
         window._sortable = new Sortable(list, {
             handle: '.drag-handle',
             animation: 150,
-            onEnd: function(evt) {
-                var oldIndex = evt.oldIndex, newIndex = evt.newIndex;
-                if (oldIndex === newIndex) return;
-                var moved = waypoints.splice(oldIndex, 1)[0];
-                waypoints.splice(newIndex, 0, moved);
-                renderWaypointList();
-                showTabStatus('tab-places', '🔄 경유지 순서 변경됨', 'info');
-                if (startPoint && waypoints.length > 0) setTimeout(runOptimize, 300);
-            }
+            // SortableJS onEnd 부분
+onEnd: function(evt) {
+    var oldIndex = evt.oldIndex - 1;
+    var newIndex = evt.newIndex - 1;
+    if (oldIndex === newIndex || oldIndex < 0 || newIndex < 0) return;
+    
+    var moved = routeResult.places.splice(oldIndex, 1)[0];
+    routeResult.places.splice(newIndex, 0, moved);
+    showRouteList();
+    
+    var allPoints = [{ name: startPoint.name, lat: startPoint.lat, lng: startPoint.lng }].concat(routeResult.places);
+    
+    // ===== 🔥 마커 배열 초기화 후 재생성 =====
+    routeMarkers = [];
+    if (startMarker) {
+        try { startMarker.setMap(null); } catch(e) {}
+        startMarker = null;
+    }
+    if (window._sectionPolylines) {
+        for (var i = 0; i < window._sectionPolylines.length; i++) {
+            try { window._sectionPolylines[i].setMap(null); } catch(e) {}
+        }
+        window._sectionPolylines = [];
+    }
+    
+    addRouteMarker(startPoint.lat, startPoint.lng, '🚩 ' + startPoint.name, true, -1);
+    for (var i = 0; i < routeResult.places.length; i++) {
+        var p = routeResult.places[i];
+        addRouteMarker(p.lat, p.lng, (i + 1) + '. ' + p.name, false, i);
+    }
+    
+    var restKey = settings.kakaoRestKey;
+    if (restKey) {
+        callKakaoMobilityRoute(allPoints, restKey).then(function(routeData) {
+            if (routeData) drawRoadRoute(routeData);
+            else drawRoute(allPoints);
+        });
+    } else drawRoute(allPoints);
+    showTabStatus('tab-route', '🔄 경로 순서 변경됨', 'ok');
+}
         });
     }
 }
@@ -2351,8 +2387,8 @@ function addRouteMarker(lat, lng, title, isStart, colorIndex) {
             // ===== 출발지: 흰색 배경 + 검정 글자 (고정) =====
             content = '<div style="background:white;padding:6px 14px;border-radius:20px;box-shadow:0 4px 16px rgba(0,0,0,0.15);font-size:13px;font-weight:700;color:#1a202c;white-space:nowrap;border:2px solid #2d3748;z-index:10;">🚩 ' + escapeHtml(title) + '</div>';
         } else {
-            // ===== 경유지: 전달받은 colorIndex 사용 =====
-            var idx = (colorIndex !== undefined && colorIndex !== null) ? colorIndex : routeMarkers.length;
+            // ===== 🔥 경유지: 전달받은 colorIndex 사용 (undefined면 0) =====
+            var idx = (colorIndex !== undefined && colorIndex !== null) ? colorIndex : 0;
             var color = COLORS[idx % COLORS.length];
             content = '<div style="background:' + color + ';padding:6px 14px;border-radius:20px;box-shadow:0 4px 16px rgba(0,0,0,0.15);font-size:13px;font-weight:700;color:white;white-space:nowrap;border:1px solid rgba(255,255,255,0.3);z-index:5;">📍 ' + escapeHtml(title) + '</div>';
         }
