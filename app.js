@@ -2641,62 +2641,38 @@ async function uploadToGitHub(silent) {
 
 async function downloadFromGitHub() {
     var token = settings.githubToken;
-    if (!token) { showTabStatus('tab-settings', '⚠️ GitHub 토큰이 없습니다.', 'warning'); return; }
+    if (!token) {
+        showTabStatus('tab-settings', '⚠️ GitHub 토큰이 없습니다.', 'warning');
+        return;
+    }
+    
     var region = currentRegion;
+    
+    // 현재 지역이 없으면 팝업으로 입력받기
     if (!region) {
-        region = prompt('다운로드할 지역명을 입력하세요:', '');
-        if (!region || !region.trim()) { showTabStatus('tab-settings', '⚠️ 지역명이 필요합니다.', 'warning'); return; }
-        region = region.trim().replace(/[\/\\:*?"<>|]/g, '');
-        if (!region) { showTabStatus('tab-settings', '⚠️ 사용할 수 없는 지역명입니다.', 'warning'); return; }
-        var select = document.getElementById('regionSelect');
-        var exists = false;
-        for (var i = 0; i < select.options.length; i++) {
-            if (select.options[i].value === region) { exists = true; break; }
-        }
-        if (!exists) {
-            var key = getStorageKey(region);
-            localStorage.setItem(key, JSON.stringify([]));
-            var opt = document.createElement('option');
-            opt.value = region; opt.textContent = region;
-            select.appendChild(opt);
-            select.value = region;
-            currentRegion = region;
-            localStorage.setItem(SELECTED_REGION_KEY, region);
-        } else {
-            select.value = region;
-            currentRegion = region;
-            localStorage.setItem(SELECTED_REGION_KEY, region);
-        }
+        showPromptModal(
+            '📥 GitHub 다운로드',
+            '다운로드할 지역명을 입력하세요:',
+            '',
+            function(regionInput) {
+                if (!regionInput || !regionInput.trim()) {
+                    showTabStatus('tab-settings', '⚠️ 지역명이 필요합니다.', 'warning');
+                    return;
+                }
+                regionInput = regionInput.trim().replace(/[\/\\:*?"<>|]/g, '');
+                if (!regionInput) {
+                    showTabStatus('tab-settings', '⚠️ 사용할 수 없는 지역명입니다.', 'warning');
+                    return;
+                }
+                // 🔥 입력받은 지역으로 다운로드 실행
+                processDownloadFromGitHub(regionInput);
+            }
+        );
+        return;
     }
-    try {
-        showTabStatus('tab-settings', '☁️ GitHub 다운로드 중...', 'info');
-        var userRes = await fetch('https://api.github.com/user', { headers: { 'Authorization': 'token ' + token } });
-        if (!userRes.ok) throw new Error('토큰 인증 실패');
-        var user = await userRes.json();
-        var username = user.login;
-        var repoName = 'route-data';
-        var fileName = region + '.json';
-        var fileUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents/' + encodeURIComponent(fileName);
-        var fileRes = await fetch(fileUrl, { headers: { 'Authorization': 'token ' + token }, cache: 'no-store' });
-        if (fileRes.status === 404) {
-            showTabStatus('tab-settings', '📭 GitHub에 "' + region + '" 지역의 데이터가 없습니다.', 'warning');
-            return;
-        }
-        if (!fileRes.ok) throw new Error('다운로드 실패');
-        var data = await fileRes.json();
-        var binaryString = atob(data.content);
-        var bytes = new Uint8Array(binaryString.length);
-        for (var i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
-        var content = new TextDecoder('utf-8').decode(bytes);
-        var loadedPlaces = JSON.parse(content);
-        if (!confirm('현재 ' + places.length + '개 데이터를 ' + loadedPlaces.length + '개로 덮어쓰시겠습니까?')) return;
-        places = loadedPlaces;
-        savePlaces();
-        showTabStatus('tab-settings', '✅ GitHub 다운로드 완료! (' + loadedPlaces.length + '개)', 'ok');
-    } catch(error) {
-        console.error('GitHub 다운로드 오류:', error);
-        showTabStatus('tab-settings', '❌ 다운로드 실패: ' + error.message, 'error');
-    }
+    
+    // 현재 지역이 있으면 바로 다운로드
+    processDownloadFromGitHub(region);
 }
 
 async function showGitHubHistory() {
@@ -3339,6 +3315,103 @@ async function processDownloadFromGitHub(region) {
         );
     } catch(error) {
         console.error('GitHub 다운로드 오류:', error);
+        showTabStatus('tab-settings', '❌ 다운로드 실패: ' + error.message, 'error');
+    }
+}
+// ============================================================
+// GitHub 다운로드 처리 (실제 다운로드 로직)
+// ============================================================
+
+async function processDownloadFromGitHub(region) {
+    console.log('🔄 processDownloadFromGitHub 시작, 지역:', region);
+    
+    var token = settings.githubToken;
+    if (!token) {
+        showTabStatus('tab-settings', '⚠️ GitHub 토큰이 없습니다.', 'warning');
+        return;
+    }
+    
+    try {
+        showTabStatus('tab-settings', '☁️ GitHub 다운로드 중...', 'info');
+        
+        // 1. 토큰 인증
+        var userRes = await fetch('https://api.github.com/user', {
+            headers: { 'Authorization': 'token ' + token }
+        });
+        
+        if (!userRes.ok) {
+            showTabStatus('tab-settings', '❌ 토큰 인증 실패 (상태: ' + userRes.status + ')', 'error');
+            return;
+        }
+        
+        var user = await userRes.json();
+        var username = user.login;
+        
+        // 2. 파일 요청
+        var repoName = 'route-data';
+        var fileName = region + '.json';
+        var fileUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents/' + encodeURIComponent(fileName);
+        
+        var fileRes = await fetch(fileUrl, {
+            headers: { 'Authorization': 'token ' + token },
+            cache: 'no-store'
+        });
+        
+        if (fileRes.status === 404) {
+            showTabStatus('tab-settings', '📭 GitHub에 "' + region + '" 지역의 데이터가 없습니다.', 'warning');
+            return;
+        }
+        
+        if (!fileRes.ok) {
+            showTabStatus('tab-settings', '❌ 다운로드 실패 (상태: ' + fileRes.status + ')', 'error');
+            return;
+        }
+        
+        // 3. 파일 내용 디코딩
+        var data = await fileRes.json();
+        var binaryString = atob(data.content);
+        var bytes = new Uint8Array(binaryString.length);
+        for (var i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        var content = new TextDecoder('utf-8').decode(bytes);
+        var loadedPlaces = JSON.parse(content);
+        
+        // 4. 덮어쓰기 확인 (내부 모달)
+        showConfirmModal(
+            '📥 데이터 덮어쓰기',
+            '현재 ' + places.length + '개 데이터를 ' + loadedPlaces.length + '개로 덮어쓰시겠습니까?',
+            function() {
+                // 덮어쓰기 실행
+                places = loadedPlaces;
+                savePlaces();
+                
+                // 드롭다운에 지역 추가
+                var select = document.getElementById('regionSelect');
+                var exists = false;
+                for (var i = 0; i < select.options.length; i++) {
+                    if (select.options[i].value === region) {
+                        exists = true;
+                        break;
+                    }
+                }
+                if (!exists) {
+                    var opt = document.createElement('option');
+                    opt.value = region;
+                    opt.textContent = region;
+                    select.appendChild(opt);
+                }
+                select.value = region;
+                currentRegion = region;
+                localStorage.setItem(SELECTED_REGION_KEY, region);
+                
+                renderPlaces();
+                showTabStatus('tab-settings', '✅ GitHub 다운로드 완료! (' + loadedPlaces.length + '개)', 'ok');
+            }
+        );
+        
+    } catch(error) {
+        console.error('❌ GitHub 다운로드 오류:', error);
         showTabStatus('tab-settings', '❌ 다운로드 실패: ' + error.message, 'error');
     }
 }
