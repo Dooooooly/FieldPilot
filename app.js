@@ -316,13 +316,14 @@ function loadRegionList() {
         }
     }
     
-    // 🔥 지역이 없으면 "지역 선택" 표시 (disabled 없이)
     if (regions.length === 0) {
         var defaultOpt = document.createElement('option');
         defaultOpt.value = '';
         defaultOpt.textContent = '📍 지역 선택';
         defaultOpt.selected = true;
+        defaultOpt.disabled = true;
         select.appendChild(defaultOpt);
+        updateRegionDisplay(); // 🔥 추가
         return;
     }
     
@@ -334,29 +335,19 @@ function loadRegionList() {
         select.appendChild(opt);
     }
     
-    // 🔥 저장된 지역 또는 첫 번째 지역 선택 (기본 옵션 없음)
     var savedRegion = localStorage.getItem(SELECTED_REGION_KEY);
-    var selectedRegion = '';
     if (savedRegion && regions.includes(savedRegion)) {
-        selectedRegion = savedRegion;
+        select.value = savedRegion;
+        currentRegion = savedRegion;
     } else {
-        selectedRegion = regions[0];
-        localStorage.setItem(SELECTED_REGION_KEY, selectedRegion);
+        select.value = regions[0];
+        currentRegion = regions[0];
+        localStorage.setItem(SELECTED_REGION_KEY, currentRegion);
     }
     
-    // 🔥 강제 선택
-    select.value = selectedRegion;
-    for (var i = 0; i < select.options.length; i++) {
-        if (select.options[i].value === selectedRegion) {
-            select.selectedIndex = i;
-            break;
-        }
-    }
+    // 🔥 현재 지역 표시 업데이트
+    updateRegionDisplay();
     
-    currentRegion = selectedRegion;
-    console.log('✅ 지역 선택 완료:', currentRegion);
-    
-    // 데이터 로드
     var key = getStorageKey(currentRegion);
     var data = localStorage.getItem(key);
     places = data ? JSON.parse(data) : [];
@@ -383,12 +374,19 @@ function switchRegion(region) {
     currentRegion = region;
     localStorage.setItem(SELECTED_REGION_KEY, region);
     
-    // 🔥 드롭다운 값 설정
     var select = document.getElementById('regionSelect');
     if (select) {
         select.value = region;
-        console.log('✅ 드롭다운 선택됨:', select.value);
+        for (var i = 0; i < select.options.length; i++) {
+            if (select.options[i].value === region) {
+                select.selectedIndex = i;
+                break;
+            }
+        }
     }
+    
+    // 🔥 현재 지역 표시 업데이트
+    updateRegionDisplay();
     
     var key = getStorageKey(region);
     var data = localStorage.getItem(key);
@@ -3423,10 +3421,9 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 페이지 로드 시작');
     
     loadSettings();
-    loadRegionList();
+    loadRegionList();  // 🔥 여기서 updateRegionDisplay() 호출됨
     loadPresets();
     
-    // 🔥 현재 지역 데이터 로드
     if (currentRegion) {
         var key = getStorageKey(currentRegion);
         var data = localStorage.getItem(key);
@@ -3436,6 +3433,9 @@ document.addEventListener('DOMContentLoaded', function() {
         places = [];
         console.log('📊 현재 지역 없음, 빈 배열');
     }
+    
+    // 🔥 추가: 페이지 로드 후 한 번 더 표시 업데이트
+    updateRegionDisplay();
     
     var sortSelect = document.getElementById('sortPlaces');
     if (sortSelect) currentSort = sortSelect.value;
@@ -3913,7 +3913,7 @@ function selectRegionFromPopup(region) {
     switchRegion(region);
     var modal = document.getElementById('regionManagerModal');
     if (modal) modal.remove();
-    updateRegionDisplay();
+    // 🔥 switchRegion 내부에서 이미 updateRegionDisplay() 호출됨
 }
 
 function addRegionFromPopup() {
@@ -4094,14 +4094,19 @@ function deleteRegionFromManager(region) {
     );
 }
 function updateRegionDisplay() {
-    var displayEl = document.getElementById('currentRegionDisplay');
-    if (!displayEl) return;
+    var nameEl = document.getElementById('currentRegionName');
+    if (!nameEl) {
+        console.warn('⚠️ currentRegionName 요소 없음');
+        return;
+    }
     
     var currentRegion = localStorage.getItem(SELECTED_REGION_KEY);
     if (currentRegion) {
-        displayEl.textContent = '현재: ' + currentRegion;
+        nameEl.textContent = currentRegion;
+        console.log('✅ 지역명 업데이트:', currentRegion);
     } else {
-        displayEl.textContent = '현재: 지역 선택';
+        nameEl.textContent = '지역 선택';
+        console.log('📍 지역 선택으로 표시');
     }
 }
 
