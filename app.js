@@ -406,7 +406,7 @@ function addRegion() {
                 <p style="font-size:14px; color:#4a5568; margin-bottom:16px; line-height:1.6;">
                     새 지역명을 입력하세요:
                 </p>
-                <input id="customRegionInput" type="text" placeholder="예: 강남구" 
+                <input id="customRegionInput" type="text" placeholder="예: 용산" 
                        style="width:100%; padding:10px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:14px; margin-bottom:16px;"
                        onkeydown="if(event.key==='Enter') document.getElementById('customRegionConfirmBtn').click();">
                 <div style="display:flex; gap:8px; justify-content:flex-end;">
