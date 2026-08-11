@@ -1240,21 +1240,41 @@ function getSortedPlaces() {
 }
 
 function renderPlaces(filtered) {
-    console.log('🔄 renderPlaces 호출됨, 현재 지역:', currentRegion);
+    console.log('🔄 renderPlaces 호출됨');
+    console.log('📊 현재 places 길이:', places ? places.length : 'undefined');
+    console.log('📍 현재 지역:', currentRegion);
     
     var list = document.getElementById('placeList');
     if (!list) {
-        console.error('❌ placeList 요소 없음');
-        return;
+        console.error('❌ placeList 요소를 찾을 수 없습니다!');
+        // 🔥 placeList가 없으면 생성 시도
+        var card = document.querySelector('#tab-list .card');
+        if (card) {
+            var newList = document.createElement('div');
+            newList.id = 'placeList';
+            newList.className = 'place-scroll';
+            newList.style.maxHeight = '380px';
+            newList.style.overflowY = 'auto';
+            newList.style.minHeight = '100px';
+            card.appendChild(newList);
+            list = newList;
+            console.log('✅ placeList 자동 생성됨');
+        } else {
+            return;
+        }
     }
     
     var data = filtered || getSortedPlaces();
-    console.log('📊 표시할 현장 수:', data.length);
+    console.log('📊 표시할 데이터 수:', data.length);
     
-    document.getElementById('listCount').textContent = '(' + data.length + '개)';
+    var countEl = document.getElementById('listCount');
+    if (countEl) {
+        countEl.textContent = '(' + data.length + '개)';
+    }
     
-    if (data.length === 0) {
+    if (!data || data.length === 0) {
         list.innerHTML = '<div class="empty-msg">등록된 현장이 없습니다</div>';
+        console.log('📭 표시할 현장 없음');
         return;
     }
     
@@ -3416,47 +3436,54 @@ async function processDownloadFromGitHub(region) {
         var loadedPlaces = JSON.parse(content);
         console.log('📊 GitHub에서 로드된 현장 수:', loadedPlaces.length);
         
-        showConfirmModal(
-            '📥 데이터 덮어쓰기',
-            '현재 ' + places.length + '개 데이터를 ' + loadedPlaces.length + '개로 덮어쓰시겠습니까?',
-            function() {
-                // 🔥 데이터 저장
-                places = loadedPlaces;
-                
-                // 🔥 로컬스토리지에 저장
-                var key = getStorageKey(region);
-                localStorage.setItem(key, JSON.stringify(places));
-                console.log('💾 로컬스토리지 저장 완료:', key, places.length + '개');
-                
-                // 🔥 드롭다운에 지역 추가 (없는 경우)
-                var select = document.getElementById('regionSelect');
-                var exists = false;
-                for (var i = 0; i < select.options.length; i++) {
-                    if (select.options[i].value === region) {
-                        exists = true;
-                        break;
-                    }
-                }
-                if (!exists) {
-                    var opt = document.createElement('option');
-                    opt.value = region;
-                    opt.textContent = region;
-                    select.appendChild(opt);
-                }
-                
-                // 🔥 해당 지역으로 자동 전환 (renderPlaces 호출됨)
-                select.value = region;
-                currentRegion = region;
-                localStorage.setItem(SELECTED_REGION_KEY, region);
-                
-                // 🔥 현장리스트 갱신
-                renderPlaces();
-                updateStorageInfo();
-                
-                showTabStatus('tab-settings', '✅ GitHub 다운로드 완료! (' + loadedPlaces.length + '개)', 'ok');
-                console.log('✅ 다운로드 완료, 지역 전환됨:', region, '현장 수:', places.length);
+        // 🔥 먼저 데이터를 전역 places에 저장하고 localStorage에도 저장
+        places = loadedPlaces;
+        console.log('✅ places 배열 업데이트됨:', places.length);
+        
+        // 🔥 localStorage에 저장
+        var key = getStorageKey(region);
+        localStorage.setItem(key, JSON.stringify(places));
+        console.log('💾 localStorage 저장 완료:', key);
+        
+        // 🔥 드롭다운에 지역 추가
+        var select = document.getElementById('regionSelect');
+        var exists = false;
+        for (var i = 0; i < select.options.length; i++) {
+            if (select.options[i].value === region) {
+                exists = true;
+                break;
             }
-        );
+        }
+        if (!exists) {
+            var opt = document.createElement('option');
+            opt.value = region;
+            opt.textContent = region;
+            select.appendChild(opt);
+        }
+        
+        // 🔥 지역 전환 (switchRegion이 renderPlaces를 호출함)
+        select.value = region;
+        currentRegion = region;
+        localStorage.setItem(SELECTED_REGION_KEY, region);
+        
+        // 🔥⚠️ 중요한 수정: switchRegion을 호출하면 places가 다시 로드됨
+        // 하지만 우리는 이미 places에 데이터를 넣었으므로, switchRegion을 호출하면
+        // localStorage에서 다시 읽어와서 places를 덮어쓰게 됨.
+        // 따라서 switchRegion 대신 직접 renderPlaces 호출
+        console.log('🔄 현장리스트 갱신 시작...');
+        renderPlaces();
+        updateStorageInfo();
+        
+        // 지도 이동
+        if (kakaoMap) {
+            var center = getRegionCenter(region);
+            kakaoMap.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
+            kakaoMap.setLevel(5);
+            kakaoMap.relayout();
+        }
+        
+        showTabStatus('tab-settings', '✅ GitHub 다운로드 완료! (' + loadedPlaces.length + '개)', 'ok');
+        console.log('✅ 다운로드 완료, 현장 수:', places.length);
         
     } catch(error) {
         console.error('❌ GitHub 다운로드 오류:', error);
