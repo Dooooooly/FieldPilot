@@ -1839,18 +1839,35 @@ async function runOptimize() {
             return;
         }
         
-        clearRouteMarkers();
+        // ===== 🔥 마커 배열 초기화 =====
+        routeMarkers = [];
+        if (startMarker) {
+            try { startMarker.setMap(null); } catch(e) {}
+            startMarker = null;
+        }
+        if (window._sectionPolylines) {
+            for (var i = 0; i < window._sectionPolylines.length; i++) {
+                try { window._sectionPolylines[i].setMap(null); } catch(e) {}
+            }
+            window._sectionPolylines = [];
+        }
+        if (kakaoPolyline) {
+            try { kakaoPolyline.setMap(null); } catch(e) {}
+            kakaoPolyline = null;
+        }
         clearSingleMarker();
         isShowingRouteMarkers = true;
-
-        // 출발지 마커 (colorIndex: -1)
-addRouteMarker(startPoint.lat, startPoint.lng, '🚩 ' + startPoint.name, true, -1);
-
-// 경유지 마커 (0부터 시작하는 인덱스 전달)
-for (var i = 0; i < sorted.length; i++) {
-    var p = sorted[i];
-    addRouteMarker(p.lat, p.lng, (i + 1) + '. ' + p.name, false, i);
-}
+        
+        // ===== 🔥 마커 추가 (colorIndex 명시적 전달) =====
+        console.log('📍 출발지 마커 추가:', startPoint.name);
+        addRouteMarker(startPoint.lat, startPoint.lng, '🚩 ' + startPoint.name, true, -1);
+        
+        console.log('📍 경유지 마커 추가:', sorted.length + '개');
+        for (var i = 0; i < sorted.length; i++) {
+            var p = sorted[i];
+            console.log('  - ' + (i + 1) + '. ' + p.name + ' (색상 인덱스: ' + i + ')');
+            addRouteMarker(p.lat, p.lng, (i + 1) + '. ' + p.name, false, i);
+        }
         
         var allPoints = [{ 
             name: startPoint.name, 
@@ -1858,12 +1875,6 @@ for (var i = 0; i < sorted.length; i++) {
             lng: startPoint.lng,
             address: startPoint.address || ''
         }].concat(sorted);
-        
-        addRouteMarker(startPoint.lat, startPoint.lng, '🚩 ' + startPoint.name, true);
-        for (var i = 0; i < sorted.length; i++) {
-            var p = sorted[i];
-            addRouteMarker(p.lat, p.lng, (i + 1) + '. ' + p.name, false);
-        }
         
         var routeData = await callKakaoMobilityRoute(allPoints, restKey);
         
@@ -1874,7 +1885,7 @@ for (var i = 0; i < sorted.length; i++) {
             showTabStatus('tab-route', '⚠️ 도로 경로를 불러올 수 없어 직선으로 표시합니다.', 'warning');
         }
         
-        // ===== 거리/시간 계산 (API 기준) =====
+        // ===== 거리/시간 계산 =====
         var totalKm = 0;
         var totalMin = 0;
         var sectionDistances = [];
@@ -1947,12 +1958,13 @@ for (var i = 0; i < sorted.length; i++) {
         
         showRouteList();
         
+        // ===== 🔥 지도 중심을 출발지로 이동 (강제) =====
         if (kakaoMap && startPoint && startPoint.lat && startPoint.lng) {
-            kakaoMap.setCenter(new kakao.maps.LatLng(startPoint.lat, startPoint.lng));
+            var center = new kakao.maps.LatLng(startPoint.lat, startPoint.lng);
+            kakaoMap.setCenter(center);
             kakaoMap.setLevel(5);
-            setTimeout(function() {
-                if (kakaoMap) kakaoMap.relayout();
-            }, 200);
+            kakaoMap.relayout();
+            console.log('🗺️ 지도 중심을 출발지로 이동:', startPoint.name);
         } else if (!kakaoMap) {
             initMap();
             setTimeout(function() {
@@ -1974,7 +1986,6 @@ for (var i = 0; i < sorted.length; i++) {
         if (btn) btn.disabled = false;
     }
 }
-
 // ============================================================
 // 10. 경로 표시
 // ============================================================
@@ -2387,9 +2398,10 @@ function addRouteMarker(lat, lng, title, isStart, colorIndex) {
             // ===== 출발지: 흰색 배경 + 검정 글자 (고정) =====
             content = '<div style="background:white;padding:6px 14px;border-radius:20px;box-shadow:0 4px 16px rgba(0,0,0,0.15);font-size:13px;font-weight:700;color:#1a202c;white-space:nowrap;border:2px solid #2d3748;z-index:10;">🚩 ' + escapeHtml(title) + '</div>';
         } else {
-            // ===== 🔥 경유지: 전달받은 colorIndex 사용 (undefined면 0) =====
+            // ===== 🔥 경유지: colorIndex 사용 (없으면 0) =====
             var idx = (colorIndex !== undefined && colorIndex !== null) ? colorIndex : 0;
             var color = COLORS[idx % COLORS.length];
+            console.log('🎨 마커 색상:', title, '인덱스:', idx, '색상:', color);
             content = '<div style="background:' + color + ';padding:6px 14px;border-radius:20px;box-shadow:0 4px 16px rgba(0,0,0,0.15);font-size:13px;font-weight:700;color:white;white-space:nowrap;border:1px solid rgba(255,255,255,0.3);z-index:5;">📍 ' + escapeHtml(title) + '</div>';
         }
         
@@ -2408,7 +2420,6 @@ function addRouteMarker(lat, lng, title, isStart, colorIndex) {
         console.error('마커 추가 실패:', e);
     }
 }
-
 function clearRouteMarkers() {
     for (var i = 0; i < routeMarkers.length; i++) { try { routeMarkers[i].setMap(null); } catch(e) {} }
     routeMarkers = [];
