@@ -331,13 +331,13 @@ function switchRegion(region) {
     currentRegion = region;
     localStorage.setItem(SELECTED_REGION_KEY, region);
     
-    // 🔥 해당 지역 데이터 로드
+    // 해당 지역 데이터 로드
     var key = getStorageKey(region);
     var data = localStorage.getItem(key);
     places = data ? JSON.parse(data) : [];
     console.log('📊 로드된 현장 수:', places.length);
     
-    // 🔥 UI 갱신
+    // UI 갱신
     renderPlaces();
     updateStorageInfo();
     document.getElementById('regionSelect').value = region;
@@ -357,6 +357,13 @@ function switchRegion(region) {
     document.getElementById('totalTime').textContent = '0 분';
     document.getElementById('optimizeMode').textContent = '-';
     document.getElementById('routeList').innerHTML = '';
+    
+    // 카카오맵 버튼 숨기기
+    var btnContainer = document.getElementById('kakaoMapButtonContainer');
+    if (btnContainer) {
+        btnContainer.style.display = 'none';
+    }
+    currentPlaceId = null;
     
     if (kakaoMap) {
         var center = getRegionCenter(region);
@@ -3677,6 +3684,238 @@ function openKakaoMapFromPlace(id) {
     } else {
         window.open(url, '_blank');
     }
+}
+// ============================================================
+// 지역 관리 팝업 (추가 + 삭제 + 선택)
+// ============================================================
+
+function openRegionManager() {
+    var existing = document.getElementById('regionManagerModal');
+    if (existing) {
+        existing.remove();
+        return;
+    }
+    
+    var select = document.getElementById('regionSelect');
+    var currentRegion = select.value || '';
+    
+    // 지역 목록 가져오기
+    var regions = [];
+    for (var i = 0; i < select.options.length; i++) {
+        regions.push(select.options[i].value);
+    }
+    
+    var listHtml = '';
+    if (regions.length === 0) {
+        listHtml = '<div style="text-align:center;color:#a0aec0;padding:12px;">등록된 지역이 없습니다</div>';
+    } else {
+        for (var i = 0; i < regions.length; i++) {
+            var r = regions[i];
+            var isActive = (r === currentRegion);
+            listHtml += `
+                <div style="
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 8px 12px;
+                    margin-bottom: 4px;
+                    background: ${isActive ? '#ebf8ff' : '#f7fafc'};
+                    border-radius: 6px;
+                    border-left: 3px solid ${isActive ? '#4f7eb3' : 'transparent'};
+                    cursor: pointer;
+                    transition: background 0.15s;
+                " onclick="selectRegionFromManager('${escapeHtml(r)}')" 
+                   onmouseover="this.style.background='#edf2f7'" 
+                   onmouseout="this.style.background='${isActive ? '#ebf8ff' : '#f7fafc'}'">
+                    <span style="font-weight:${isActive ? '600' : '400'};">
+                        ${isActive ? '📍 ' : ''}${escapeHtml(r)}
+                    </span>
+                    <button onclick="event.stopPropagation(); deleteRegionFromManager('${escapeHtml(r)}')" 
+                            style="background:none; border:none; color:#e53e3e; font-size:16px; cursor:pointer; padding:0 4px;" 
+                            title="지역 삭제">✕</button>
+                </div>
+            `;
+        }
+    }
+    
+    var modalHtml = `
+        <div id="regionManagerModal" style="
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 99999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            animation: fadeIn 0.2s ease;
+        " onclick="if(event.target===this) document.getElementById('regionManagerModal').remove()">
+            <div style="
+                background: white;
+                border-radius: 16px;
+                padding: 24px;
+                max-width: 360px;
+                width: 100%;
+                max-height: 80vh;
+                display: flex;
+                flex-direction: column;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            " onclick="event.stopPropagation()">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <h3 style="font-size:17px; font-weight:700; color:#1a202c;">📍 지역 관리</h3>
+                    <button onclick="document.getElementById('regionManagerModal').remove()" 
+                            style="background:none; border:none; font-size:20px; cursor:pointer; color:#a0aec0;">&times;</button>
+                </div>
+                
+                <div style="flex:1; overflow-y:auto; margin-bottom:12px; max-height:300px;">
+                    ${listHtml}
+                </div>
+                
+                <div style="border-top:1px solid #e2e8f0; padding-top:12px;">
+                    <div style="display:flex; gap:6px;">
+                        <input id="newRegionInput" type="text" placeholder="새 지역명 입력" 
+                               style="flex:1; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px;"
+                               onkeydown="if(event.key==='Enter') addRegionFromManager()">
+                        <button onclick="addRegionFromManager()" 
+                                style="padding:8px 14px; background:#4f7eb3; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:600;">
+                            추가
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // 입력창에 포커스
+    setTimeout(function() {
+        var input = document.getElementById('newRegionInput');
+        if (input) input.focus();
+    }, 200);
+}
+
+// ============================================================
+// 지역 관리 팝업 내부 함수들
+// ============================================================
+
+function selectRegionFromManager(region) {
+    // 지역 선택 → 해당 지역으로 전환
+    var select = document.getElementById('regionSelect');
+    if (select) {
+        select.value = region;
+        switchRegion(region);
+    }
+    // 팝업 닫기
+    var modal = document.getElementById('regionManagerModal');
+    if (modal) modal.remove();
+}
+
+function deleteRegionFromManager(region) {
+    var select = document.getElementById('regionSelect');
+    if (!select) return;
+    
+    // 🔥 마지막 지역인지 확인
+    if (select.options.length <= 1) {
+        showTabStatus('tab-settings', '⚠️ 마지막 남은 지역은 삭제할 수 없습니다.', 'warning');
+        return;
+    }
+    
+    // 🔥 현재 선택된 지역이면 삭제 전에 다른 지역으로 전환
+    var currentRegion = select.value;
+    var isCurrent = (region === currentRegion);
+    
+    showConfirmModal(
+        '🗑️ 지역 삭제',
+        '"' + region + '" 지역을 삭제하시겠습니까?\n해당 지역의 모든 현장 데이터도 함께 삭제됩니다.',
+        function() {
+            // 1. localStorage에서 삭제
+            var key = getStorageKey(region);
+            localStorage.removeItem(key);
+            
+            // 2. 드롭다운에서 옵션 제거
+            for (var i = 0; i < select.options.length; i++) {
+                if (select.options[i].value === region) {
+                    select.remove(i);
+                    break;
+                }
+            }
+            
+            // 3. 현재 선택된 지역이 삭제된 경우 다른 지역으로 전환
+            if (isCurrent && select.options.length > 0) {
+                var newRegion = select.options[0].value;
+                select.value = newRegion;
+                switchRegion(newRegion);
+            } else {
+                // 현재 지역이 유지되는 경우
+                switchRegion(select.value);
+            }
+            
+            // 4. 팝업 새로고침 (목록 업데이트)
+            var modal = document.getElementById('regionManagerModal');
+            if (modal) {
+                modal.remove();
+                openRegionManager();
+            }
+            
+            showTabStatus('tab-settings', '✅ "' + region + '" 지역 삭제됨', 'ok');
+        }
+    );
+}
+
+function addRegionFromManager() {
+    var input = document.getElementById('newRegionInput');
+    if (!input) return;
+    
+    var name = input.value.trim();
+    if (!name) {
+        showTabStatus('tab-settings', '⚠️ 지역명을 입력하세요.', 'warning');
+        input.focus();
+        return;
+    }
+    
+    var region = name.replace(/[\/\\:*?"<>|]/g, '');
+    if (!region) {
+        showTabStatus('tab-settings', '⚠️ 사용할 수 없는 지역명입니다.', 'warning');
+        return;
+    }
+    
+    var select = document.getElementById('regionSelect');
+    if (!select) return;
+    
+    // 중복 체크
+    for (var i = 0; i < select.options.length; i++) {
+        if (select.options[i].value === region) {
+            showTabStatus('tab-settings', '⚠️ 이미 존재하는 지역입니다.', 'warning');
+            input.value = '';
+            input.focus();
+            return;
+        }
+    }
+    
+    // 지역 저장
+    var key = getStorageKey(region);
+    localStorage.setItem(key, JSON.stringify([]));
+    
+    // 드롭다운에 추가
+    var opt = document.createElement('option');
+    opt.value = region;
+    opt.textContent = region;
+    select.appendChild(opt);
+    select.value = region;
+    
+    // 지역 전환
+    switchRegion(region);
+    
+    // 팝업 새로고침
+    var modal = document.getElementById('regionManagerModal');
+    if (modal) {
+        modal.remove();
+        openRegionManager();
+    }
+    
+    showTabStatus('tab-settings', '✅ "' + region + '" 지역 추가됨', 'ok');
 }
 // ============================================================
 // 검색 결과 팝업 외부 클릭 시 닫기
