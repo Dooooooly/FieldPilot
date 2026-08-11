@@ -486,6 +486,16 @@
             width: 100%;
             box-shadow: 0 20px 60px rgba(0,0,0,0.2);
         }
+        /* ===== 현장추가 모달 ===== */
+#addPlaceModal .modal {
+    max-width: 400px;
+    padding: 20px 24px;
+}
+#addPlaceModal .modal input:focus {
+    border-color: #4f7eb3;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(79,126,179,0.15);
+}
         .modal h3 { font-size: 17px; margin-bottom: 12px; }
         .modal .btn-row { margin-top: 12px; }
         .modal input { width: 100%; padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 13px; margin-bottom: 8px; }
@@ -659,44 +669,41 @@
             <div id="routeStatus" class="tab-status"></div>
         </div>
 
-        <!-- ===== 탭: 현장 ===== -->
-        <div id="tab-list" class="tab-content">
-            <div class="card">
-                <div class="flex-between" style="margin-bottom:4px;">
-                    <span class="card-title" style="margin-bottom:0; font-size:13px;">📋 현장리스트 <span id="listCount" style="font-size:11px;color:#a0aec0;font-weight:400;"></span></span>
-                    <div style="display:flex; gap:4px; align-items:center;">
-                        <label style="font-size:11px; color:#718096;">정렬:</label>
-                        <select id="sortPlaces" onchange="applySort()" style="padding:3px 6px; border:2px solid #e2e8f0; border-radius:6px; font-size:11px; background:white; height:28px;">
-                            <option value="name-asc">이름 ↑</option>
-                            <option value="name-desc">이름 ↓</option>
-                            <option value="favorite">⭐ 즐겨찾기</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="flex-row" style="margin-bottom:4px;">
-                    <button class="btn btn-outline btn-sm" style="flex:1; font-size:11px; padding:4px 6px;" onclick="document.getElementById('fileInput').click()">📥 엑셀 가져오기</button>
-                    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFile(event)">
-                    <button class="btn btn-outline btn-sm" style="flex:1; font-size:11px; padding:4px 6px;" onclick="exportData()">📤 엑셀 내보내기</button>
-                </div>
-                <div id="uploadResult" style="font-size:11px; padding:2px 6px;"></div>
-                
-                <div class="flex-row" style="margin-bottom:4px;">
-                    <input type="text" id="newPlaceName" class="input-field input-field-sm" placeholder="현장명" style="flex:1; min-height:28px;">
-                    <div style="position:relative; flex:1.2;">
-                        <input type="text" id="newPlaceAddr" class="input-field input-field-sm" placeholder="주소" style="min-height:28px;" oninput="searchAddressForPlace(this.value)" onkeydown="handleAddrKeydown(event)">
-                        <div id="addrSearchResults" class="search-results"></div>
-                    </div>
-                    <input type="text" id="newPlaceRemark" class="input-field input-field-sm" placeholder="비고" style="flex:0.6; min-height:28px;">
-                    <button class="btn btn-primary btn-sm" onclick="addPlace()" style="min-height:28px; font-size:11px; padding:4px 10px;">추가</button>
-                </div>
-                
-                <input type="text" id="searchPlace" class="input-field input-field-sm" placeholder="🔍 현장 검색" style="margin-bottom:4px; min-height:28px;" oninput="searchPlaces()">
-                
-                <div id="placeList" style="max-height:380px; overflow-y:auto; min-height:100px;"></div>
-                <div id="listStatus" class="tab-status"></div>
+       <!-- ===== 탭: 현장 ===== -->
+<div id="tab-list" class="tab-content">
+    <div class="card">
+        <!-- 제목 + 정렬 (한 줄) -->
+        <div class="flex-between" style="margin-bottom:6px;">
+            <span class="card-title" style="margin-bottom:0; font-size:14px;">📋 현장리스트 <span id="listCount" style="font-size:12px;color:#a0aec0;font-weight:400;"></span></span>
+            <div style="display:flex; gap:6px; align-items:center;">
+                <label style="font-size:11px; color:#718096;">정렬:</label>
+                <select id="sortPlaces" onchange="applySort()" style="padding:3px 8px; border:2px solid #e2e8f0; border-radius:6px; font-size:11px; background:white; height:28px;">
+                    <option value="name-asc">이름 ↑</option>
+                    <option value="name-desc">이름 ↓</option>
+                    <option value="favorite">⭐ 즐겨찾기</option>
+                </select>
             </div>
         </div>
+        
+        <!-- 엑셀 + 현장추가 (한 줄) -->
+        <div class="flex-row" style="margin-bottom:6px; gap:6px;">
+            <button class="btn btn-outline btn-sm" style="flex:1; font-size:11px; padding:6px 8px;" onclick="document.getElementById('fileInput').click()">📥 엑셀 가져오기</button>
+            <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFile(event)">
+            <button class="btn btn-outline btn-sm" style="flex:1; font-size:11px; padding:6px 8px;" onclick="exportData()">📤 엑셀 내보내기</button>
+            <button class="btn btn-primary btn-sm" style="flex:0.8; font-size:11px; padding:6px 8px;" onclick="openAddPlaceModal()">➕ 현장추가</button>
+        </div>
+        <div id="uploadResult" style="font-size:11px; padding:2px 6px;"></div>
+        
+        <!-- 검색창 (정렬 옆으로 이동) -->
+        <div style="margin-bottom:4px;">
+            <input type="text" id="searchPlace" class="input-field input-field-sm" placeholder="🔍 현장 검색" style="min-height:30px; font-size:12px;" oninput="searchPlaces()">
+        </div>
+        
+        <!-- 현장 목록 -->
+        <div id="placeList" style="max-height:380px; overflow-y:auto; min-height:100px;"></div>
+        <div id="listStatus" class="tab-status"></div>
+    </div>
+</div>
 
         <!-- ===== 탭: 설정 ===== -->
         <div id="tab-settings" class="tab-content">
@@ -800,6 +807,25 @@
             <span class="tab-icon">❓</span> 도움말
         </button>
     </div>
+    <!-- ===== 현장추가 모달 (내부 팝업) ===== -->
+<div class="modal-overlay" id="addPlaceModal">
+    <div class="modal" style="max-width:400px;">
+        <h3 style="font-size:17px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+            <span>➕ 현장 추가</span>
+            <button onclick="closeAddPlaceModal()" style="background:none; border:none; font-size:22px; cursor:pointer; color:#a0aec0;">&times;</button>
+        </h3>
+        <input type="text" id="modalPlaceName" placeholder="현장명" style="width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px; margin-bottom:8px;">
+        <div style="position:relative; margin-bottom:8px;">
+            <input type="text" id="modalPlaceAddr" placeholder="주소" style="width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px;" oninput="searchAddressForModal(this.value)" onkeydown="handleAddrKeydown(event)">
+            <div id="modalAddrSearchResults" class="search-results" style="position:absolute; width:100%;"></div>
+        </div>
+        <input type="text" id="modalPlaceRemark" placeholder="비고 (선택)" style="width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px; margin-bottom:12px;">
+        <div style="display:flex; gap:8px; justify-content:flex-end;">
+            <button class="btn btn-outline btn-sm" onclick="closeAddPlaceModal()" style="padding:6px 16px;">취소</button>
+            <button class="btn btn-primary btn-sm" onclick="saveAddPlaceModal()" style="padding:6px 16px;">저장</button>
+        </div>
+    </div>
+</div>
 
     <div class="modal-overlay" id="modal">
         <div class="modal">
