@@ -2,8 +2,8 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>경로 최적화</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🚗 경로 최적화</title>
     
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🚗%3C/text%3E%3C/svg%3E">
@@ -27,14 +27,15 @@
             -webkit-font-smoothing: antialiased;
         }
         
-        .flex-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+        .flex-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
         .flex-1 { flex: 1; min-width: 0; }
-        .flex-between { display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
         
+        /* ===== 헤더 ===== */
         .header {
             background: linear-gradient(135deg, #4a6fa5, #6b9bd2);
             color: white;
-            padding: 10px 16px;
+            padding: 8px 14px;
             position: sticky;
             top: 0;
             z-index: 100;
@@ -43,88 +44,72 @@
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            gap: 6px;
+            gap: 4px;
         }
-        .header-left h1 { font-size: 17px; font-weight: 700; letter-spacing: -0.5px; }
-        .header-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .header-left h1 {
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
         
-/* ===== 공통 ===== */
-.weather {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    background: rgba(255,255,255,0.15);
-    padding: 4px 12px;
-    border-radius: 30px;
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 0.25s ease;
-    border: 1px solid rgba(255,255,255,0.08);
-    height: 32px;
-}
-.weather:hover { background: rgba(255,255,255,0.25); transform: translateY(-1px); }
-.weather .temp { font-weight: 700; font-size: 13px; }
-
-.header-divider { width: 1px; height: 20px; background: rgba(255,255,255,0.2); flex-shrink: 0; }
-.header-right { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-
-/* ===== 모바일 ===== */
-@media (max-width: 480px) {
-    .weather {
-        font-size: 11px;
-        padding: 2px 8px;
-        height: 26px;
-    }
-    .weather .temp {
-        font-size: 11px;
-    }
-    .weather #currentRegionName {
-        font-size: 11px;
-    }
-   /* ===== 지역관리 내부 요소 ===== */
-.weather #currentRegionLabel {
-    font-weight: 400;
-    font-size: inherit;  /* 부모(.weather) 크기 상속 */
-}
-.weather #currentRegionName {
-    font-weight: 700;
-    font-size: inherit;  /* 부모(.weather) 크기 상속 */
-}
-.weather .region-arrow {
-    font-size: 10px;
-    opacity: 0.6;
-    margin-left: 2px;
-}
-
-/* ===== 모바일 (480px 이하) ===== */
-@media (max-width: 480px) {
-    .weather {
-        font-size: 11px;
-        padding: 2px 8px;
-        height: 26px;
-        gap: 3px;
-    }
-    .weather .temp {
-        font-size: 11px;
-    }
-    /* 🔥 지역관리 내부 요소도 동일한 크기 */
-    .weather #currentRegionLabel,
-    .weather #currentRegionName {
-        font-size: 11px;
-    }
-    .weather .region-arrow {
-        font-size: 9px;
-    }
-    .header-divider {
-        height: 16px;
-        margin: 0 4px;
-    }
-}
-        .region-wrapper .btn-add:hover { background: rgba(255,255,255,0.25); transform: scale(1.05); }
-        .region-wrapper .btn-add:active { transform: scale(0.92); }
+        /* ===== 날씨 & 지역관리 공통 ===== */
+        .weather {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(255,255,255,0.15);
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            border: 1px solid rgba(255,255,255,0.08);
+            height: 32px;
+            color: white;
+            white-space: nowrap;
+        }
+        .weather:hover {
+            background: rgba(255,255,255,0.25);
+            transform: translateY(-1px);
+        }
+        .weather .temp {
+            font-weight: 700;
+            font-size: 13px;
+        }
         
+        /* ===== 지역관리 내부 ===== */
+        .weather #currentRegionLabel {
+            font-weight: 400;
+            font-size: inherit;
+        }
+        .weather #currentRegionName {
+            font-weight: 700;
+            font-size: inherit;
+        }
+        .weather .region-arrow {
+            font-size: 10px;
+            opacity: 0.6;
+            margin-left: 2px;
+        }
+        
+        /* ===== 구분선 ===== */
+        .header-divider {
+            width: 1px;
+            height: 20px;
+            background: rgba(255,255,255,0.2);
+            flex-shrink: 0;
+        }
+        
+        /* ===== 메인 ===== */
         .main { max-width: 600px; margin: 0 auto; padding: 12px 14px 80px; }
         
+        /* ===== 탭 ===== */
         .tab-content { display: none; animation: fadeUp 0.3s ease; }
         .tab-content.active { display: block; }
         @keyframes fadeUp {
@@ -132,6 +117,7 @@
             to { opacity: 1; transform: translateY(0); }
         }
         
+        /* ===== 카드 ===== */
         .card {
             background: white;
             border-radius: 12px;
@@ -139,8 +125,17 @@
             margin-bottom: 10px;
             box-shadow: 0 1px 4px rgba(0,0,0,0.04);
         }
-        .card-title { font-size: 14px; font-weight: 700; color: #1a202c; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+        .card-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1a202c;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
         
+        /* ===== 버튼 ===== */
         .btn {
             padding: 8px 16px;
             border: none;
@@ -157,27 +152,19 @@
         }
         .btn:active { transform: scale(0.96); }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        
         .btn-primary { background: #4f7eb3; color: white; }
         .btn-primary:hover:not(:disabled) { background: #3d6a9e; box-shadow: 0 4px 12px rgba(79,126,179,0.3); }
-        
         .btn-success { background: #5a9e6f; color: white; }
         .btn-success:hover:not(:disabled) { background: #4a8a5e; box-shadow: 0 4px 12px rgba(90,158,111,0.3); }
-        
         .btn-danger { background: #e53e3e; color: white; }
         .btn-danger:hover:not(:disabled) { background: #c53030; box-shadow: 0 4px 12px rgba(229,62,62,0.3); }
-        
-        .btn-outline {
-            background: transparent;
-            color: #4a5568;
-            border: 2px solid #e2e8f0;
-        }
+        .btn-outline { background: transparent; color: #4a5568; border: 2px solid #e2e8f0; }
         .btn-outline:hover:not(:disabled) { background: #f7fafc; border-color: #cbd5e0; }
-        
         .btn-sm { padding: 4px 10px; font-size: 11px; min-height: 30px; border-radius: 6px; }
         .btn-block { width: 100%; }
         .btn-lg { padding: 14px 20px; font-size: 16px; min-height: 50px; border-radius: 10px; }
         
+        /* ===== 입력 필드 ===== */
         .input-field {
             padding: 6px 10px;
             border: 2px solid #e2e8f0;
@@ -193,6 +180,7 @@
         .input-field::placeholder { color: #a0aec0; }
         .input-field-sm { min-height: 30px; font-size: 11px; padding: 4px 8px; }
         
+        /* ===== 세그먼트 컨트롤 ===== */
         .segment-control {
             display: flex;
             border-radius: 8px;
@@ -215,6 +203,7 @@
         .segment-btn.active { background: #4f7eb3; color: white; }
         .segment-btn:hover:not(.active) { background: #edf2f7; }
         
+        /* ===== 현장/경유지 아이템 ===== */
         .place-item {
             display: flex;
             justify-content: space-between;
@@ -267,11 +256,26 @@
         .place-item .actions .add:hover { color: #5a9e6f; }
         .place-item .actions .del:hover { color: #e53e3e; }
         .place-item .actions .map:hover { color: #4f7eb3; }
-        .place-item .actions .fav { font-size: 16px; transition: all 0.2s; }
+        .place-item .actions .fav {
+            font-size: 16px;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
         .place-item .actions .fav.active { color: #f6ad55; text-shadow: 0 0 8px rgba(246,173,85,0.3); }
         .place-item .actions .fav.inactive { color: #cbd5e0; }
         .place-item .actions .fav:hover { transform: scale(1.15); background: rgba(0,0,0,0.04); }
+        .place-item .actions .kakao {
+            color: #3c1e1e;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+        .place-item .actions .kakao:hover {
+            transform: scale(1.15);
+            background: rgba(60,30,30,0.08);
+            border-radius: 6px;
+        }
         
+        /* ===== 경유지 목록 ===== */
         .waypoint-list {
             list-style: none;
             max-height: 200px;
@@ -315,6 +319,7 @@
         .waypoint-list li .remove { color: #e53e3e; cursor: pointer; font-weight: 700; padding: 0 6px; }
         .empty-msg { text-align: center; color: #a0aec0; padding: 16px; font-size: 13px; }
         
+        /* ===== 검색 결과 ===== */
         .search-results {
             position: absolute;
             width: 100%;
@@ -345,6 +350,7 @@
         .search-results .result-item .result-info .addr { font-size: 11px; color: #718096; }
         .search-results .result-item .result-info .source { font-size: 10px; color: #a0aec0; margin-left: 4px; }
         
+        /* ===== 요약 ===== */
         .summary {
             background: linear-gradient(135deg, #ebf8ff, #e6f0fa);
             border-radius: 10px;
@@ -355,6 +361,7 @@
         .summary-row .label { color: #4a5568; }
         .summary-row .value { font-weight: 700; color: #2d3748; }
         
+        /* ===== 상태 메시지 ===== */
         .tab-status {
             display: none;
             padding: 6px 10px;
@@ -373,8 +380,10 @@
             to { opacity: 1; transform: translateY(0); }
         }
         
+        /* ===== 지도 ===== */
         #map { width: 100%; height: 340px; border-radius: 12px; background: #e2e8f0; margin-bottom: 10px; touch-action: auto; overflow: hidden; }
         
+        /* ===== 경로 아이템 ===== */
         .route-item {
             background: white;
             border-radius: 8px;
@@ -412,6 +421,7 @@
         .route-start .idx { background: #4f7eb3; }
         .route-start:hover { background: #ebf8ff; }
         
+        /* ===== 프리셋 ===== */
         .preset-item {
             display: flex;
             justify-content: space-between;
@@ -441,6 +451,7 @@
         }
         .preset-item .preset-delete:hover { color: #e53e3e; background: #fff5f5; }
         
+        /* ===== 설정 ===== */
         .setting-group { background: #f7fafc; border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; }
         .setting-group h4 { font-size: 13px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
         .setting-group .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
@@ -452,6 +463,7 @@
         .badge-wait { background: #e2e8f0; color: #4a5568; }
         .badge-fail { background: #fed7d7; color: #9b2c2c; }
         
+        /* ===== 하단 탭 ===== */
         .bottom-tabs {
             position: fixed;
             bottom: 0;
@@ -482,6 +494,7 @@
         .bottom-tab.help-tab { color: #805ad5; }
         .bottom-tab.help-tab.active { color: #805ad5; border-top-color: #805ad5; }
         
+        /* ===== 모달 ===== */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -503,35 +516,43 @@
             width: 100%;
             box-shadow: 0 20px 60px rgba(0,0,0,0.2);
         }
-        /* ===== 현장추가 모달 ===== */
-#addPlaceModal .modal {
-    max-width: 400px;
-    padding: 20px 24px;
-}
-#addPlaceModal .modal input:focus {
-    border-color: #4f7eb3;
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(79,126,179,0.15);
-}
         .modal h3 { font-size: 17px; margin-bottom: 12px; }
         .modal .btn-row { margin-top: 12px; }
         .modal input { width: 100%; padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 13px; margin-bottom: 8px; }
         .modal input:focus { border-color: #4f7eb3; outline: none; }
         
+        /* ===== 도움말 ===== */
         .help-section { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid #e2e8f0; }
         .help-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
         .help-section .help-title { font-weight: 700; font-size: 14px; color: #4f7eb3; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
         .help-section .help-body { font-size: 13px; color: #4a5568; line-height: 1.7; padding-left: 4px; }
         
+        /* ===== 모바일 ===== */
         @media (max-width: 480px) {
             .header { padding: 6px 10px; }
             .header-left h1 { font-size: 14px; }
-            .weather { font-size: 10px; padding: 2px 8px; height: 26px; }
-            .weather .temp { font-size: 11px; }
-            .region-wrapper { padding: 1px 3px 1px 8px; height: 26px; }
-            .region-wrapper select { font-size: 10px; min-width: 50px; height: 22px; }
-            .region-wrapper .btn-add { width: 22px; height: 22px; font-size: 14px; }
-            .header-divider { height: 16px; }
+            
+            .weather {
+                font-size: 11px;
+                padding: 2px 8px;
+                height: 26px;
+                gap: 3px;
+            }
+            .weather .temp {
+                font-size: 11px;
+            }
+            .weather #currentRegionLabel,
+            .weather #currentRegionName {
+                font-size: 11px;
+            }
+            .weather .region-arrow {
+                font-size: 9px;
+            }
+            .header-divider {
+                height: 16px;
+                margin: 0 4px;
+            }
+            
             .main { padding: 8px 8px 70px; }
             .card { padding: 10px 12px; }
             .btn { font-size: 12px; padding: 6px 12px; min-height: 32px; border-radius: 6px; }
@@ -553,30 +574,35 @@
             .route-item .info .addr { font-size: 10px; }
             .route-item .info .remark { font-size: 9px; }
             .modal { padding: 16px; }
+            .header-right { gap: 4px; }
         }
     </style>
 </head>
 <body>
 
+    <!-- ===== 헤더 ===== -->
     <header class="header">
         <div class="header-left">
             <h1>🚗 경로 최적화</h1>
         </div>
         <div class="header-right">
+            <!-- 날씨 -->
             <div class="weather" id="weatherDisplay" onclick="showWeekWeather()">
                 <span>⏳</span>
                 <span class="temp">--°C</span>
             </div>
+            
             <span class="header-divider"></span>
-                <!-- 🔥 현재 지역 표시 (클릭하면 팝업) -->
-        <div class="weather" id="regionDisplay" onclick="openRegionManager()" style="cursor:pointer;">
-        <span id="currentRegionLabel">현재:</span>
-        <span id="currentRegionName">지역 선택</span>
-        <span class="region-arrow">▼</span>
-        </div>
-    <!-- 실제 select는 숨김 (값 저장용) -->
-    <select id="regionSelect" style="display:none;" onchange="switchRegion(this.value)"></select>
-</div>
+            
+            <!-- 현재 지역 표시 (클릭 → 지역 관리 팝업) -->
+            <div class="weather" id="regionDisplay" onclick="openRegionManager()" style="cursor:pointer;">
+                <span id="currentRegionLabel">현재:</span>
+                <span id="currentRegionName">지역 선택</span>
+                <span class="region-arrow">▼</span>
+            </div>
+            
+            <!-- 숨김 select (값 저장용) -->
+            <select id="regionSelect" style="display:none;" onchange="switchRegion(this.value)"></select>
         </div>
     </header>
 
@@ -585,67 +611,66 @@
         <!-- ===== 탭: 경로 ===== -->
         <div id="tab-places" class="tab-content active">
             
-           <!-- ===== 출발지 ===== -->
-<div class="card">
-    <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; width:100%; margin-bottom:8px;">
-        <span>🚩 출발지</span>
-        <button class="btn btn-outline btn-sm" onclick="setCurrentLocation()" 
-                style="font-size:11px; padding:3px 10px; min-height:28px; display:flex; align-items:center; gap:4px; border-color:#cbd5e0; color:#4a5568; background:#f7fafc; border-radius:20px;">
-            <span style="font-size:14px;">🎯</span> 현재 위치
-        </button>
-    </div>
-    <div style="position:relative;">
-        <div class="flex-row" style="gap:6px;">
-            <input type="text" id="startPoint" class="input-field flex-1" 
-                   placeholder="출발지 검색" 
-                   style="min-height:38px;"
-                   oninput="searchStartPoint(this.value)" 
-                   onclick="searchStartPoint(this.value)" 
-                   onkeydown="handleStartKeydown(event)">
-            <button class="btn btn-primary" onclick="setStartPoint()" 
-                    style="font-size:12px; padding:6px 12px; min-height:38px; white-space:nowrap;">
-                설정
-            </button>
-        </div>
-        <div id="startSearchResults" class="search-results"></div>
-    </div>
-    <div id="startInfo" style="font-size:12px; color:#718096; margin-top:4px;">⏳ 출발지를 검색하거나 🎯 현재 위치 버튼을 눌러 설정하세요</div>
-</div>
+            <!-- 출발지 -->
+            <div class="card">
+                <div class="card-title">🚩 출발지</div>
+                <div style="position:relative;">
+                    <div class="flex-row">
+                        <input type="text" id="startPoint" class="input-field flex-1" 
+                               placeholder="출발지 검색" 
+                               style="min-height:38px;"
+                               oninput="searchStartPoint(this.value)" 
+                               onclick="searchStartPoint(this.value)" 
+                               onkeydown="handleStartKeydown(event)">
+                        <button class="btn btn-primary" onclick="setStartPoint()" 
+                                style="font-size:12px; padding:6px 12px; min-height:38px; white-space:nowrap;">
+                            설정
+                        </button>
+                        <button class="btn btn-success" onclick="setCurrentLocation()" 
+                                style="font-size:12px; padding:6px 10px; min-height:38px; white-space:nowrap; display:flex; align-items:center; gap:4px;">
+                            🎯 GPS
+                        </button>
+                    </div>
+                    <div id="startSearchResults" class="search-results"></div>
+                </div>
+                <div id="startInfo" style="font-size:12px; color:#718096; margin-top:4px;">⏳ 출발지를 검색하거나 GPS 버튼으로 현재 위치를 설정하세요</div>
+            </div>
             
-           <!-- 경유지 -->
-<div class="card">
-    <div class="flex-between" style="margin-bottom:6px;">
-        <div class="card-title" style="margin-bottom:0; font-size:14px;">
-            📍 경유지 <span id="wpCount" style="font-size:12px;color:#a0aec0;font-weight:400;"></span>
-        </div>
-        <!-- 🔥 여러개 추가 토글 버튼 (체크박스 대신 버튼 스타일) -->
-        <button id="multiToggleBtn" onclick="toggleMultiSelect()" 
-                style="font-size:11px; padding:4px 14px; min-height:30px; border-radius:16px; border:2px solid #cbd5e0; background:white; color:#4a5568; cursor:pointer; transition:all 0.2s; font-weight:600; display:flex; align-items:center; gap:4px;">
-            📋 여러개 추가
-        </button>
-    </div>
-    <div style="position:relative;">
-        <div class="flex-row" style="margin-bottom:4px; gap:6px;">
-            <input type="text" id="waypointInput" class="input-field flex-1" 
-                   placeholder="경유지 입력" 
-                   style="min-height:38px;"
-                   oninput="searchWaypoint(this.value)" 
-                   onkeydown="handleWaypointKeydown(event)">
-            <!-- 🔥 추가 버튼 (모드에 따라 스타일 변경) -->
-            <button id="addWaypointBtn" class="btn btn-success" onclick="addWaypoint()" 
-                    style="font-size:13px; padding:6px 18px; min-height:38px; font-weight:600; white-space:nowrap; transition:all 0.3s;">
-                ➕ 추가
-            </button>
-        </div>
-        <div id="waypointSearchResults" class="search-results"></div>
-    </div>
-    <ul class="waypoint-list" id="waypointList">
-        <li class="empty-msg">경유지를 추가하세요 (드래그로 순서 변경 가능)</li>
-    </ul>
-    <!-- 🔥 모드 상태 표시줄 -->
-    <div id="modeStatus" style="font-size:11px; color:#a0aec0; margin-top:4px; text-align:center;">💡 일반 모드 - 경유지를 입력하고 추가하세요</div>
-</div>
+            <!-- 경유지 -->
+            <div class="card">
+                <div class="flex-between" style="margin-bottom:4px;">
+                    <div class="card-title" style="margin-bottom:0; font-size:14px;">
+                        📍 경유지 <span id="wpCount" style="font-size:12px;color:#a0aec0;font-weight:400;"></span>
+                    </div>
+                    <div style="display:flex; gap:6px; align-items:center;">
+                        <label style="font-size:11px; color:#4a5568; display:flex; align-items:center; gap:4px; cursor:pointer; background:#f7fafc; padding:3px 10px; border-radius:14px; border:1px solid #e2e8f0;">
+                            <input type="checkbox" id="multiSelectMode" onchange="toggleMultiSelect()" style="margin:0;">
+                            📋 여러개 추가
+                        </label>
+                    </div>
+                </div>
+                <div style="position:relative;">
+                    <div class="flex-row" style="margin-bottom:4px; gap:6px;">
+                        <input type="text" id="waypointInput" class="input-field flex-1" 
+                               placeholder="경유지 입력" 
+                               style="min-height:38px;"
+                               oninput="searchWaypoint(this.value)" 
+                               onkeydown="handleWaypointKeydown(event)">
+                        <button class="btn btn-success" onclick="addWaypoint()" 
+                                style="font-size:13px; padding:6px 16px; min-height:38px; font-weight:600; white-space:nowrap;">
+                            ➕ 추가
+                        </button>
+                    </div>
+                    <div id="waypointSearchResults" class="search-results"></div>
+                </div>
+                <ul class="waypoint-list" id="waypointList">
+                    <li class="empty-msg">경유지를 추가하세요 (드래그로 순서 변경 가능)</li>
+                </ul>
+                <!-- 모드 상태 표시줄 -->
+                <div id="modeStatus" style="font-size:11px; color:#a0aec0; margin-top:4px; text-align:center;">💡 일반 모드 - 경유지를 입력하고 추가하세요</div>
+            </div>
             
+            <!-- 메인 액션 -->
             <div style="display:flex; flex-direction:column; gap:6px;">
                 <button class="btn btn-primary btn-lg" onclick="runOptimize()">⚡ 경로 최적화</button>
                 <div class="flex-row" style="gap:6px;">
@@ -654,6 +679,7 @@
                 </div>
             </div>
             
+            <!-- 최적화 방식 -->
             <div class="card" style="background:#f7fafc; border:1px solid #e2e8f0; padding:8px 12px;">
                 <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                     <span style="font-size:13px; font-weight:600; color:#4a5568;">📐 최적화</span>
@@ -665,9 +691,11 @@
                 <div id="modeInfo" style="font-size:11px; color:#a0aec0; margin-top:4px; text-align:center;">현재: 가까운순</div>
             </div>
             
+            <!-- 프리셋 저장 -->
             <button class="btn btn-success btn-block" onclick="addPreset()" 
                     style="padding:10px; font-size:14px; font-weight:600;">💾 현재 경로를 프리셋으로 저장</button>
             
+            <!-- 프리셋 목록 -->
             <div class="card" style="background:#f7fafc; border:1px solid #e2e8f0;">
                 <div class="card-title" style="font-size:13px;">📂 저장된 프리셋</div>
                 <div id="presetList" style="max-height:150px; overflow-y:auto;">
@@ -681,51 +709,61 @@
         <!-- ===== 탭: 지도 ===== -->
         <div id="tab-route" class="tab-content">
             <div id="map"></div>
+            
+            <!-- 카카오맵 열기 버튼 -->
+            <div id="kakaoMapButtonContainer" style="display:none; margin-top:8px; text-align:center;">
+                <button class="btn btn-warning" onclick="openCurrentPlaceInKakaoMap()" 
+                        style="width:100%; padding:10px 16px; font-size:14px; font-weight:600; border-radius:10px; 
+                               background:linear-gradient(135deg, #FEE500, #F7D600); color:#3c1e1e; border:none; 
+                               box-shadow:0 2px 8px rgba(254,229,0,0.3); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;">
+                    <span style="font-size:20px;">🗺️</span> 카카오맵에서 열기
+                </button>
+                <div style="font-size:11px; color:#a0aec0; margin-top:4px;">출발지가 설정되어 있으면 길찾기로 연결됩니다</div>
+            </div>
+            
             <div class="summary">
                 <div class="summary-row"><span class="label">📍 방문지</span><span class="value" id="placeCount">0개소</span></div>
                 <div class="summary-row"><span class="label">📏 총 거리</span><span class="value" id="totalDistance">0.00 km</span></div>
                 <div class="summary-row"><span class="label">⏱️ 총 시간</span><span class="value" id="totalTime">0 분</span></div>
                 <div class="summary-row"><span class="label">📐 최적화</span><span class="value" id="optimizeMode">-</span></div>
             </div>
+            
             <div id="routeList" style="margin-top:8px;"></div>
             <div id="routeStatus" class="tab-status"></div>
         </div>
 
-       <!-- ===== 탭: 현장 ===== -->
-<div id="tab-list" class="tab-content">
-    <div class="card">
-        <!-- 제목 + 개수 -->
-        <div class="flex-between" style="margin-bottom:6px;">
-            <span class="card-title" style="margin-bottom:0; font-size:14px;">📋 현장리스트 <span id="listCount" style="font-size:12px;color:#a0aec0;font-weight:400;"></span></span>
-        </div>
-        
-        <!-- 엑셀 + 현장추가 (한 줄) -->
-        <div class="flex-row" style="margin-bottom:6px; gap:6px;">
-            <button class="btn btn-outline btn-sm" style="flex:1; font-size:11px; padding:6px 8px;" onclick="document.getElementById('fileInput').click()">📥 엑셀 가져오기</button>
-            <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFile(event)">
-            <button class="btn btn-outline btn-sm" style="flex:1; font-size:11px; padding:6px 8px;" onclick="exportData()">📤 엑셀 내보내기</button>
-            <button class="btn btn-primary btn-sm" style="flex:0.8; font-size:11px; padding:6px 8px;" onclick="openAddPlaceModal()">➕ 현장추가</button>
-        </div>
-        <div id="uploadResult" style="font-size:11px; padding:2px 6px;"></div>
-        
-        <!-- 🔥 검색창 + 정렬 (한 줄) -->
-        <div class="flex-between" style="margin-bottom:4px; gap:8px;">
-            <input type="text" id="searchPlace" class="input-field input-field-sm" placeholder="🔍 현장 검색" style="flex:1; min-height:30px; font-size:12px;" oninput="searchPlaces()">
-            <div style="display:flex; gap:6px; align-items:center; flex-shrink:0;">
-                <label style="font-size:11px; color:#718096; white-space:nowrap;">정렬:</label>
-                <select id="sortPlaces" onchange="applySort()" style="padding:3px 8px; border:2px solid #e2e8f0; border-radius:6px; font-size:11px; background:white; height:28px;">
-                    <option value="name-asc">이름 ↑</option>
-                    <option value="name-desc">이름 ↓</option>
-                    <option value="favorite">⭐ 즐겨찾기</option>
-                </select>
+        <!-- ===== 탭: 현장 ===== -->
+        <div id="tab-list" class="tab-content">
+            <div class="card">
+                <div class="flex-between" style="margin-bottom:4px;">
+                    <span class="card-title" style="margin-bottom:0; font-size:13px;">📋 현장리스트 <span id="listCount" style="font-size:11px;color:#a0aec0;font-weight:400;"></span></span>
+                    <div style="display:flex; gap:6px; align-items:center;">
+                        <label style="font-size:11px; color:#718096;">정렬:</label>
+                        <select id="sortPlaces" onchange="applySort()" style="padding:3px 8px; border:2px solid #e2e8f0; border-radius:6px; font-size:11px; background:white; height:28px;">
+                            <option value="name-asc">이름 ↑</option>
+                            <option value="name-desc">이름 ↓</option>
+                            <option value="favorite">⭐ 즐겨찾기</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="flex-row" style="margin-bottom:4px; gap:6px;">
+                    <button class="btn btn-outline btn-sm" style="flex:1; font-size:11px; padding:4px 6px;" onclick="document.getElementById('fileInput').click()">📥 엑셀 가져오기</button>
+                    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFile(event)">
+                    <button class="btn btn-outline btn-sm" style="flex:1; font-size:11px; padding:4px 6px;" onclick="exportData()">📤 엑셀 내보내기</button>
+                    <button class="btn btn-primary btn-sm" style="flex:0.8; font-size:11px; padding:4px 6px;" onclick="openAddPlaceModal()">➕ 현장추가</button>
+                </div>
+                <div id="uploadResult" style="font-size:11px; padding:2px 6px;"></div>
+                
+                <div style="margin-bottom:4px;">
+                    <input type="text" id="searchPlace" class="input-field input-field-sm" placeholder="🔍 현장 검색" style="min-height:30px; font-size:12px;" oninput="searchPlaces()">
+                </div>
+                
+                <div id="placeList" style="max-height:380px; overflow-y:auto; min-height:100px;"></div>
+                <div id="listStatus" class="tab-status"></div>
             </div>
         </div>
-        
-        <!-- 현장 목록 -->
-        <div id="placeList" style="max-height:380px; overflow-y:auto; min-height:100px;"></div>
-        <div id="listStatus" class="tab-status"></div>
-    </div>
-</div>
+
         <!-- ===== 탭: 설정 ===== -->
         <div id="tab-settings" class="tab-content">
             <div class="setting-group">
@@ -785,7 +823,7 @@
                 <div class="help-section">
                     <div class="help-title">🗺️ 경로 탭</div>
                     <div class="help-body">
-                        <div>1. <strong>출발지</strong>를 검색하거나 <strong>현재 위치</strong>로 설정하세요</div>
+                        <div>1. <strong>출발지</strong>를 검색하거나 <strong>GPS</strong>로 현재 위치를 설정하세요</div>
                         <div>2. <strong>경유지</strong>를 추가하세요 (드래그로 순서 변경 가능)</div>
                         <div>3. <strong>여러개 추가</strong> 모드로 한 번에 여러 경유지를 추가할 수 있어요</div>
                         <div>4. <strong>경로 최적화</strong> 버튼으로 최적 경로 계산</div>
@@ -811,6 +849,7 @@
         </div>
     </div>
 
+    <!-- ===== 하단 탭 ===== -->
     <div class="bottom-tabs">
         <button class="bottom-tab active" data-tab="tab-places" onclick="switchTab('tab-places')">
             <span class="tab-icon">🗺️</span> 경로
@@ -828,31 +867,39 @@
             <span class="tab-icon">❓</span> 도움말
         </button>
     </div>
-    <!-- ===== 현장추가 모달 (내부 팝업) ===== -->
-<div class="modal-overlay" id="addPlaceModal">
-    <div class="modal" style="max-width:400px;">
-        <h3 style="font-size:17px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
-            <span>➕ 현장 추가</span>
-            <button onclick="closeAddPlaceModal()" style="background:none; border:none; font-size:22px; cursor:pointer; color:#a0aec0;">&times;</button>
-        </h3>
-        <input type="text" id="modalPlaceName" placeholder="현장명" style="width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px; margin-bottom:8px;">
-        <div style="position:relative; margin-bottom:8px;">
-            <input type="text" id="modalPlaceAddr" placeholder="주소" style="width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px;" oninput="searchAddressForModal(this.value)" onkeydown="handleAddrKeydown(event)">
-            <div id="modalAddrSearchResults" class="search-results" style="position:absolute; width:100%;"></div>
-        </div>
-        <input type="text" id="modalPlaceRemark" placeholder="비고 (선택)" style="width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px; margin-bottom:12px;">
-        <div style="display:flex; gap:8px; justify-content:flex-end;">
-            <button class="btn btn-outline btn-sm" onclick="closeAddPlaceModal()" style="padding:6px 16px;">취소</button>
-            <button class="btn btn-primary btn-sm" onclick="saveAddPlaceModal()" style="padding:6px 16px;">저장</button>
+
+    <!-- ===== 현장 추가 모달 ===== -->
+    <div class="modal-overlay" id="addPlaceModal">
+        <div class="modal" style="max-width:400px;">
+            <h3 style="font-size:17px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+                <span>➕ 현장 추가</span>
+                <button onclick="closeAddPlaceModal()" style="background:none; border:none; font-size:22px; cursor:pointer; color:#a0aec0;">&times;</button>
+            </h3>
+            <label for="modalPlaceName" style="display:none;">현장명</label>
+            <input type="text" id="modalPlaceName" placeholder="현장명" style="width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px; margin-bottom:8px;">
+            <label for="modalPlaceAddr" style="display:none;">주소</label>
+            <div style="position:relative; margin-bottom:8px;">
+                <input type="text" id="modalPlaceAddr" placeholder="주소" style="width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px;" oninput="searchAddressForModal(this.value)" onkeydown="handleAddrKeydown(event)">
+                <div id="modalAddrSearchResults" class="search-results" style="position:absolute; width:100%;"></div>
+            </div>
+            <label for="modalPlaceRemark" style="display:none;">비고</label>
+            <input type="text" id="modalPlaceRemark" placeholder="비고 (선택)" style="width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px; margin-bottom:12px;">
+            <div style="display:flex; gap:8px; justify-content:flex-end;">
+                <button class="btn btn-outline btn-sm" onclick="closeAddPlaceModal()" style="padding:6px 16px;">취소</button>
+                <button class="btn btn-primary btn-sm" onclick="saveAddPlaceModal()" style="padding:6px 16px;">저장</button>
+            </div>
         </div>
     </div>
-</div>
 
+    <!-- ===== 현장 편집 모달 ===== -->
     <div class="modal-overlay" id="modal">
         <div class="modal">
             <h3 id="modalTitle">✏️ 현장 편집</h3>
+            <label for="modalName" style="display:none;">현장명</label>
             <input type="text" id="modalName" placeholder="현장명">
+            <label for="modalAddress" style="display:none;">주소</label>
             <input type="text" id="modalAddress" placeholder="주소">
+            <label for="modalRemark" style="display:none;">비고</label>
             <input type="text" id="modalRemark" placeholder="비고 (선택)">
             <input type="hidden" id="modalId">
             <div class="btn-row flex-row" style="justify-content:flex-end;">
