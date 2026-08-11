@@ -305,14 +305,6 @@ function loadRegionList() {
     var select = document.getElementById('regionSelect');
     select.innerHTML = '';
     
-    // 🔥 기본 옵션 추가 (지역 선택)
-    var defaultOpt = document.createElement('option');
-    defaultOpt.value = '';
-    defaultOpt.textContent = '📍 지역 선택';
-    defaultOpt.disabled = true;  // 선택 불가
-    defaultOpt.selected = true;  // 기본 선택
-    select.appendChild(defaultOpt);
-    
     var regions = [];
     for (var i = 0; i < localStorage.length; i++) {
         var key = localStorage.key(i);
@@ -324,8 +316,13 @@ function loadRegionList() {
         }
     }
     
+    // 🔥 지역이 없으면 "지역 선택" 표시
     if (regions.length === 0) {
-        // 🔥 지역이 없으면 "지역 선택▼"만 표시
+        var defaultOpt = document.createElement('option');
+        defaultOpt.value = '';
+        defaultOpt.textContent = '📍 지역 선택';
+        defaultOpt.selected = true;
+        select.appendChild(defaultOpt);
         return;
     }
     
@@ -337,38 +334,64 @@ function loadRegionList() {
         select.appendChild(opt);
     }
     
-    // currentRegion이 있으면 선택
-    if (currentRegion && regions.includes(currentRegion)) {
-        select.value = currentRegion;
+    // 🔥 저장된 지역 선택
+    var savedRegion = localStorage.getItem(SELECTED_REGION_KEY);
+    
+    if (savedRegion && regions.includes(savedRegion)) {
+        select.value = savedRegion;
+        currentRegion = savedRegion;
+        console.log('✅ 저장된 지역 선택:', savedRegion);
     } else {
-        // 첫 번째 지역 선택 (기본 옵션 제거)
+        // 첫 번째 지역 선택
         select.value = regions[0];
         currentRegion = regions[0];
         localStorage.setItem(SELECTED_REGION_KEY, currentRegion);
-        var key = getStorageKey(currentRegion);
-        var data = localStorage.getItem(key);
-        places = data ? JSON.parse(data) : [];
-        renderPlaces();
+        console.log('✅ 첫 번째 지역 선택:', currentRegion);
     }
+    
+    // 데이터 로드
+    var key = getStorageKey(currentRegion);
+    var data = localStorage.getItem(key);
+    places = data ? JSON.parse(data) : [];
+    renderPlaces();
+    updateStorageInfo();
+    
+    if (kakaoMap) {
+        var center = getRegionCenter(currentRegion);
+        kakaoMap.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
+        kakaoMap.setLevel(5);
+        kakaoMap.relayout();
+    }
+    
+    console.log('✅ 지역 로드 완료:', currentRegion, '현장 수:', places.length);
 }
 
 function switchRegion(region) {
     console.log('🔄 switchRegion 호출됨:', region);
     
+    if (!region || region === '') {
+        console.warn('⚠️ 빈 지역 무시');
+        return;
+    }
+    
     clearTimeout(autoSyncTimer);
     currentRegion = region;
     localStorage.setItem(SELECTED_REGION_KEY, region);
     
-    // 해당 지역 데이터 로드
+    // 🔥 드롭다운 값 설정
+    var select = document.getElementById('regionSelect');
+    if (select) {
+        select.value = region;
+        console.log('✅ 드롭다운 선택됨:', select.value);
+    }
+    
     var key = getStorageKey(region);
     var data = localStorage.getItem(key);
     places = data ? JSON.parse(data) : [];
     console.log('📊 로드된 현장 수:', places.length);
     
-    // UI 갱신
     renderPlaces();
     updateStorageInfo();
-    document.getElementById('regionSelect').value = region;
     
     waypoints = [];
     routeResult = null;
@@ -386,7 +409,6 @@ function switchRegion(region) {
     document.getElementById('optimizeMode').textContent = '-';
     document.getElementById('routeList').innerHTML = '';
     
-    // 카카오맵 버튼 숨기기
     var btnContainer = document.getElementById('kakaoMapButtonContainer');
     if (btnContainer) {
         btnContainer.style.display = 'none';
@@ -479,8 +501,8 @@ function addRegion() {
             return;
         }
         
-        // 중복 체크 (기본 옵션 제외)
-        for (var i = 1; i < select.options.length; i++) {
+        // 중복 체크
+        for (var i = 0; i < select.options.length; i++) {
             if (select.options[i].value === region) {
                 showTabStatus('tab-settings', '⚠️ 이미 존재하는 지역입니다.', 'warning');
                 return;
@@ -490,15 +512,12 @@ function addRegion() {
         var key = getStorageKey(region);
         localStorage.setItem(key, JSON.stringify([]));
         
-        // 🔥 기본 옵션 제거 (지역 선택)
-        if (select.options.length === 1 && select.options[0].value === '') {
-            select.remove(0);
-        }
-        
         var opt = document.createElement('option');
         opt.value = region;
         opt.textContent = region;
         select.appendChild(opt);
+        
+        // 🔥 새 지역 선택
         select.value = region;
         
         switchRegion(region);
@@ -510,12 +529,12 @@ function deleteRegion() {
     if (!select) return;
     
     var currentRegion = select.value;
-    if (!currentRegion) {
+    if (!currentRegion || currentRegion === '') {
         showTabStatus('tab-settings', '⚠️ 삭제할 지역을 선택하세요.', 'warning');
         return;
     }
     
-    if (select.options.length <= 2) { // 기본 옵션 + 1개
+    if (select.options.length <= 1) {
         showTabStatus('tab-settings', '⚠️ 마지막 남은 지역은 삭제할 수 없습니다.', 'warning');
         return;
     }
@@ -534,12 +553,11 @@ function deleteRegion() {
                 }
             }
             
-            if (select.options.length > 1) { // 기본 옵션 제외 1개 이상
-                var newRegion = select.options[1].value; // 기본 옵션(0번) 다음
+            if (select.options.length > 0) {
+                var newRegion = select.options[0].value;
                 select.value = newRegion;
                 switchRegion(newRegion);
             } else {
-                // 🔥 지역이 없으면 "지역 선택▼" 표시
                 select.value = '';
                 currentRegion = '';
                 localStorage.removeItem(SELECTED_REGION_KEY);
