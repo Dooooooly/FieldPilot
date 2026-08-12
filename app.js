@@ -2370,21 +2370,19 @@ function openKakaoMap(fromName, fromLat, fromLng, toName, toLat, toLng) {
         return; 
     }
     
-    var url = 'https://map.kakao.com/link/from/' 
-        + encodeURIComponent(fromName) + ',' + fromLat + ',' + fromLng 
-        + '/to/' 
-        + encodeURIComponent(toName) + ',' + toLat + ',' + toLng;
+    // 🔥 공식 스펙 적용
+    var baseUrl = isMobile() 
+        ? 'kakaomap://route?' 
+        : 'http://m.map.kakao.com/scheme/route?';
     
-    // 🔥 모바일: 앱 스킴만 실행 (웹 절대 열지 않음)
+    var url = baseUrl 
+        + 'sp=' + fromLat + ',' + fromLng
+        + '&ep=' + toLat + ',' + toLng
+        + '&by=car';
+    
     if (isMobile()) {
-        var appUrl = 'kakaomap://from/' 
-            + encodeURIComponent(fromName) + ',' + fromLat + ',' + fromLng 
-            + '/to/' 
-            + encodeURIComponent(toName) + ',' + toLat + ',' + toLng;
-        window.location.href = appUrl;
-        // ❌ 웹 fallback 제거 (앱이 없으면 아무 일도 안 일어남)
+        window.location.href = url;
     } else {
-        // 🔥 PC: 웹 URL로 새 창 열기
         window.open(url, '_blank');
     }
     
@@ -3803,21 +3801,30 @@ function openKakaoMapFromPlace(id) {
         return;
     }
     
+    var baseUrl = isMobile() 
+        ? 'kakaomap://route?' 
+        : 'http://m.map.kakao.com/scheme/route?';
+    
     var url;
     if (startPoint && startPoint.lat && startPoint.lng) {
-        url = 'https://map.kakao.com/link/from/' 
-            + encodeURIComponent(startPoint.name) + ',' + startPoint.lat + ',' + startPoint.lng 
-            + '/to/' 
-            + encodeURIComponent(place.name) + ',' + place.lat + ',' + place.lng;
+        // 🔥 출발지 → 현장 길찾기
+        url = baseUrl 
+            + 'sp=' + startPoint.lat + ',' + startPoint.lng
+            + '&ep=' + place.lat + ',' + place.lng
+            + '&by=car';
         showTabStatus('tab-list', '🗺️ 카카오맵 길찾기: ' + startPoint.name + ' → ' + place.name, 'info');
     } else {
-        url = 'https://map.kakao.com/link/map/' + encodeURIComponent(place.name) + ',' + place.lat + ',' + place.lng;
+        // 🔥 현장 위치만 표시 (지도 열기)
+        if (isMobile()) {
+            url = 'kakaomap://open?page=map&lat=' + place.lat + '&lng=' + place.lng;
+        } else {
+            url = 'http://m.map.kakao.com/scheme/search?q=' + encodeURIComponent(place.name) + '&lat=' + place.lat + '&lng=' + place.lng;
+        }
         showTabStatus('tab-list', '🗺️ 카카오맵에서 "' + place.name + '" 위치 열기', 'info');
     }
     
     if (isMobile()) {
-        var appUrl = url.replace('https://map.kakao.com/link/', 'kakaomap://');
-        window.location.href = appUrl;
+        window.location.href = url;
     } else {
         window.open(url, '_blank');
     }
@@ -3843,24 +3850,29 @@ function openCurrentPlaceInKakaoMap() {
         return;
     }
     
+    var baseUrl = isMobile() 
+        ? 'kakaomap://route?' 
+        : 'http://m.map.kakao.com/scheme/route?';
+    
     var url;
     if (startPoint && startPoint.lat && startPoint.lng) {
-        url = 'https://map.kakao.com/link/from/' 
-            + encodeURIComponent(startPoint.name) + ',' + startPoint.lat + ',' + startPoint.lng 
-            + '/to/' 
-            + encodeURIComponent(place.name) + ',' + place.lat + ',' + place.lng;
+        url = baseUrl 
+            + 'sp=' + startPoint.lat + ',' + startPoint.lng
+            + '&ep=' + place.lat + ',' + place.lng
+            + '&by=car';
         showTabStatus('tab-route', '🗺️ 카카오맵 길찾기: ' + startPoint.name + ' → ' + place.name, 'info');
     } else {
-        url = 'https://map.kakao.com/link/map/' + encodeURIComponent(place.name) + ',' + place.lat + ',' + place.lng;
+        if (isMobile()) {
+            url = 'kakaomap://open?page=map&lat=' + place.lat + '&lng=' + place.lng;
+        } else {
+            url = 'http://m.map.kakao.com/scheme/search?q=' + encodeURIComponent(place.name) + '&lat=' + place.lat + '&lng=' + place.lng;
+        }
         showTabStatus('tab-route', '🗺️ 카카오맵에서 "' + place.name + '" 위치 열기', 'info');
     }
     
-    // 🔥 모바일: 앱 스킴만 실행 (웹 안 열림)
     if (isMobile()) {
-        var appUrl = url.replace('https://map.kakao.com/link/', 'kakaomap://');
-        window.location.href = appUrl;
+        window.location.href = url;
     } else {
-        // 🔥 PC: 웹 URL로 새 창 열기
         window.open(url, '_blank');
     }
 }
