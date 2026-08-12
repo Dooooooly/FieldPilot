@@ -2755,24 +2755,32 @@ function renderPresets() {
 }
 
 function addPreset() {
+    console.log('🔥 addPreset 호출됨');
+
     if (!startPoint || !startPoint.name) {
         showTabStatus('tab-places', '⚠️ 출발지를 먼저 설정하세요.', 'warning');
+        console.log('⚠️ 출발지 없음');
         return;
     }
     if (waypoints.length === 0) {
         showTabStatus('tab-places', '⚠️ 경유지를 최소 1개 이상 추가하세요.', 'warning');
+        console.log('⚠️ 경유지 없음');
         return;
     }
-    
+
+    console.log('✅ 출발지/경유지 확인 완료, 프리셋 저장 시작');
+
     showPromptModal(
         '💾 프리셋 저장',
         '프리셋 이름을 입력하세요:',
         '프리셋 ' + (presets.length + 1),
         function(name) {
+            console.log('📥 입력된 프리셋 이름:', name);
             if (!name || name.trim() === '') {
                 showTabStatus('tab-places', '⚠️ 프리셋 이름을 입력하세요.', 'warning');
                 return;
             }
+
             var preset = {
                 id: Date.now(),
                 name: name.trim(),
@@ -2791,9 +2799,15 @@ function addPreset() {
                     };
                 })
             };
+
             presets.push(preset);
+            console.log('💾 프리셋 배열:', presets);
+
             savePresets();
+            renderPresets();  // 🔥 목록 갱신 강제 호출
+
             showTabStatus('tab-places', '✅ 프리셋 "' + preset.name + '" 저장됨!', 'ok');
+            console.log('✅ 프리셋 저장 완료:', preset.name);
         }
     );
 }
