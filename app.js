@@ -2174,13 +2174,13 @@ function showRouteList() {
     var html = '<div style="font-weight:600;font-size:14px;margin-bottom:8px;">📋 최적 경로 (드래그로 순서 변경 가능)</div>';
     html += '<div id="routeSortable">';
 
-    // 출발지 (드래그 불가)
+    // 출발지
     html += '<div class="route-item route-start" data-no-drag="true" data-lat="' + startPoint.lat + '" data-lng="' + startPoint.lng + '" data-name="' + escapeHtml(startPoint.name) + '" onclick="moveToRoutePoint(this)" style="cursor:pointer;">';
     html += '<div class="idx" style="background:#4a5568;color:white;">🚩</div>';
     html += '<div class="info"><div class="name">' + escapeHtml(startPoint.name) + '</div><div class="addr">' + escapeHtml(startPoint.address || '') + '</div></div>';
     html += '</div>';
 
-    // 경유지들
+    // 경유지
     var colors = ['#FF6B6B', '#FF9F43', '#FECA57', '#48DBFB', '#0ABDE3', '#10AC84', '#EE5A24', '#5F27CD', '#1DD1A1', '#F368E0', '#00D2D3', '#54A0FF', '#FF9FF3', '#F368E0'];
     for (var i = 0; i < sorted.length; i++) {
         var p = sorted[i];
@@ -2191,25 +2191,35 @@ function showRouteList() {
         var addrDisplay = p.address ? '<div class="addr">' + escapeHtml(shortenAddress(p.address)) + '</div>' : '';
         var remarkDisplay = p.remark ? '<span class="remark">' + escapeHtml(p.remark) + '</span>' : '';
 
-        // 🔥 현장탭과 동일하게 onclick 속성 직접 사용
-        var prevName = escapeHtml(prev.name);
-        var destName = escapeHtml(p.name);
-
+        // 🔥🔥🔥 핵심 수정: onclick 제거, data-* 속성에 모든 정보 저장
         html += '<div class="route-item sortable-item" data-index="' + i + '" data-lat="' + p.lat + '" data-lng="' + p.lng + '" data-name="' + escapeHtml(p.name) + '" onclick="moveToRoutePoint(this)" style="cursor:grab;border-left-color:' + color + ';">';
         html += '<div class="idx" style="background:' + color + ';color:white;">' + (i + 1) + '</div>';
         html += '<div class="info"><div class="name">' + escapeHtml(p.name) + ' ' + remarkDisplay + '</div>' + addrDisplay + '</div>';
         html += '<div class="dist" style="text-align:right;font-size:12px;font-weight:600;flex-shrink:0;min-width:80px;color:' + color + ';">';
         html += segDist.toFixed(1) + 'km<br><span style="font-size:10px;color:#718096;">' + segTime + '분</span></div>';
         
-        // 🔥 onclick 속성 직접 추가 (현장탭 스타일과 동일)
-        html += '<button class="btn btn-outline" style="margin-left:4px;padding:2px 6px;font-size:10px;flex-shrink:0;min-height:28px;border-radius:4px;" onclick="event.stopPropagation(); openKakaoMap(\'' + prevName + '\', ' + prev.lat + ', ' + prev.lng + ', \'' + destName + '\', ' + p.lat + ', ' + p.lng + ')" title="카카오맵에서 구간 길찾기">🗺️</button>';
+        // 🔥 onclick 완전 제거, 대신 data-* 속성으로 저장
+        html += '<button class="btn btn-outline kakao-route-btn" style="margin-left:4px;padding:2px 6px;font-size:10px;flex-shrink:0;min-height:28px;border-radius:4px;" title="카카오맵에서 구간 길찾기"';
+        html += ' data-from-name="' + escapeHtml(prev.name) + '"';
+        html += ' data-from-lat="' + prev.lat + '"';
+        html += ' data-from-lng="' + prev.lng + '"';
+        html += ' data-to-name="' + escapeHtml(p.name) + '"';
+        html += ' data-to-lat="' + p.lat + '"';
+        html += ' data-to-lng="' + p.lng + '">';
+        html += '🗺️';
+        html += '</button>';
         html += '</div>';
     }
 
     html += '</div>';
     container.innerHTML = html;
 
-    // SortableJS (드래그 기능 유지)
+    // 🔥🔥🔥 갤럭시 대응: 이벤트 위임 (상위 요소에서 클릭 감지)
+    // 기존 리스너 제거 후 새로 등록 (중복 방지)
+    container.removeEventListener('click', handleKakaoRouteClick);
+    container.addEventListener('click', handleKakaoRouteClick);
+
+    // SortableJS (드래그 기능)
     var sortableEl = document.getElementById('routeSortable');
     if (sortableEl && window.Sortable) {
         if (window._routeSortable) window._routeSortable.destroy();
@@ -2252,6 +2262,30 @@ function showRouteList() {
     }
 }
 
+// 🔥 이벤트 위임 핸들러 (전역 함수로 분리하여 재사용 가능)
+function handleKakaoRouteClick(e) {
+    var btn = e.target.closest('.kakao-route-btn');
+    if (!btn) return;
+
+    // 버튼 클릭 시 부모(.route-item)의 기본 클릭 이벤트(지도 이동)가 실행되지 않도록 차단
+    e.stopPropagation();
+
+    // data-* 속성에서 값 읽어오기
+    var fromName = btn.dataset.fromName;
+    var fromLat = parseFloat(btn.dataset.fromLat);
+    var fromLng = parseFloat(btn.dataset.fromLng);
+    var toName = btn.dataset.toName;
+    var toLat = parseFloat(btn.dataset.toLat);
+    var toLng = parseFloat(btn.dataset.toLng);
+
+    if (!fromName || !toName || isNaN(fromLat) || isNaN(toLat)) {
+        showTabStatus('tab-route', '⚠️ 경로 정보가 올바르지 않습니다.', 'warning');
+        return;
+    }
+
+    // 실제 카카오맵 열기 함수 호출
+    openKakaoMap(fromName, fromLat, fromLng, toName, toLat, toLng);
+}
 function moveToRoutePoint(el) {
     var lat = parseFloat(el.dataset.lat), lng = parseFloat(el.dataset.lng), name = el.dataset.name || '장소';
     if (!lat || !lng || !kakaoMap) {
