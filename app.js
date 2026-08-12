@@ -2339,40 +2339,13 @@ function openKakaoMap(fromName, fromLat, fromLng, toName, toLat, toLng) {
         return; 
     }
 
-    var webUrl = 'https://map.kakao.com/link/from/'
+    // 🔥 모든 플랫폼 동일: https://map.kakao.com/link/ 형식
+    var url = 'https://map.kakao.com/link/from/'
         + encodeURIComponent(fromName) + ',' + fromLat + ',' + fromLng
         + '/to/'
         + encodeURIComponent(toName) + ',' + toLat + ',' + toLng;
 
-    var isAndroid = /android/i.test(navigator.userAgent);
-    var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-    if (isAndroid) {
-        // 🔥 안드로이드: intent:// 스킴 (앱 실행 + 웹 폴백)
-        var intentUrl = 'intent://route?'
-            + 'sp=' + fromLat + ',' + fromLng
-            + '&ep=' + toLat + ',' + toLng
-            + '&by=car'
-            + '#Intent;'
-            + 'scheme=kakaomap;'
-            + 'package=net.daum.android.map;'
-            + 'S.browser_fallback_url=' + encodeURIComponent(webUrl)
-            + ';end';
-        
-        // 🔥 intent 실행 후 2초 뒤에도 반응 없으면 웹으로 이동
-        window.location.href = intentUrl;
-        setTimeout(function() {
-            // 이미 웹으로 이동했는지 확인 (현재 URL이 intent로 시작하면 아직 안 넘어간 것)
-            if (window.location.href.startsWith('intent://')) {
-                window.location.href = webUrl;
-            }
-        }, 1500);
-        
-    } else {
-        // iOS / PC: 웹 URL 새 창 열기
-        window.open(webUrl, '_blank');
-    }
-
+    window.open(url, '_blank');
     showTabStatus('tab-route', '🗺️ 카카오맵 길찾기: ' + fromName + ' → ' + toName, 'info');
 }
 function openKakaoMapFromPlace(id) {
@@ -2386,53 +2359,22 @@ function openKakaoMapFromPlace(id) {
         return;
     }
 
-    var webUrl;
-    var isAndroid = /android/i.test(navigator.userAgent);
-
+    var url;
     if (startPoint && startPoint.lat && startPoint.lng) {
-        webUrl = 'https://map.kakao.com/link/from/'
+        // 🔥 출발지 → 현장 길찾기
+        url = 'https://map.kakao.com/link/from/'
             + encodeURIComponent(startPoint.name) + ',' + startPoint.lat + ',' + startPoint.lng
             + '/to/'
             + encodeURIComponent(place.name) + ',' + place.lat + ',' + place.lng;
         showTabStatus('tab-list', '🗺️ 카카오맵 길찾기: ' + startPoint.name + ' → ' + place.name, 'info');
     } else {
-        webUrl = 'https://map.kakao.com/link/map/'
+        // 🔥 현장 위치만 표시
+        url = 'https://map.kakao.com/link/map/'
             + encodeURIComponent(place.name) + ',' + place.lat + ',' + place.lng;
         showTabStatus('tab-list', '🗺️ 카카오맵에서 "' + place.name + '" 위치 열기', 'info');
     }
 
-    if (isAndroid) {
-        var intentUrl;
-        if (startPoint && startPoint.lat && startPoint.lng) {
-            intentUrl = 'intent://route?'
-                + 'sp=' + startPoint.lat + ',' + startPoint.lng
-                + '&ep=' + place.lat + ',' + place.lng
-                + '&by=car'
-                + '#Intent;'
-                + 'scheme=kakaomap;'
-                + 'package=net.daum.android.map;'
-                + 'S.browser_fallback_url=' + encodeURIComponent(webUrl)
-                + ';end';
-        } else {
-            intentUrl = 'intent://map?'
-                + 'lat=' + place.lat + '&lng=' + place.lng
-                + '#Intent;'
-                + 'scheme=kakaomap;'
-                + 'package=net.daum.android.map;'
-                + 'S.browser_fallback_url=' + encodeURIComponent(webUrl)
-                + ';end';
-        }
-        
-        window.location.href = intentUrl;
-        setTimeout(function() {
-            if (window.location.href.startsWith('intent://')) {
-                window.location.href = webUrl;
-            }
-        }, 1500);
-        
-    } else {
-        window.open(webUrl, '_blank');
-    }
+    window.open(url, '_blank');
 }
 function openCurrentPlaceInKakaoMap() {
     if (!currentPlaceId) {
@@ -2450,55 +2392,23 @@ function openCurrentPlaceInKakaoMap() {
         return;
     }
 
-    var webUrl;
-    var isAndroid = /android/i.test(navigator.userAgent);
-
+    var url;
     if (startPoint && startPoint.lat && startPoint.lng) {
-        webUrl = 'https://map.kakao.com/link/from/'
+        // 🔥 출발지 → 현장 길찾기
+        url = 'https://map.kakao.com/link/from/'
             + encodeURIComponent(startPoint.name) + ',' + startPoint.lat + ',' + startPoint.lng
             + '/to/'
             + encodeURIComponent(place.name) + ',' + place.lat + ',' + place.lng;
         showTabStatus('tab-route', '🗺️ 카카오맵 길찾기: ' + startPoint.name + ' → ' + place.name, 'info');
     } else {
-        webUrl = 'https://map.kakao.com/link/map/'
+        // 🔥 현장 위치만 표시
+        url = 'https://map.kakao.com/link/map/'
             + encodeURIComponent(place.name) + ',' + place.lat + ',' + place.lng;
         showTabStatus('tab-route', '🗺️ 카카오맵에서 "' + place.name + '" 위치 열기', 'info');
     }
 
-    if (isAndroid) {
-        var intentUrl;
-        if (startPoint && startPoint.lat && startPoint.lng) {
-            intentUrl = 'intent://route?'
-                + 'sp=' + startPoint.lat + ',' + startPoint.lng
-                + '&ep=' + place.lat + ',' + place.lng
-                + '&by=car'
-                + '#Intent;'
-                + 'scheme=kakaomap;'
-                + 'package=net.daum.android.map;'
-                + 'S.browser_fallback_url=' + encodeURIComponent(webUrl)
-                + ';end';
-        } else {
-            intentUrl = 'intent://map?'
-                + 'lat=' + place.lat + '&lng=' + place.lng
-                + '#Intent;'
-                + 'scheme=kakaomap;'
-                + 'package=net.daum.android.map;'
-                + 'S.browser_fallback_url=' + encodeURIComponent(webUrl)
-                + ';end';
-        }
-        
-        window.location.href = intentUrl;
-        setTimeout(function() {
-            if (window.location.href.startsWith('intent://')) {
-                window.location.href = webUrl;
-            }
-        }, 1500);
-        
-    } else {
-        window.open(webUrl, '_blank');
-    }
+    window.open(url, '_blank');
 }
-
 // ============================================================
 // 20. 지도 표시
 // ============================================================
