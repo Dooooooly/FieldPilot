@@ -2171,11 +2171,11 @@ function showRouteList() {
         return;
     }
 
-    var html = '<div style="font-weight:600;font-size:14px;margin-bottom:8px;">📋 최적 경로 (드래그로 순서 변경 가능)</div>';
+    var html = '<div style="font-weight:600;font-size:14px;margin-bottom:8px;">📋 최적 경로</div>';
     html += '<div id="routeSortable">';
 
     // 출발지
-    html += '<div class="route-item route-start" data-no-drag="true" data-lat="' + startPoint.lat + '" data-lng="' + startPoint.lng + '" data-name="' + escapeHtml(startPoint.name) + '" onclick="moveToRoutePoint(this)" style="cursor:pointer;">';
+    html += '<div class="route-item route-start" data-no-drag="true" data-lat="' + startPoint.lat + '" data-lng="' + startPoint.lng + '" data-name="' + escapeHtml(startPoint.name) + '" style="cursor:pointer;" onclick="moveToRoutePoint(this)">';
     html += '<div class="idx" style="background:#4a5568;color:white;">🚩</div>';
     html += '<div class="info"><div class="name">' + escapeHtml(startPoint.name) + '</div><div class="addr">' + escapeHtml(startPoint.address || '') + '</div></div>';
     html += '</div>';
@@ -2191,23 +2191,26 @@ function showRouteList() {
         var addrDisplay = p.address ? '<div class="addr">' + escapeHtml(shortenAddress(p.address)) + '</div>' : '';
         var remarkDisplay = p.remark ? '<span class="remark">' + escapeHtml(p.remark) + '</span>' : '';
 
-        // 🔥🔥🔥 핵심: onclick에 인자 없이 this만 전달, 모든 데이터는 data-* 속성에 저장
-        html += '<div class="route-item sortable-item" data-index="' + i + '" data-lat="' + p.lat + '" data-lng="' + p.lng + '" data-name="' + escapeHtml(p.name) + '" onclick="moveToRoutePoint(this)" style="cursor:grab;border-left-color:' + color + ';">';
+        html += '<div class="route-item sortable-item" data-index="' + i + '" data-lat="' + p.lat + '" data-lng="' + p.lng + '" data-name="' + escapeHtml(p.name) + '" style="border-left-color:' + color + ';">';
         html += '<div class="idx" style="background:' + color + ';color:white;">' + (i + 1) + '</div>';
-        html += '<div class="info"><div class="name">' + escapeHtml(p.name) + ' ' + remarkDisplay + '</div>' + addrDisplay + '</div>';
+        html += '<div class="info">';
+        html += '<div class="name">' + escapeHtml(p.name) + ' ' + remarkDisplay + '</div>';
+        html += addrDisplay;
+        html += '</div>';
         html += '<div class="dist" style="text-align:right;font-size:12px;font-weight:600;flex-shrink:0;min-width:80px;color:' + color + ';">';
         html += segDist.toFixed(1) + 'km<br><span style="font-size:10px;color:#718096;">' + segTime + '분</span></div>';
         
-        // 🔥 onclick에 this만 전달 (짧고 간단, 갤럭시에서도 파싱 성공)
-        html += '<button class="btn btn-outline kakao-route-btn" style="margin-left:4px;padding:2px 6px;font-size:10px;flex-shrink:0;min-height:28px;border-radius:4px;"';
-        html += ' onclick="openKakaoMapFromRoute(this)"';  // 🔥 this만 전달
+        // 🔥 드래그 핸들 (⠿) - 이 부분만 드래그 가능
+        html += '<span class="drag-handle" style="color:#a0aec0;font-size:16px;cursor:grab;padding:4px 6px;user-select:none;" title="드래그하여 순서 변경">⠿</span>';
+        
+        // 🔥 카카오맵 버튼 (onclick 직접 연결 - 갤럭시 호환성 최대화)
+        html += '<button class="btn btn-outline kakao-route-btn" style="margin-left:4px;padding:2px 6px;font-size:10px;flex-shrink:0;min-height:28px;border-radius:4px;position:relative;z-index:10;" onclick="openKakaoMapFromRoute(this)" title="카카오맵에서 구간 길찾기"';
         html += ' data-from-name="' + escapeHtml(prev.name) + '"';
         html += ' data-from-lat="' + prev.lat + '"';
         html += ' data-from-lng="' + prev.lng + '"';
         html += ' data-to-name="' + escapeHtml(p.name) + '"';
         html += ' data-to-lat="' + p.lat + '"';
-        html += ' data-to-lng="' + p.lng + '"';
-        html += ' title="카카오맵에서 구간 길찾기">';
+        html += ' data-to-lng="' + p.lng + '">';
         html += '🗺️';
         html += '</button>';
         html += '</div>';
@@ -2216,14 +2219,15 @@ function showRouteList() {
     html += '</div>';
     container.innerHTML = html;
 
-    // SortableJS (드래그 기능)
+    // 🔥 SortableJS - 드래그 핸들만 인식하도록 설정
     var sortableEl = document.getElementById('routeSortable');
     if (sortableEl && window.Sortable) {
         if (window._routeSortable) window._routeSortable.destroy();
         window._routeSortable = new Sortable(sortableEl, {
-            handle: '.sortable-item',
+            handle: '.drag-handle',  // 🔥 오직 드래그 핸들만 인식
             animation: 150,
             onMove: function(evt) {
+                // 출발지(첫 번째)로 드래그 방지
                 if (evt.toIndex === 0) {
                     showTabStatus('tab-route', '⚠️ 출발지 위치로는 이동할 수 없습니다.', 'warning');
                     return false;
