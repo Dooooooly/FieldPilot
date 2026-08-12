@@ -791,55 +791,121 @@
         </div>
 
         <!-- ===== 탭: 도움말 ===== -->
-        <div id="tab-help" class="tab-content">
-            <div class="card">
-                <div class="card-title">📖 사용 가이드</div>
-                <div class="help-section">
-                    <div class="help-title">🗺️ 경로 탭</div>
-                    <div class="help-body">
-                        <div>1. <strong>출발지</strong>를 검색하거나 <strong>현재 위치</strong>로 설정하세요</div>
-                        <div>2. <strong>경유지</strong>를 추가하세요 (드래그로 순서 변경 가능)</div>
-                        <div>3. <strong>여러개 추가</strong> 모드로 한 번에 여러 경유지를 추가할 수 있어요</div>
-                        <div>4. <strong>경로 최적화</strong> 버튼으로 최적 경로 계산</div>
-                    </div>
+<div id="tab-help" class="tab-content">
+    <div class="card">
+        <div class="card-title">📖 사용 가이드</div>
+
+        <!-- ===== 1. 경로 탭 ===== -->
+        <div class="help-section">
+            <div class="help-title">🗺️ 경로 탭</div>
+            <div class="help-body">
+                <div><strong>1. 출발지 설정</strong></div>
+                <div style="padding-left:12px; font-size:12px; color:#4a5568;">
+                    - 검색창에 출발지를 입력하고 <strong>'설정'</strong> 버튼을 누르세요.<br>
+                    - <strong>'🎯 현재 위치'</strong> 버튼으로 GPS 위치를 바로 설정할 수 있어요.
                 </div>
-                <div class="help-section">
-                    <div class="help-title">📍 지도 탭</div>
-                    <div class="help-body">
-                        <div>📍 최적화된 경로를 <strong>지도</strong>로 확인하세요</div>
-                        <div>🌈 각 구간별로 <strong>다른 색상</strong>으로 표시되어 구분이 쉬워요</div>
-                        <div>📋 각 경유지에 <strong>주소</strong>와 <strong>비고</strong>가 표시됩니다</div>
-                    </div>
+                <div style="margin-top:6px;"><strong>2. 경유지 추가</strong></div>
+                <div style="padding-left:12px; font-size:12px; color:#4a5568;">
+                    - 경유지명을 입력하고 <strong>'추가'</strong> 버튼을 누르세요.<br>
+                    - <strong>'📋 여러개 추가'</strong> 모드로 한 번에 여러 개를 추가할 수 있어요.<br>
+                    - 추가된 경유지는 <strong>드래그</strong>로 순서를 변경할 수 있습니다.
                 </div>
-                <div class="help-section">
-                    <div class="help-title">📋 현장 탭</div>
-                    <div class="help-body">
-                        <div>⭐ <strong>즐겨찾기</strong> 버튼으로 자주 가는 현장을 상단에 고정하세요</div>
-                        <div>📤 <strong>엑셀 가져오기</strong>로 현장을 일괄 등록하세요</div>
-                        <div>👆 현장을 <strong>클릭</strong>하면 바로 편집할 수 있어요</div>
-                    </div>
+                <div style="margin-top:6px;"><strong>3. 경로 최적화</strong></div>
+                <div style="padding-left:12px; font-size:12px; color:#4a5568;">
+                    - <strong>'⚡ 경로 최적화'</strong> 버튼을 누르면 최적 경로가 계산됩니다.<br>
+                    - <strong>'가까운순/먼순'</strong> 중 최적화 방식을 선택할 수 있어요.
+                </div>
+                <div style="margin-top:6px;"><strong>💾 프리셋 저장</strong></div>
+                <div style="padding-left:12px; font-size:12px; color:#4a5568;">
+                    - 현재 설정된 출발지와 경유지를 <strong>프리셋</strong>으로 저장할 수 있어요.<br>
+                    - 저장된 프리셋은 클릭 한 번으로 불러올 수 있습니다.
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== 2. 지도 탭 ===== -->
+        <div class="help-section">
+            <div class="help-title">📍 지도 탭</div>
+            <div class="help-body">
+                <div>📍 최적화된 경로를 <strong>카카오맵</strong>으로 확인하세요.</div>
+                <div style="padding-left:12px; font-size:12px; color:#4a5568;">
+                    - 각 구간별로 <strong>다른 색상</strong>으로 표시되어 구분이 쉬워요.<br>
+                    - 경로 목록에서 <strong>클릭</strong>하면 해당 위치로 지도가 이동합니다.<br>
+                    - <strong>'🗺️ 카카오맵에서 열기'</strong> 버튼으로 실제 길찾기를 확인할 수 있어요.
+                </div>
+                <div style="margin-top:6px;">📊 <strong>요약 정보</strong></div>
+                <div style="padding-left:12px; font-size:12px; color:#4a5568;">
+                    - 총 방문지 개수, 총 거리, 총 소요 시간을 한눈에 확인하세요.
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== 3. 현장 탭 ===== -->
+        <div class="help-section">
+            <div class="help-title">📋 현장 탭</div>
+            <div class="help-body">
+                <div><strong>현장 관리</strong></div>
+                <div style="padding-left:12px; font-size:12px; color:#4a5568;">
+                    - <strong>'➕ 현장추가'</strong> 버튼으로 새 현장을 등록하세요.<br>
+                    - 현장을 <strong>클릭</strong>하면 이름, 주소, 비고를 편집할 수 있어요.<br>
+                    - <strong>'⭐ 즐겨찾기'</strong> 버튼으로 자주 가는 현장을 상단에 고정하세요.
+                </div>
+                <div style="margin-top:6px;"><strong>📥 엑셀 가져오기/내보내기</strong></div>
+                <div style="padding-left:12px; font-size:12px; color:#4a5568;">
+                    - 엑셀 파일로 현장을 <strong>일괄 등록</strong>하거나 <strong>백업</strong>할 수 있어요.<br>
+                    - 지원 형식: <code>.csv</code>, <code>.xlsx</code>, <code>.xls</code>
+                </div>
+                <div style="margin-top:6px;"><strong>🔍 검색 및 정렬</strong></div>
+                <div style="padding-left:12px; font-size:12px; color:#4a5568;">
+                    - 현장명이나 주소로 <strong>검색</strong>할 수 있어요.<br>
+                    - <strong>이름순</strong> 또는 <strong>즐겨찾기</strong> 순으로 정렬할 수 있습니다.
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== 4. 설정 탭 ===== -->
+        <div class="help-section">
+            <div class="help-title">⚙️ 설정 탭</div>
+            <div class="help-body">
+                <div><strong>🔐 GitHub 연동</strong></div>
+                <div style="padding-left:12px; font-size:12px; color:#4a5568;">
+                    - GitHub Personal Access Token을 입력하면 <strong>자동 백업</strong>이 가능해요.<br>
+                    - <strong>'📤 업로드'</strong>로 현재 데이터를 저장하고, <strong>'📥 다운로드'</strong>로 불러올 수 있어요.
+                </div>
+                <div style="margin-top:6px;"><strong>🗺️ 카카오 API</strong></div>
+                <div style="padding-left:12px; font-size:12px; color:#4a5568;">
+                    - <strong>JavaScript 키</strong>와 <strong>REST API 키</strong>를 입력하세요.<br>
+                    - 지도 표시와 주소 검색에 필요합니다.
+                </div>
+                <div style="margin-top:6px;"><strong>🔄 업데이트 관리</strong></div>
+                <div style="padding-left:12px; font-size:12px; color:#4a5568;">
+                    - <strong>'🔍 업데이트 확인'</strong> 버튼으로 새 버전을 확인하세요.<br>
+                    - <strong>'⚡ 캐시 초기화'</strong>로 오류를 해결할 수 있어요.
+                </div>
+                <div style="margin-top:6px;"><strong>💾 데이터 관리</strong></div>
+                <div style="padding-left:12px; font-size:12px; color:#4a5568;">
+                    - <strong>'🗑️ 모든 데이터 초기화'</strong>로 모든 데이터를 삭제할 수 있어요.
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== 5. 팁 ===== -->
+        <div class="help-section">
+            <div class="help-title">💡 유용한 팁</div>
+            <div class="help-body">
+                <div style="margin-top:6px;">📱 <strong>모바일 최적화</strong></div>
+                <div style="padding-left:12px; font-size:12px; color:#4a5568;">
+                    - 모든 화면이 모바일에 최적화되어 있어요.<br>
+                    - <strong>PWA</strong>로 설치하면 앱처럼 사용할 수 있습니다.
+                </div>
+                <div style="margin-top:6px;">☁️ <strong>데이터 백업</strong></div>
+                <div style="padding-left:12px; font-size:12px; color:#4a5568;">
+                    - GitHub에 백업하면 <strong>다른 기기</strong>에서도 데이터를 불러올 수 있어요.
                 </div>
             </div>
         </div>
     </div>
-
-    <div class="bottom-tabs">
-        <button class="bottom-tab active" data-tab="tab-places" onclick="switchTab('tab-places')">
-            <span class="tab-icon">🗺️</span> 경로
-        </button>
-        <button class="bottom-tab" data-tab="tab-route" onclick="switchTab('tab-route')">
-            <span class="tab-icon">📍</span> 지도
-        </button>
-        <button class="bottom-tab" data-tab="tab-list" onclick="switchTab('tab-list')">
-            <span class="tab-icon">📋</span> 현장
-        </button>
-        <button class="bottom-tab" data-tab="tab-settings" onclick="switchTab('tab-settings')">
-            <span class="tab-icon">⚙️</span> 설정
-        </button>
-        <button class="bottom-tab help-tab" data-tab="tab-help" onclick="switchTab('tab-help')">
-            <span class="tab-icon">❓</span> 도움말
-        </button>
-    </div>
+</div>
     
     <!-- ===== 현장추가 모달 (내부 팝업) ===== -->
     <div class="modal-overlay" id="addPlaceModal">
