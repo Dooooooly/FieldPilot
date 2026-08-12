@@ -11,43 +11,38 @@ const ASSETS = [
     // ⭐ 외부 URL(카카오 SDK)은 캐싱에서 제외 (CORS 문제 방지)
 ];
 
+const CACHE_NAME = 'route-opt-v6';
+
+// 🔥 설치: 캐시하지 않고 바로 활성화 (skipWaiting)
 self.addEventListener('install', function(event) {
-    event.waitUntil(
-        caches.open(CACHE_NAME).then(function(cache) {
-            var urls = ['/', '/index.html', '/app.js', '/manifest.json'];
-            return Promise.all(
-                urls.map(function(url) {
-                    return cache.add(url).catch(function(err) {
-                        console.warn('⚠️ 캐시 실패:', url, err);
-                    });
-                })
-            );
-        })
-    );
-    self.skipWaiting();
+    console.log('🔄 Service Worker 설치 중...');
+    self.skipWaiting(); // 설치 후 즉시 활성화
 });
 
 // 🔥 활성화: 이전 캐시 삭제
 self.addEventListener('activate', function(event) {
+    console.log('🔄 Service Worker 활성화 중...');
     event.waitUntil(
         caches.keys().then(function(cacheNames) {
             return Promise.all(
                 cacheNames.map(function(cacheName) {
                     if (cacheName !== CACHE_NAME) {
+                        console.log('🗑️ 이전 캐시 삭제:', cacheName);
                         return caches.delete(cacheName);
                     }
                 })
             );
         })
     );
-    return self.clients.claim();
+    return self.clients.claim(); // 모든 탭에서 새 버전 사용
 });
 
-// 🔥 네트워크 우선 전략
+// 🔥 네트워크 우선 전략 (항상 최신 파일 사용)
 self.addEventListener('fetch', function(event) {
     event.respondWith(
         fetch(event.request)
             .then(function(response) {
+                // 🔥 네트워크 응답을 캐시에 저장 (최신 유지)
                 var responseClone = response.clone();
                 caches.open(CACHE_NAME).then(function(cache) {
                     cache.put(event.request, responseClone);
@@ -55,6 +50,7 @@ self.addEventListener('fetch', function(event) {
                 return response;
             })
             .catch(function() {
+                // 🔥 네트워크 실패 시 캐시에서 제공
                 return caches.match(event.request);
             })
     );
