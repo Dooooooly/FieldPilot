@@ -71,44 +71,43 @@
         }
         .weather .temp { font-weight: 700; font-size: 13px; }
 
-         .weather #currentRegionLabel {
-        font-weight: 400;
-        font-size: inherit;
-    }
-    .weather #currentRegionName {
-        font-weight: 700;
-        font-size: inherit;
-    }
-    .weather .region-arrow {
-        font-size: 10px;
-        opacity: 0.6;
-        margin-left: 2px;
-    }
-
-    /* ===== 모바일 ===== */
-    @media (max-width: 480px) {
-        .weather {
-            font-size: 11px;
-            padding: 2px 8px;
-            height: 26px;
-            gap: 3px;
+        .weather #currentRegionLabel {
+            font-weight: 400;
+            font-size: inherit;
         }
-        .weather .temp {
-            font-size: 11px;
-        }
-        /* 🔥 여기에도 추가 */
-        .weather #currentRegionLabel,
         .weather #currentRegionName {
-            font-size: 11px;
+            font-weight: 700;
+            font-size: inherit;
         }
         .weather .region-arrow {
-            font-size: 9px;
+            font-size: 10px;
+            opacity: 0.6;
+            margin-left: 2px;
         }
-        .header-divider {
-            height: 16px;
-            margin: 0 4px;
+
+        /* ===== 모바일 ===== */
+        @media (max-width: 480px) {
+            .weather {
+                font-size: 11px;
+                padding: 2px 8px;
+                height: 26px;
+                gap: 3px;
+            }
+            .weather .temp {
+                font-size: 11px;
+            }
+            .weather #currentRegionLabel,
+            .weather #currentRegionName {
+                font-size: 11px;
+            }
+            .weather .region-arrow {
+                font-size: 9px;
+            }
+            .header-divider {
+                height: 16px;
+                margin: 0 4px;
+            }
         }
-    }
         
         .header-divider {
             width: 1px;
@@ -447,25 +446,28 @@
         .badge-wait { background: #e2e8f0; color: #4a5568; }
         .badge-fail { background: #fed7d7; color: #9b2c2c; }
         
+        /* ===== 하단 탭 (수정 완료 - 높이 고정) ===== */
         .bottom-tabs {
             position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: white;
-    display: flex !important;     /* 🔥 강제 적용 */
-    border-top: 1px solid #e2e8f0;
-    z-index: 9999 !important;
-    box-shadow: 0 -2px 20px rgba(0,0,0,0.04);
-    height: 56px !important;      /* 🔥 강제 적용 */
-    min-height: 56px !important;
-    padding: 4px 0;
-    visibility: visible !important;
-    opacity: 1 !important;
-}
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #ffffff;
+            display: flex;
+            align-items: stretch;
+            border-top: 1px solid #e2e8f0;
+            z-index: 9999;
+            box-shadow: 0 -2px 20px rgba(0,0,0,0.06);
+            height: 56px;
+            min-height: 56px;
+            padding: 4px 0;
+        }
         .bottom-tab {
             flex: 1;
-            padding: 8px 2px 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
             text-align: center;
             font-size: 10px;
             font-weight: 600;
@@ -474,12 +476,29 @@
             border-top: 3px solid transparent;
             transition: all 0.2s;
             background: none;
-            border: none;
+            border-left: none;
+            border-right: none;
+            border-bottom: none;
+            padding: 4px 2px;
+            gap: 2px;
+            height: 100%;
         }
-        .bottom-tab .tab-icon { font-size: 20px; display: block; margin-bottom: 2px; }
-        .bottom-tab.active { color: #4f7eb3; border-top-color: #4f7eb3; }
-        .bottom-tab.help-tab { color: #805ad5; }
-        .bottom-tab.help-tab.active { color: #805ad5; border-top-color: #805ad5; }
+        .bottom-tab .tab-icon {
+            font-size: 20px;
+            display: block;
+            line-height: 1.2;
+        }
+        .bottom-tab.active {
+            color: #4f7eb3;
+            border-top-color: #4f7eb3;
+        }
+        .bottom-tab.help-tab {
+            color: #805ad5;
+        }
+        .bottom-tab.help-tab.active {
+            color: #805ad5;
+            border-top-color: #805ad5;
+        }
         
         .modal-overlay {
             display: none;
@@ -534,8 +553,21 @@
             .btn-lg { font-size: 14px; padding: 12px 16px; min-height: 44px; }
             .input-field { font-size: 12px; padding: 5px 8px; min-height: 30px; }
             #map { height: 260px; }
-            .bottom-tab { font-size: 9px; padding: 6px 2px 4px; }
-            .bottom-tab .tab-icon { font-size: 18px; }
+            
+            /* ===== 하단탭 모바일 ===== */
+            .bottom-tabs {
+                height: 48px;
+                min-height: 48px;
+                padding: 2px 0;
+            }
+            .bottom-tab {
+                font-size: 9px;
+                padding: 2px 2px;
+            }
+            .bottom-tab .tab-icon {
+                font-size: 18px;
+            }
+            
             .place-item { padding: 4px 6px; min-height: 34px; }
             .place-item .info .name { font-size: 12px; }
             .place-item .info .addr { font-size: 10px; }
@@ -567,12 +599,11 @@
             <span class="header-divider"></span>
 
             <!-- ✅ 현재 지역 표시 (클릭 → 지역 관리 팝업) -->
-            <!-- 🔥 현재 지역 표시 (인라인 스타일 제거, .weather 상속) -->
-    <div class="weather" id="regionDisplay" onclick="openRegionManager()" style="cursor:pointer;">
-        <span id="currentRegionLabel">현재:</span>
-        <span id="currentRegionName">지역 선택</span>
-        <span class="region-arrow">▼</span>
-    </div>
+            <div class="weather" id="regionDisplay" onclick="openRegionManager()" style="cursor:pointer;">
+                <span id="currentRegionLabel">현재:</span>
+                <span id="currentRegionName">지역 선택</span>
+                <span class="region-arrow">▼</span>
+            </div>
 
             <!-- 숨김 select (값 저장용) -->
             <select id="regionSelect" style="display:none;" onchange="switchRegion(this.value)"></select>
@@ -617,7 +648,7 @@
                     <div class="card-title" style="margin-bottom:0; font-size:14px;">
                         📍 경유지 <span id="wpCount" style="font-size:12px;color:#a0aec0;font-weight:400;"></span>
                     </div>
-                    <!-- 🔥 여러개 추가 토글 버튼 (체크박스 대신 버튼 스타일) -->
+                    <!-- 🔥 여러개 추가 토글 버튼 -->
                     <button id="multiToggleBtn" onclick="toggleMultiSelect()" 
                             style="font-size:11px; padding:4px 14px; min-height:30px; border-radius:16px; border:2px solid #cbd5e0; background:white; color:#4a5568; cursor:pointer; transition:all 0.2s; font-weight:600; display:flex; align-items:center; gap:4px;">
                         📋 여러개 추가
@@ -630,7 +661,6 @@
                                style="min-height:38px;"
                                oninput="searchWaypoint(this.value)" 
                                onkeydown="handleWaypointKeydown(event)">
-                        <!-- 🔥 추가 버튼 (모드에 따라 스타일 변경) -->
                         <button id="addWaypointBtn" class="btn btn-success" onclick="addWaypoint()" 
                                 style="font-size:13px; padding:6px 18px; min-height:38px; font-weight:600; white-space:nowrap; transition:all 0.3s;">
                             ➕ 추가
@@ -641,7 +671,6 @@
                 <ul class="waypoint-list" id="waypointList">
                     <li class="empty-msg">경유지를 추가하세요 (드래그로 순서 변경 가능)</li>
                 </ul>
-                <!-- 🔥 모드 상태 표시줄 -->
                 <div id="modeStatus" style="font-size:11px; color:#a0aec0; margin-top:4px; text-align:center;">💡 일반 모드 - 경유지를 입력하고 추가하세요</div>
             </div>
             
@@ -693,12 +722,10 @@
        <!-- ===== 탭: 현장 ===== -->
         <div id="tab-list" class="tab-content">
             <div class="card">
-                <!-- 제목 + 개수 -->
                 <div class="flex-between" style="margin-bottom:6px;">
                     <span class="card-title" style="margin-bottom:0; font-size:14px;">📋 현장리스트 <span id="listCount" style="font-size:12px;color:#a0aec0;font-weight:400;"></span></span>
                 </div>
                 
-                <!-- 엑셀 + 현장추가 (한 줄) -->
                 <div class="flex-row" style="margin-bottom:6px; gap:6px;">
                     <button class="btn btn-outline btn-sm" style="flex:1; font-size:11px; padding:6px 8px;" onclick="document.getElementById('fileInput').click()">📥 엑셀 가져오기</button>
                     <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFile(event)">
@@ -707,7 +734,6 @@
                 </div>
                 <div id="uploadResult" style="font-size:11px; padding:2px 6px;"></div>
                 
-                <!-- 🔥 검색창 + 정렬 (한 줄) -->
                 <div class="flex-between" style="margin-bottom:4px; gap:8px;">
                     <input type="text" id="searchPlace" class="input-field input-field-sm" placeholder="🔍 현장 검색" style="flex:1; min-height:30px; font-size:12px;" oninput="searchPlaces()">
                     <div style="display:flex; gap:6px; align-items:center; flex-shrink:0;">
@@ -720,11 +746,11 @@
                     </div>
                 </div>
                 
-                <!-- 현장 목록 -->
                 <div id="placeList" style="max-height:380px; overflow-y:auto; min-height:100px;"></div>
                 <div id="listStatus" class="tab-status"></div>
             </div>
         </div>
+
         <!-- ===== 탭: 설정 ===== -->
         <div id="tab-settings" class="tab-content">
             <div class="setting-group">
@@ -770,21 +796,22 @@
             </div>
 
              <div class="setting-group">
-        <h4>🔄 업데이트 관리</h4>
-        <div class="row">
-            <button class="btn btn-primary btn-sm" onclick="checkForUpdates()" style="flex:1;">
-                🔍 업데이트 확인
-            </button>
-            <button class="btn btn-outline btn-sm" onclick="forceUpdateApp()" style="flex:1; border-color:#e53e3e; color:#e53e3e;">
-                ⚡ 캐시 초기화
-            </button>
-        </div>
-        <div id="updateStatus" style="font-size:12px; color:#718096; margin-top:6px;">
-            ✅ 최신 버전입니다.
-        </div>
-        <div style="font-size:11px; color:#a0aec0; margin-top:4px;">
-            💡 업데이트 확인 버튼으로 새 버전을 확인하고, 캐시 초기화로 오류를 해결하세요.
-        </div>
+                <h4>🔄 업데이트 관리</h4>
+                <div class="row">
+                    <button class="btn btn-primary btn-sm" onclick="checkForUpdates()" style="flex:1;">
+                        🔍 업데이트 확인
+                    </button>
+                    <button class="btn btn-outline btn-sm" onclick="forceUpdateApp()" style="flex:1; border-color:#e53e3e; color:#e53e3e;">
+                        ⚡ 캐시 초기화
+                    </button>
+                </div>
+                <div id="updateStatus" style="font-size:12px; color:#718096; margin-top:6px;">
+                    ✅ 최신 버전입니다.
+                </div>
+                <div style="font-size:11px; color:#a0aec0; margin-top:4px;">
+                    💡 업데이트 확인 버튼으로 새 버전을 확인하고, 캐시 초기화로 오류를 해결하세요.
+                </div>
+            </div>
             
             <div class="setting-group">
                 <h4>💾 데이터</h4>
@@ -795,121 +822,116 @@
         </div>
 
         <!-- ===== 탭: 도움말 ===== -->
-<div id="tab-help" class="tab-content">
-    <div class="card">
-        <div class="card-title">📖 사용 가이드</div>
+        <div id="tab-help" class="tab-content">
+            <div class="card">
+                <div class="card-title">📖 사용 가이드</div>
+                <div class="help-section">
+                    <div class="help-title">🗺️ 경로 탭</div>
+                    <div class="help-body">
+                        <div><strong>1. 출발지 설정</strong></div>
+                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
+                            - 검색창에 출발지를 입력하고 <strong>'설정'</strong> 버튼을 누르세요.<br>
+                            - <strong>'🎯 현재 위치'</strong> 버튼으로 GPS 위치를 바로 설정할 수 있어요.
+                        </div>
+                        <div style="margin-top:6px;"><strong>2. 경유지 추가</strong></div>
+                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
+                            - 경유지명을 입력하고 <strong>'추가'</strong> 버튼을 누르세요.<br>
+                            - <strong>'📋 여러개 추가'</strong> 모드로 한 번에 여러 개를 추가할 수 있어요.<br>
+                            - 추가된 경유지는 <strong>드래그</strong>로 순서를 변경할 수 있습니다.
+                        </div>
+                        <div style="margin-top:6px;"><strong>3. 경로 최적화</strong></div>
+                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
+                            - <strong>'⚡ 경로 최적화'</strong> 버튼을 누르면 최적 경로가 계산됩니다.<br>
+                            - <strong>'가까운순/먼순'</strong> 중 최적화 방식을 선택할 수 있어요.
+                        </div>
+                        <div style="margin-top:6px;"><strong>💾 프리셋 저장</strong></div>
+                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
+                            - 현재 설정된 출발지와 경유지를 <strong>프리셋</strong>으로 저장할 수 있어요.<br>
+                            - 저장된 프리셋은 클릭 한 번으로 불러올 수 있습니다.
+                        </div>
+                    </div>
+                </div>
 
-        <!-- ===== 1. 경로 탭 ===== -->
-        <div class="help-section">
-            <div class="help-title">🗺️ 경로 탭</div>
-            <div class="help-body">
-                <div><strong>1. 출발지 설정</strong></div>
-                <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                    - 검색창에 출발지를 입력하고 <strong>'설정'</strong> 버튼을 누르세요.<br>
-                    - <strong>'🎯 현재 위치'</strong> 버튼으로 GPS 위치를 바로 설정할 수 있어요.
+                <div class="help-section">
+                    <div class="help-title">📍 지도 탭</div>
+                    <div class="help-body">
+                        <div>📍 최적화된 경로를 <strong>카카오맵</strong>으로 확인하세요.</div>
+                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
+                            - 각 구간별로 <strong>다른 색상</strong>으로 표시되어 구분이 쉬워요.<br>
+                            - 경로 목록에서 <strong>클릭</strong>하면 해당 위치로 지도가 이동합니다.<br>
+                            - <strong>'🗺️ 카카오맵에서 열기'</strong> 버튼으로 실제 길찾기를 확인할 수 있어요.
+                        </div>
+                        <div style="margin-top:6px;">📊 <strong>요약 정보</strong></div>
+                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
+                            - 총 방문지 개수, 총 거리, 총 소요 시간을 한눈에 확인하세요.
+                        </div>
+                    </div>
                 </div>
-                <div style="margin-top:6px;"><strong>2. 경유지 추가</strong></div>
-                <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                    - 경유지명을 입력하고 <strong>'추가'</strong> 버튼을 누르세요.<br>
-                    - <strong>'📋 여러개 추가'</strong> 모드로 한 번에 여러 개를 추가할 수 있어요.<br>
-                    - 추가된 경유지는 <strong>드래그</strong>로 순서를 변경할 수 있습니다.
-                </div>
-                <div style="margin-top:6px;"><strong>3. 경로 최적화</strong></div>
-                <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                    - <strong>'⚡ 경로 최적화'</strong> 버튼을 누르면 최적 경로가 계산됩니다.<br>
-                    - <strong>'가까운순/먼순'</strong> 중 최적화 방식을 선택할 수 있어요.
-                </div>
-                <div style="margin-top:6px;"><strong>💾 프리셋 저장</strong></div>
-                <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                    - 현재 설정된 출발지와 경유지를 <strong>프리셋</strong>으로 저장할 수 있어요.<br>
-                    - 저장된 프리셋은 클릭 한 번으로 불러올 수 있습니다.
-                </div>
-            </div>
-        </div>
 
-        <!-- ===== 2. 지도 탭 ===== -->
-        <div class="help-section">
-            <div class="help-title">📍 지도 탭</div>
-            <div class="help-body">
-                <div>📍 최적화된 경로를 <strong>카카오맵</strong>으로 확인하세요.</div>
-                <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                    - 각 구간별로 <strong>다른 색상</strong>으로 표시되어 구분이 쉬워요.<br>
-                    - 경로 목록에서 <strong>클릭</strong>하면 해당 위치로 지도가 이동합니다.<br>
-                    - <strong>'🗺️ 카카오맵에서 열기'</strong> 버튼으로 실제 길찾기를 확인할 수 있어요.
+                <div class="help-section">
+                    <div class="help-title">📋 현장 탭</div>
+                    <div class="help-body">
+                        <div><strong>현장 관리</strong></div>
+                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
+                            - <strong>'➕ 현장추가'</strong> 버튼으로 새 현장을 등록하세요.<br>
+                            - 현장을 <strong>클릭</strong>하면 이름, 주소, 비고를 편집할 수 있어요.<br>
+                            - <strong>'⭐ 즐겨찾기'</strong> 버튼으로 자주 가는 현장을 상단에 고정하세요.
+                        </div>
+                        <div style="margin-top:6px;"><strong>📥 엑셀 가져오기/내보내기</strong></div>
+                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
+                            - 엑셀 파일로 현장을 <strong>일괄 등록</strong>하거나 <strong>백업</strong>할 수 있어요.<br>
+                            - 지원 형식: <code>.csv</code>, <code>.xlsx</code>, <code>.xls</code>
+                        </div>
+                        <div style="margin-top:6px;"><strong>🔍 검색 및 정렬</strong></div>
+                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
+                            - 현장명이나 주소로 <strong>검색</strong>할 수 있어요.<br>
+                            - <strong>이름순</strong> 또는 <strong>즐겨찾기</strong> 순으로 정렬할 수 있습니다.
+                        </div>
+                    </div>
                 </div>
-                <div style="margin-top:6px;">📊 <strong>요약 정보</strong></div>
-                <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                    - 총 방문지 개수, 총 거리, 총 소요 시간을 한눈에 확인하세요.
-                </div>
-            </div>
-        </div>
 
-        <!-- ===== 3. 현장 탭 ===== -->
-        <div class="help-section">
-            <div class="help-title">📋 현장 탭</div>
-            <div class="help-body">
-                <div><strong>현장 관리</strong></div>
-                <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                    - <strong>'➕ 현장추가'</strong> 버튼으로 새 현장을 등록하세요.<br>
-                    - 현장을 <strong>클릭</strong>하면 이름, 주소, 비고를 편집할 수 있어요.<br>
-                    - <strong>'⭐ 즐겨찾기'</strong> 버튼으로 자주 가는 현장을 상단에 고정하세요.
+                <div class="help-section">
+                    <div class="help-title">⚙️ 설정 탭</div>
+                    <div class="help-body">
+                        <div><strong>🔐 GitHub 연동</strong></div>
+                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
+                            - GitHub Personal Access Token을 입력하면 <strong>자동 백업</strong>이 가능해요.<br>
+                            - <strong>'📤 업로드'</strong>로 현재 데이터를 저장하고, <strong>'📥 다운로드'</strong>로 불러올 수 있어요.
+                        </div>
+                        <div style="margin-top:6px;"><strong>🗺️ 카카오 API</strong></div>
+                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
+                            - <strong>JavaScript 키</strong>와 <strong>REST API 키</strong>를 입력하세요.<br>
+                            - 지도 표시와 주소 검색에 필요합니다.
+                        </div>
+                        <div style="margin-top:6px;"><strong>🔄 업데이트 관리</strong></div>
+                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
+                            - <strong>'🔍 업데이트 확인'</strong> 버튼으로 새 버전을 확인하세요.<br>
+                            - <strong>'⚡ 캐시 초기화'</strong>로 오류를 해결할 수 있어요.
+                        </div>
+                        <div style="margin-top:6px;"><strong>💾 데이터 관리</strong></div>
+                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
+                            - <strong>'🗑️ 모든 데이터 초기화'</strong>로 모든 데이터를 삭제할 수 있어요.
+                        </div>
+                    </div>
                 </div>
-                <div style="margin-top:6px;"><strong>📥 엑셀 가져오기/내보내기</strong></div>
-                <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                    - 엑셀 파일로 현장을 <strong>일괄 등록</strong>하거나 <strong>백업</strong>할 수 있어요.<br>
-                    - 지원 형식: <code>.csv</code>, <code>.xlsx</code>, <code>.xls</code>
-                </div>
-                <div style="margin-top:6px;"><strong>🔍 검색 및 정렬</strong></div>
-                <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                    - 현장명이나 주소로 <strong>검색</strong>할 수 있어요.<br>
-                    - <strong>이름순</strong> 또는 <strong>즐겨찾기</strong> 순으로 정렬할 수 있습니다.
-                </div>
-            </div>
-        </div>
 
-        <!-- ===== 4. 설정 탭 ===== -->
-        <div class="help-section">
-            <div class="help-title">⚙️ 설정 탭</div>
-            <div class="help-body">
-                <div><strong>🔐 GitHub 연동</strong></div>
-                <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                    - GitHub Personal Access Token을 입력하면 <strong>자동 백업</strong>이 가능해요.<br>
-                    - <strong>'📤 업로드'</strong>로 현재 데이터를 저장하고, <strong>'📥 다운로드'</strong>로 불러올 수 있어요.
-                </div>
-                <div style="margin-top:6px;"><strong>🗺️ 카카오 API</strong></div>
-                <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                    - <strong>JavaScript 키</strong>와 <strong>REST API 키</strong>를 입력하세요.<br>
-                    - 지도 표시와 주소 검색에 필요합니다.
-                </div>
-                <div style="margin-top:6px;"><strong>🔄 업데이트 관리</strong></div>
-                <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                    - <strong>'🔍 업데이트 확인'</strong> 버튼으로 새 버전을 확인하세요.<br>
-                    - <strong>'⚡ 캐시 초기화'</strong>로 오류를 해결할 수 있어요.
-                </div>
-                <div style="margin-top:6px;"><strong>💾 데이터 관리</strong></div>
-                <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                    - <strong>'🗑️ 모든 데이터 초기화'</strong>로 모든 데이터를 삭제할 수 있어요.
-                </div>
-            </div>
-        </div>
-
-        <!-- ===== 5. 팁 ===== -->
-        <div class="help-section">
-            <div class="help-title">💡 유용한 팁</div>
-            <div class="help-body">
-                <div style="margin-top:6px;">📱 <strong>모바일 최적화</strong></div>
-                <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                    - 모든 화면이 모바일에 최적화되어 있어요.<br>
-                    - <strong>PWA</strong>로 설치하면 앱처럼 사용할 수 있습니다.
-                </div>
-                <div style="margin-top:6px;">☁️ <strong>데이터 백업</strong></div>
-                <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                    - GitHub에 백업하면 <strong>다른 기기</strong>에서도 데이터를 불러올 수 있어요.
+                <div class="help-section">
+                    <div class="help-title">💡 유용한 팁</div>
+                    <div class="help-body">
+                        <div style="margin-top:6px;">📱 <strong>모바일 최적화</strong></div>
+                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
+                            - 모든 화면이 모바일에 최적화되어 있어요.<br>
+                            - <strong>PWA</strong>로 설치하면 앱처럼 사용할 수 있습니다.
+                        </div>
+                        <div style="margin-top:6px;">☁️ <strong>데이터 백업</strong></div>
+                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
+                            - GitHub에 백업하면 <strong>다른 기기</strong>에서도 데이터를 불러올 수 있어요.
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
     
     <!-- ===== 현장추가 모달 (내부 팝업) ===== -->
     <div class="modal-overlay" id="addPlaceModal">
@@ -945,6 +967,7 @@
         </div>
     </div>
 
+    <!-- ===== 하단 탭 ===== -->
     <div class="bottom-tabs">
         <button class="bottom-tab active" data-tab="tab-places" onclick="switchTab('tab-places')">
             <span class="tab-icon">🗺️</span> 경로
