@@ -2733,16 +2733,24 @@ function loadPresets() {
 
 function savePresets() {
     localStorage.setItem(PRESETS_KEY, JSON.stringify(presets));
+    console.log('💾 localStorage에 프리셋 저장 완료:', presets.length + '개');
     renderPresets();
 }
 
 function renderPresets() {
     var container = document.getElementById('presetList');
-    if (!container) return;
+    if (!container) {
+        console.warn('⚠️ presetList 요소 없음');
+        return;
+    }
+
+    console.log('🔄 프리셋 목록 렌더링, 개수:', presets.length);
+
     if (presets.length === 0) {
         container.innerHTML = '<div class="empty-msg" style="padding:8px;font-size:12px;">저장된 프리셋이 없습니다</div>';
         return;
     }
+
     var html = '';
     for (var i = 0; i < presets.length; i++) {
         var p = presets[i];
@@ -2752,6 +2760,7 @@ function renderPresets() {
         html += '<button class="preset-delete" onclick="event.stopPropagation(); deletePreset(' + i + ')">✕</button></div>';
     }
     container.innerHTML = html;
+    console.log('✅ 프리셋 목록 렌더링 완료');
 }
 
 function addPreset() {
@@ -2814,8 +2823,13 @@ function addPreset() {
 
 function loadPreset(index) {
     var preset = presets[index];
-    if (!preset) return;
-    
+    if (!preset) {
+        showTabStatus('tab-places', '⚠️ 프리셋을 찾을 수 없습니다.', 'warning');
+        return;
+    }
+
+    console.log('📂 프리셋 불러오기:', preset.name);
+
     showConfirmModal(
         '📂 프리셋 불러오기',
         '"' + preset.name + '" 프리셋을 불러오시겠습니까?\n현재 데이터는 초기화됩니다.',
@@ -2827,27 +2841,38 @@ function loadPreset(index) {
                 showTabStatus('tab-places', '⚠️ 출발지 정보가 없습니다.', 'warning');
                 return;
             }
+
             waypoints = [];
             for (var i = 0; i < preset.waypoints.length; i++) {
                 var w = preset.waypoints[i];
-                waypoints.push({ name: w.name, address: w.address || '', lat: w.lat || 0, lng: w.lng || 0 });
+                waypoints.push({
+                    name: w.name,
+                    address: w.address || '',
+                    lat: w.lat || 0,
+                    lng: w.lng || 0
+                });
             }
             renderWaypointList();
+
             routeResult = null;
             document.getElementById('placeCount').textContent = '0개소';
             document.getElementById('totalDistance').textContent = '0.00 km';
             document.getElementById('totalTime').textContent = '0 분';
             document.getElementById('optimizeMode').textContent = '-';
             document.getElementById('routeList').innerHTML = '';
+
             clearRouteMarkers();
             clearSingleMarker();
             isShowingRouteMarkers = false;
+
             if (kakaoMap && sp && sp.lat && sp.lng) {
                 kakaoMap.setCenter(new kakao.maps.LatLng(sp.lat, sp.lng));
                 kakaoMap.setLevel(5);
                 kakaoMap.relayout();
             }
+
             showTabStatus('tab-places', '✅ 프리셋 "' + preset.name + '" 불러오기 완료!', 'ok');
+            console.log('✅ 프리셋 불러오기 완료:', preset.name);
         }
     );
 }
