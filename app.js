@@ -2370,25 +2370,17 @@ function openKakaoMap(fromName, fromLat, fromLng, toName, toLat, toLng) {
         return; 
     }
     
-    // 🔥 공식 스펙 적용
-    var baseUrl = isMobile() 
-        ? 'kakaomap://route?' 
-        : 'http://m.map.kakao.com/scheme/route?';
-    
-    var url = baseUrl 
+    // 🔥 applink.map.kakao.com 사용 (업데이트 메시지 없음)
+    var url = 'https://applink.map.kakao.com/route?'
         + 'sp=' + fromLat + ',' + fromLng
         + '&ep=' + toLat + ',' + toLng
+        + '&sname=' + encodeURIComponent(fromName)
+        + '&dname=' + encodeURIComponent(toName)
         + '&by=car';
     
-    if (isMobile()) {
-        window.location.href = url;
-    } else {
-        window.open(url, '_blank');
-    }
-    
+    window.open(url, '_blank');
     showTabStatus('tab-route', '🗺️ 카카오맵 길찾기: ' + fromName + ' → ' + toName, 'info');
 }
-
 // ============================================================
 // 11. 지도 표시
 // ============================================================
@@ -3801,33 +3793,24 @@ function openKakaoMapFromPlace(id) {
         return;
     }
     
-    var baseUrl = isMobile() 
-        ? 'kakaomap://route?' 
-        : 'http://m.map.kakao.com/scheme/route?';
-    
     var url;
     if (startPoint && startPoint.lat && startPoint.lng) {
-        // 🔥 출발지 → 현장 길찾기
-        url = baseUrl 
+        url = 'https://applink.map.kakao.com/route?'
             + 'sp=' + startPoint.lat + ',' + startPoint.lng
             + '&ep=' + place.lat + ',' + place.lng
+            + '&sname=' + encodeURIComponent(startPoint.name)
+            + '&dname=' + encodeURIComponent(place.name)
             + '&by=car';
         showTabStatus('tab-list', '🗺️ 카카오맵 길찾기: ' + startPoint.name + ' → ' + place.name, 'info');
     } else {
-        // 🔥 현장 위치만 표시 (지도 열기)
-        if (isMobile()) {
-            url = 'kakaomap://open?page=map&lat=' + place.lat + '&lng=' + place.lng;
-        } else {
-            url = 'http://m.map.kakao.com/scheme/search?q=' + encodeURIComponent(place.name) + '&lat=' + place.lat + '&lng=' + place.lng;
-        }
+        url = 'https://applink.map.kakao.com/map?'
+            + 'lat=' + place.lat
+            + '&lng=' + place.lng
+            + '&name=' + encodeURIComponent(place.name);
         showTabStatus('tab-list', '🗺️ 카카오맵에서 "' + place.name + '" 위치 열기', 'info');
     }
     
-    if (isMobile()) {
-        window.location.href = url;
-    } else {
-        window.open(url, '_blank');
-    }
+    window.open(url, '_blank');
 }
 // ============================================================
 // 지도탭 - 현재 표시된 현장을 카카오맵에서 열기
@@ -3850,31 +3833,24 @@ function openCurrentPlaceInKakaoMap() {
         return;
     }
     
-    var baseUrl = isMobile() 
-        ? 'kakaomap://route?' 
-        : 'http://m.map.kakao.com/scheme/route?';
-    
     var url;
     if (startPoint && startPoint.lat && startPoint.lng) {
-        url = baseUrl 
+        url = 'https://applink.map.kakao.com/route?'
             + 'sp=' + startPoint.lat + ',' + startPoint.lng
             + '&ep=' + place.lat + ',' + place.lng
+            + '&sname=' + encodeURIComponent(startPoint.name)
+            + '&dname=' + encodeURIComponent(place.name)
             + '&by=car';
         showTabStatus('tab-route', '🗺️ 카카오맵 길찾기: ' + startPoint.name + ' → ' + place.name, 'info');
     } else {
-        if (isMobile()) {
-            url = 'kakaomap://open?page=map&lat=' + place.lat + '&lng=' + place.lng;
-        } else {
-            url = 'http://m.map.kakao.com/scheme/search?q=' + encodeURIComponent(place.name) + '&lat=' + place.lat + '&lng=' + place.lng;
-        }
+        url = 'https://applink.map.kakao.com/map?'
+            + 'lat=' + place.lat
+            + '&lng=' + place.lng
+            + '&name=' + encodeURIComponent(place.name);
         showTabStatus('tab-route', '🗺️ 카카오맵에서 "' + place.name + '" 위치 열기', 'info');
     }
     
-    if (isMobile()) {
-        window.location.href = url;
-    } else {
-        window.open(url, '_blank');
-    }
+    window.open(url, '_blank');
 }
 
 // ============================================================
