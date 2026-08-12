@@ -1393,22 +1393,13 @@ function getSortedPlaces() {
 
 function renderPlaces(filtered) {
     var list = document.getElementById('placeList');
-    if (!list) {
-        console.warn('⚠️ placeList 요소 없음');
-        return;
-    }
-    
     var data = filtered || getSortedPlaces();
+    document.getElementById('listCount').textContent = '(' + data.length + '개)';
     
-    if (!data || data.length === 0) {
+    if (data.length === 0) {
         list.innerHTML = '<div class="empty-msg">등록된 현장이 없습니다</div>';
-        var countEl = document.getElementById('listCount');
-        if (countEl) countEl.textContent = '(0개)';
         return;
     }
-    
-    var countEl = document.getElementById('listCount');
-    if (countEl) countEl.textContent = '(' + data.length + '개)';
     
     var html = '';
     for (var i = 0; i < data.length; i++) {
@@ -1417,10 +1408,21 @@ function renderPlaces(filtered) {
         var starIcon = p.favorite ? '★' : '☆';
         var starClass = p.favorite ? 'fav active' : 'fav inactive';
         var remarkDisplay = p.remark ? '<span class="remark">' + escapeHtml(p.remark) + '</span>' : '';
-        html += '<div class="place-item" onclick="openEditModal(\'' + p.id + '\')" title="클릭하여 편집">';
+        
+        // 🔥 주소 변환 실패 여부 확인 (좌표가 없으면 실패)
+        var hasCoords = (p.lat && p.lng && p.lat !== 0 && p.lng !== 0);
+        var borderColor = hasCoords ? '#4f7eb3' : '#e53e3e'; // 파랑 or 빨강
+        
+        html += '<div class="place-item" style="border-left-color: ' + borderColor + ';" onclick="openEditModal(\'' + p.id + '\')" title="클릭하여 편집">';
         html += '<div class="info"><span class="name">' + escapeHtml(p.name) + '</span>';
         html += '<span class="addr">' + escapeHtml(shortAddr) + '</span>';
         html += remarkDisplay;
+        
+        // 🔥 실패 시 경고 아이콘 추가
+        if (!hasCoords) {
+            html += ' <span style="color:#e53e3e; font-size:12px; font-weight:700;" title="주소 변환 실패">⚠️</span>';
+        }
+        
         html += '</div><div class="actions" onclick="event.stopPropagation();">';
         html += '<button class="map" onclick="showPlaceOnMap(\'' + p.id + '\')" title="지도 보기">📍</button>';
         html += '<button class="add" onclick="addWaypointFromList(\'' + p.id + '\')" title="경유지 추가">➕</button>';
