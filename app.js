@@ -4079,6 +4079,103 @@ function deleteRegionFromPopup() {
         }
     );
 }
+
+// ============================================================
+// PWA 업데이트 관리
+// ============================================================
+
+// 🔍 업데이트 확인 (Service Worker 업데이트 체크)
+function checkForUpdates() {
+    var statusEl = document.getElementById('updateStatus');
+    if (!statusEl) return;
+    
+    if (!('serviceWorker' in navigator)) {
+        statusEl.innerHTML = '⚠️ Service Worker를 지원하지 않는 브라우저입니다.';
+        statusEl.style.color = '#e53e3e';
+        return;
+    }
+    
+    statusEl.innerHTML = '⏳ 업데이트 확인 중...';
+    statusEl.style.color = '#d69e2e';
+    
+    navigator.serviceWorker.ready
+        .then(function(registration) {
+            return registration.update();
+        })
+        .then(function() {
+            statusEl.innerHTML = '✅ 업데이트 확인 완료. (최신 버전 또는 업데이트 진행 중)';
+            statusEl.style.color = '#38a169';
+            
+            // 🔥 업데이트가 있으면 새로고침 안내
+            setTimeout(function() {
+                if (navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({ type: 'CHECK_UPDATE' });
+                }
+            }, 500);
+        })
+        .catch(function(err) {
+            console.error('업데이트 확인 실패:', err);
+            statusEl.innerHTML = '❌ 업데이트 확인 실패: ' + err.message;
+            statusEl.style.color = '#e53e3e';
+        });
+}
+
+// ⚡ 강제 업데이트 (캐시 삭제 + 새로고침)
+function forceUpdateApp() {
+    var statusEl = document.getElementById('updateStatus');
+    if (!statusEl) return;
+    
+    if (!('serviceWorker' in navigator)) {
+        statusEl.innerHTML = '⚠️ Service Worker를 지원하지 않는 브라우저입니다.';
+        statusEl.style.color = '#e53e3e';
+        return;
+    }
+    
+    statusEl.innerHTML = '⏳ 캐시 초기화 중... (3초 후 새로고침)';
+    statusEl.style.color = '#d69e2e';
+    
+    navigator.serviceWorker.ready
+        .then(function(registration) {
+            // 1. Service Worker 업데이트
+            return registration.update();
+        })
+        .then(function() {
+            // 2. 캐시 삭제 (모든 캐시 제거)
+            return caches.keys().then(function(cacheNames) {
+                return Promise.all(
+                    cacheNames.map(function(cacheName) {
+                        return caches.delete(cacheName);
+                    })
+                );
+            });
+        })
+        .then(function() {
+            statusEl.innerHTML = '🔄 캐시 초기화 완료. 3초 후 새로고침됩니다...';
+            statusEl.style.color = '#2b6cb0';
+            
+            setTimeout(function() {
+                window.location.reload(true); // 강력 새로고침
+            }, 3000);
+        })
+        .catch(function(err) {
+            console.error('강제 업데이트 실패:', err);
+            statusEl.innerHTML = '❌ 캐시 초기화 실패: ' + err.message;
+            statusEl.style.color = '#e53e3e';
+        });
+}
+
+// 🚀 Service Worker 업데이트 감지 (자동 알림)
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('controllerchange', function() {
+        var statusEl = document.getElementById('updateStatus');
+        if (statusEl) {
+            statusEl.innerHTML = '🔄 새 버전이 적용되었습니다. 페이지를 새로고침하세요.';
+            statusEl.style.color = '#2b6cb0';
+            // 🔥 자동 새로고침 (선택)
+            // setTimeout(function() { window.location.reload(); }, 2000);
+        }
+    });
+}
 // ============================================================
 // 지역 관리 팝업 내부 함수들
 // ============================================================
