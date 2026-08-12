@@ -161,17 +161,31 @@ function isMobile() {
 // ============================================================
 
 function switchTab(tabId) {
-    document.querySelectorAll('.tab-content').forEach(function(el) { el.classList.remove('active'); });
-    document.querySelectorAll('.bottom-tab').forEach(function(el) { el.classList.remove('active'); });
+    // 모든 탭 콘텐츠 숨기기
+    document.querySelectorAll('.tab-content').forEach(function(el) {
+        el.classList.remove('active');
+    });
+    // 모든 하단 탭 버튼 비활성화
+    document.querySelectorAll('.bottom-tab').forEach(function(el) {
+        el.classList.remove('active');
+    });
+
+    // 선택한 탭 콘텐츠 표시
     var targetContent = document.getElementById(tabId);
-    if (targetContent) targetContent.classList.add('active');
+    if (targetContent) {
+        targetContent.classList.add('active');
+    }
+
+    // 선택한 하단 탭 버튼 활성화
     var targetTab = document.querySelector('.bottom-tab[data-tab="' + tabId + '"]');
-    if (targetTab) targetTab.classList.add('active');
-    
+    if (targetTab) {
+        targetTab.classList.add('active');
+    }
+
+    // ===== 탭별 특별 처리 =====
     if (tabId === 'tab-route') {
         setTimeout(function() {
             if (kakaoMap) {
-                // ===== 🔥 지도 탭 전환 시 드래그 강제 활성화 =====
                 kakaoMap.setDraggable(true);
                 kakaoMap.setZoomable(true);
                 kakaoMap.relayout();
@@ -182,7 +196,22 @@ function switchTab(tabId) {
         }, 100);
         return;
     }
-    if (tabId === 'tab-list') renderPlaces();
+
+    if (tabId === 'tab-list') {
+        renderPlaces();
+        return;
+    }
+
+    // 🔥 도움말 탭 (별도 처리 없음, 이미 표시됨)
+    if (tabId === 'tab-help') {
+        // 도움말 내용은 정적이므로 추가 작업 없음
+        return;
+    }
+
+    // 🔥 장소/설정 탭은 기본 표시만 (별도 처리 없음)
+    if (tabId === 'tab-places' || tabId === 'tab-settings') {
+        return;
+    }
 }
 
 function showTabStatus(tabId, msg, type) {
