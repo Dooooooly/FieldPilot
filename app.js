@@ -2181,46 +2181,35 @@ function showRouteList() {
     html += '</div>';
 
     // 경유지들
+    var colors = ['#FF6B6B', '#FF9F43', '#FECA57', '#48DBFB', '#0ABDE3', '#10AC84', '#EE5A24', '#5F27CD', '#1DD1A1', '#F368E0', '#00D2D3', '#54A0FF', '#FF9FF3', '#F368E0'];
     for (var i = 0; i < sorted.length; i++) {
         var p = sorted[i];
         var prev = i === 0 ? startPoint : sorted[i - 1];
         var segDist = p._segDist || haversineKm(prev.lat, prev.lng, p.lat, p.lng);
         var segTime = p._segTime || Math.round(segDist / 40 * 60);
-        var color = COLORS[i % COLORS.length];
+        var color = colors[i % colors.length];
         var addrDisplay = p.address ? '<div class="addr">' + escapeHtml(shortenAddress(p.address)) + '</div>' : '';
         var remarkDisplay = p.remark ? '<span class="remark">' + escapeHtml(p.remark) + '</span>' : '';
 
-        // 🔥 버튼에 고유 ID 부여 (이벤트 리스너용)
-        var btnId = 'kakaoBtn_' + i;
+        // 🔥 현장탭과 동일하게 onclick 속성 직접 사용
+        var prevName = escapeHtml(prev.name);
+        var destName = escapeHtml(p.name);
 
         html += '<div class="route-item sortable-item" data-index="' + i + '" data-lat="' + p.lat + '" data-lng="' + p.lng + '" data-name="' + escapeHtml(p.name) + '" onclick="moveToRoutePoint(this)" style="cursor:grab;border-left-color:' + color + ';">';
         html += '<div class="idx" style="background:' + color + ';color:white;">' + (i + 1) + '</div>';
         html += '<div class="info"><div class="name">' + escapeHtml(p.name) + ' ' + remarkDisplay + '</div>' + addrDisplay + '</div>';
         html += '<div class="dist" style="text-align:right;font-size:12px;font-weight:600;flex-shrink:0;min-width:80px;color:' + color + ';">';
         html += segDist.toFixed(1) + 'km<br><span style="font-size:10px;color:#718096;">' + segTime + '분</span></div>';
-        // 🔥 onclick 제거하고 id만 추가
-        html += '<button class="btn btn-outline kakao-route-btn" id="' + btnId + '" style="margin-left:4px;padding:2px 6px;font-size:10px;flex-shrink:0;min-height:28px;border-radius:4px;" title="카카오맵에서 구간 길찾기">🗺️</button>';
+        
+        // 🔥 onclick 속성 직접 추가 (현장탭 스타일과 동일)
+        html += '<button class="btn btn-outline" style="margin-left:4px;padding:2px 6px;font-size:10px;flex-shrink:0;min-height:28px;border-radius:4px;" onclick="event.stopPropagation(); openKakaoMap(\'' + prevName + '\', ' + prev.lat + ', ' + prev.lng + ', \'' + destName + '\', ' + p.lat + ', ' + p.lng + ')" title="카카오맵에서 구간 길찾기">🗺️</button>';
         html += '</div>';
     }
 
     html += '</div>';
     container.innerHTML = html;
 
-    // 🔥 이벤트 리스너로 카카오맵 버튼 연결 (onclick 대체)
-    var btnIds = document.querySelectorAll('.kakao-route-btn');
-    btnIds.forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            var parent = this.closest('.route-item');
-            if (!parent) return;
-            var index = parseInt(parent.dataset.index);
-            var p = sorted[index];
-            var prev = index === 0 ? startPoint : sorted[index - 1];
-            openKakaoMap(prev.name, prev.lat, prev.lng, p.name, p.lat, p.lng);
-        });
-    });
-
-    // SortableJS (기존 코드 유지)
+    // SortableJS (드래그 기능 유지)
     var sortableEl = document.getElementById('routeSortable');
     if (sortableEl && window.Sortable) {
         if (window._routeSortable) window._routeSortable.destroy();
