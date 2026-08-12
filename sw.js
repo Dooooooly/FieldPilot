@@ -2,7 +2,7 @@
 // Service Worker - PWA 오프라인 지원 (CORS 문제 해결)
 // ============================================================
 
-const CACHE_NAME = 'route-opt-v13';
+const CACHE_NAME = 'route-opt-v14';
 const ASSETS = [
     '/route-optimizer-pwa/',
     '/route-optimizer-pwa/index.html',
