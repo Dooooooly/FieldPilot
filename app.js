@@ -202,15 +202,15 @@ function switchTab(tabId) {
         return;
     }
 
-    // 🔥 도움말 탭 (별도 처리 없음, 이미 표시됨)
+    // 🔥 도움말 탭은 별도 처리 없음 (return 제거!)
     if (tabId === 'tab-help') {
-        // 도움말 내용은 정적이므로 추가 작업 없음
-        return;
+        // 아무것도 하지 않음 (이미 표시됨)
+        // return 하지 않음!
     }
 
     // 🔥 장소/설정 탭은 기본 표시만 (별도 처리 없음)
     if (tabId === 'tab-places' || tabId === 'tab-settings') {
-        return;
+        // 아무것도 하지 않음
     }
 }
 
@@ -2389,6 +2389,10 @@ function moveToRoutePoint(el) {
     showTabStatus('tab-route', '📍 "' + name + '" 위치로 이동했습니다.', 'info');
 }
 
+// ============================================================
+// 경로탭 - 구간별 길찾기 (웹 URL 방식)
+// ============================================================
+
 function openKakaoMap(fromName, fromLat, fromLng, toName, toLat, toLng) {
     if (!toName || !toLat || !toLng) { 
         showTabStatus('tab-route', '⚠️ 목적지 정보가 없습니다.', 'warning'); 
@@ -2399,13 +2403,10 @@ function openKakaoMap(fromName, fromLat, fromLng, toName, toLat, toLng) {
         return; 
     }
     
-    // 🔥 applink.map.kakao.com 사용 (업데이트 메시지 없음)
-    var url = 'https://applink.map.kakao.com/route?'
-        + 'sp=' + fromLat + ',' + fromLng
-        + '&ep=' + toLat + ',' + toLng
-        + '&sname=' + encodeURIComponent(fromName)
-        + '&dname=' + encodeURIComponent(toName)
-        + '&by=car';
+    var url = 'https://map.kakao.com/link/from/' 
+        + encodeURIComponent(fromName) + ',' + fromLat + ',' + fromLng 
+        + '/to/' 
+        + encodeURIComponent(toName) + ',' + toLat + ',' + toLng;
     
     window.open(url, '_blank');
     showTabStatus('tab-route', '🗺️ 카카오맵 길찾기: ' + fromName + ' → ' + toName, 'info');
@@ -3849,7 +3850,7 @@ async function processDownloadFromGitHub(region) {
     }
 }
 // ============================================================
-// 현장탭에서 카카오맵 열기 (모바일 앱 지원)
+// 현장탭 - 현장을 카카오맵에서 열기 (웹 URL 방식)
 // ============================================================
 
 function openKakaoMapFromPlace(id) {
@@ -3866,25 +3867,21 @@ function openKakaoMapFromPlace(id) {
     
     var url;
     if (startPoint && startPoint.lat && startPoint.lng) {
-        url = 'https://applink.map.kakao.com/route?'
-            + 'sp=' + startPoint.lat + ',' + startPoint.lng
-            + '&ep=' + place.lat + ',' + place.lng
-            + '&sname=' + encodeURIComponent(startPoint.name)
-            + '&dname=' + encodeURIComponent(place.name)
-            + '&by=car';
+        url = 'https://map.kakao.com/link/from/' 
+            + encodeURIComponent(startPoint.name) + ',' + startPoint.lat + ',' + startPoint.lng 
+            + '/to/' 
+            + encodeURIComponent(place.name) + ',' + place.lat + ',' + place.lng;
         showTabStatus('tab-list', '🗺️ 카카오맵 길찾기: ' + startPoint.name + ' → ' + place.name, 'info');
     } else {
-        url = 'https://applink.map.kakao.com/map?'
-            + 'lat=' + place.lat
-            + '&lng=' + place.lng
-            + '&name=' + encodeURIComponent(place.name);
+        url = 'https://map.kakao.com/link/map/' 
+            + encodeURIComponent(place.name) + ',' + place.lat + ',' + place.lng;
         showTabStatus('tab-list', '🗺️ 카카오맵에서 "' + place.name + '" 위치 열기', 'info');
     }
     
     window.open(url, '_blank');
 }
 // ============================================================
-// 지도탭 - 현재 표시된 현장을 카카오맵에서 열기 (현장탭과 동일 방식)
+// 지도탭 - 현재 표시된 현장을 카카오맵에서 열기
 // ============================================================
 
 function openCurrentPlaceInKakaoMap() {
@@ -3904,7 +3901,6 @@ function openCurrentPlaceInKakaoMap() {
         return;
     }
     
-    // 🔥 현장탭과 완전히 동일한 URL 생성 방식
     var url;
     if (startPoint && startPoint.lat && startPoint.lng) {
         url = 'https://map.kakao.com/link/from/' 
@@ -3918,7 +3914,6 @@ function openCurrentPlaceInKakaoMap() {
         showTabStatus('tab-route', '🗺️ 카카오맵에서 "' + place.name + '" 위치 열기', 'info');
     }
     
-    // 🔥 새 창/탭으로 열기 (모바일에서는 앱 실행, PC에서는 웹)
     window.open(url, '_blank');
 }
 
