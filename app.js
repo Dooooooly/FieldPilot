@@ -2264,19 +2264,20 @@ function moveToRoutePoint(el) {
 // ============================================================
 
 function openKakaoMap(fromName, fromLat, fromLng, toName, toLat, toLng) {
-    if (!toName || !toLat || !toLng) {
-        showTabStatus('tab-route', '⚠️ 목적지 정보가 없습니다.', 'warning');
-        return;
+    if (!toName || !toLat || !toLng) { 
+        showTabStatus('tab-route', '⚠️ 목적지 정보가 없습니다.', 'warning'); 
+        return; 
     }
-    if (!fromName || !fromLat || !fromLng) {
-        showTabStatus('tab-route', '⚠️ 출발지 정보가 없습니다.', 'warning');
-        return;
+    if (!fromName || !fromLat || !fromLng) { 
+        showTabStatus('tab-route', '⚠️ 출발지 정보가 없습니다.', 'warning'); 
+        return; 
     }
     
-    var url = 'https://map.kakao.com/link/from/'
-        + encodeURIComponent(fromName) + ',' + fromLat + ',' + fromLng
-        + '/to/'
-        + encodeURIComponent(toName) + ',' + toLat + ',' + toLng;
+    // 🔥 m.map.kakao.com/scheme/route? 스킴 사용
+    var url = 'http://m.map.kakao.com/scheme/route?'
+        + 'sp=' + fromLat + ',' + fromLng
+        + '&ep=' + toLat + ',' + toLng
+        + '&by=car';
     
     window.open(url, '_blank');
     showTabStatus('tab-route', '🗺️ 카카오맵 길찾기: ' + fromName + ' → ' + toName, 'info');
@@ -2288,6 +2289,7 @@ function openKakaoMapFromPlace(id) {
         showTabStatus('tab-list', '❌ 현장을 찾을 수 없습니다.', 'error');
         return;
     }
+    
     if (!place.lat || !place.lng || place.lat === 0 || place.lng === 0) {
         showTabStatus('tab-list', '⚠️ "' + place.name + '"의 좌표가 없습니다.', 'warning');
         return;
@@ -2295,20 +2297,23 @@ function openKakaoMapFromPlace(id) {
     
     var url;
     if (startPoint && startPoint.lat && startPoint.lng) {
-        url = 'https://map.kakao.com/link/from/'
-            + encodeURIComponent(startPoint.name) + ',' + startPoint.lat + ',' + startPoint.lng
-            + '/to/'
-            + encodeURIComponent(place.name) + ',' + place.lat + ',' + place.lng;
+        // 🔥 출발지 → 현장 길찾기
+        url = 'http://m.map.kakao.com/scheme/route?'
+            + 'sp=' + startPoint.lat + ',' + startPoint.lng
+            + '&ep=' + place.lat + ',' + place.lng
+            + '&by=car';
         showTabStatus('tab-list', '🗺️ 카카오맵 길찾기: ' + startPoint.name + ' → ' + place.name, 'info');
     } else {
-        url = 'https://map.kakao.com/link/map/'
-            + encodeURIComponent(place.name) + ',' + place.lat + ',' + place.lng;
+        // 🔥 현장 위치만 표시
+        url = 'http://m.map.kakao.com/scheme/search?'
+            + 'q=' + encodeURIComponent(place.name)
+            + '&lat=' + place.lat
+            + '&lng=' + place.lng;
         showTabStatus('tab-list', '🗺️ 카카오맵에서 "' + place.name + '" 위치 열기', 'info');
     }
     
     window.open(url, '_blank');
 }
-
 function openCurrentPlaceInKakaoMap() {
     if (!currentPlaceId) {
         showTabStatus('tab-route', '⚠️ 표시된 현장이 없습니다.', 'warning');
@@ -2320,6 +2325,7 @@ function openCurrentPlaceInKakaoMap() {
         showTabStatus('tab-route', '❌ 현장을 찾을 수 없습니다.', 'error');
         return;
     }
+    
     if (!place.lat || !place.lng || place.lat === 0 || place.lng === 0) {
         showTabStatus('tab-route', '⚠️ "' + place.name + '"의 좌표가 없습니다.', 'warning');
         return;
@@ -2327,14 +2333,18 @@ function openCurrentPlaceInKakaoMap() {
     
     var url;
     if (startPoint && startPoint.lat && startPoint.lng) {
-        url = 'https://map.kakao.com/link/from/'
-            + encodeURIComponent(startPoint.name) + ',' + startPoint.lat + ',' + startPoint.lng
-            + '/to/'
-            + encodeURIComponent(place.name) + ',' + place.lat + ',' + place.lng;
+        // 🔥 출발지 → 현장 길찾기
+        url = 'http://m.map.kakao.com/scheme/route?'
+            + 'sp=' + startPoint.lat + ',' + startPoint.lng
+            + '&ep=' + place.lat + ',' + place.lng
+            + '&by=car';
         showTabStatus('tab-route', '🗺️ 카카오맵 길찾기: ' + startPoint.name + ' → ' + place.name, 'info');
     } else {
-        url = 'https://map.kakao.com/link/map/'
-            + encodeURIComponent(place.name) + ',' + place.lat + ',' + place.lng;
+        // 🔥 현장 위치만 표시
+        url = 'http://m.map.kakao.com/scheme/search?'
+            + 'q=' + encodeURIComponent(place.name)
+            + '&lat=' + place.lat
+            + '&lng=' + place.lng;
         showTabStatus('tab-route', '🗺️ 카카오맵에서 "' + place.name + '" 위치 열기', 'info');
     }
     
