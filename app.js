@@ -3833,23 +3833,21 @@ function openCurrentPlaceInKakaoMap() {
         return;
     }
     
+    // 🔥 현장탭과 완전히 동일한 URL 생성 방식
     var url;
     if (startPoint && startPoint.lat && startPoint.lng) {
-        url = 'https://applink.map.kakao.com/route?'
-            + 'sp=' + startPoint.lat + ',' + startPoint.lng
-            + '&ep=' + place.lat + ',' + place.lng
-            + '&sname=' + encodeURIComponent(startPoint.name)
-            + '&dname=' + encodeURIComponent(place.name)
-            + '&by=car';
+        url = 'https://map.kakao.com/link/from/' 
+            + encodeURIComponent(startPoint.name) + ',' + startPoint.lat + ',' + startPoint.lng 
+            + '/to/' 
+            + encodeURIComponent(place.name) + ',' + place.lat + ',' + place.lng;
         showTabStatus('tab-route', '🗺️ 카카오맵 길찾기: ' + startPoint.name + ' → ' + place.name, 'info');
     } else {
-        url = 'https://applink.map.kakao.com/map?'
-            + 'lat=' + place.lat
-            + '&lng=' + place.lng
-            + '&name=' + encodeURIComponent(place.name);
+        url = 'https://map.kakao.com/link/map/' 
+            + encodeURIComponent(place.name) + ',' + place.lat + ',' + place.lng;
         showTabStatus('tab-route', '🗺️ 카카오맵에서 "' + place.name + '" 위치 열기', 'info');
     }
     
+    // 🔥 새 창/탭으로 열기 (모바일에서는 앱 실행, PC에서는 웹)
     window.open(url, '_blank');
 }
 
