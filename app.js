@@ -2170,15 +2170,17 @@ function showRouteList() {
         container.innerHTML = '<div style="text-align:center;padding:20px;color:#a0aec0;">최적화된 경로가 없습니다.</div>';
         return;
     }
-    
+
     var html = '<div style="font-weight:600;font-size:14px;margin-bottom:8px;">📋 최적 경로 (드래그로 순서 변경 가능)</div>';
     html += '<div id="routeSortable">';
-    
+
+    // 출발지 (드래그 불가)
     html += '<div class="route-item route-start" data-no-drag="true" data-lat="' + startPoint.lat + '" data-lng="' + startPoint.lng + '" data-name="' + escapeHtml(startPoint.name) + '" onclick="moveToRoutePoint(this)" style="cursor:pointer;">';
     html += '<div class="idx" style="background:#4a5568;color:white;">🚩</div>';
     html += '<div class="info"><div class="name">' + escapeHtml(startPoint.name) + '</div><div class="addr">' + escapeHtml(startPoint.address || '') + '</div></div>';
     html += '</div>';
-    
+
+    // 경유지들
     for (var i = 0; i < sorted.length; i++) {
         var p = sorted[i];
         var prev = i === 0 ? startPoint : sorted[i - 1];
@@ -2187,19 +2189,38 @@ function showRouteList() {
         var color = COLORS[i % COLORS.length];
         var addrDisplay = p.address ? '<div class="addr">' + escapeHtml(shortenAddress(p.address)) + '</div>' : '';
         var remarkDisplay = p.remark ? '<span class="remark">' + escapeHtml(p.remark) + '</span>' : '';
-        
+
+        // 🔥 버튼에 고유 ID 부여 (이벤트 리스너용)
+        var btnId = 'kakaoBtn_' + i;
+
         html += '<div class="route-item sortable-item" data-index="' + i + '" data-lat="' + p.lat + '" data-lng="' + p.lng + '" data-name="' + escapeHtml(p.name) + '" onclick="moveToRoutePoint(this)" style="cursor:grab;border-left-color:' + color + ';">';
         html += '<div class="idx" style="background:' + color + ';color:white;">' + (i + 1) + '</div>';
         html += '<div class="info"><div class="name">' + escapeHtml(p.name) + ' ' + remarkDisplay + '</div>' + addrDisplay + '</div>';
         html += '<div class="dist" style="text-align:right;font-size:12px;font-weight:600;flex-shrink:0;min-width:80px;color:' + color + ';">';
         html += segDist.toFixed(1) + 'km<br><span style="font-size:10px;color:#718096;">' + segTime + '분</span></div>';
-        html += '<button class="btn btn-outline" style="margin-left:4px;padding:2px 6px;font-size:10px;flex-shrink:0;min-height:28px;border-radius:4px;" onclick="event.stopPropagation(); openKakaoMap(\'' + escapeHtml(prev.name) + '\', ' + prev.lat + ', ' + prev.lng + ', \'' + escapeHtml(p.name) + '\', ' + p.lat + ', ' + p.lng + ')" title="카카오맵에서 구간 길찾기">🗺️</button>';
+        // 🔥 onclick 제거하고 id만 추가
+        html += '<button class="btn btn-outline kakao-route-btn" id="' + btnId + '" style="margin-left:4px;padding:2px 6px;font-size:10px;flex-shrink:0;min-height:28px;border-radius:4px;" title="카카오맵에서 구간 길찾기">🗺️</button>';
         html += '</div>';
     }
-    
+
     html += '</div>';
     container.innerHTML = html;
-    
+
+    // 🔥 이벤트 리스너로 카카오맵 버튼 연결 (onclick 대체)
+    var btnIds = document.querySelectorAll('.kakao-route-btn');
+    btnIds.forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var parent = this.closest('.route-item');
+            if (!parent) return;
+            var index = parseInt(parent.dataset.index);
+            var p = sorted[index];
+            var prev = index === 0 ? startPoint : sorted[index - 1];
+            openKakaoMap(prev.name, prev.lat, prev.lng, p.name, p.lat, p.lng);
+        });
+    });
+
+    // SortableJS (기존 코드 유지)
     var sortableEl = document.getElementById('routeSortable');
     if (sortableEl && window.Sortable) {
         if (window._routeSortable) window._routeSortable.destroy();
@@ -2217,11 +2238,11 @@ function showRouteList() {
                 var oldIndex = evt.oldIndex - 1;
                 var newIndex = evt.newIndex - 1;
                 if (oldIndex === newIndex || oldIndex < 0 || newIndex < 0) return;
-                
+
                 var moved = routeResult.places.splice(oldIndex, 1)[0];
                 routeResult.places.splice(newIndex, 0, moved);
                 showRouteList();
-                
+
                 var allPoints = [{ name: startPoint.name, lat: startPoint.lat, lng: startPoint.lng }].concat(routeResult.places);
                 clearRouteMarkers();
                 addRouteMarker(startPoint.lat, startPoint.lng, '🚩 ' + startPoint.name, true, -1);
