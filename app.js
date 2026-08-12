@@ -1812,27 +1812,55 @@ async function saveModal() {
     var id = document.getElementById('modalId').value;
     var name = document.getElementById('modalName').value.trim();
     var address = document.getElementById('modalAddress').value.trim();
-    var remark = document.getElementById('modalRemark').value.trim();
+    var remark = document.getElementById('modalRemark').value.trim();  // 🔥 비고 추가
+    
     var place = places.find(function(p) { return p.id === id; });
-    if (!place) { closeModal(); return; }
-    if (!name) { showTabStatus('tab-list', '현장명을 입력하세요.', 'warning'); return; }
-    var existing = places.find(function(p) { return p.id !== id && normalizeName(p.name) === normalizeName(name); });
-    if (existing) { showTabStatus('tab-list', '⚠️ 이미 존재하는 현장명입니다.', 'warning'); return; }
+    if (!place) { 
+        closeModal(); 
+        return; 
+    }
+    
+    if (!name) {
+        showTabStatus('tab-list', '⚠️ 현장명을 입력하세요.', 'warning');
+        document.getElementById('modalName').focus();
+        return;
+    }
+    
+    // 중복 체크 (자기 자신 제외)
+    var existing = places.find(function(p) {
+        return p.id !== id && normalizeName(p.name) === normalizeName(name);
+    });
+    if (existing) {
+        showTabStatus('tab-list', '⚠️ 이미 존재하는 현장명입니다.', 'warning');
+        document.getElementById('modalName').focus();
+        return;
+    }
+    
+    // 🔥 좌표 업데이트 (주소가 변경된 경우)
     var lat = place.lat, lng = place.lng, fullAddress = address;
     if (address && address !== place.address) {
         var restKey = settings.kakaoRestKey;
         if (restKey) {
             var geo = await geocodeAddress(address, restKey);
-            if (geo) { lat = geo.lat; lng = geo.lng; fullAddress = geo.address || address; }
+            if (geo) {
+                lat = geo.lat;
+                lng = geo.lng;
+                fullAddress = geo.address || address;
+            }
         }
     }
+    
+    // 🔥 데이터 업데이트
     place.name = name;
     place.address = fullAddress;
     place.lat = lat;
     place.lng = lng;
     place.remark = remark;
+    
+    // 🔥 저장 및 화면 갱신
     savePlaces();
     closeModal();
+    renderPlaces();  // 🔥 화면 갱신 강제 실행
     showTabStatus('tab-list', '✅ "' + name + '" 수정 완료', 'ok');
 }
 
