@@ -2191,21 +2191,23 @@ function showRouteList() {
         var addrDisplay = p.address ? '<div class="addr">' + escapeHtml(shortenAddress(p.address)) + '</div>' : '';
         var remarkDisplay = p.remark ? '<span class="remark">' + escapeHtml(p.remark) + '</span>' : '';
 
-        // 🔥🔥🔥 핵심 수정: onclick 제거, data-* 속성에 모든 정보 저장
+        // 🔥🔥🔥 핵심: onclick에 인자 없이 this만 전달, 모든 데이터는 data-* 속성에 저장
         html += '<div class="route-item sortable-item" data-index="' + i + '" data-lat="' + p.lat + '" data-lng="' + p.lng + '" data-name="' + escapeHtml(p.name) + '" onclick="moveToRoutePoint(this)" style="cursor:grab;border-left-color:' + color + ';">';
         html += '<div class="idx" style="background:' + color + ';color:white;">' + (i + 1) + '</div>';
         html += '<div class="info"><div class="name">' + escapeHtml(p.name) + ' ' + remarkDisplay + '</div>' + addrDisplay + '</div>';
         html += '<div class="dist" style="text-align:right;font-size:12px;font-weight:600;flex-shrink:0;min-width:80px;color:' + color + ';">';
         html += segDist.toFixed(1) + 'km<br><span style="font-size:10px;color:#718096;">' + segTime + '분</span></div>';
         
-        // 🔥 onclick 완전 제거, 대신 data-* 속성으로 저장
-        html += '<button class="btn btn-outline kakao-route-btn" style="margin-left:4px;padding:2px 6px;font-size:10px;flex-shrink:0;min-height:28px;border-radius:4px;" title="카카오맵에서 구간 길찾기"';
+        // 🔥 onclick에 this만 전달 (짧고 간단, 갤럭시에서도 파싱 성공)
+        html += '<button class="btn btn-outline kakao-route-btn" style="margin-left:4px;padding:2px 6px;font-size:10px;flex-shrink:0;min-height:28px;border-radius:4px;"';
+        html += ' onclick="openKakaoMapFromRoute(this)"';  // 🔥 this만 전달
         html += ' data-from-name="' + escapeHtml(prev.name) + '"';
         html += ' data-from-lat="' + prev.lat + '"';
         html += ' data-from-lng="' + prev.lng + '"';
         html += ' data-to-name="' + escapeHtml(p.name) + '"';
         html += ' data-to-lat="' + p.lat + '"';
-        html += ' data-to-lng="' + p.lng + '">';
+        html += ' data-to-lng="' + p.lng + '"';
+        html += ' title="카카오맵에서 구간 길찾기">';
         html += '🗺️';
         html += '</button>';
         html += '</div>';
@@ -2213,11 +2215,6 @@ function showRouteList() {
 
     html += '</div>';
     container.innerHTML = html;
-
-    // 🔥🔥🔥 갤럭시 대응: 이벤트 위임 (상위 요소에서 클릭 감지)
-    // 기존 리스너 제거 후 새로 등록 (중복 방지)
-    container.removeEventListener('click', handleKakaoRouteClick);
-    container.addEventListener('click', handleKakaoRouteClick);
 
     // SortableJS (드래그 기능)
     var sortableEl = document.getElementById('routeSortable');
@@ -2260,6 +2257,30 @@ function showRouteList() {
             }
         });
     }
+}
+
+// 🔥🔥🔥 갤럭시 대응: openKakaoMapFromRoute 함수 추가 (this를 받아 data-* 속성 읽기)
+function openKakaoMapFromRoute(btn) {
+    if (!btn) {
+        showTabStatus('tab-route', '⚠️ 버튼 정보가 없습니다.', 'warning');
+        return;
+    }
+
+    // data-* 속성에서 값 읽기
+    var fromName = btn.dataset.fromName;
+    var fromLat = parseFloat(btn.dataset.fromLat);
+    var fromLng = parseFloat(btn.dataset.fromLng);
+    var toName = btn.dataset.toName;
+    var toLat = parseFloat(btn.dataset.toLat);
+    var toLng = parseFloat(btn.dataset.toLng);
+
+    if (!fromName || !toName || isNaN(fromLat) || isNaN(toLat)) {
+        showTabStatus('tab-route', '⚠️ 경로 정보가 올바르지 않습니다.', 'warning');
+        return;
+    }
+
+    // 카카오맵 열기
+    openKakaoMap(fromName, fromLat, fromLng, toName, toLat, toLng);
 }
 
 // 🔥 이벤트 위임 핸들러 (전역 함수로 분리하여 재사용 가능)
