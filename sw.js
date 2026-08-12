@@ -11,20 +11,18 @@ const ASSETS = [
     // ⭐ 외부 URL(카카오 SDK)은 캐싱에서 제외 (CORS 문제 방지)
 ];
 
-self.addEventListener('install', function(e) {
-    e.waitUntil(
-        caches.open(CACHE_NAME)
-            .then(function(cache) {
-                console.log('✅ Service Worker: 캐시 저장 중...');
-                return cache.addAll(ASSETS);
-            })
-            .then(function() {
-                return self.skipWaiting();
-            })
-            .catch(function(err) {
-                console.warn('⚠️ 캐시 저장 실패 (일부 파일 누락 가능):', err);
-            })
+self.addEventListener('install', function(event) {
+    event.waitUntil(
+        caches.open(CACHE_NAME).then(function(cache) {
+            return cache.addAll([
+                '/',
+                '/index.html',
+                '/app.js',
+                '/manifest.json'
+            ]);
+        })
     );
+    self.skipWaiting();
 });
 
 self.addEventListener('activate', function(e) {
