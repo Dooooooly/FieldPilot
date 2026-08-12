@@ -1283,45 +1283,45 @@ function applySort() {
     }
 }
 
-function getSortedPlaces() {
+function getFilteredAndSortedPlaces() {
     if (!places || places.length === 0) {
         return [];
     }
-    
-    var sorted = [...places];
-    
-    if (currentSort === 'name-asc') {
-        sorted.sort(function(a, b) {
-            if (a.favorite && !b.favorite) return -1;
-            if (!a.favorite && b.favorite) return 1;
+
+    // 1. 필터링
+    var filtered = [...places];
+    if (currentSort === 'favorite') {
+        filtered = filtered.filter(function(p) { return p.favorite === true; });
+    } else if (currentSort === 'no-coord') {
+        filtered = filtered.filter(function(p) {
+            return !p.lat || !p.lng || (p.lat === 0 && p.lng === 0);
+        });
+    }
+
+    // 2. 정렬
+    if (currentSort === 'name-asc' || currentSort === 'favorite' || currentSort === 'no-coord') {
+        filtered.sort(function(a, b) {
             return (a.name || '').localeCompare(b.name || '', 'ko');
         });
     } else if (currentSort === 'name-desc') {
-        sorted.sort(function(a, b) {
-            if (a.favorite && !b.favorite) return -1;
-            if (!a.favorite && b.favorite) return 1;
+        filtered.sort(function(a, b) {
             return (b.name || '').localeCompare(a.name || '', 'ko');
         });
-    } else if (currentSort === 'favorite') {
-        sorted.sort(function(a, b) {
-            if (a.favorite && !b.favorite) return -1;
-            if (!a.favorite && b.favorite) return 1;
-            return (a.name || '').localeCompare(b.name || '', 'ko');
-        });
     }
-    return sorted;
+
+    return filtered;
 }
 
 function renderPlaces(filtered) {
     var list = document.getElementById('placeList');
-    var data = filtered || getSortedPlaces();
+    var data = filtered || getFilteredAndSortedPlaces();
     document.getElementById('listCount').textContent = '(' + data.length + '개)';
-    
+
     if (data.length === 0) {
         list.innerHTML = '<div class="empty-msg">등록된 현장이 없습니다</div>';
         return;
     }
-    
+
     var html = '';
     for (var i = 0; i < data.length; i++) {
         var p = data[i];
@@ -1329,19 +1329,19 @@ function renderPlaces(filtered) {
         var starIcon = p.favorite ? '★' : '☆';
         var starClass = p.favorite ? 'fav active' : 'fav inactive';
         var remarkDisplay = p.remark ? '<span class="remark">' + escapeHtml(p.remark) + '</span>' : '';
-        
+
         var hasCoords = (p.lat && p.lng && p.lat !== 0 && p.lng !== 0);
         var borderColor = hasCoords ? '#4f7eb3' : '#e53e3e';
-        
+
         html += '<div class="place-item" style="border-left-color: ' + borderColor + ';" onclick="openEditModal(\'' + p.id + '\')" title="클릭하여 편집">';
         html += '<div class="info"><span class="name">' + escapeHtml(p.name) + '</span>';
         html += '<span class="addr">' + escapeHtml(shortAddr) + '</span>';
         html += remarkDisplay;
-        
+
         if (!hasCoords) {
             html += ' <span style="color:#e53e3e; font-size:12px; font-weight:700;" title="주소 변환 실패">⚠️</span>';
         }
-        
+
         html += '</div><div class="actions" onclick="event.stopPropagation();">';
         html += '<button class="map" onclick="showPlaceOnMap(\'' + p.id + '\')" title="지도 보기">📍</button>';
         html += '<button class="add" onclick="addWaypointFromList(\'' + p.id + '\')" title="경유지 추가">➕</button>';
@@ -1355,31 +1355,20 @@ function renderPlaces(filtered) {
 
 function searchPlaces() {
     var keyword = document.getElementById('searchPlace').value.trim();
+
+    // 전체 목록에서 먼저 필터링 + 정렬
+    var baseList = getFilteredAndSortedPlaces();
+
     if (!keyword) {
-        renderPlaces();
+        renderPlaces(baseList);
         return;
     }
-    
-    var results = places.filter(function(p) {
+
+    var results = baseList.filter(function(p) {
         return (p.name && p.name.includes(keyword)) || (p.address && p.address.includes(keyword));
     });
-    
-    var sortedResults = [...results];
-    if (currentSort === 'name-asc' || currentSort === 'favorite') {
-        sortedResults.sort(function(a, b) {
-            if (a.favorite && !b.favorite) return -1;
-            if (!a.favorite && b.favorite) return 1;
-            return (a.name || '').localeCompare(b.name || '', 'ko');
-        });
-    } else if (currentSort === 'name-desc') {
-        sortedResults.sort(function(a, b) {
-            if (a.favorite && !b.favorite) return -1;
-            if (!a.favorite && b.favorite) return 1;
-            return (b.name || '').localeCompare(a.name || '', 'ko');
-        });
-    }
-    
-    renderPlaces(sortedResults);
+
+    renderPlaces(results);
 }
 
 // ============================================================
