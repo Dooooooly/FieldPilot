@@ -2345,22 +2345,28 @@ function openKakaoMap(fromName, fromLat, fromLng, toName, toLat, toLng) {
     var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
     if (isAndroid) {
-        // 🔥 안드로이드: kakaomap:// 스킴 직접 실행 (intent 대신)
-        var kakaoUrl = 'kakaomap://route?'
+        // 🔥 안드로이드: intent:// 스킴 (앱 실행 + 웹 폴백)
+        var intentUrl = 'intent://route?'
             + 'sp=' + fromLat + ',' + fromLng
             + '&ep=' + toLat + ',' + toLng
-            + '&by=car';
+            + '&by=car'
+            + '#Intent;'
+            + 'scheme=kakaomap;'
+            + 'package=net.daum.android.map;'
+            + 'S.browser_fallback_url=' + encodeURIComponent(webUrl)
+            + ';end';
         
-        // kakaomap:// 스킴 실행
-        window.location.href = kakaoUrl;
-        
-        // 🔥 2초 후에도 페이지가 그대로면 웹으로 fallback (앱이 없거나 연결 실패)
+        // 🔥 intent 실행 후 2초 뒤에도 반응 없으면 웹으로 이동
+        window.location.href = intentUrl;
         setTimeout(function() {
-            window.open(webUrl, '_blank');
-        }, 2000);
+            // 이미 웹으로 이동했는지 확인 (현재 URL이 intent로 시작하면 아직 안 넘어간 것)
+            if (window.location.href.startsWith('intent://')) {
+                window.location.href = webUrl;
+            }
+        }, 1500);
         
     } else {
-        // iOS / PC: 웹 URL 새 창 열기 (앱이 있으면 자동 연결)
+        // iOS / PC: 웹 URL 새 창 열기
         window.open(webUrl, '_blank');
     }
 
@@ -2379,7 +2385,6 @@ function openKakaoMapFromPlace(id) {
 
     var webUrl;
     var isAndroid = /android/i.test(navigator.userAgent);
-    var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
     if (startPoint && startPoint.lat && startPoint.lng) {
         webUrl = 'https://map.kakao.com/link/from/'
@@ -2394,21 +2399,33 @@ function openKakaoMapFromPlace(id) {
     }
 
     if (isAndroid) {
-        var kakaoUrl;
+        var intentUrl;
         if (startPoint && startPoint.lat && startPoint.lng) {
-            kakaoUrl = 'kakaomap://route?'
+            intentUrl = 'intent://route?'
                 + 'sp=' + startPoint.lat + ',' + startPoint.lng
                 + '&ep=' + place.lat + ',' + place.lng
-                + '&by=car';
+                + '&by=car'
+                + '#Intent;'
+                + 'scheme=kakaomap;'
+                + 'package=net.daum.android.map;'
+                + 'S.browser_fallback_url=' + encodeURIComponent(webUrl)
+                + ';end';
         } else {
-            kakaoUrl = 'kakaomap://open?page=map&lat=' + place.lat + '&lng=' + place.lng;
+            intentUrl = 'intent://map?'
+                + 'lat=' + place.lat + '&lng=' + place.lng
+                + '#Intent;'
+                + 'scheme=kakaomap;'
+                + 'package=net.daum.android.map;'
+                + 'S.browser_fallback_url=' + encodeURIComponent(webUrl)
+                + ';end';
         }
         
-        window.location.href = kakaoUrl;
-        
+        window.location.href = intentUrl;
         setTimeout(function() {
-            window.open(webUrl, '_blank');
-        }, 2000);
+            if (window.location.href.startsWith('intent://')) {
+                window.location.href = webUrl;
+            }
+        }, 1500);
         
     } else {
         window.open(webUrl, '_blank');
@@ -2432,7 +2449,6 @@ function openCurrentPlaceInKakaoMap() {
 
     var webUrl;
     var isAndroid = /android/i.test(navigator.userAgent);
-    var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
     if (startPoint && startPoint.lat && startPoint.lng) {
         webUrl = 'https://map.kakao.com/link/from/'
@@ -2447,21 +2463,33 @@ function openCurrentPlaceInKakaoMap() {
     }
 
     if (isAndroid) {
-        var kakaoUrl;
+        var intentUrl;
         if (startPoint && startPoint.lat && startPoint.lng) {
-            kakaoUrl = 'kakaomap://route?'
+            intentUrl = 'intent://route?'
                 + 'sp=' + startPoint.lat + ',' + startPoint.lng
                 + '&ep=' + place.lat + ',' + place.lng
-                + '&by=car';
+                + '&by=car'
+                + '#Intent;'
+                + 'scheme=kakaomap;'
+                + 'package=net.daum.android.map;'
+                + 'S.browser_fallback_url=' + encodeURIComponent(webUrl)
+                + ';end';
         } else {
-            kakaoUrl = 'kakaomap://open?page=map&lat=' + place.lat + '&lng=' + place.lng;
+            intentUrl = 'intent://map?'
+                + 'lat=' + place.lat + '&lng=' + place.lng
+                + '#Intent;'
+                + 'scheme=kakaomap;'
+                + 'package=net.daum.android.map;'
+                + 'S.browser_fallback_url=' + encodeURIComponent(webUrl)
+                + ';end';
         }
         
-        window.location.href = kakaoUrl;
-        
+        window.location.href = intentUrl;
         setTimeout(function() {
-            window.open(webUrl, '_blank');
-        }, 2000);
+            if (window.location.href.startsWith('intent://')) {
+                window.location.href = webUrl;
+            }
+        }, 1500);
         
     } else {
         window.open(webUrl, '_blank');
