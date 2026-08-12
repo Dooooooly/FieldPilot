@@ -14,31 +14,58 @@ const ASSETS = [
 self.addEventListener('install', function(event) {
     event.waitUntil(
         caches.open(CACHE_NAME).then(function(cache) {
-            return cache.addAll([
-                '/',
-                '/index.html',
-                '/app.js',
-                '/manifest.json'
-            ]);
+            var urls = ['/', '/index.html', '/app.js', '/manifest.json'];
+            return Promise.all(
+                urls.map(function(url) {
+                    return cache.add(url).catch(function(err) {
+                        console.warn('⚠️ 캐시 실패:', url, err);
+                    });
+                })
+            );
         })
     );
     self.skipWaiting();
 });
 
-self.addEventListener('activate', function(e) {
-    e.waitUntil(
-        caches.keys().then(function(keys) {
+// 🔥 활성화: 이전 캐시 삭제
+self.addEventListener('activate', function(event) {
+    event.waitUntil(
+        caches.keys().then(function(cacheNames) {
             return Promise.all(
-                keys.filter(function(key) {
-                    return key !== CACHE_NAME;
-                }).map(function(key) {
-                    return caches.delete(key);
+                cacheNames.map(function(cacheName) {
+                    if (cacheName !== CACHE_NAME) {
+                        return caches.delete(cacheName);
+                    }
                 })
             );
-        }).then(function() {
-            return self.clients.claim();
         })
     );
+    return self.clients.claim();
+});
+
+// 🔥 네트워크 우선 전략
+self.addEventListener('fetch', function(event) {
+    event.respondWith(
+        fetch(event.request)
+            .then(function(response) {
+                var responseClone = response.clone();
+                caches.open(CACHE_NAME).then(function(cache) {
+                    cache.put(event.request, responseClone);
+                });
+                return response;
+            })
+            .catch(function() {
+                return caches.match(event.request);
+            })
+    );
+});
+
+// 🔥 메시지 수신 (업데이트 확인)
+self.addEventListener('message', function(event) {
+    if (event.data && event.data.type === 'CHECK_UPDATE') {
+        self.skipWaiting();
+        self.clients.claim();
+    }
 });
 
 self.addEventListener('fetch', function(e) {
