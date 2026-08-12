@@ -2200,11 +2200,8 @@ function showRouteList() {
         html += '<div class="dist" style="text-align:right;font-size:12px;font-weight:600;flex-shrink:0;min-width:80px;color:' + color + ';">';
         html += segDist.toFixed(1) + 'km<br><span style="font-size:10px;color:#718096;">' + segTime + '분</span></div>';
         
-        // 🔥 드래그 핸들 (⠿) - 이 부분만 드래그 가능
-        html += '<span class="drag-handle" style="color:#a0aec0;font-size:16px;cursor:grab;padding:4px 6px;user-select:none;" title="드래그하여 순서 변경">⠿</span>';
-        
-        // 🔥 카카오맵 버튼 (onclick 직접 연결 - 갤럭시 호환성 최대화)
-        html += '<button class="btn btn-outline kakao-route-btn" style="margin-left:4px;padding:2px 6px;font-size:10px;flex-shrink:0;min-height:28px;border-radius:4px;position:relative;z-index:10;" onclick="openKakaoMapFromRoute(this)" title="카카오맵에서 구간 길찾기"';
+        // 🔥 카카오맵 버튼 (드래그 핸들 왼쪽)
+        html += '<button class="btn btn-outline kakao-route-btn" style="margin-left:4px;padding:4px 8px;font-size:12px;flex-shrink:0;min-height:32px;border-radius:4px;position:relative;z-index:10;" onclick="openKakaoMapFromRoute(this)" title="카카오맵에서 구간 길찾기"';
         html += ' data-from-name="' + escapeHtml(prev.name) + '"';
         html += ' data-from-lat="' + prev.lat + '"';
         html += ' data-from-lng="' + prev.lng + '"';
@@ -2213,21 +2210,23 @@ function showRouteList() {
         html += ' data-to-lng="' + p.lng + '">';
         html += '🗺️';
         html += '</button>';
+        
+        // 🔥 드래그 핸들 (맨 오른쪽, 크게)
+        html += '<span class="drag-handle" style="color:#a0aec0;font-size:20px;cursor:grab;padding:4px 6px;user-select:none;margin-left:2px;" title="드래그하여 순서 변경">⠿</span>';
         html += '</div>';
     }
 
     html += '</div>';
     container.innerHTML = html;
 
-    // 🔥 SortableJS - 드래그 핸들만 인식하도록 설정
+    // SortableJS - 드래그 핸들만 인식
     var sortableEl = document.getElementById('routeSortable');
     if (sortableEl && window.Sortable) {
         if (window._routeSortable) window._routeSortable.destroy();
         window._routeSortable = new Sortable(sortableEl, {
-            handle: '.drag-handle',  // 🔥 오직 드래그 핸들만 인식
+            handle: '.drag-handle',
             animation: 150,
             onMove: function(evt) {
-                // 출발지(첫 번째)로 드래그 방지
                 if (evt.toIndex === 0) {
                     showTabStatus('tab-route', '⚠️ 출발지 위치로는 이동할 수 없습니다.', 'warning');
                     return false;
