@@ -3074,6 +3074,47 @@ async function downloadFromGitHub() {
 }
 
 // ============================================================
+// CACHE_NAME 버전 표시
+// ============================================================
+
+function displayAppVersion() {
+    var statusEl = document.getElementById('updateStatus');
+    if (!statusEl) return;
+    
+    // 🔥 sw.js에서 CACHE_NAME 값 가져오기
+    fetch('/route-optimizer-pwa/sw.js?v=' + Date.now())
+        .then(function(response) {
+            if (!response.ok) throw new Error('sw.js 로드 실패');
+            return response.text();
+        })
+        .then(function(text) {
+            // 🔥 CACHE_NAME 값 추출 (정규식)
+            var match = text.match(/CACHE_NAME\s*=\s*['"](.+)['"]/);
+            if (match && match[1]) {
+                var version = match[1];
+                statusEl.innerHTML = '✅ 현재 버전: <strong>' + version + '</strong>';
+                statusEl.style.color = '#38a169';
+                // localStorage에 저장 (업데이트 확인 시 비교용)
+                localStorage.setItem('app_cache_name', version);
+            } else {
+                statusEl.innerHTML = '✅ 최신 버전입니다.';
+                statusEl.style.color = '#38a169';
+            }
+        })
+        .catch(function() {
+            // 🔥 fallback: localStorage에 저장된 버전 사용
+            var cachedVersion = localStorage.getItem('app_cache_name');
+            if (cachedVersion) {
+                statusEl.innerHTML = '✅ 현재 버전: <strong>' + cachedVersion + '</strong>';
+                statusEl.style.color = '#38a169';
+            } else {
+                statusEl.innerHTML = '✅ 최신 버전입니다.';
+                statusEl.style.color = '#38a169';
+            }
+        });
+}
+
+// ============================================================
 // 지역 선택 드롭다운 모달
 // ============================================================
 
@@ -3471,6 +3512,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(initMap, 500);
     setTimeout(function() { if (!kakaoMap && !sdkLoading) initMap(); }, 3000);
     registerServiceWorker();
+    setTimeout(displayAppVersion, 1000);
     
     function initWeather() {
         fetchWeather().then(function(success) {
@@ -4103,10 +4145,26 @@ function checkForUpdates() {
             return registration.update();
         })
         .then(function() {
-            statusEl.innerHTML = '✅ 업데이트 확인 완료. (최신 버전 또는 업데이트 진행 중)';
-            statusEl.style.color = '#38a169';
+            // 🔥 업데이트 후 버전 다시 가져오기
+            return fetch('/route-optimizer-pwa/sw.js?v=' + Date.now());
+        })
+        .then(function(response) {
+            if (!response.ok) throw new Error('sw.js 로드 실패');
+            return response.text();
+        })
+        .then(function(text) {
+            var match = text.match(/CACHE_NAME\s*=\s*['"](.+)['"]/);
+            if (match && match[1]) {
+                var version = match[1];
+                statusEl.innerHTML = '✅ 새 버전 적용됨: <strong>' + version + '</strong>';
+                statusEl.style.color = '#38a169';
+                localStorage.setItem('app_cache_name', version);
+            } else {
+                statusEl.innerHTML = '✅ 최신 버전입니다.';
+                statusEl.style.color = '#38a169';
+            }
             
-            // 🔥 업데이트가 있으면 새로고침 안내
+            // 업데이트가 있으면 새로고침 안내
             setTimeout(function() {
                 if (navigator.serviceWorker.controller) {
                     navigator.serviceWorker.controller.postMessage({ type: 'CHECK_UPDATE' });
