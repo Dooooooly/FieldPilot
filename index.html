@@ -449,17 +449,20 @@
         
         .bottom-tabs {
             position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: white;
-            display: flex;
-            border-top: 1px solid #e2e8f0;
-            z-index: 9999;
-            box-shadow: 0 -2px 20px rgba(0,0,0,0.04);
-            padding-top: 2px;
-            height: 56px;
-        }
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    display: flex !important;     /* 🔥 강제 적용 */
+    border-top: 1px solid #e2e8f0;
+    z-index: 9999 !important;
+    box-shadow: 0 -2px 20px rgba(0,0,0,0.04);
+    height: 56px !important;      /* 🔥 강제 적용 */
+    min-height: 56px !important;
+    padding: 4px 0;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
         .bottom-tab {
             flex: 1;
             padding: 8px 2px 6px;
