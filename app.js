@@ -2768,57 +2768,101 @@ function addPreset() {
 
     if (!startPoint || !startPoint.name) {
         showTabStatus('tab-places', '⚠️ 출발지를 먼저 설정하세요.', 'warning');
-        console.log('⚠️ 출발지 없음');
         return;
     }
     if (waypoints.length === 0) {
         showTabStatus('tab-places', '⚠️ 경유지를 최소 1개 이상 추가하세요.', 'warning');
-        console.log('⚠️ 경유지 없음');
         return;
     }
 
-    console.log('✅ 출발지/경유지 확인 완료, 프리셋 저장 시작');
+    // 기존 모달 제거
+    var existing = document.getElementById('customPresetModal');
+    if (existing) existing.remove();
 
-    showPromptModal(
-        '💾 프리셋 저장',
-        '프리셋 이름을 입력하세요:',
-        '프리셋 ' + (presets.length + 1),
-        function(name) {
-            console.log('📥 입력된 프리셋 이름:', name);
-            if (!name || name.trim() === '') {
-                showTabStatus('tab-places', '⚠️ 프리셋 이름을 입력하세요.', 'warning');
-                return;
-            }
+    var modalHtml = `
+        <div id="customPresetModal" style="
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 99999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            animation: fadeIn 0.2s ease;
+        " onclick="if(event.target===this) this.remove()">
+            <div style="
+                background: white;
+                border-radius: 16px;
+                padding: 24px;
+                max-width: 380px;
+                width: 100%;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            " onclick="event.stopPropagation()">
+                <h3 style="font-size:17px; font-weight:700; color:#1a202c; margin-bottom:8px;">💾 프리셋 저장</h3>
+                <p style="font-size:14px; color:#4a5568; margin-bottom:12px; line-height:1.6;">
+                    프리셋 이름을 입력하세요:
+                </p>
+                <input id="presetNameInput" type="text" placeholder="프리셋 이름" 
+                       value="프리셋 ${presets.length + 1}"
+                       style="width:100%; padding:10px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:14px; margin-bottom:16px;"
+                       onkeydown="if(event.key==='Enter') document.getElementById('presetSaveBtn').click();">
+                <div style="display:flex; gap:8px; justify-content:flex-end;">
+                    <button class="btn btn-outline btn-sm" onclick="document.getElementById('customPresetModal').remove();" style="padding:6px 16px; border:1px solid #cbd5e0; border-radius:8px; background:white; cursor:pointer;">취소</button>
+                    <button id="presetSaveBtn" class="btn btn-primary btn-sm" style="padding:6px 16px; background:#4f7eb3; color:white; border:none; border-radius:8px; cursor:pointer;">저장</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
 
-            var preset = {
-                id: Date.now(),
-                name: name.trim(),
-                startPoint: {
-                    name: startPoint.name,
-                    address: startPoint.address || '',
-                    lat: startPoint.lat,
-                    lng: startPoint.lng
-                },
-                waypoints: waypoints.map(function(w) {
-                    return {
-                        name: w.name,
-                        address: w.address || '',
-                        lat: w.lat || 0,
-                        lng: w.lng || 0
-                    };
-                })
-            };
-
-            presets.push(preset);
-            console.log('💾 프리셋 배열:', presets);
-
-            savePresets();
-            renderPresets();  // 🔥 목록 갱신 강제 호출
-
-            showTabStatus('tab-places', '✅ 프리셋 "' + preset.name + '" 저장됨!', 'ok');
-            console.log('✅ 프리셋 저장 완료:', preset.name);
+    // 입력창 포커스
+    setTimeout(function() {
+        var input = document.getElementById('presetNameInput');
+        if (input) {
+            input.focus();
+            input.select();
         }
-    );
+    }, 100);
+
+    // 저장 버튼 이벤트
+    document.getElementById('presetSaveBtn').addEventListener('click', function() {
+        var input = document.getElementById('presetNameInput');
+        var name = input ? input.value.trim() : '';
+        document.getElementById('customPresetModal').remove();
+
+        if (!name) {
+            showTabStatus('tab-places', '⚠️ 프리셋 이름을 입력하세요.', 'warning');
+            return;
+        }
+
+        var preset = {
+            id: Date.now(),
+            name: name,
+            startPoint: {
+                name: startPoint.name,
+                address: startPoint.address || '',
+                lat: startPoint.lat,
+                lng: startPoint.lng
+            },
+            waypoints: waypoints.map(function(w) {
+                return {
+                    name: w.name,
+                    address: w.address || '',
+                    lat: w.lat || 0,
+                    lng: w.lng || 0
+                };
+            })
+        };
+
+        presets.push(preset);
+        savePresets();
+        renderPresets();
+        showTabStatus('tab-places', '✅ 프리셋 "' + preset.name + '" 저장됨!', 'ok');
+        console.log('✅ 프리셋 저장 완료:', preset.name);
+    });
 }
 
 function loadPreset(index) {
