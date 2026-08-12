@@ -764,6 +764,23 @@
                     <input type="file" id="settingsInput" accept=".json" style="display:none" onchange="importSettings(event)">
                 </div>
             </div>
+
+             <div class="setting-group">
+        <h4>🔄 업데이트 관리</h4>
+        <div class="row">
+            <button class="btn btn-primary btn-sm" onclick="checkForUpdates()" style="flex:1;">
+                🔍 업데이트 확인
+            </button>
+            <button class="btn btn-outline btn-sm" onclick="forceUpdateApp()" style="flex:1; border-color:#e53e3e; color:#e53e3e;">
+                ⚡ 캐시 초기화
+            </button>
+        </div>
+        <div id="updateStatus" style="font-size:12px; color:#718096; margin-top:6px;">
+            ✅ 최신 버전입니다.
+        </div>
+        <div style="font-size:11px; color:#a0aec0; margin-top:4px;">
+            💡 업데이트 확인 버튼으로 새 버전을 확인하고, 캐시 초기화로 오류를 해결하세요.
+        </div>
             
             <div class="setting-group">
                 <h4>💾 데이터</h4>
