@@ -435,11 +435,11 @@
         }
         .preset-item .preset-delete:hover { color: #e53e3e; background: #fff5f5; }
         
-        .setting-group { background: #f7fafc; border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; }
-        .setting-group h4 { font-size: 13px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
-        .setting-group .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-        .setting-group .row label { font-size: 12px; font-weight: 600; color: #4a5568; min-width: 70px; }
-        .setting-group .row input { flex: 1; min-width: 100px; padding: 6px 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 12px; }
+        .setting-group { background: #f7fafc; border-radius: 10px; padding: 10px 12px; margin-bottom: 6px; }
+        .setting-group h4 { font-size: 13px; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+        .setting-group .row { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+        .setting-group .row label { font-size: 12px; font-weight: 600; color: #4a5568; min-width: 60px; }
+        .setting-group .row input { flex: 1; min-width: 88px; padding: 5px 8px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 12px; }
         .setting-group .row input:focus { border-color: #4f7eb3; outline: none; }
         .badge { font-size: 11px; padding: 2px 10px; border-radius: 20px; display: inline-block; }
         .badge-ok { background: #c6f6d5; color: #22543d; }
@@ -752,74 +752,70 @@
         </div>
 
         <!-- ===== 탭: 설정 ===== -->
-        <div id="tab-settings" class="tab-content">
-            <div class="setting-group">
-                <h4>🔐 GitHub 연동</h4>
-                <div class="row">
-                    <label for="githubToken">Token</label>
-                    <input type="password" id="githubToken" autocomplete="off" placeholder="GitHub Personal Access Token">
-                    <button class="btn btn-primary btn-sm" onclick="saveGitHubToken()">저장</button>
-                    <button class="btn btn-outline btn-sm" onclick="testGitHubToken()">테스트</button>
-                </div>
-                <div class="flex-row" style="margin-top:6px;">
-                    <button class="btn btn-success btn-sm" style="flex:1;" onclick="uploadToGitHub()">📤 업로드</button>
-                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="downloadFromGitHub()">📥 다운로드</button>
-                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="showGitHubHistory()">📋 히스토리</button>
-                </div>
-                <div id="githubStatus" class="badge badge-wait" style="margin-top:6px;">⏳ 토큰 미설정</div>
-                <div id="githubHistory"></div>
-            </div>
-            
-            <div class="setting-group">
-                <h4>🗺️ 카카오 API</h4>
-                <div class="row">
-                    <label for="kakaoJsKey">JS 키</label>
-                    <input type="password" id="kakaoJsKey" autocomplete="off" placeholder="JavaScript 키">
-                </div>
-                <div class="row" style="margin-top:4px;">
-                    <label for="kakaoRestKey">REST 키</label>
-                    <input type="password" id="kakaoRestKey" autocomplete="off" placeholder="REST API 키">
-                </div>
-                <div class="row" style="margin-top:6px;">
-                    <button class="btn btn-primary btn-sm" onclick="saveKakaoKeys()">저장</button>
-                </div>
-                <div id="kakaoStatus" class="badge badge-wait" style="margin-top:6px;">⏳ API 키 미설정</div>
-            </div>
-            
-            <div class="setting-group">
-                <h4>⚙️ 설정 관리</h4>
-                <div class="flex-row">
-                    <button class="btn btn-outline btn-sm btn-block" onclick="exportSettings()">📤 내보내기</button>
-                    <button class="btn btn-outline btn-sm btn-block" onclick="document.getElementById('settingsInput').click()">📥 가져오기</button>
-                    <input type="file" id="settingsInput" accept=".json" style="display:none" onchange="importSettings(event)">
-                </div>
-            </div>
-
-             <div class="setting-group">
-                <h4>🔄 업데이트 관리</h4>
-                <div class="row">
-                    <button class="btn btn-primary btn-sm" onclick="checkForUpdates()" style="flex:1;">
-                        🔍 업데이트 확인
-                    </button>
-                    <button class="btn btn-outline btn-sm" onclick="forceUpdateApp()" style="flex:1; border-color:#e53e3e; color:#e53e3e;">
-                        ⚡ 캐시 초기화
-                    </button>
-                </div>
-                <div id="updateStatus" style="font-size:12px; color:#718096; margin-top:6px;">
-                    ✅ 최신 버전입니다.
-                </div>
-                <div style="font-size:11px; color:#a0aec0; margin-top:4px;">
-                    💡 업데이트 확인 버튼으로 새 버전을 확인하고, 캐시 초기화로 오류를 해결하세요.
-                </div>
-            </div>
-            
-            <div class="setting-group">
-                <h4>💾 데이터</h4>
-                <button class="btn btn-danger btn-sm btn-block" onclick="resetAll()">🗑️ 모든 데이터 초기화</button>
-                <div style="font-size:11px; color:#a0aec0; margin-top:4px;" id="storageInfo">저장소 사용량: 계산 중...</div>
-            </div>
-            <div id="settingsStatus" class="tab-status"></div>
+<div id="tab-settings" class="tab-content">
+    <!-- GitHub 연동 -->
+    <div class="setting-group">
+        <h4>🔐 GitHub 연동</h4>
+        <div class="row">
+            <label for="githubToken">Token</label>
+            <input type="password" id="githubToken" autocomplete="off" placeholder="GitHub Personal Access Token">
+            <button class="btn btn-primary btn-sm" onclick="saveGitHubToken()">저장</button>
+            <button class="btn btn-outline btn-sm" onclick="testGitHubToken()">테스트</button>
         </div>
+        <div class="flex-row" style="margin-top:4px;">
+            <button class="btn btn-success btn-sm" style="flex:1;" onclick="uploadToGitHub()">📤 업로드</button>
+            <button class="btn btn-outline btn-sm" style="flex:1;" onclick="downloadFromGitHub()">📥 다운로드</button>
+            <button class="btn btn-outline btn-sm" style="flex:1;" onclick="showGitHubHistory()">📋 히스토리</button>
+        </div>
+        <div id="githubStatus" class="badge badge-wait" style="margin-top:4px;">⏳ 토큰 미설정</div>
+        <div id="githubHistory"></div>
+    </div>
+
+    <!-- 카카오 API (GitHub과 동일한 스타일) -->
+    <div class="setting-group">
+        <h4>🗺️ 카카오 API</h4>
+        <div class="row">
+            <label for="kakaoJsKey">JS 키</label>
+            <input type="password" id="kakaoJsKey" autocomplete="off" placeholder="JavaScript 키">
+            <button class="btn btn-primary btn-sm" onclick="saveKakaoKeys()" style="flex:0 0 auto;">저장</button>
+        </div>
+        <div class="row" style="margin-top:4px;">
+            <label for="kakaoRestKey">REST 키</label>
+            <input type="password" id="kakaoRestKey" autocomplete="off" placeholder="REST API 키">
+            <button class="btn btn-primary btn-sm" onclick="saveKakaoKeys()" style="flex:0 0 auto;">저장</button>
+        </div>
+        <div id="kakaoStatus" class="badge badge-wait" style="margin-top:4px;">⏳ API 키 미설정</div>
+    </div>
+
+    <!-- 설정 관리 -->
+    <div class="setting-group">
+        <h4>⚙️ 설정 관리</h4>
+        <div class="flex-row" style="gap:4px;">
+            <button class="btn btn-outline btn-sm btn-block" onclick="exportSettings()">📤 내보내기</button>
+            <button class="btn btn-outline btn-sm btn-block" onclick="document.getElementById('settingsInput').click()">📥 가져오기</button>
+            <input type="file" id="settingsInput" accept=".json" style="display:none" onchange="importSettings(event)">
+        </div>
+    </div>
+
+    <!-- 업데이트 관리 -->
+    <div class="setting-group">
+        <h4>🔄 업데이트 관리</h4>
+        <div class="row" style="gap:4px;">
+            <button class="btn btn-primary btn-sm" onclick="checkForUpdates()" style="flex:1;">🔍 업데이트 확인</button>
+            <button class="btn btn-outline btn-sm" onclick="forceUpdateApp()" style="flex:1; border-color:#e53e3e; color:#e53e3e;">⚡ 캐시 초기화</button>
+        </div>
+        <div id="updateStatus" style="font-size:12px; color:#718096; margin-top:4px;">✅ 최신 버전입니다.</div>
+    </div>
+
+    <!-- 데이터 관리 -->
+    <div class="setting-group">
+        <h4>💾 데이터 관리</h4>
+        <button class="btn btn-danger btn-sm btn-block" onclick="resetAll()">🗑️ 모든 데이터 초기화</button>
+        <div style="font-size:11px; color:#a0aec0; margin-top:4px;" id="storageInfo">저장소 사용량: 계산 중...</div>
+    </div>
+
+    <div id="settingsStatus" class="tab-status"></div>
+</div>
 
         <!-- ===== 탭: 도움말 ===== -->
         <div id="tab-help" class="tab-content">
