@@ -1896,7 +1896,53 @@ async function geocodeBatch(rows, restKey, batchSize, onProgress) {
 // 17. 경로 최적화
 // ============================================================
 
+
+/* ===== Route optimization UX state ===== */
+var routeObjective = 'distance';
+var useRoadOptimization = true;
+var useDirectionHint = true;
+
+function setRouteObjective(objective) {
+    routeObjective = objective || 'distance';
+    var cards = {
+        distance: document.getElementById('metricDistanceCard'),
+        time: document.getElementById('metricTimeCard'),
+        balanced: document.getElementById('metricBalancedCard')
+    };
+    Object.keys(cards).forEach(function(k) {
+        if (cards[k]) cards[k].classList.toggle('active', k === routeObjective);
+        var radio = cards[k] ? cards[k].querySelector('input') : null;
+        if (radio) radio.checked = (k === routeObjective);
+        var mark = cards[k] ? cards[k].querySelector('.metric-radio') : null;
+        if (mark) mark.textContent = (k === routeObjective) ? '●' : '○';
+    });
+    var info = document.getElementById('modeInfo');
+    if (info) {
+        var labels = {distance:'최단거리', time:'최소시간', balanced:'거리+시간 균형'};
+        info.textContent = '💡 초기 경로: ' + (window.optimizeMode === 'Farthest' ? '먼순' : '가까운순')
+            + ' · 최종 기준: ' + labels[routeObjective]
+            + (useRoadOptimization ? ' · 실제 도로' : ' · 직선거리 보완');
+    }
+}
+
+function setRoadOptimization(enabled) {
+    useRoadOptimization = !!enabled;
+    setRouteObjective(routeObjective);
+}
+
+function setDirectionHint(enabled) {
+    useDirectionHint = !!enabled;
+    setRouteObjective(routeObjective);
+}
+
+function updateOptimizationSettingsStatus() {
+    setRouteObjective(routeObjective);
+}
+
+
 function setOptimizeMode(mode) {
+    window.optimizeMode = mode;
+
     optimizeMode = mode;
     localStorage.setItem(OPTIMIZE_MODE_KEY, mode);
     var nearestBtn = document.getElementById('modeNearest');
@@ -1912,91 +1958,274 @@ function setOptimizeMode(mode) {
     document.getElementById('modeInfo').textContent = '현재: ' + (mode === 'Nearest' ? '가까운순' : '먼순');
 }
 
+(function(){
+    var n = document.getElementById('modeNearest');
+    var f = document.getElementById('modeFarthest');
+    if (n) { n.classList.toggle('active', mode === 'Nearest'); n.setAttribute('aria-pressed', mode === 'Nearest' ? 'true' : 'false'); var r=n.querySelector('.choice-radio'); if(r) r.textContent=mode==='Nearest'?'●':'○'; }
+    if (f) { f.classList.toggle('active', mode === 'Farthest'); f.setAttribute('aria-pressed', mode === 'Farthest' ? 'true' : 'false'); var r=f.querySelector('.choice-radio'); if(r) r.textContent=mode==='Farthest'?'●':'○'; }
+    updateOptimizationSettingsStatus();
+})();
+
+
 function calculateAngle(startX, startY, targetX, targetY) {
     var dx = targetX - startX, dy = targetY - startY;
     if (dx === 0 && dy === 0) return 0;
-    if (dx === 0) return dy > 0 ? 90 : 270;
     var angle = Math.atan2(dy, dx) * 180 / Math.PI;
     if (angle < 0) angle += 360;
     return angle;
 }
 
 function getClusterGroup16(angle) {
-    var dirs = [
-        [78.75, 101.25, 1], [56.25, 78.75, 2], [33.75, 56.25, 3],
-        [11.25, 33.75, 4], [348.75, 11.25, 5], [326.25, 348.75, 6],
-        [303.75, 326.25, 7], [281.25, 303.75, 8], [258.75, 281.25, 9],
-        [236.25, 258.75, 10], [213.75, 236.25, 11], [191.25, 213.75, 12],
-        [168.75, 191.25, 13], [146.25, 168.75, 14], [123.75, 146.25, 15],
-        [101.25, 123.75, 16]
-    ];
-    for (var i = 0; i < dirs.length; i++) {
-        var min = dirs[i][0], max = dirs[i][1], group = dirs[i][2];
-        if (min <= max) {
-            if (angle >= min && angle < max) return group;
-        } else {
-            if (angle >= min || angle < max) return group;
-        }
-    }
-    return 5;
+    var group = Math.floor(((angle + 11.25) % 360) / 22.5) + 1;
+    return group > 16 ? 16 : group;
 }
 
-function optimizeRouteAlgorithm(places, startLat, startLng, mode) {
-    if (!places || places.length === 0) return [];
-    var count = places.length;
-    var groups = places.map(function(p) {
-        var angle = calculateAngle(startLng, startLat, p.lng, p.lat);
-        return getClusterGroup16(angle);
-    });
-    var visited = new Array(count).fill(false);
-    var sorted = [];
-    var currX = startLng, currY = startLat;
-    var firstIdx = 0;
-    var compVal = mode === 'Nearest' ? Infinity : -Infinity;
-    for (var i = 0; i < count; i++) {
-        if (visited[i]) continue;
-        var dist = Math.pow(startLng - places[i].lng, 2) + Math.pow(startLat - places[i].lat, 2);
-        if (mode === 'Nearest') {
-            if (dist < compVal) { compVal = dist; firstIdx = i; }
-        } else {
-            if (dist > compVal) { compVal = dist; firstIdx = i; }
-        }
+// ============================================================
+// 도로 기반 경로 최적화
+// - 직선거리만으로 순서를 정하지 않고 카카오모빌리티의 실제
+//   차량 이동거리/시간을 필요한 구간에 한해 조회한다.
+// - API 호출을 줄이기 위해 캐시 + 직선거리 후보 제한을 사용한다.
+// - 초기해를 여러 개 만들고 2-opt로 교차/우회 경로를 개선한다.
+// ============================================================
+var roadMetricCache = new Map();
+var ROAD_CANDIDATE_COUNT = 3;
+var ROAD_OPTIMIZE_MAX_CALLS = 80;
+var roadOptimizeCallCount = 0;
+
+function roadMetricKey(from, to) {
+    return [
+        Number(from.lat).toFixed(6), Number(from.lng).toFixed(6),
+        Number(to.lat).toFixed(6), Number(to.lng).toFixed(6)
+    ].join(',');
+}
+
+function getStraightDistance(a, b) {
+    return haversineKm(a.lat, a.lng, b.lat, b.lng);
+}
+
+async function getRoadMetric(from, to, restKey) {
+    var key = roadMetricKey(from, to);
+    if (roadMetricCache.has(key)) return roadMetricCache.get(key);
+
+    var fallback = {
+        distanceKm: getStraightDistance(from, to),
+        durationMin: Math.max(1, Math.round(getStraightDistance(from, to) / 40 * 60)),
+        source: 'straight'
+    };
+
+    if (!restKey || roadOptimizeCallCount >= ROAD_OPTIMIZE_MAX_CALLS) {
+        roadMetricCache.set(key, fallback);
+        return fallback;
     }
-    function visitGroup(startIdx) {
-        var targetGroup = groups[startIdx];
-        var groupItems = [];
-        for (var i = 0; i < count; i++) {
-            if (!visited[i] && groups[i] === targetGroup) groupItems.push(i);
-        }
-        if (groupItems.length === 0) return;
-        groupItems.sort(function(a, b) {
-            var da = Math.pow(currX - places[a].lng, 2) + Math.pow(currY - places[a].lat, 2);
-            var db = Math.pow(currX - places[b].lng, 2) + Math.pow(currY - places[b].lat, 2);
-            return da - db;
+
+    roadOptimizeCallCount++;
+    try {
+        var url = 'https://apis-navi.kakaomobility.com/v1/directions';
+        var payload = {
+            origin: { name: from.name || '출발지', x: Number(from.lng), y: Number(from.lat) },
+            destination: { name: to.name || '목적지', x: Number(to.lng), y: Number(to.lat) },
+            priority: 'RECOMMEND'
+        };
+        var response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': 'KakaoAK ' + restKey,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
         });
-        for (var i = 0; i < groupItems.length; i++) {
-            var idx = groupItems[i];
-            sorted.push(places[idx]);
-            visited[idx] = true;
-            currX = places[idx].lng;
-            currY = places[idx].lat;
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        var data = await response.json();
+        var route = data && data.routes && data.routes[0];
+        if (!route || !route.summary) throw new Error('도로 경로 없음');
+
+        var metric = {
+            distanceKm: Number(route.summary.distance || 0) / 1000,
+            durationMin: Math.max(1, Math.round(Number(route.summary.duration || 0) / 60)),
+            source: 'road'
+        };
+        roadMetricCache.set(key, metric);
+        return metric;
+    } catch (e) {
+        roadMetricCache.set(key, fallback);
+        return fallback;
+    }
+}
+
+function rankByStraightDistance(current, candidates) {
+    return candidates.slice().sort(function(a, b) {
+        return getStraightDistance(current, a) - getStraightDistance(current, b);
+    });
+}
+
+async function chooseNextRoadPoint(current, candidates, restKey, mode) {
+    if (!candidates.length) return null;
+    var shortlist = rankByStraightDistance(current, candidates).slice(0, ROAD_CANDIDATE_COUNT);
+    var best = null;
+    var bestScore = mode === 'Farthest' ? -Infinity : Infinity;
+
+    for (var i = 0; i < shortlist.length; i++) {
+        var metric = await getRoadMetric(current, shortlist[i], restKey);
+        var score = metric.distanceKm;
+        if ((mode === 'Nearest' && score < bestScore) ||
+            (mode === 'Farthest' && score > bestScore)) {
+            bestScore = score;
+            best = shortlist[i];
+            best._lastRoadMetric = metric;
         }
     }
-    visitGroup(firstIdx);
-    while (true) {
-        var nearestIdx = -1, minDist = Infinity;
-        for (var i = 0; i < count; i++) {
-            if (visited[i]) continue;
-            var dist = Math.pow(currX - places[i].lng, 2) + Math.pow(currY - places[i].lat, 2);
-            if (dist < minDist) {
-                minDist = dist;
-                nearestIdx = i;
+    return best || shortlist[0];
+}
+
+function buildGeometricSeed(places, startPoint, mode) {
+    var remaining = places.slice();
+    var result = [];
+    var current = startPoint;
+
+    if (mode === 'Farthest') {
+        remaining.sort(function(a, b) {
+            return getStraightDistance(startPoint, b) - getStraightDistance(startPoint, a);
+        });
+    } else {
+        remaining.sort(function(a, b) {
+            return getStraightDistance(startPoint, a) - getStraightDistance(startPoint, b);
+        });
+    }
+
+    while (remaining.length) {
+        var bestIndex = 0;
+        var bestDist = mode === 'Farthest' ? -Infinity : Infinity;
+        for (var i = 0; i < remaining.length; i++) {
+            var d = getStraightDistance(current, remaining[i]);
+            if ((mode === 'Nearest' && d < bestDist) || (mode === 'Farthest' && d > bestDist)) {
+                bestDist = d;
+                bestIndex = i;
             }
         }
-        if (nearestIdx === -1) break;
-        visitGroup(nearestIdx);
+        var next = remaining.splice(bestIndex, 1)[0];
+        result.push(next);
+        current = next;
     }
-    return sorted;
+    return result;
+}
+
+async function buildRoadGreedySeed(places, startPoint, restKey, mode) {
+    var remaining = places.slice();
+    var result = [];
+    var current = startPoint;
+
+    // 첫 선택도 실제 도로거리 후보를 비교한다.
+    var first = await chooseNextRoadPoint(current, remaining, restKey, mode);
+    if (first) {
+        result.push(first);
+        remaining.splice(remaining.indexOf(first), 1);
+        current = first;
+    }
+
+    while (remaining.length) {
+        var next = await chooseNextRoadPoint(current, remaining, restKey, 'Nearest');
+        if (!next) break;
+        result.push(next);
+        remaining.splice(remaining.indexOf(next), 1);
+        current = next;
+    }
+    return result;
+}
+
+async function routeCost(route, startPoint, restKey) {
+    var current = startPoint;
+    var distanceKm = 0;
+    var durationMin = 0;
+    for (var i = 0; i < route.length; i++) {
+        var metric = await getRoadMetric(current, route[i], restKey);
+        distanceKm += metric.distanceKm;
+        durationMin += metric.durationMin;
+        current = route[i];
+    }
+    return { distanceKm: distanceKm, durationMin: durationMin };
+}
+
+async function twoOptRoad(route, startPoint, restKey, mode) {
+    if (route.length < 4) return route;
+    var improved = true;
+    var pass = 0;
+    var maxPass = 3;
+
+    while (improved && pass < maxPass && roadOptimizeCallCount < ROAD_OPTIMIZE_MAX_CALLS) {
+        improved = false;
+        pass++;
+        var currentCost = await routeCost(route, startPoint, restKey);
+
+        for (var i = 0; i < route.length - 2; i++) {
+            for (var j = i + 1; j < route.length - 1; j++) {
+                if (roadOptimizeCallCount >= ROAD_OPTIMIZE_MAX_CALLS) break;
+                var candidate = route.slice(0, i + 1)
+                    .concat(route.slice(i + 1, j + 1).reverse())
+                    .concat(route.slice(j + 1));
+                var candidateCost = await routeCost(candidate, startPoint, restKey);
+
+                var currentScore = mode === 'Time' ? currentCost.durationMin : currentCost.distanceKm;
+                var candidateScore = mode === 'Time' ? candidateCost.durationMin : candidateCost.distanceKm;
+                if (candidateScore + 0.001 < currentScore) {
+                    route = candidate;
+                    currentCost = candidateCost;
+                    improved = true;
+                    break;
+                }
+            }
+            if (improved) break;
+        }
+    }
+    return route;
+}
+
+async function optimizeRouteAlgorithm(places, startLat, startLng, mode, restKey) {
+    if (!places || places.length === 0) return [];
+    if (places.length === 1) return places.slice();
+
+    roadOptimizeCallCount = 0;
+    // 오래된 캐시는 좌표가 바뀌어도 키가 달라지므로 안전하지만,
+    // 이번 최적화에서는 직전 실패/성공 결과를 재사용해 API 호출을 줄인다.
+    var start = { name: '출발지', lat: startLat, lng: startLng };
+
+    var seeds = [];
+    var geometric = buildGeometricSeed(places, start, mode);
+    seeds.push(geometric);
+
+    var roadGreedy = await buildRoadGreedySeed(places, start, restKey, mode);
+    if (roadGreedy.length === places.length) seeds.push(roadGreedy);
+
+    // 16방향 군집 방식은 초기해 후보로만 유지한다.
+    var clustered = places.slice().sort(function(a, b) {
+        var ga = getClusterGroup16(calculateAngle(startLng, startLat, a.lng, a.lat));
+        var gb = getClusterGroup16(calculateAngle(startLng, startLat, b.lng, b.lat));
+        return ga - gb;
+    });
+    if (mode === 'Farthest') clustered.reverse();
+    seeds.push(clustered);
+
+    var bestRoute = seeds[0];
+    var bestCost = await routeCost(bestRoute, start, restKey);
+    var bestScore = bestCost.distanceKm;
+
+    for (var s = 0; s < seeds.length; s++) {
+        if (roadOptimizeCallCount >= ROAD_OPTIMIZE_MAX_CALLS) break;
+        var candidate = await twoOptRoad(seeds[s].slice(), start, restKey, 'Distance');
+        var cost = await routeCost(candidate, start, restKey);
+        if (cost.distanceKm + 0.001 < bestScore) {
+            bestScore = cost.distanceKm;
+            bestCost = cost;
+            bestRoute = candidate;
+        }
+    }
+
+    bestRoute._optimizationMeta = {
+        roadCalls: roadOptimizeCallCount,
+        distanceKm: bestCost.distanceKm,
+        durationMin: bestCost.durationMin,
+        method: '도로거리 기반 Greedy + Multi-start + 2-opt'
+    };
+    return bestRoute;
 }
 
 async function runOptimize() {
@@ -2077,8 +2306,8 @@ async function runOptimize() {
             return;
         }
         
-        showTabStatus('tab-places', '⚡ 16방향 클러스터링 (' + (optimizeMode === 'Nearest' ? '가까운순' : '먼순') + ')', 'info');
-        var sorted = optimizeRouteAlgorithm(validPlaces, startPoint.lat, startPoint.lng, optimizeMode);
+        showTabStatus('tab-places', '🛣️ 실제 도로거리 기반 최적화 계산 중...', 'info');
+        var sorted = await optimizeRouteAlgorithm(validPlaces, startPoint.lat, startPoint.lng, optimizeMode, restKey);
         
         if (!sorted || sorted.length === 0) {
             showTabStatus('tab-places', '⚠️ 최적화 실패', 'error');
@@ -2214,7 +2443,9 @@ async function runOptimize() {
         }
         
         switchTab('tab-route');
-        showTabStatus('tab-route', '✅ 최적화 완료! ' + validPlaces.length + '개소', 'ok');
+        var meta = sorted._optimizationMeta || {};
+        var metaText = meta.roadCalls ? ' (도로조회 ' + meta.roadCalls + '회)' : '';
+        showTabStatus('tab-route', '✅ 최적화 완료! ' + validPlaces.length + '개소' + metaText, 'ok');
     } catch(e) {
         showTabStatus('tab-places', '❌ 오류 발생: ' + e.message, 'error');
     } finally {
@@ -4292,3 +4523,138 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     setTimeout(initWeather, 3000);
 });
+
+
+
+/* Objective scoring used by the optimizer when a route matrix is available. */
+function getRouteObjectiveScore(totalDistanceKm, totalMinutes) {
+    var d = Number(totalDistanceKm) || 0;
+    var t = Number(totalMinutes) || 0;
+    if (routeObjective === 'time') return t;
+    if (routeObjective === 'balanced') return d * 0.5 + t * 0.5;
+    return d;
+}
+
+function getRouteObjectiveLabel() {
+    return routeObjective === 'time' ? '최소시간'
+        : routeObjective === 'balanced' ? '거리+시간 균형'
+        : '최단거리';
+}
+
+
+/* ===== Final UX helpers ===== */
+function updateOptimizationLiveSummary() {
+    var text = document.getElementById('optimizationLiveText');
+    if (!text) return;
+    var mode = (window.optimizeMode === 'Farthest') ? '먼순' : '가까운순';
+    var objective = (typeof routeObjective !== 'undefined' && routeObjective === 'time') ? '최소시간'
+        : (typeof routeObjective !== 'undefined' && routeObjective === 'balanced') ? '거리+시간 균형'
+        : '최단거리';
+    var road = (typeof useRoadOptimization === 'undefined' || useRoadOptimization) ? '실제 도로' : '직선거리 보완';
+    var direction = (typeof useDirectionHint === 'undefined' || useDirectionHint) ? '방향 고려' : '방향 미고려';
+    text.textContent = mode + ' · ' + objective + ' · ' + road + ' · ' + direction;
+}
+
+function setOptimizeButtonBusy(busy) {
+    var btn = document.getElementById('runOptimizeBtn');
+    if (!btn) return;
+    if (busy) {
+        if (!btn.dataset.originalText) btn.dataset.originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = '⏳ 경로 계산 중...';
+        btn.setAttribute('aria-busy','true');
+    } else {
+        btn.disabled = false;
+        btn.textContent = btn.dataset.originalText || '⚡ 경로 최적화 실행';
+        btn.removeAttribute('aria-busy');
+    }
+}
+
+/* Wrap settings functions so the summary always reflects the current UI. */
+(function(){
+    var oldSetObjective = window.setRouteObjective;
+    if (typeof oldSetObjective === 'function' && !oldSetObjective.__uxWrapped) {
+        var wrapped = function(v){ var r=oldSetObjective.apply(this,arguments); updateOptimizationLiveSummary(); return r; };
+        wrapped.__uxWrapped = true;
+        window.setRouteObjective = wrapped;
+    }
+    var oldRoad = window.setRoadOptimization;
+    if (typeof oldRoad === 'function' && !oldRoad.__uxWrapped) {
+        var wrappedRoad = function(v){ var r=oldRoad.apply(this,arguments); updateOptimizationLiveSummary(); return r; };
+        wrappedRoad.__uxWrapped = true;
+        window.setRoadOptimization = wrappedRoad;
+    }
+    var oldDir = window.setDirectionHint;
+    if (typeof oldDir === 'function' && !oldDir.__uxWrapped) {
+        var wrappedDir = function(v){ var r=oldDir.apply(this,arguments); updateOptimizationLiveSummary(); return r; };
+        wrappedDir.__uxWrapped = true;
+        window.setDirectionHint = wrappedDir;
+    }
+    setTimeout(updateOptimizationLiveSummary, 0);
+})();
+
+setTimeout(function(){
+    try { updateOptimizationLiveSummary(); } catch(e) {}
+}, 50);
+
+
+/* ===== All-tab UX behavior ===== */
+(function(){
+  function setActiveNav(tabId){
+    document.querySelectorAll('.bottom-tab').forEach(function(btn){
+      var active=btn.getAttribute('data-tab')===tabId;
+      btn.classList.toggle('active',active);
+      btn.setAttribute('aria-current',active?'page':'false');
+    });
+  }
+
+  var originalSwitchTab = window.switchTab;
+  if(typeof originalSwitchTab==='function' && !originalSwitchTab.__uxV4){
+    var wrapped=function(tabId){
+      var result=originalSwitchTab.apply(this,arguments);
+      setActiveNav(tabId);
+      var el=document.getElementById(tabId);
+      if(el && window.innerWidth<700){ setTimeout(function(){ window.scrollTo({top:0,behavior:'smooth'}); },20); }
+      return result;
+    };
+    wrapped.__uxV4=true;
+    window.switchTab=wrapped;
+  }
+
+  document.querySelectorAll('.bottom-tab').forEach(function(btn){
+    btn.setAttribute('aria-current',btn.classList.contains('active')?'page':'false');
+  });
+
+  /* Confirm before destructive reset if the original handler exists. */
+  var oldResetAll=window.resetAll;
+  if(typeof oldResetAll==='function' && !oldResetAll.__uxV4){
+    var wrappedReset=function(){
+      var msg='모든 지역의 현장·설정 데이터가 삭제될 수 있습니다. 계속하시겠습니까?';
+      if(window.confirm(msg)) return oldResetAll.apply(this,arguments);
+    };
+    wrappedReset.__uxV4=true;
+    window.resetAll=wrappedReset;
+  }
+
+  /* Make route summary clickable/scroll-friendly on mobile. */
+  var routeSummary=document.querySelector('#tab-route .summary');
+  if(routeSummary) routeSummary.setAttribute('aria-label','경로 요약 정보');
+
+  /* File import feedback */
+  var fileInput=document.getElementById('fileInput');
+  if(fileInput){
+    fileInput.addEventListener('change',function(){
+      var upload=document.getElementById('uploadResult');
+      if(upload && this.files && this.files[0]){
+        upload.textContent='⏳ '+this.files[0].name+' 불러오는 중...';
+        upload.style.color='#2563eb';
+      }
+    });
+  }
+
+  /* Make status areas explicit to assistive tech. */
+  document.querySelectorAll('.tab-status').forEach(function(el){
+    el.setAttribute('role','status');
+    el.setAttribute('aria-live','polite');
+  });
+})();
