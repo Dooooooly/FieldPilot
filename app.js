@@ -1,5 +1,5 @@
 // ============================================================
-// 경로 최적화 PWA - 전체 app.js (수정 완료)
+// 경로 최적화 PWA - app.js (최종)
 // ============================================================
 
 // --- 저장소 키 ---
@@ -142,7 +142,7 @@ function isMobile() {
 }
 
 // ============================================================
-// 2. 탭 전환 (안전하게 단순화)
+// 2. 탭 전환 (안전)
 // ============================================================
 function switchTab(tabId) {
     if (!tabId) {
@@ -156,22 +156,17 @@ function switchTab(tabId) {
         return;
     }
 
-    // 모든 탭 콘텐츠 숨기기
     document.querySelectorAll('.tab-content').forEach(function(el) {
         el.classList.remove('active');
     });
-
-    // 선택 탭 표시
     target.classList.add('active');
 
-    // 하단 버튼 상태 갱신
     document.querySelectorAll('.bottom-tab').forEach(function(btn) {
         var isActive = btn.getAttribute('data-tab') === tabId;
         btn.classList.toggle('active', isActive);
         btn.setAttribute('aria-current', isActive ? 'page' : 'false');
     });
 
-    // 특수 동작
     if (tabId === 'tab-route') {
         setTimeout(function() {
             if (typeof kakaoMap !== 'undefined' && kakaoMap) {
@@ -188,7 +183,6 @@ function switchTab(tabId) {
         renderPlaces();
     }
 
-    // 모바일 스크롤
     if (window.innerWidth < 700) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -1845,7 +1839,7 @@ async function geocodeBatch(rows, restKey, batchSize, onProgress) {
 }
 
 // ============================================================
-// 17. 경로 최적화 (mode 오류 방어 포함)
+// 17. 경로 최적화
 // ============================================================
 var routeObjective = 'distance';
 var useRoadOptimization = true;
@@ -1889,6 +1883,7 @@ function updateOptimizationSettingsStatus() {
     setRouteObjective(routeObjective);
 }
 
+// ===== 최적화 모드 설정 (라벨 동기화 포함) =====
 function setOptimizeMode(mode) {
     if (mode !== 'Nearest' && mode !== 'Farthest') {
         mode = 'Nearest';
@@ -1918,6 +1913,24 @@ function setOptimizeMode(mode) {
     if (info) {
         info.textContent = '💡 현재 초기 경로: ' + (mode === 'Nearest' ? '가까운순' : '먼순');
     }
+    
+    // 경로 탭 라벨 업데이트
+    var label = document.getElementById('currentOptimizeModeLabel');
+    if (label) {
+        label.textContent = mode === 'Nearest' ? '가까운순' : '먼순';
+    }
+    
+    // 설정 탭 라디오 버튼 동기화
+    var radios = document.querySelectorAll('input[name="optimizeModeRadio"]');
+    radios.forEach(function(radio) {
+        radio.checked = (radio.value === mode);
+    });
+    
+    var settingsLabel = document.getElementById('settingsOptimizeModeLabel');
+    if (settingsLabel) {
+        settingsLabel.textContent = mode === 'Nearest' ? '가까운순' : '먼순';
+    }
+    
     updateOptimizationLiveSummary();
 }
 
@@ -2092,9 +2105,7 @@ async function routeCost(route, startPoint, restKey) {
     return { distanceKm: distanceKm, durationMin: durationMin };
 }
 
-// === twoOptRoad (mode 방어 코드 포함) ===
 async function twoOptRoad(route, startPoint, restKey, mode) {
-    // 방어 코드: mode가 undefined/null이면 'Distance'로 설정
     if (typeof mode === 'undefined' || mode === null) {
         mode = 'Distance';
     }
@@ -2159,7 +2170,6 @@ async function optimizeRouteAlgorithm(places, startLat, startLng, mode, restKey)
 
     for (var s = 0; s < seeds.length; s++) {
         if (roadOptimizeCallCount >= ROAD_OPTIMIZE_MAX_CALLS) break;
-        // routeObjective에 따라 mode 전달 (Time 또는 Distance)
         var objective = (typeof routeObjective !== 'undefined' && routeObjective === 'time') ? 'Time' : 'Distance';
         var candidate = await twoOptRoad(seeds[s].slice(), start, restKey, objective);
         var cost = await routeCost(candidate, start, restKey);
@@ -3003,25 +3013,8 @@ function clearRouteMarkers() {
 }
 
 // ============================================================
-// 23. 공유 및 초기화
+// 23. 공유 및 초기화 (공유 함수는 삭제됨)
 // ============================================================
-function shareRoute() {
-    if (!routeResult) {
-        showTabStatus('tab-places', '먼저 경로 최적화를 실행하세요.', 'warning');
-        return;
-    }
-    var text = '🚗 최적 경로\n\n📊 ' + routeResult.places.length + '개소\n📏 ' + routeResult.totalKm + ' km\n⏱️ ' + routeResult.totalMin + '분\n📐 ' + (routeResult.mode === 'Nearest' ? '가까운순' : '먼순') + '\n\n🚩 ' + routeResult.startPoint.name + '\n';
-    for (var i = 0; i < routeResult.places.length; i++) {
-        text += '  ' + (i + 1) + '. ' + routeResult.places[i].name + '\n';
-    }
-    if (navigator.share) {
-        navigator.share({ title: '경로 최적화', text: text }).catch(function() {});
-    } else {
-        navigator.clipboard.writeText(text).then(function() {
-            showTabStatus('tab-places', '✅ 클립보드 복사 완료', 'ok');
-        });
-    }
-}
 
 // ============================================================
 // 24. 프리셋 관리
@@ -4381,7 +4374,7 @@ function updateOptimizationLiveSummary() {
 }
 
 // ============================================================
-// 37. 탭 스와이프 (터치)
+// 37. 탭 스와이프 (터치) - 지도 영역 제외
 // ============================================================
 (function() {
     var startX = 0, startY = 0;
@@ -4390,8 +4383,10 @@ function updateOptimizationLiveSummary() {
 
     document.addEventListener('touchstart', function(e) {
         var target = e.target;
+        // 입력 요소, 하단 탭, 지도 영역에서는 스와이프 무시
         if (target.closest('input') || target.closest('textarea') || 
-            target.closest('select') || target.closest('.bottom-tabs')) {
+            target.closest('select') || target.closest('.bottom-tabs') ||
+            target.closest('#map')) {
             return;
         }
         startX = e.touches[0].clientX;
