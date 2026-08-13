@@ -4658,3 +4658,60 @@ setTimeout(function(){
     el.setAttribute('aria-live','polite');
   });
 })();
+
+// ============================================================
+// 37. 탭 스와이프 (터치)
+// ============================================================
+
+(function() {
+    var startX = 0, startY = 0;
+    var isSwiping = false;
+    var tabOrder = ['tab-places', 'tab-route', 'tab-list', 'tab-settings', 'tab-help'];
+
+    document.addEventListener('touchstart', function(e) {
+        var target = e.target;
+        // 입력 요소나 하단 탭에서는 스와이프 무시
+        if (target.closest('input') || target.closest('textarea') || 
+            target.closest('select') || target.closest('.bottom-tabs')) {
+            return;
+        }
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        isSwiping = true;
+    }, { passive: true });
+
+    document.addEventListener('touchmove', function(e) {
+        if (!isSwiping) return;
+        var dx = e.touches[0].clientX - startX;
+        var dy = e.touches[0].clientY - startY;
+        if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 30) {
+            e.preventDefault(); // 가로 스와이프 시 스크롤 방지
+        }
+    }, { passive: false });
+
+    document.addEventListener('touchend', function(e) {
+        if (!isSwiping) return;
+        isSwiping = false;
+        var endX = e.changedTouches[0].clientX;
+        var endY = e.changedTouches[0].clientY;
+        var dx = endX - startX;
+        var dy = endY - startY;
+        if (Math.abs(dx) < 30 || Math.abs(dx) < Math.abs(dy) * 0.8) return;
+
+        var activeTab = document.querySelector('.tab-content.active');
+        if (!activeTab) return;
+        var currentId = activeTab.id;
+        var currentIndex = tabOrder.indexOf(currentId);
+        if (currentIndex === -1) return;
+
+        var newIndex;
+        if (dx < 0) { // 왼쪽 → 다음 탭
+            newIndex = Math.min(currentIndex + 1, tabOrder.length - 1);
+        } else { // 오른쪽 → 이전 탭
+            newIndex = Math.max(currentIndex - 1, 0);
+        }
+        if (newIndex !== currentIndex) {
+            switchTab(tabOrder[newIndex]);
+        }
+    }, { passive: true });
+})();
