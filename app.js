@@ -2359,22 +2359,56 @@ function openKakaoMapFromPlace(id) {
         return;
     }
 
-    var url;
+    var webUrl;
+    var isAndroid = /android/i.test(navigator.userAgent);
+    var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
     if (startPoint && startPoint.lat && startPoint.lng) {
-        // 🔥 출발지 → 현장 길찾기
-        url = 'https://map.kakao.com/link/from/'
+        webUrl = 'https://map.kakao.com/link/from/'
             + encodeURIComponent(startPoint.name) + ',' + startPoint.lat + ',' + startPoint.lng
             + '/to/'
             + encodeURIComponent(place.name) + ',' + place.lat + ',' + place.lng;
         showTabStatus('tab-list', '🗺️ 카카오맵 길찾기: ' + startPoint.name + ' → ' + place.name, 'info');
     } else {
-        // 🔥 현장 위치만 표시
-        url = 'https://map.kakao.com/link/map/'
+        webUrl = 'https://map.kakao.com/link/map/'
             + encodeURIComponent(place.name) + ',' + place.lat + ',' + place.lng;
         showTabStatus('tab-list', '🗺️ 카카오맵에서 "' + place.name + '" 위치 열기', 'info');
     }
 
-    window.open(url, '_blank');
+    // 🔥 iOS: 웹 URL로 열기 (Universal Link → 앱 자동 실행)
+    if (isIOS) {
+        window.open(webUrl, '_blank');
+        return;
+    }
+
+    // 🔥 안드로이드: kakaomap:// 스킴 직접 실행
+    if (isAndroid) {
+        var kakaoUrl;
+        if (startPoint && startPoint.lat && startPoint.lng) {
+            kakaoUrl = 'kakaomap://route?'
+                + 'sp=' + startPoint.lat + ',' + startPoint.lng
+                + '&ep=' + place.lat + ',' + place.lng
+                + '&sname=' + encodeURIComponent(startPoint.name)
+                + '&dname=' + encodeURIComponent(place.name)
+                + '&by=car';
+        } else {
+            kakaoUrl = 'kakaomap://open?page=map&lat=' + place.lat + '&lng=' + place.lng
+                + '&q=' + encodeURIComponent(place.name);
+        }
+
+        window.location.href = kakaoUrl;
+
+        setTimeout(function() {
+            if (window.location.href.startsWith('kakaomap://')) {
+                window.open(webUrl, '_blank');
+            }
+        }, 2000);
+
+        return;
+    }
+
+    // PC: 웹 URL 새 창 열기
+    window.open(webUrl, '_blank');
 }
 function openCurrentPlaceInKakaoMap() {
     if (!currentPlaceId) {
