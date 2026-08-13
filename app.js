@@ -2360,8 +2360,7 @@ function openKakaoMapFromPlace(id) {
     }
 
     var webUrl;
-    var isAndroid = /android/i.test(navigator.userAgent);
-    var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
     if (startPoint && startPoint.lat && startPoint.lng) {
         webUrl = 'https://map.kakao.com/link/from/'
@@ -2375,14 +2374,8 @@ function openKakaoMapFromPlace(id) {
         showTabStatus('tab-list', '🗺️ 카카오맵에서 "' + place.name + '" 위치 열기', 'info');
     }
 
-    // 🔥 iOS: 웹 URL로 열기 (Universal Link → 앱 자동 실행)
-    if (isIOS) {
-        window.open(webUrl, '_blank');
-        return;
-    }
-
-    // 🔥 안드로이드: kakaomap:// 스킴 직접 실행
-    if (isAndroid) {
+    if (isMobile) {
+        // 🔥 모바일: kakaomap:// 스킴 실행
         var kakaoUrl;
         if (startPoint && startPoint.lat && startPoint.lng) {
             kakaoUrl = 'kakaomap://route?'
@@ -2404,12 +2397,12 @@ function openKakaoMapFromPlace(id) {
             }
         }, 2000);
 
-        return;
+    } else {
+        // 🔥 PC: 웹 URL 새 창 열기
+        window.open(webUrl, '_blank');
     }
-
-    // PC: 웹 URL 새 창 열기
-    window.open(webUrl, '_blank');
 }
+
 function openCurrentPlaceInKakaoMap() {
     if (!currentPlaceId) {
         showTabStatus('tab-route', '⚠️ 표시된 현장이 없습니다.', 'warning');
