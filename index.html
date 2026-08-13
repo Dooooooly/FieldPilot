@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>경로 최적화</title>
     
     <link rel="manifest" href="manifest.json">
@@ -18,20 +18,93 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     
     <style>
+        /* ===== 초기화 ===== */
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
+        html, body {
+            min-height: 100%;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
             background: #f7f8fc;
             color: #1a202c;
-            padding-bottom: 60px !important;
             -webkit-font-smoothing: antialiased;
         }
-        
+        /* ===== 하단 탭 고정 (강제) ===== */
+        body {
+            padding-bottom: 80px !important;
+        }
+        .bottom-tabs {
+            position: fixed !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            width: 100% !important;
+            height: 64px !important;
+            min-height: 64px !important;
+            display: flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            background: #ffffff !important;
+            border-top: 1px solid #e2e8f0 !important;
+            z-index: 2147483647 !important;
+            pointer-events: auto !important;
+            box-shadow: 0 -4px 18px rgba(0, 0, 0, 0.08) !important;
+            align-items: stretch !important;
+            padding: 0 !important;
+        }
+        .bottom-tab {
+            flex: 1 1 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            min-width: 0 !important;
+            height: 64px !important;
+            border: 0 !important;
+            background: transparent !important;
+            cursor: pointer !important;
+            pointer-events: auto !important;
+            color: #94a3b8 !important;
+            font-size: 10px !important;
+            font-weight: 700 !important;
+            transition: all 0.15s !important;
+            -webkit-tap-highlight-color: transparent !important;
+            padding: 4px 2px !important;
+        }
+        .bottom-tab .tab-icon {
+            display: block !important;
+            font-size: 20px !important;
+            line-height: 1 !important;
+            margin-bottom: 3px !important;
+        }
+        .bottom-tab.active {
+            color: #2563eb !important;
+            background: #eff6ff !important;
+        }
+        .bottom-tab.help-tab {
+            color: #7c3aed !important;
+        }
+        .bottom-tab.help-tab.active {
+            color: #7c3aed !important;
+            background: #f5f3ff !important;
+        }
+        @media (max-width: 700px) {
+            body {
+                padding-bottom: 76px !important;
+            }
+            .bottom-tabs {
+                height: 68px !important;
+                min-height: 68px !important;
+            }
+            .bottom-tab {
+                height: 68px !important;
+                font-size: 10px !important;
+            }
+        }
+
+        /* ===== 기타 공통 스타일 ===== */
         .flex-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
         .flex-1 { flex: 1; min-width: 0; }
         .flex-between { display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; }
         
-        /* ===== 헤더 ===== */
         .header {
             background: linear-gradient(135deg, #4a6fa5, #6b9bd2);
             color: white;
@@ -49,7 +122,6 @@
         .header-left h1 { font-size: 17px; font-weight: 700; letter-spacing: -0.5px; }
         .header-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         
-        /* ===== 날씨 & 지역관리 공통 ===== */
         .weather {
             display: flex;
             align-items: center;
@@ -65,50 +137,8 @@
             color: white;
             white-space: nowrap;
         }
-        .weather:hover {
-            background: rgba(255,255,255,0.25);
-            transform: translateY(-1px);
-        }
+        .weather:hover { background: rgba(255,255,255,0.25); transform: translateY(-1px); }
         .weather .temp { font-weight: 700; font-size: 13px; }
-
-        .weather #currentRegionLabel {
-            font-weight: 400;
-            font-size: inherit;
-        }
-        .weather #currentRegionName {
-            font-weight: 700;
-            font-size: inherit;
-        }
-        .weather .region-arrow {
-            font-size: 10px;
-            opacity: 0.6;
-            margin-left: 2px;
-        }
-
-        /* ===== 모바일 ===== */
-        @media (max-width: 480px) {
-            .weather {
-                font-size: 11px;
-                padding: 2px 8px;
-                height: 26px;
-                gap: 3px;
-            }
-            .weather .temp {
-                font-size: 11px;
-            }
-            .weather #currentRegionLabel,
-            .weather #currentRegionName {
-                font-size: 11px;
-            }
-            .weather .region-arrow {
-                font-size: 9px;
-            }
-            .header-divider {
-                height: 16px;
-                margin: 0 4px;
-            }
-        }
-        
         .header-divider {
             width: 1px;
             height: 20px;
@@ -116,9 +146,7 @@
             flex-shrink: 0;
         }
         
-        /* ===== 메인 ===== */
         .main { max-width: 600px; margin: 0 auto; padding: 12px 14px 80px; }
-        
         .tab-content { display: none; animation: fadeUp 0.3s ease; }
         .tab-content.active { display: block; }
         @keyframes fadeUp {
@@ -151,23 +179,18 @@
         }
         .btn:active { transform: scale(0.96); }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        
         .btn-primary { background: #4f7eb3; color: white; }
         .btn-primary:hover:not(:disabled) { background: #3d6a9e; box-shadow: 0 4px 12px rgba(79,126,179,0.3); }
-        
         .btn-success { background: #5a9e6f; color: white; }
         .btn-success:hover:not(:disabled) { background: #4a8a5e; box-shadow: 0 4px 12px rgba(90,158,111,0.3); }
-        
         .btn-danger { background: #e53e3e; color: white; }
         .btn-danger:hover:not(:disabled) { background: #c53030; box-shadow: 0 4px 12px rgba(229,62,62,0.3); }
-        
         .btn-outline {
             background: transparent;
             color: #4a5568;
             border: 2px solid #e2e8f0;
         }
         .btn-outline:hover:not(:disabled) { background: #f7fafc; border-color: #cbd5e0; }
-        
         .btn-sm { padding: 4px 10px; font-size: 11px; min-height: 30px; border-radius: 6px; }
         .btn-block { width: 100%; }
         .btn-lg { padding: 14px 20px; font-size: 16px; min-height: 50px; border-radius: 10px; }
@@ -446,63 +469,6 @@
         .badge-wait { background: #e2e8f0; color: #4a5568; }
         .badge-fail { background: #fed7d7; color: #9b2c2c; }
         
-        /* ===== 하단 탭 (수정 완료 - 높이 고정) ===== */
-        .bottom-tabs {
-    display: flex !important;
-    position: fixed !important;
-    bottom: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    background: #ffffff !important;
-    border-top: 1px solid #e2e8f0 !important;
-    z-index: 99999 !important;
-    box-shadow: 0 -2px 20px rgba(0,0,0,0.06) !important;
-    height: 56px !important;
-    min-height: 56px !important;
-    padding: 4px 0 !important;
-    align-items: stretch !important;
-}
-        .bottom-tab {
-    pointer-events: auto !important;
-    flex: 1 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
-    text-align: center !important;
-    font-size: 10px !important;
-    font-weight: 600 !important;
-    color: #a0aec0 !important;
-    cursor: pointer !important;
-    border-top: 3px solid transparent !important;
-    transition: all 0.2s !important;
-    background: none !important;
-    border-left: none !important;
-    border-right: none !important;
-    border-bottom: none !important;
-    padding: 4px 2px !important;
-    gap: 2px !important;
-    height: 100% !important;
-    min-height: 48px !important;
-    -webkit-tap-highlight-color: transparent !important;
-}
-        .bottom-tab .tab-icon {
-            font-size: 20px;
-            display: block;
-            line-height: 1.2;
-        }
-        .bottom-tab.active {
-            color: #4f7eb3;
-            border-top-color: #4f7eb3;
-        }
-        .bottom-tab.help-tab {
-            color: #805ad5;
-        }
-        .bottom-tab.help-tab.active {
-            color: #805ad5;
-            border-top-color: #805ad5;
-        }
-        
         .modal-overlay {
             display: none;
             position: fixed;
@@ -524,16 +490,7 @@
             width: 100%;
             box-shadow: 0 20px 60px rgba(0,0,0,0.2);
         }
-        /* ===== 현장추가 모달 ===== */
-        #addPlaceModal .modal {
-            max-width: 400px;
-            padding: 20px 24px;
-        }
-        #addPlaceModal .modal input:focus {
-            border-color: #4f7eb3;
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(79,126,179,0.15);
-        }
+        #addPlaceModal .modal { max-width: 400px; padding: 20px 24px; }
         .modal h3 { font-size: 17px; margin-bottom: 12px; }
         .modal .btn-row { margin-top: 12px; }
         .modal input { width: 100%; padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 13px; margin-bottom: 8px; }
@@ -544,34 +501,74 @@
         .help-section .help-title { font-weight: 700; font-size: 14px; color: #4f7eb3; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
         .help-section .help-body { font-size: 13px; color: #4a5568; line-height: 1.7; padding-left: 4px; }
         
+        /* ===== 최적화 설정 카드 ===== */
+        .route-settings-card{
+            background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);
+            border:1px solid #e2e8f0;
+            border-radius:14px;
+            padding:16px;
+            margin:12px 0;
+            box-shadow:0 3px 12px rgba(15,23,42,.06);
+        }
+        .route-settings-header{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:14px}
+        .route-settings-title{font-size:15px;font-weight:800;color:#1a202c}
+        .route-settings-subtitle{font-size:11px;color:#718096;margin-top:4px;line-height:1.5}
+        .settings-badge{font-size:10px;font-weight:800;padding:5px 8px;border-radius:999px;background:#edf2f7;color:#4a5568;white-space:nowrap}
+        .optimization-step{border-top:1px solid #edf2f7;padding-top:14px;margin-top:14px}
+        .step-heading{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}
+        .step-number{width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#3182ce;color:#fff;font-size:12px;font-weight:800;flex:0 0 24px}
+        .step-heading strong{display:block;font-size:13px;color:#2d3748}
+        .step-heading small{display:block;font-size:10px;color:#718096;margin-top:2px;line-height:1.4}
+        .choice-grid{display:grid;gap:8px}
+        .choice-grid.two{grid-template-columns:1fr 1fr}
+        .choice-grid.three{grid-template-columns:repeat(3,1fr)}
+        .choice-card,.metric-card{position:relative;display:flex;align-items:center;gap:8px;text-align:left;border:1px solid #e2e8f0;background:#fff;border-radius:10px;padding:11px;cursor:pointer;transition:.18s ease;min-height:58px}
+        .choice-card:hover,.metric-card:hover{border-color:#90cdf4;transform:translateY(-1px)}
+        .choice-card.active,.metric-card.active{border-color:#3182ce;background:#ebf8ff;box-shadow:0 0 0 1px rgba(49,130,206,.08)}
+        .choice-radio,.metric-radio{font-size:13px;color:#a0aec0;width:14px}
+        .choice-card.active .choice-radio,.metric-card.active .metric-radio{color:#3182ce}
+        .choice-icon,.metric-icon{font-size:19px}
+        .choice-content,.metric-content{display:flex;flex-direction:column;min-width:0}
+        .choice-content strong,.metric-content strong{font-size:12px;color:#2d3748}
+        .choice-content small,.metric-content small{font-size:9px;color:#718096;line-height:1.35;margin-top:2px}
+        .selection-hint{font-size:10px;color:#4a5568;background:#f7fafc;border-radius:7px;padding:7px 9px;margin-top:8px}
+        .metric-card input{position:absolute;opacity:0;pointer-events:none}
+        .advanced-options{margin-top:10px;border:1px solid #edf2f7;border-radius:10px;background:#fff;overflow:hidden}
+        .switch-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;cursor:pointer}
+        .switch-row+.switch-row{border-top:1px solid #edf2f7}
+        .switch-text{display:flex;flex-direction:column}
+        .switch-text strong{font-size:11px;color:#2d3748}
+        .switch-text small{font-size:9px;color:#718096;margin-top:2px}
+        .switch-row input{position:absolute;opacity:0}
+        .switch-ui{width:36px;height:20px;border-radius:999px;background:#cbd5e0;position:relative;flex:0 0 36px;transition:.18s}
+        .switch-ui:after{content:"";position:absolute;width:16px;height:16px;top:2px;left:2px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:.18s}
+        .switch-row input:checked + .switch-ui{background:#3182ce}
+        .switch-row input:checked + .switch-ui:after{transform:translateX(16px)}
+        .algorithm-flow{display:flex;justify-content:center;align-items:center;gap:6px;flex-wrap:wrap;margin-top:11px;padding:8px;background:#f7fafc;border-radius:8px;font-size:9px;color:#718096}
+        .algorithm-flow b{color:#a0aec0}
+        
+        .optimization-live-summary{display:flex;align-items:center;gap:7px;margin:9px 0 7px;padding:8px 10px;border:1px solid #e8edf3;border-radius:9px;background:#f8fafc;font-size:10px;color:#64748b}
+        .live-dot{width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.12);flex:0 0 7px}
+        
+        .ux-tab-header{display:flex;align-items:center;gap:10px;padding:2px 3px 10px}
+        .ux-tab-icon{width:36px;height:36px;border-radius:11px;background:#eff6ff;color:#2563eb;display:flex;align-items:center;justify-content:center;font-size:20px;flex:0 0 36px}
+        .ux-tab-title{font-weight:800;font-size:15px;color:#1f2937}
+        .ux-tab-sub{font-size:10px;color:#718096;margin-top:2px;line-height:1.4}
+        #tab-list .ux-tab-icon{background:#f0fdf4;color:#16a34a}
+        #tab-settings .ux-tab-icon{background:#f5f3ff;color:#7c3aed}
+        #tab-help .ux-tab-icon{background:#fff7ed;color:#ea580c}
+
         @media (max-width: 480px) {
             .header { padding: 6px 10px; }
             .header-left h1 { font-size: 14px; }
             .weather { font-size: 10px; padding: 2px 8px; height: 26px; }
             .weather .temp { font-size: 11px; }
-            .header-divider { height: 16px; }
             .main { padding: 8px 8px 70px; }
             .card { padding: 10px 12px; }
             .btn { font-size: 12px; padding: 6px 12px; min-height: 32px; border-radius: 6px; }
             .btn-lg { font-size: 14px; padding: 12px 16px; min-height: 44px; }
             .input-field { font-size: 12px; padding: 5px 8px; min-height: 30px; }
             #map { height: 260px; }
-            
-            /* ===== 하단탭 모바일 ===== */
-           .bottom-tabs {
-        height: 48px !important;
-        min-height: 48px !important;
-        padding: 2px 0 !important;
-    }
-    .bottom-tab {
-        font-size: 9px !important;
-        min-height: 40px !important;
-    }
-    body {
-        padding-bottom: 52px !important;
-    }
-}
-            
             .place-item { padding: 4px 6px; min-height: 34px; }
             .place-item .info .name { font-size: 12px; }
             .place-item .info .addr { font-size: 10px; }
@@ -585,274 +582,27 @@
             .route-item .info .addr { font-size: 10px; }
             .route-item .info .remark { font-size: 9px; }
             .modal { padding: 16px; }
+            .bottom-tabs { height: 56px !important; min-height: 56px !important; }
+            .bottom-tab { height: 56px !important; font-size: 9px !important; }
+            .bottom-tab .tab-icon { font-size: 18px !important; }
+            body { padding-bottom: 64px !important; }
         }
     </style>
-
-<style id="route-optimization-ux">
-.route-settings-card{
-    background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);
-    border:1px solid #e2e8f0;
-    border-radius:14px;
-    padding:16px;
-    margin:12px 0;
-    box-shadow:0 3px 12px rgba(15,23,42,.06);
-}
-.route-settings-header{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:14px}
-.route-settings-title{font-size:15px;font-weight:800;color:#1a202c}
-.route-settings-subtitle{font-size:11px;color:#718096;margin-top:4px;line-height:1.5}
-.settings-badge{font-size:10px;font-weight:800;padding:5px 8px;border-radius:999px;background:#edf2f7;color:#4a5568;white-space:nowrap}
-.optimization-step{border-top:1px solid #edf2f7;padding-top:14px;margin-top:14px}
-.step-heading{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}
-.step-number{width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#3182ce;color:#fff;font-size:12px;font-weight:800;flex:0 0 24px}
-.step-heading strong{display:block;font-size:13px;color:#2d3748}
-.step-heading small{display:block;font-size:10px;color:#718096;margin-top:2px;line-height:1.4}
-.choice-grid{display:grid;gap:8px}
-.choice-grid.two{grid-template-columns:1fr 1fr}
-.choice-grid.three{grid-template-columns:repeat(3,1fr)}
-.choice-card,.metric-card{position:relative;display:flex;align-items:center;gap:8px;text-align:left;border:1px solid #e2e8f0;background:#fff;border-radius:10px;padding:11px;cursor:pointer;transition:.18s ease;min-height:58px}
-.choice-card:hover,.metric-card:hover{border-color:#90cdf4;transform:translateY(-1px)}
-.choice-card.active,.metric-card.active{border-color:#3182ce;background:#ebf8ff;box-shadow:0 0 0 1px rgba(49,130,206,.08)}
-.choice-radio,.metric-radio{font-size:13px;color:#a0aec0;width:14px}
-.choice-card.active .choice-radio,.metric-card.active .metric-radio{color:#3182ce}
-.choice-icon,.metric-icon{font-size:19px}
-.choice-content,.metric-content{display:flex;flex-direction:column;min-width:0}
-.choice-content strong,.metric-content strong{font-size:12px;color:#2d3748}
-.choice-content small,.metric-content small{font-size:9px;color:#718096;line-height:1.35;margin-top:2px}
-.selection-hint{font-size:10px;color:#4a5568;background:#f7fafc;border-radius:7px;padding:7px 9px;margin-top:8px}
-.metric-card input{position:absolute;opacity:0;pointer-events:none}
-.advanced-options{margin-top:10px;border:1px solid #edf2f7;border-radius:10px;background:#fff;overflow:hidden}
-.switch-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;cursor:pointer}
-.switch-row+.switch-row{border-top:1px solid #edf2f7}
-.switch-text{display:flex;flex-direction:column}
-.switch-text strong{font-size:11px;color:#2d3748}
-.switch-text small{font-size:9px;color:#718096;margin-top:2px}
-.switch-row input{position:absolute;opacity:0}
-.switch-ui{width:36px;height:20px;border-radius:999px;background:#cbd5e0;position:relative;flex:0 0 36px;transition:.18s}
-.switch-ui:after{content:"";position:absolute;width:16px;height:16px;top:2px;left:2px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:.18s}
-.switch-row input:checked + .switch-ui{background:#3182ce}
-.switch-row input:checked + .switch-ui:after{transform:translateX(16px)}
-.algorithm-flow{display:flex;justify-content:center;align-items:center;gap:6px;flex-wrap:wrap;margin-top:11px;padding:8px;background:#f7fafc;border-radius:8px;font-size:9px;color:#718096}
-.algorithm-flow b{color:#a0aec0}
-#routeOptimizationSettings + .card{margin-top:8px}
-@media (max-width:700px){
-  .choice-grid.two,.choice-grid.three{grid-template-columns:1fr}
-  .route-settings-header{align-items:flex-start}
-}
-</style>
-
-
-<style id="ux-final-overhaul">
-:root{
-  --ux-bg:#f4f7fb;--ux-surface:#fff;--ux-border:#e4e9f0;--ux-text:#1f2937;
-  --ux-muted:#718096;--ux-primary:#2563eb;--ux-primary-soft:#eff6ff;
-  --ux-success:#16a34a;--ux-danger:#dc2626;--ux-shadow:0 8px 24px rgba(15,23,42,.07);
-  --ux-radius:14px;
-}
-body{background:var(--ux-bg)!important;color:var(--ux-text)}
-/* Global polish */
-.card,.setting-group,.route-settings-card{border-radius:var(--ux-radius)!important;box-shadow:0 3px 14px rgba(15,23,42,.045);transition:box-shadow .2s,transform .2s}
-.card:hover{box-shadow:var(--ux-shadow)}
-input,select,textarea{border-radius:9px!important;border-color:#d9e0e8!important;transition:border-color .15s,box-shadow .15s}
-input:focus,select:focus,textarea:focus{outline:none!important;border-color:#60a5fa!important;box-shadow:0 0 0 3px rgba(37,99,235,.10)!important}
-button{transition:transform .15s,box-shadow .15s,opacity .15s}
-button:not(:disabled):hover{transform:translateY(-1px)}
-button:not(:disabled):active{transform:translateY(0)}
-.btn{border-radius:9px!important;font-weight:700!important}
-.btn-primary{box-shadow:0 4px 10px rgba(37,99,235,.16)}
-/* Header */
-.header{position:sticky!important;top:0;z-index:30;backdrop-filter:blur(12px);background:rgba(255,255,255,.92)!important;border-bottom:1px solid var(--ux-border)!important}
-.header-left h1{letter-spacing:-.3px}
-/* Main cards */
-.section-title,.card h3,.card h4{letter-spacing:-.2px}
-/* Inputs/places */
-.place-item,.location-item,.route-item{border-radius:10px!important;border-color:#e7ecf2!important}
-.place-item:hover,.location-item:hover,.route-item:hover{background:#f8fafc!important}
-/* Make primary action visually dominant */
-.btn.btn-primary.btn-lg{min-height:48px;font-size:14px;letter-spacing:-.1px;box-shadow:0 7px 18px rgba(37,99,235,.20)}
-/* Optimization settings */
-.route-settings-card{border:1px solid #dfe7f1!important;background:linear-gradient(180deg,#fff,#f8fbff)!important}
-.route-settings-header{padding-bottom:2px}
-.settings-badge{border:1px solid #dbe5f0!important;background:#f8fafc!important}
-.choice-card,.metric-card{min-height:64px!important}
-.choice-card.active,.metric-card.active{box-shadow:0 0 0 2px rgba(37,99,235,.08),0 5px 14px rgba(37,99,235,.06)!important}
-.choice-card:focus-visible,.metric-card:focus-within{outline:3px solid rgba(37,99,235,.16)}
-.algorithm-flow span{padding:4px 7px;background:#fff;border:1px solid #e9eef5;border-radius:6px}
-/* Status / result hierarchy */
-.status-message,.result-card,.route-summary{border-radius:10px!important}
-.route-summary{box-shadow:0 4px 14px rgba(15,23,42,.05)!important}
-/* Empty state */
-.empty-state{border:1px dashed #cbd5e1!important;background:#f8fafc!important;border-radius:12px!important}
-/* Bottom tabs */
-.bottom-tabs{background:rgba(255,255,255,.96)!important;backdrop-filter:blur(12px);border-top:1px solid var(--ux-border)!important;box-shadow:0 -6px 20px rgba(15,23,42,.06)!important}
-.bottom-tab{transition:background .15s,color .15s,transform .15s!important;border-radius:10px!important}
-.bottom-tab:hover{background:#f7faff!important}
-.bottom-tab.active{color:var(--ux-primary)!important;background:var(--ux-primary-soft)!important}
-/* Weather */
-.weather{border-radius:10px!important;background:#f8fafc!important}
-/* Accessibility */
-button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid rgba(37,99,235,.18)!important;outline-offset:1px}
-/* Mobile */
-@media(max-width:700px){
-  .route-settings-card{padding:13px!important}
-  .route-settings-header{gap:8px}
-  .settings-badge{display:none}
-  .choice-card,.metric-card{min-height:56px!important}
-  .btn.btn-primary.btn-lg{width:100%;min-height:50px}
-}
-/* Reduced motion */
-@media(prefers-reduced-motion:reduce){
-  *,*:before,*:after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
-}
-</style>
-
-
-<style id="ux-all-tabs-v4">
-:root{
- --ux-bg:#f4f7fb;--ux-card:#fff;--ux-border:#e2e8f0;--ux-text:#1f2937;--ux-muted:#718096;
- --ux-primary:#2563eb;--ux-primary-soft:#eff6ff;--ux-success:#16a34a;--ux-success-soft:#f0fdf4;
- --ux-warning:#d97706;--ux-warning-soft:#fffbeb;--ux-danger:#dc2626;--ux-danger-soft:#fef2f2;
- --ux-purple:#7c3aed;--ux-purple-soft:#f5f3ff;--ux-shadow:0 6px 18px rgba(15,23,42,.055);
-}
-*{box-sizing:border-box}
-html{scroll-behavior:smooth}
-body{background:linear-gradient(180deg,#f7f9fc 0%,#f2f5f9 100%)!important;color:var(--ux-text)!important}
-.main{padding-top:14px!important}
-
-/* Header */
-.header{background:rgba(255,255,255,.94)!important;color:var(--ux-text)!important;border-bottom:1px solid var(--ux-border)!important;box-shadow:0 4px 16px rgba(15,23,42,.05)!important;backdrop-filter:blur(14px)!important}
-.header-left h1{color:#1f2937!important}
-.weather{background:#f8fafc!important;color:#475569!important;border:1px solid #e8edf3!important}
-.weather .temp{color:#0f172a!important}
-
-/* Generic components */
-.card,.setting-group,.route-settings-card{
- background:var(--ux-card)!important;border:1px solid var(--ux-border)!important;border-radius:14px!important;
- box-shadow:var(--ux-shadow)!important
-}
-.card-title{color:#273449!important}
-.btn{border-radius:9px!important;font-weight:700!important}
-.btn-outline{border-width:1px!important}
-.input-field,.setting-group .row input,.modal input,select,textarea{
- border-radius:9px!important;border-color:#d9e1ea!important;background:#fff!important
-}
-input:focus,select:focus,textarea:focus{
- outline:none!important;border-color:#60a5fa!important;box-shadow:0 0 0 3px rgba(37,99,235,.10)!important
-}
-.btn:focus-visible,.bottom-tab:focus-visible,.choice-card:focus-visible,.metric-card:focus-within{
- outline:3px solid rgba(37,99,235,.18)!important;outline-offset:2px
-}
-
-/* Tab navigation */
-.bottom-tabs{background:rgba(255,255,255,.97)!important;border-top:1px solid var(--ux-border)!important;backdrop-filter:blur(14px);box-shadow:0 -6px 20px rgba(15,23,42,.07)!important}
-.bottom-tab{border-radius:10px!important;margin:2px 4px!important}
-.bottom-tab.active{background:var(--ux-primary-soft)!important;color:var(--ux-primary)!important;border-top-color:transparent!important}
-
-/* Map tab */
-#tab-route #map{box-shadow:0 5px 18px rgba(15,23,42,.08);border:1px solid var(--ux-border)}
-#tab-route .summary{
- border:1px solid #dbe7f3!important;background:linear-gradient(135deg,#f1f7ff,#f7fbff)!important;
- box-shadow:var(--ux-shadow)!important
-}
-#routeList{padding-bottom:4px}
-#routeList .route-item{border:1px solid #e7edf4!important;border-left:4px solid #5a9e6f!important;border-radius:10px!important}
-#routeList .route-item:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(15,23,42,.06)}
-#routeList .route-start{border-left-color:#2563eb!important}
-
-/* Place list tab */
-#tab-list .place-toolbar{
- display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px
-}
-#placeList{padding-top:2px}
-#placeList .place-item{
- border:1px solid #e7edf4!important;border-left:4px solid #4f7eb3!important;border-radius:10px!important;
- margin-bottom:5px!important;background:#fff!important
-}
-#placeList .place-item:hover{background:#f8fbff!important;box-shadow:0 4px 12px rgba(15,23,42,.055)!important}
-#placeList .empty-msg{border:1px dashed #cbd5e1;background:#f8fafc;border-radius:11px}
-
-/* Settings tab */
-#tab-settings .setting-group{padding:14px!important}
-#tab-settings .setting-group h4{font-size:13px!important;padding-bottom:8px!important;margin-bottom:8px!important;border-bottom:1px solid #eef2f7}
-#tab-settings .setting-group .row{background:#f8fafc;border:1px solid #edf2f7;padding:7px;border-radius:9px;margin-bottom:5px}
-#tab-settings .badge{font-weight:700}
-#tab-settings #githubHistory{margin-top:8px}
-#tab-settings #githubHistory > *{
- border:1px solid #e7edf4;border-radius:9px;background:#fff;padding:8px;margin-top:5px
-}
-#tab-settings .btn-danger{box-shadow:none!important}
-
-/* Help tab */
-#tab-help .help-section{
- border:1px solid #e8edf3!important;border-radius:12px!important;padding:14px!important;margin-bottom:10px!important;
- background:#fff!important;box-shadow:0 2px 8px rgba(15,23,42,.035)
-}
-#tab-help .help-section .help-title{font-size:14px!important;color:#2563eb!important}
-#tab-help .help-section .help-body{color:#475569!important;line-height:1.8!important}
-#tab-help .help-section .help-body strong{color:#334155}
-#tab-help .help-tip{
- background:#f8fafc;border-left:3px solid #7c3aed;border-radius:8px;padding:9px 10px;margin-top:8px;font-size:11px;color:#64748b
-}
-
-/* Modals */
-.modal-overlay{background:rgba(15,23,42,.55)!important}
-.modal{border:1px solid rgba(255,255,255,.6);box-shadow:0 24px 70px rgba(15,23,42,.25)!important}
-.modal h3{letter-spacing:-.3px}
-
-/* Search results */
-.search-results{border-color:#dce4ec!important;box-shadow:0 12px 30px rgba(15,23,42,.12)!important;border-radius:0 0 10px 10px!important}
-.search-results .result-item:hover{background:#f7fbff!important}
-
-/* Status */
-.tab-status{border:1px solid rgba(0,0,0,.04);box-shadow:0 3px 10px rgba(15,23,42,.03)}
-.tab-status.ok{background:#f0fdf4!important;color:#166534!important}
-.tab-status.error{background:#fef2f2!important;color:#991b1b!important}
-.tab-status.warning{background:#fffbeb!important;color:#92400e!important}
-.tab-status.info{background:#eff6ff!important;color:#1e40af!important}
-
-/* Mobile */
-@media(max-width:700px){
- .main{padding:8px 8px 74px!important}
- .card,.setting-group,.route-settings-card{border-radius:12px!important}
- #tab-list .flex-row{gap:5px!important}
- #tab-list .btn{min-height:34px}
- #tab-settings .setting-group .row{align-items:stretch}
- #tab-settings .setting-group .row label{min-width:52px}
-}
-@media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
-</style>
-
-<style id="ux-tab-header-style">
-.ux-tab-header{display:flex;align-items:center;gap:10px;padding:2px 3px 10px}
-.ux-tab-icon{width:36px;height:36px;border-radius:11px;background:#eff6ff;color:#2563eb;display:flex;align-items:center;justify-content:center;font-size:20px;flex:0 0 36px}
-.ux-tab-title{font-weight:800;font-size:15px;color:#1f2937}
-.ux-tab-sub{font-size:10px;color:#718096;margin-top:2px;line-height:1.4}
-#tab-list .ux-tab-icon{background:#f0fdf4;color:#16a34a}
-#tab-settings .ux-tab-icon{background:#f5f3ff;color:#7c3aed}
-#tab-help .ux-tab-icon{background:#fff7ed;color:#ea580c}
-</style>
 </head>
 <body>
 
     <header class="header">
-        <div class="header-left">
-            <h1>🚗 경로 최적화</h1>
-        </div>
+        <div class="header-left"><h1>🚗 경로 최적화</h1></div>
         <div class="header-right">
-            <!-- 날씨 -->
             <div class="weather" id="weatherDisplay" onclick="showWeekWeather()">
-                <span>⏳</span>
-                <span class="temp">--°C</span>
+                <span>⏳</span><span class="temp">--°C</span>
             </div>
             <span class="header-divider"></span>
-
-            <!-- ✅ 현재 지역 표시 (클릭 → 지역 관리 팝업) -->
             <div class="weather" id="regionDisplay" onclick="openRegionManager()" style="cursor:pointer;">
                 <span id="currentRegionLabel">현재:</span>
                 <span id="currentRegionName">지역 선택</span>
                 <span class="region-arrow">▼</span>
             </div>
-
-            <!-- 숨김 select (값 저장용) -->
             <select id="regionSelect" style="display:none;" onchange="switchRegion(this.value)"></select>
         </div>
     </header>
@@ -861,210 +611,124 @@ input:focus,select:focus,textarea:focus{
 
         <!-- ===== 탭: 경로 ===== -->
         <div id="tab-places" class="tab-content active">
-            
-           <!-- ===== 출발지 ===== -->
             <div class="card">
                 <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; width:100%; margin-bottom:8px;">
                     <span>🚩 출발지</span>
-                    <button class="btn btn-outline btn-sm" onclick="setCurrentLocation()" 
-                            style="font-size:11px; padding:3px 10px; min-height:28px; display:flex; align-items:center; gap:4px; border-color:#cbd5e0; color:#4a5568; background:#f7fafc; border-radius:20px;">
+                    <button class="btn btn-outline btn-sm" onclick="setCurrentLocation()" style="font-size:11px; padding:3px 10px; min-height:28px; display:flex; align-items:center; gap:4px; border-color:#cbd5e0; color:#4a5568; background:#f7fafc; border-radius:20px;">
                         <span style="font-size:14px;">🎯</span> 현재 위치
                     </button>
                 </div>
                 <div style="position:relative;">
                     <div class="flex-row" style="gap:6px;">
-                        <input type="text" id="startPoint" class="input-field flex-1" 
-                               placeholder="출발지 검색" 
-                               style="min-height:38px;"
-                               oninput="searchStartPoint(this.value)" 
-                               onclick="searchStartPoint(this.value)" 
-                               onkeydown="handleStartKeydown(event)">
-                        <button class="btn btn-primary" onclick="setStartPoint()" 
-                                style="font-size:12px; padding:6px 12px; min-height:38px; white-space:nowrap;">
-                            설정
-                        </button>
+                        <input type="text" id="startPoint" class="input-field flex-1" placeholder="출발지 검색" style="min-height:38px;" oninput="searchStartPoint(this.value)" onclick="searchStartPoint(this.value)" onkeydown="handleStartKeydown(event)">
+                        <button class="btn btn-primary" onclick="setStartPoint()" style="font-size:12px; padding:6px 12px; min-height:38px; white-space:nowrap;">설정</button>
                     </div>
                     <div id="startSearchResults" class="search-results"></div>
                 </div>
                 <div id="startInfo" style="font-size:12px; color:#718096; margin-top:4px;">⏳ 출발지를 검색하거나 🎯 현재 위치 버튼을 눌러 설정하세요</div>
             </div>
-            
-           <!-- 경유지 -->
+
             <div class="card">
                 <div class="flex-between" style="margin-bottom:6px;">
-                    <div class="card-title" style="margin-bottom:0; font-size:14px;">
-                        📍 경유지 <span id="wpCount" style="font-size:12px;color:#a0aec0;font-weight:400;"></span>
-                    </div>
-                    <!-- 🔥 여러개 추가 토글 버튼 -->
-                    <button id="multiToggleBtn" onclick="toggleMultiSelect()" 
-                            style="font-size:11px; padding:4px 14px; min-height:30px; border-radius:16px; border:2px solid #cbd5e0; background:white; color:#4a5568; cursor:pointer; transition:all 0.2s; font-weight:600; display:flex; align-items:center; gap:4px;">
-                        📋 여러개 추가
-                    </button>
+                    <div class="card-title" style="margin-bottom:0; font-size:14px;">📍 경유지 <span id="wpCount" style="font-size:12px;color:#a0aec0;font-weight:400;"></span></div>
+                    <button id="multiToggleBtn" onclick="toggleMultiSelect()" style="font-size:11px; padding:4px 14px; min-height:30px; border-radius:16px; border:2px solid #cbd5e0; background:white; color:#4a5568; cursor:pointer; transition:all 0.2s; font-weight:600; display:flex; align-items:center; gap:4px;">📋 여러개 추가</button>
                 </div>
                 <div style="position:relative;">
                     <div class="flex-row" style="margin-bottom:4px; gap:6px;">
-                        <input type="text" id="waypointInput" class="input-field flex-1" 
-                               placeholder="경유지 입력" 
-                               style="min-height:38px;"
-                               oninput="searchWaypoint(this.value)" 
-                               onkeydown="handleWaypointKeydown(event)">
-                        <button id="addWaypointBtn" class="btn btn-success" onclick="addWaypoint()" 
-                                style="font-size:13px; padding:6px 18px; min-height:38px; font-weight:600; white-space:nowrap; transition:all 0.3s;">
-                            ➕ 추가
-                        </button>
+                        <input type="text" id="waypointInput" class="input-field flex-1" placeholder="경유지 입력" style="min-height:38px;" oninput="searchWaypoint(this.value)" onkeydown="handleWaypointKeydown(event)">
+                        <button id="addWaypointBtn" class="btn btn-success" onclick="addWaypoint()" style="font-size:13px; padding:6px 18px; min-height:38px; font-weight:600; white-space:nowrap; transition:all 0.3s;">➕ 추가</button>
                     </div>
                     <div id="waypointSearchResults" class="search-results"></div>
                 </div>
-                <ul class="waypoint-list" id="waypointList">
-                    <li class="empty-msg">경유지를 추가하세요 (드래그로 순서 변경 가능)</li>
-                </ul>
+                <ul class="waypoint-list" id="waypointList"><li class="empty-msg">경유지를 추가하세요 (드래그로 순서 변경 가능)</li></ul>
                 <div id="modeStatus" style="font-size:11px; color:#a0aec0; margin-top:4px; text-align:center;">💡 일반 모드 - 경유지를 입력하고 추가하세요</div>
             </div>
-            
+
             <div style="display:flex; flex-direction:column; gap:6px;">
-                
-<div id="optimizationLiveSummary" class="optimization-live-summary" aria-live="polite">
-  <span class="live-dot"></span>
-  <span id="optimizationLiveText">가까운순 · 최단거리 · 실제 도로 · 방향 고려</span>
-</div>
-<style>
-.optimization-live-summary{display:flex;align-items:center;gap:7px;margin:9px 0 7px;padding:8px 10px;border:1px solid #e8edf3;border-radius:9px;background:#f8fafc;font-size:10px;color:#64748b}
-.live-dot{width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.12);flex:0 0 7px}
-</style>
-<button class="btn btn-primary btn-lg" id="runOptimizeBtn" onclick="runOptimize()">⚡ 경로 최적화 실행</button>
+                <div id="optimizationLiveSummary" class="optimization-live-summary" aria-live="polite">
+                    <span class="live-dot"></span>
+                    <span id="optimizationLiveText">가까운순 · 최단거리 · 실제 도로 · 방향 고려</span>
+                </div>
+                <button class="btn btn-primary btn-lg" id="runOptimizeBtn" onclick="runOptimize()">⚡ 경로 최적화 실행</button>
                 <div class="flex-row" style="gap:6px;">
                     <button class="btn btn-outline" style="flex:1; border-color:#e53e3e; color:#e53e3e;" onclick="resetRoute()">🔄 초기화</button>
                     <button class="btn btn-outline" style="flex:1;" onclick="shareRoute()">📤 공유</button>
                 </div>
             </div>
-            
-            
-<!-- 경로 최적화 설정 -->
-<section class="route-settings-card" id="routeOptimizationSettings">
-    <div class="route-settings-header">
-        <div>
-            <div class="route-settings-title">⚙️ 경로 최적화 설정</div>
-            <div class="route-settings-subtitle">먼저 경로를 어떻게 만들지 선택한 뒤, 최적화 기준을 정하세요.</div>
-        </div>
-        <span class="settings-badge">STEP 1 → 2</span>
-    </div>
 
-    <!-- STEP 1 -->
-    <div class="optimization-step">
-        <div class="step-heading">
-            <span class="step-number">1</span>
-            <div>
-                <strong>초기 경로 생성</strong>
-                <small>최적화 전, 경유지의 기본 방문 순서를 만드는 방식입니다.</small>
-            </div>
-        </div>
-
-        <div class="choice-grid two">
-            <button type="button" class="choice-card active" id="modeNearest"
-                    onclick="setOptimizeMode('Nearest')" aria-pressed="true">
-                <span class="choice-radio">●</span>
-                <span class="choice-icon">📍</span>
-                <span class="choice-content">
-                    <strong>가까운순</strong>
-                    <small>현재 위치에서 가까운 경유지부터 시작</small>
-                </span>
-            </button>
-
-            <button type="button" class="choice-card" id="modeFarthest"
-                    onclick="setOptimizeMode('Farthest')" aria-pressed="false">
-                <span class="choice-radio">○</span>
-                <span class="choice-icon">🎯</span>
-                <span class="choice-content">
-                    <strong>먼순</strong>
-                    <small>먼 경유지를 먼저 처리하도록 시작</small>
-                </span>
-            </button>
-        </div>
-
-        <div id="modeInfo" class="selection-hint">
-            💡 현재 초기 경로: 가까운순
-        </div>
-    </div>
-
-    <!-- STEP 2 -->
-    <div class="optimization-step">
-        <div class="step-heading">
-            <span class="step-number">2</span>
-            <div>
-                <strong>최종 최적화 기준</strong>
-                <small>초기 경로를 만든 뒤 2-opt로 실제 이동 비용을 줄입니다.</small>
-            </div>
-        </div>
-
-        <div class="choice-grid three">
-            <label class="metric-card active" id="metricDistanceCard">
-                <input type="radio" name="routeObjective" value="distance" checked onchange="setRouteObjective('distance')">
-                <span class="metric-radio">●</span>
-                <span class="metric-icon">🛣️</span>
-                <span class="metric-content">
-                    <strong>최단거리</strong>
-                    <small>총 주행거리 최소화</small>
-                </span>
-            </label>
-
-            <label class="metric-card" id="metricTimeCard">
-                <input type="radio" name="routeObjective" value="time" onchange="setRouteObjective('time')">
-                <span class="metric-radio">○</span>
-                <span class="metric-icon">⏱️</span>
-                <span class="metric-content">
-                    <strong>최소시간</strong>
-                    <small>예상 주행시간 최소화</small>
-                </span>
-            </label>
-
-            <label class="metric-card" id="metricBalancedCard">
-                <input type="radio" name="routeObjective" value="balanced" onchange="setRouteObjective('balanced')">
-                <span class="metric-radio">○</span>
-                <span class="metric-icon">⚖️</span>
-                <span class="metric-content">
-                    <strong>거리+시간 균형</strong>
-                    <small>거리와 시간을 함께 고려</small>
-                </span>
-            </label>
-        </div>
-
-        <div class="advanced-options">
-            <label class="switch-row">
-                <span class="switch-text">
-                    <strong>실제 도로 기준 최적화</strong>
-                    <small>가능하면 실제 도로거리·시간을 사용합니다.</small>
-                </span>
-                <input type="checkbox" id="useRoadOptimization" checked onchange="setRoadOptimization(this.checked)">
-                <span class="switch-ui"></span>
-            </label>
-
-            <label class="switch-row">
-                <span class="switch-text">
-                    <strong>경유지 방향 고려</strong>
-                    <small>기존 16방향 정보를 초기 경로 생성에 활용합니다.</small>
-                </span>
-                <input type="checkbox" id="useDirectionHint" checked onchange="setDirectionHint(this.checked)">
-                <span class="switch-ui"></span>
-            </label>
-        </div>
-
-        <div class="algorithm-flow">
-            <span>초기 경로</span><b>→</b><span>도로 거리·시간</span><b>→</b><span>2-opt 개선</span><b>→</b><span>최종 경로</span>
-        </div>
-    </div>
-</section>
-
-            
+            <section class="route-settings-card" id="routeOptimizationSettings">
+                <div class="route-settings-header">
+                    <div>
+                        <div class="route-settings-title">⚙️ 경로 최적화 설정</div>
+                        <div class="route-settings-subtitle">먼저 경로를 어떻게 만들지 선택한 뒤, 최적화 기준을 정하세요.</div>
+                    </div>
+                    <span class="settings-badge">STEP 1 → 2</span>
+                </div>
+                <div class="optimization-step">
+                    <div class="step-heading">
+                        <span class="step-number">1</span>
+                        <div><strong>초기 경로 생성</strong><small>최적화 전, 경유지의 기본 방문 순서를 만드는 방식입니다.</small></div>
+                    </div>
+                    <div class="choice-grid two">
+                        <button type="button" class="choice-card active" id="modeNearest" onclick="setOptimizeMode('Nearest')" aria-pressed="true">
+                            <span class="choice-radio">●</span><span class="choice-icon">📍</span>
+                            <span class="choice-content"><strong>가까운순</strong><small>현재 위치에서 가까운 경유지부터 시작</small></span>
+                        </button>
+                        <button type="button" class="choice-card" id="modeFarthest" onclick="setOptimizeMode('Farthest')" aria-pressed="false">
+                            <span class="choice-radio">○</span><span class="choice-icon">🎯</span>
+                            <span class="choice-content"><strong>먼순</strong><small>먼 경유지를 먼저 처리하도록 시작</small></span>
+                        </button>
+                    </div>
+                    <div id="modeInfo" class="selection-hint">💡 현재 초기 경로: 가까운순</div>
+                </div>
+                <div class="optimization-step">
+                    <div class="step-heading">
+                        <span class="step-number">2</span>
+                        <div><strong>최종 최적화 기준</strong><small>초기 경로를 만든 뒤 2-opt로 실제 이동 비용을 줄입니다.</small></div>
+                    </div>
+                    <div class="choice-grid three">
+                        <label class="metric-card active" id="metricDistanceCard">
+                            <input type="radio" name="routeObjective" value="distance" checked onchange="setRouteObjective('distance')">
+                            <span class="metric-radio">●</span><span class="metric-icon">🛣️</span>
+                            <span class="metric-content"><strong>최단거리</strong><small>총 주행거리 최소화</small></span>
+                        </label>
+                        <label class="metric-card" id="metricTimeCard">
+                            <input type="radio" name="routeObjective" value="time" onchange="setRouteObjective('time')">
+                            <span class="metric-radio">○</span><span class="metric-icon">⏱️</span>
+                            <span class="metric-content"><strong>최소시간</strong><small>예상 주행시간 최소화</small></span>
+                        </label>
+                        <label class="metric-card" id="metricBalancedCard">
+                            <input type="radio" name="routeObjective" value="balanced" onchange="setRouteObjective('balanced')">
+                            <span class="metric-radio">○</span><span class="metric-icon">⚖️</span>
+                            <span class="metric-content"><strong>거리+시간 균형</strong><small>거리와 시간을 함께 고려</small></span>
+                        </label>
+                    </div>
+                    <div class="advanced-options">
+                        <label class="switch-row">
+                            <span class="switch-text"><strong>실제 도로 기준 최적화</strong><small>가능하면 실제 도로거리·시간을 사용합니다.</small></span>
+                            <input type="checkbox" id="useRoadOptimization" checked onchange="setRoadOptimization(this.checked)">
+                            <span class="switch-ui"></span>
+                        </label>
+                        <label class="switch-row">
+                            <span class="switch-text"><strong>경유지 방향 고려</strong><small>기존 16방향 정보를 초기 경로 생성에 활용합니다.</small></span>
+                            <input type="checkbox" id="useDirectionHint" checked onchange="setDirectionHint(this.checked)">
+                            <span class="switch-ui"></span>
+                        </label>
+                    </div>
+                    <div class="algorithm-flow">
+                        <span>초기 경로</span><b>→</b><span>도로 거리·시간</span><b>→</b><span>2-opt 개선</span><b>→</b><span>최종 경로</span>
+                    </div>
+                </div>
+            </section>
             <div id="placesStatus" class="tab-status"></div>
         </div>
 
         <!-- ===== 탭: 지도 ===== -->
         <div id="tab-route" class="tab-content">
-<div id="tab-route-uxheader" class="ux-tab-header">
-  <div class="ux-tab-icon">🗺️</div>
-  <div><div class="ux-tab-title">최적 경로</div><div class="ux-tab-sub">전체 경로와 구간별 이동 정보를 확인하세요.</div></div>
-</div>
-
+            <div id="tab-route-uxheader" class="ux-tab-header">
+                <div class="ux-tab-icon">🗺️</div>
+                <div><div class="ux-tab-title">최적 경로</div><div class="ux-tab-sub">전체 경로와 구간별 이동 정보를 확인하세요.</div></div>
+            </div>
             <div id="map"></div>
             <div class="summary">
                 <div class="summary-row"><span class="label">📍 방문지</span><span class="value" id="placeCount">0개소</span></div>
@@ -1076,18 +740,16 @@ input:focus,select:focus,textarea:focus{
             <div id="routeStatus" class="tab-status"></div>
         </div>
 
-       <!-- ===== 탭: 현장 ===== -->
+        <!-- ===== 탭: 현장 ===== -->
         <div id="tab-list" class="tab-content">
-<div id="tab-list-uxheader" class="ux-tab-header">
-  <div class="ux-tab-icon">📋</div>
-  <div><div class="ux-tab-title">현장 관리</div><div class="ux-tab-sub">현장 등록 · 검색 · 가져오기 · 경유지 추가를 한곳에서 관리합니다.</div></div>
-</div>
-
+            <div id="tab-list-uxheader" class="ux-tab-header">
+                <div class="ux-tab-icon">📋</div>
+                <div><div class="ux-tab-title">현장 관리</div><div class="ux-tab-sub">현장 등록 · 검색 · 가져오기 · 경유지 추가를 한곳에서 관리합니다.</div></div>
+            </div>
             <div class="card">
                 <div class="flex-between" style="margin-bottom:6px;">
                     <span class="card-title" style="margin-bottom:0; font-size:14px;">📋 현장리스트 <span id="listCount" style="font-size:12px;color:#a0aec0;font-weight:400;"></span></span>
                 </div>
-                
                 <div class="flex-row" style="margin-bottom:6px; gap:6px;">
                     <button class="btn btn-outline btn-sm" style="flex:1; font-size:11px; padding:6px 8px;" onclick="document.getElementById('fileInput').click()">📥 엑셀 가져오기</button>
                     <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFile(event)">
@@ -1095,7 +757,6 @@ input:focus,select:focus,textarea:focus{
                     <button class="btn btn-primary btn-sm" style="flex:0.8; font-size:11px; padding:6px 8px;" onclick="openAddPlaceModal()">➕ 현장추가</button>
                 </div>
                 <div id="uploadResult" style="font-size:11px; padding:2px 6px;"></div>
-                
                 <div class="flex-between" style="margin-bottom:4px; gap:8px;">
                     <input type="text" id="searchPlace" class="input-field input-field-sm" placeholder="🔍 현장 검색" style="flex:1; min-height:30px; font-size:12px;" oninput="searchPlaces()">
                     <div style="display:flex; gap:6px; align-items:center; flex-shrink:0;">
@@ -1108,90 +769,81 @@ input:focus,select:focus,textarea:focus{
                         </select>
                     </div>
                 </div>
-                
                 <div id="placeList" style="max-height:380px; overflow-y:auto; min-height:100px;"></div>
                 <div id="listStatus" class="tab-status"></div>
             </div>
         </div>
 
         <!-- ===== 탭: 설정 ===== -->
-<div id="tab-settings" class="tab-content">
-<div id="tab-settings-uxheader" class="ux-tab-header">
-  <div class="ux-tab-icon">⚙️</div>
-  <div><div class="ux-tab-title">설정 및 데이터</div><div class="ux-tab-sub">API, 백업, 업데이트와 저장 데이터를 관리합니다.</div></div>
-</div>
+        <div id="tab-settings" class="tab-content">
+            <div id="tab-settings-uxheader" class="ux-tab-header">
+                <div class="ux-tab-icon">⚙️</div>
+                <div><div class="ux-tab-title">설정 및 데이터</div><div class="ux-tab-sub">API, 백업, 업데이트와 저장 데이터를 관리합니다.</div></div>
+            </div>
+            <div class="setting-group">
+                <h4>🔐 GitHub 연동</h4>
+                <div class="row">
+                    <label for="githubToken">Token</label>
+                    <input type="password" id="githubToken" autocomplete="off" placeholder="GitHub Personal Access Token">
+                    <button class="btn btn-primary btn-sm" onclick="saveGitHubToken()">저장</button>
+                    <button class="btn btn-outline btn-sm" onclick="testGitHubToken()">테스트</button>
+                </div>
+                <div class="flex-row" style="margin-top:4px;">
+                    <button class="btn btn-success btn-sm" style="flex:1;" onclick="uploadToGitHub()">📤 업로드</button>
+                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="downloadFromGitHub()">📥 다운로드</button>
+                    <button class="btn btn-outline btn-sm" style="flex:1;" onclick="showGitHubHistory()">📋 히스토리</button>
+                </div>
+                <div id="githubStatus" class="badge badge-wait" style="margin-top:4px;">⏳ 토큰 미설정</div>
+                <div id="githubHistory"></div>
+            </div>
 
-    <!-- GitHub 연동 -->
-    <div class="setting-group">
-        <h4>🔐 GitHub 연동</h4>
-        <div class="row">
-            <label for="githubToken">Token</label>
-            <input type="password" id="githubToken" autocomplete="off" placeholder="GitHub Personal Access Token">
-            <button class="btn btn-primary btn-sm" onclick="saveGitHubToken()">저장</button>
-            <button class="btn btn-outline btn-sm" onclick="testGitHubToken()">테스트</button>
-        </div>
-        <div class="flex-row" style="margin-top:4px;">
-            <button class="btn btn-success btn-sm" style="flex:1;" onclick="uploadToGitHub()">📤 업로드</button>
-            <button class="btn btn-outline btn-sm" style="flex:1;" onclick="downloadFromGitHub()">📥 다운로드</button>
-            <button class="btn btn-outline btn-sm" style="flex:1;" onclick="showGitHubHistory()">📋 히스토리</button>
-        </div>
-        <div id="githubStatus" class="badge badge-wait" style="margin-top:4px;">⏳ 토큰 미설정</div>
-        <div id="githubHistory"></div>
-    </div>
+            <div class="setting-group">
+                <h4>🗺️ 카카오 API</h4>
+                <div class="row">
+                    <label for="kakaoJsKey">JS 키</label>
+                    <input type="password" id="kakaoJsKey" autocomplete="off" placeholder="JavaScript 키">
+                    <button class="btn btn-primary btn-sm" onclick="saveKakaoKeys()" style="flex:0 0 auto;">저장</button>
+                </div>
+                <div class="row" style="margin-top:4px;">
+                    <label for="kakaoRestKey">REST 키</label>
+                    <input type="password" id="kakaoRestKey" autocomplete="off" placeholder="REST API 키">
+                    <button class="btn btn-primary btn-sm" onclick="saveKakaoKeys()" style="flex:0 0 auto;">저장</button>
+                </div>
+                <div id="kakaoStatus" class="badge badge-wait" style="margin-top:4px;">⏳ API 키 미설정</div>
+            </div>
 
-    <!-- 카카오 API (GitHub과 동일한 스타일) -->
-    <div class="setting-group">
-        <h4>🗺️ 카카오 API</h4>
-        <div class="row">
-            <label for="kakaoJsKey">JS 키</label>
-            <input type="password" id="kakaoJsKey" autocomplete="off" placeholder="JavaScript 키">
-            <button class="btn btn-primary btn-sm" onclick="saveKakaoKeys()" style="flex:0 0 auto;">저장</button>
-        </div>
-        <div class="row" style="margin-top:4px;">
-            <label for="kakaoRestKey">REST 키</label>
-            <input type="password" id="kakaoRestKey" autocomplete="off" placeholder="REST API 키">
-            <button class="btn btn-primary btn-sm" onclick="saveKakaoKeys()" style="flex:0 0 auto;">저장</button>
-        </div>
-        <div id="kakaoStatus" class="badge badge-wait" style="margin-top:4px;">⏳ API 키 미설정</div>
-    </div>
+            <div class="setting-group">
+                <h4>⚙️ 설정 관리</h4>
+                <div class="flex-row" style="gap:4px;">
+                    <button class="btn btn-outline btn-sm btn-block" onclick="exportSettings()">📤 내보내기</button>
+                    <button class="btn btn-outline btn-sm btn-block" onclick="document.getElementById('settingsInput').click()">📥 가져오기</button>
+                    <input type="file" id="settingsInput" accept=".json" style="display:none" onchange="importSettings(event)">
+                </div>
+            </div>
 
-    <!-- 설정 관리 -->
-    <div class="setting-group">
-        <h4>⚙️ 설정 관리</h4>
-        <div class="flex-row" style="gap:4px;">
-            <button class="btn btn-outline btn-sm btn-block" onclick="exportSettings()">📤 내보내기</button>
-            <button class="btn btn-outline btn-sm btn-block" onclick="document.getElementById('settingsInput').click()">📥 가져오기</button>
-            <input type="file" id="settingsInput" accept=".json" style="display:none" onchange="importSettings(event)">
+            <div class="setting-group">
+                <h4>🔄 업데이트 관리</h4>
+                <div class="row" style="gap:4px;">
+                    <button class="btn btn-primary btn-sm" onclick="checkForUpdates()" style="flex:1;">🔍 업데이트 확인</button>
+                    <button class="btn btn-outline btn-sm" onclick="forceUpdateApp()" style="flex:1; border-color:#e53e3e; color:#e53e3e;">⚡ 캐시 초기화</button>
+                </div>
+                <div id="updateStatus" style="font-size:12px; color:#718096; margin-top:4px;">✅ 최신 버전입니다.</div>
+            </div>
+
+            <div class="setting-group">
+                <h4>💾 데이터 관리</h4>
+                <button class="btn btn-danger btn-sm btn-block" onclick="resetAll()">🗑️ 모든 데이터 초기화</button>
+                <div style="font-size:11px; color:#a0aec0; margin-top:4px;" id="storageInfo">저장소 사용량: 계산 중...</div>
+            </div>
+            <div id="settingsStatus" class="tab-status"></div>
         </div>
-    </div>
-
-    <!-- 업데이트 관리 -->
-    <div class="setting-group">
-        <h4>🔄 업데이트 관리</h4>
-        <div class="row" style="gap:4px;">
-            <button class="btn btn-primary btn-sm" onclick="checkForUpdates()" style="flex:1;">🔍 업데이트 확인</button>
-            <button class="btn btn-outline btn-sm" onclick="forceUpdateApp()" style="flex:1; border-color:#e53e3e; color:#e53e3e;">⚡ 캐시 초기화</button>
-        </div>
-        <div id="updateStatus" style="font-size:12px; color:#718096; margin-top:4px;">✅ 최신 버전입니다.</div>
-    </div>
-
-    <!-- 데이터 관리 -->
-    <div class="setting-group">
-        <h4>💾 데이터 관리</h4>
-        <button class="btn btn-danger btn-sm btn-block" onclick="resetAll()">🗑️ 모든 데이터 초기화</button>
-        <div style="font-size:11px; color:#a0aec0; margin-top:4px;" id="storageInfo">저장소 사용량: 계산 중...</div>
-    </div>
-
-    <div id="settingsStatus" class="tab-status"></div>
-</div>
 
         <!-- ===== 탭: 도움말 ===== -->
         <div id="tab-help" class="tab-content">
-<div id="tab-help-uxheader" class="ux-tab-header">
-  <div class="ux-tab-icon">❓</div>
-  <div><div class="ux-tab-title">도움말</div><div class="ux-tab-sub">주요 기능과 사용 순서를 빠르게 확인하세요.</div></div>
-</div>
-
+            <div id="tab-help-uxheader" class="ux-tab-header">
+                <div class="ux-tab-icon">❓</div>
+                <div><div class="ux-tab-title">도움말</div><div class="ux-tab-sub">주요 기능과 사용 순서를 빠르게 확인하세요.</div></div>
+            </div>
             <div class="card">
                 <div class="card-title">📖 사용 가이드</div>
                 <div class="help-section">
@@ -1220,7 +872,6 @@ input:focus,select:focus,textarea:focus{
                         </div>
                     </div>
                 </div>
-
                 <div class="help-section">
                     <div class="help-title">📍 지도 탭</div>
                     <div class="help-body">
@@ -1236,7 +887,6 @@ input:focus,select:focus,textarea:focus{
                         </div>
                     </div>
                 </div>
-
                 <div class="help-section">
                     <div class="help-title">📋 현장 탭</div>
                     <div class="help-body">
@@ -1258,7 +908,6 @@ input:focus,select:focus,textarea:focus{
                         </div>
                     </div>
                 </div>
-
                 <div class="help-section">
                     <div class="help-title">⚙️ 설정 탭</div>
                     <div class="help-body">
@@ -1283,7 +932,6 @@ input:focus,select:focus,textarea:focus{
                         </div>
                     </div>
                 </div>
-
                 <div class="help-section">
                     <div class="help-title">💡 유용한 팁</div>
                     <div class="help-body">
@@ -1301,8 +949,8 @@ input:focus,select:focus,textarea:focus{
             </div>
         </div>
     </div>
-    
-    <!-- ===== 현장추가 모달 (내부 팝업) ===== -->
+
+    <!-- ===== 현장추가 모달 ===== -->
     <div class="modal-overlay" id="addPlaceModal">
         <div class="modal" style="max-width:400px;">
             <h3 style="font-size:17px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
@@ -1315,8 +963,9 @@ input:focus,select:focus,textarea:focus{
                 <div id="modalAddrSearchResults" class="search-results" style="position:absolute; width:100%;"></div>
             </div>
             <div style="display:flex; gap:8px; margin-bottom:8px;">
-            <input type="number" id="modalPlaceLat" placeholder="위도 (선택)" step="any" style="flex:1; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px;">
-            <input type="number" id="modalPlaceLng" placeholder="경도 (선택)" step="any" style="flex:1; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px;">
+                <input type="number" id="modalPlaceLat" placeholder="위도 (선택)" step="any" style="flex:1; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px;">
+                <input type="number" id="modalPlaceLng" placeholder="경도 (선택)" step="any" style="flex:1; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px;">
+            </div>
             <input type="text" id="modalPlaceRemark" placeholder="비고 (선택)" style="width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px; margin-bottom:12px;">
             <div style="display:flex; gap:8px; justify-content:flex-end;">
                 <button class="btn btn-outline btn-sm" onclick="closeAddPlaceModal()" style="padding:6px 16px;">취소</button>
@@ -1326,37 +975,28 @@ input:focus,select:focus,textarea:focus{
     </div>
 
     <!-- ===== 현장 편집 모달 ===== -->
-<div class="modal-overlay" id="modal">
-    <div class="modal">
-        <h3 id="modalTitle" style="font-size:17px; margin-bottom:12px;">✏️ 현장 편집</h3>
-        
-        <!-- 🔥 필수 안내 -->
-        <div style="font-size:12px; color:#718096; margin-bottom:10px; padding:6px 10px; background:#f7fafc; border-radius:6px; border-left:3px solid #e53e3e;">
-            💡 주소 또는 위도/경도 중 <strong>하나는 필수</strong>입니다.
-        </div>
-        
-        <input type="text" id="modalName" placeholder="현장명" style="width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px; margin-bottom:8px;">
-        
-        <input type="text" id="modalAddress" placeholder="주소 (선택)" style="width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px; margin-bottom:8px;">
-        
-        <!-- 🔥 위도/경도 한 줄 -->
-        <div style="display:flex; gap:8px; margin-bottom:8px;">
-            <input type="number" id="modalLat" placeholder="위도 (선택)" step="any" style="flex:1; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px;">
-            <input type="number" id="modalLng" placeholder="경도 (선택)" step="any" style="flex:1; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px;">
-        </div>
-        
-        <input type="text" id="modalRemark" placeholder="비고 (선택)" style="width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px; margin-bottom:8px;">
-        
-        <input type="hidden" id="modalId">
-        
-        <div class="btn-row flex-row" style="justify-content:flex-end;">
-            <button class="btn btn-outline btn-sm" onclick="closeModal()" style="padding:6px 16px;">취소</button>
-            <button class="btn btn-primary btn-sm" onclick="saveModal()" style="padding:6px 16px;">저장</button>
+    <div class="modal-overlay" id="modal">
+        <div class="modal">
+            <h3 id="modalTitle" style="font-size:17px; margin-bottom:12px;">✏️ 현장 편집</h3>
+            <div style="font-size:12px; color:#718096; margin-bottom:10px; padding:6px 10px; background:#f7fafc; border-radius:6px; border-left:3px solid #e53e3e;">
+                💡 주소 또는 위도/경도 중 <strong>하나는 필수</strong>입니다.
+            </div>
+            <input type="text" id="modalName" placeholder="현장명" style="width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px; margin-bottom:8px;">
+            <input type="text" id="modalAddress" placeholder="주소 (선택)" style="width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px; margin-bottom:8px;">
+            <div style="display:flex; gap:8px; margin-bottom:8px;">
+                <input type="number" id="modalLat" placeholder="위도 (선택)" step="any" style="flex:1; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px;">
+                <input type="number" id="modalLng" placeholder="경도 (선택)" step="any" style="flex:1; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px;">
+            </div>
+            <input type="text" id="modalRemark" placeholder="비고 (선택)" style="width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px; margin-bottom:8px;">
+            <input type="hidden" id="modalId">
+            <div class="btn-row flex-row" style="justify-content:flex-end;">
+                <button class="btn btn-outline btn-sm" onclick="closeModal()" style="padding:6px 16px;">취소</button>
+                <button class="btn btn-primary btn-sm" onclick="saveModal()" style="padding:6px 16px;">저장</button>
+            </div>
         </div>
     </div>
-</div>
 
-    <!-- ===== 하단 탭 ===== -->
+    <!-- ===== 하단 탭 ===== (절대 지우지 마세요!) -->
     <div class="bottom-tabs">
         <button class="bottom-tab active" data-tab="tab-places" onclick="switchTab('tab-places')">
             <span class="tab-icon">🗺️</span> 경로
