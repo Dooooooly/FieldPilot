@@ -501,54 +501,27 @@
         .help-section .help-title { font-weight: 700; font-size: 14px; color: #4f7eb3; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
         .help-section .help-body { font-size: 13px; color: #4a5568; line-height: 1.7; padding-left: 4px; }
         
-        /* ===== 최적화 설정 카드 ===== */
-        .route-settings-card{
-            background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);
-            border:1px solid #e2e8f0;
-            border-radius:14px;
-            padding:16px;
-            margin:12px 0;
-            box-shadow:0 3px 12px rgba(15,23,42,.06);
+        /* ===== 최적화 설정 카드 (간소화) ===== */
+        .optimization-live-summary {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            margin: 9px 0 7px;
+            padding: 8px 10px;
+            border: 1px solid #e8edf3;
+            border-radius: 9px;
+            background: #f8fafc;
+            font-size: 10px;
+            color: #64748b;
         }
-        .route-settings-header{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:14px}
-        .route-settings-title{font-size:15px;font-weight:800;color:#1a202c}
-        .route-settings-subtitle{font-size:11px;color:#718096;margin-top:4px;line-height:1.5}
-        .settings-badge{font-size:10px;font-weight:800;padding:5px 8px;border-radius:999px;background:#edf2f7;color:#4a5568;white-space:nowrap}
-        .optimization-step{border-top:1px solid #edf2f7;padding-top:14px;margin-top:14px}
-        .step-heading{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}
-        .step-number{width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#3182ce;color:#fff;font-size:12px;font-weight:800;flex:0 0 24px}
-        .step-heading strong{display:block;font-size:13px;color:#2d3748}
-        .step-heading small{display:block;font-size:10px;color:#718096;margin-top:2px;line-height:1.4}
-        .choice-grid{display:grid;gap:8px}
-        .choice-grid.two{grid-template-columns:1fr 1fr}
-        .choice-grid.three{grid-template-columns:repeat(3,1fr)}
-        .choice-card,.metric-card{position:relative;display:flex;align-items:center;gap:8px;text-align:left;border:1px solid #e2e8f0;background:#fff;border-radius:10px;padding:11px;cursor:pointer;transition:.18s ease;min-height:58px}
-        .choice-card:hover,.metric-card:hover{border-color:#90cdf4;transform:translateY(-1px)}
-        .choice-card.active,.metric-card.active{border-color:#3182ce;background:#ebf8ff;box-shadow:0 0 0 1px rgba(49,130,206,.08)}
-        .choice-radio,.metric-radio{font-size:13px;color:#a0aec0;width:14px}
-        .choice-card.active .choice-radio,.metric-card.active .metric-radio{color:#3182ce}
-        .choice-icon,.metric-icon{font-size:19px}
-        .choice-content,.metric-content{display:flex;flex-direction:column;min-width:0}
-        .choice-content strong,.metric-content strong{font-size:12px;color:#2d3748}
-        .choice-content small,.metric-content small{font-size:9px;color:#718096;line-height:1.35;margin-top:2px}
-        .selection-hint{font-size:10px;color:#4a5568;background:#f7fafc;border-radius:7px;padding:7px 9px;margin-top:8px}
-        .metric-card input{position:absolute;opacity:0;pointer-events:none}
-        .advanced-options{margin-top:10px;border:1px solid #edf2f7;border-radius:10px;background:#fff;overflow:hidden}
-        .switch-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;cursor:pointer}
-        .switch-row+.switch-row{border-top:1px solid #edf2f7}
-        .switch-text{display:flex;flex-direction:column}
-        .switch-text strong{font-size:11px;color:#2d3748}
-        .switch-text small{font-size:9px;color:#718096;margin-top:2px}
-        .switch-row input{position:absolute;opacity:0}
-        .switch-ui{width:36px;height:20px;border-radius:999px;background:#cbd5e0;position:relative;flex:0 0 36px;transition:.18s}
-        .switch-ui:after{content:"";position:absolute;width:16px;height:16px;top:2px;left:2px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:.18s}
-        .switch-row input:checked + .switch-ui{background:#3182ce}
-        .switch-row input:checked + .switch-ui:after{transform:translateX(16px)}
-        .algorithm-flow{display:flex;justify-content:center;align-items:center;gap:6px;flex-wrap:wrap;margin-top:11px;padding:8px;background:#f7fafc;border-radius:8px;font-size:9px;color:#718096}
-        .algorithm-flow b{color:#a0aec0}
-        
-        .optimization-live-summary{display:flex;align-items:center;gap:7px;margin:9px 0 7px;padding:8px 10px;border:1px solid #e8edf3;border-radius:9px;background:#f8fafc;font-size:10px;color:#64748b}
-        .live-dot{width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.12);flex:0 0 7px}
+        .live-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #22c55e;
+            box-shadow: 0 0 0 3px rgba(34,197,94,.12);
+            flex: 0 0 7px;
+        }
         
         .ux-tab-header{display:flex;align-items:center;gap:10px;padding:2px 3px 10px}
         .ux-tab-icon{width:36px;height:36px;border-radius:11px;background:#eff6ff;color:#2563eb;display:flex;align-items:center;justify-content:center;font-size:20px;flex:0 0 36px}
@@ -644,82 +617,18 @@
                 <div id="modeStatus" style="font-size:11px; color:#a0aec0; margin-top:4px; text-align:center;">💡 일반 모드 - 경유지를 입력하고 추가하세요</div>
             </div>
 
-            <div style="display:flex; flex-direction:column; gap:6px;">
-                <div id="optimizationLiveSummary" class="optimization-live-summary" aria-live="polite">
-                    <span class="live-dot"></span>
-                    <span id="optimizationLiveText">가까운순 · 최단거리 · 실제 도로 · 방향 고려</span>
-                </div>
-                <button class="btn btn-primary btn-lg" id="runOptimizeBtn" onclick="runOptimize()">⚡ 경로 최적화 실행</button>
-                <div class="flex-row" style="gap:6px;">
-                    <button class="btn btn-outline" style="flex:1; border-color:#e53e3e; color:#e53e3e;" onclick="resetRoute()">🔄 초기화</button>
-                    <button class="btn btn-outline" style="flex:1;" onclick="shareRoute()">📤 공유</button>
-                </div>
+            <!-- ===== 최적화 모드 표시 (간소화) ===== -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin:8px 0; padding:6px 12px; background:#f7fafc; border-radius:8px;">
+                <span style="font-size:12px; color:#4a5568;">📐 최적화 모드: <strong id="currentOptimizeModeLabel">가까운순</strong></span>
+                <span style="font-size:11px; color:#a0aec0;">설정 탭에서 변경 가능</span>
             </div>
 
-            <section class="route-settings-card" id="routeOptimizationSettings">
-                <div class="route-settings-header">
-                    <div>
-                        <div class="route-settings-title">⚙️ 경로 최적화 설정</div>
-                        <div class="route-settings-subtitle">먼저 경로를 어떻게 만들지 선택한 뒤, 최적화 기준을 정하세요.</div>
-                    </div>
-                    <span class="settings-badge">STEP 1 → 2</span>
-                </div>
-                <div class="optimization-step">
-                    <div class="step-heading">
-                        <span class="step-number">1</span>
-                        <div><strong>초기 경로 생성</strong><small>최적화 전, 경유지의 기본 방문 순서를 만드는 방식입니다.</small></div>
-                    </div>
-                    <div class="choice-grid two">
-                        <button type="button" class="choice-card active" id="modeNearest" onclick="setOptimizeMode('Nearest')" aria-pressed="true">
-                            <span class="choice-radio">●</span><span class="choice-icon">📍</span>
-                            <span class="choice-content"><strong>가까운순</strong><small>현재 위치에서 가까운 경유지부터 시작</small></span>
-                        </button>
-                        <button type="button" class="choice-card" id="modeFarthest" onclick="setOptimizeMode('Farthest')" aria-pressed="false">
-                            <span class="choice-radio">○</span><span class="choice-icon">🎯</span>
-                            <span class="choice-content"><strong>먼순</strong><small>먼 경유지를 먼저 처리하도록 시작</small></span>
-                        </button>
-                    </div>
-                    <div id="modeInfo" class="selection-hint">💡 현재 초기 경로: 가까운순</div>
-                </div>
-                <div class="optimization-step">
-                    <div class="step-heading">
-                        <span class="step-number">2</span>
-                        <div><strong>최종 최적화 기준</strong><small>초기 경로를 만든 뒤 2-opt로 실제 이동 비용을 줄입니다.</small></div>
-                    </div>
-                    <div class="choice-grid three">
-                        <label class="metric-card active" id="metricDistanceCard">
-                            <input type="radio" name="routeObjective" value="distance" checked onchange="setRouteObjective('distance')">
-                            <span class="metric-radio">●</span><span class="metric-icon">🛣️</span>
-                            <span class="metric-content"><strong>최단거리</strong><small>총 주행거리 최소화</small></span>
-                        </label>
-                        <label class="metric-card" id="metricTimeCard">
-                            <input type="radio" name="routeObjective" value="time" onchange="setRouteObjective('time')">
-                            <span class="metric-radio">○</span><span class="metric-icon">⏱️</span>
-                            <span class="metric-content"><strong>최소시간</strong><small>예상 주행시간 최소화</small></span>
-                        </label>
-                        <label class="metric-card" id="metricBalancedCard">
-                            <input type="radio" name="routeObjective" value="balanced" onchange="setRouteObjective('balanced')">
-                            <span class="metric-radio">○</span><span class="metric-icon">⚖️</span>
-                            <span class="metric-content"><strong>거리+시간 균형</strong><small>거리와 시간을 함께 고려</small></span>
-                        </label>
-                    </div>
-                    <div class="advanced-options">
-                        <label class="switch-row">
-                            <span class="switch-text"><strong>실제 도로 기준 최적화</strong><small>가능하면 실제 도로거리·시간을 사용합니다.</small></span>
-                            <input type="checkbox" id="useRoadOptimization" checked onchange="setRoadOptimization(this.checked)">
-                            <span class="switch-ui"></span>
-                        </label>
-                        <label class="switch-row">
-                            <span class="switch-text"><strong>경유지 방향 고려</strong><small>기존 16방향 정보를 초기 경로 생성에 활용합니다.</small></span>
-                            <input type="checkbox" id="useDirectionHint" checked onchange="setDirectionHint(this.checked)">
-                            <span class="switch-ui"></span>
-                        </label>
-                    </div>
-                    <div class="algorithm-flow">
-                        <span>초기 경로</span><b>→</b><span>도로 거리·시간</span><b>→</b><span>2-opt 개선</span><b>→</b><span>최종 경로</span>
-                    </div>
-                </div>
-            </section>
+            <!-- ===== 버튼 영역 (공유 제거, 세로 배치) ===== -->
+            <div style="display:flex; flex-direction:column; gap:8px;">
+                <button class="btn btn-primary btn-lg" id="runOptimizeBtn" onclick="runOptimize()" style="width:100%;">⚡ 경로 최적화 실행</button>
+                <button class="btn btn-outline" style="width:100%; border-color:#e53e3e; color:#e53e3e;" onclick="resetRoute()">🔄 경로 초기화</button>
+            </div>
+
             <div id="placesStatus" class="tab-status"></div>
         </div>
 
@@ -780,6 +689,22 @@
                 <div class="ux-tab-icon">⚙️</div>
                 <div><div class="ux-tab-title">설정 및 데이터</div><div class="ux-tab-sub">API, 백업, 업데이트와 저장 데이터를 관리합니다.</div></div>
             </div>
+
+            <!-- ===== 최적화 설정 (간소화) ===== -->
+            <div class="setting-group">
+                <h4>📐 경로 최적화 설정</h4>
+                <div style="display:flex; gap:12px; margin-top:6px;">
+                    <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
+                        <input type="radio" name="optimizeModeRadio" value="Nearest" checked onchange="setOptimizeMode('Nearest')"> 가까운순
+                    </label>
+                    <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
+                        <input type="radio" name="optimizeModeRadio" value="Farthest" onchange="setOptimizeMode('Farthest')"> 먼순
+                    </label>
+                </div>
+                <div style="font-size:11px; color:#718096; margin-top:4px;">현재 모드: <span id="settingsOptimizeModeLabel">가까운순</span></div>
+            </div>
+
+            <!-- GitHub 연동 -->
             <div class="setting-group">
                 <h4>🔐 GitHub 연동</h4>
                 <div class="row">
@@ -797,6 +722,7 @@
                 <div id="githubHistory"></div>
             </div>
 
+            <!-- 카카오 API -->
             <div class="setting-group">
                 <h4>🗺️ 카카오 API</h4>
                 <div class="row">
@@ -812,6 +738,7 @@
                 <div id="kakaoStatus" class="badge badge-wait" style="margin-top:4px;">⏳ API 키 미설정</div>
             </div>
 
+            <!-- 설정 관리 -->
             <div class="setting-group">
                 <h4>⚙️ 설정 관리</h4>
                 <div class="flex-row" style="gap:4px;">
@@ -821,6 +748,7 @@
                 </div>
             </div>
 
+            <!-- 업데이트 관리 -->
             <div class="setting-group">
                 <h4>🔄 업데이트 관리</h4>
                 <div class="row" style="gap:4px;">
@@ -830,6 +758,7 @@
                 <div id="updateStatus" style="font-size:12px; color:#718096; margin-top:4px;">✅ 최신 버전입니다.</div>
             </div>
 
+            <!-- 데이터 관리 -->
             <div class="setting-group">
                 <h4>💾 데이터 관리</h4>
                 <button class="btn btn-danger btn-sm btn-block" onclick="resetAll()">🗑️ 모든 데이터 초기화</button>
@@ -862,8 +791,10 @@
                         </div>
                         <div style="margin-top:6px;"><strong>3. 경로 최적화</strong></div>
                         <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                            - <strong>'⚡ 경로 최적화'</strong> 버튼을 누르면 최적 경로가 계산됩니다.<br>
-                            - <strong>'가까운순/먼순'</strong> 중 최적화 방식을 선택할 수 있어요.
+                            - <strong>'⚡ 경로 최적화 실행'</strong> 버튼을 누르면 최적 경로가 계산됩니다.<br>
+                            - 최적화 모드는 <strong>설정 탭</strong>에서 변경할 수 있습니다.<br>
+                            - <strong>가까운순</strong>: 현재 위치에서 가까운 경유지부터 방문<br>
+                            - <strong>먼순</strong>: 먼 경유지를 먼저 처리하도록 시작
                         </div>
                         <div style="margin-top:6px;"><strong>💾 프리셋 저장</strong></div>
                         <div style="padding-left:12px; font-size:12px; color:#4a5568;">
@@ -872,6 +803,7 @@
                         </div>
                     </div>
                 </div>
+
                 <div class="help-section">
                     <div class="help-title">📍 지도 탭</div>
                     <div class="help-body">
@@ -887,6 +819,7 @@
                         </div>
                     </div>
                 </div>
+
                 <div class="help-section">
                     <div class="help-title">📋 현장 탭</div>
                     <div class="help-body">
@@ -908,10 +841,16 @@
                         </div>
                     </div>
                 </div>
+
                 <div class="help-section">
                     <div class="help-title">⚙️ 설정 탭</div>
                     <div class="help-body">
-                        <div><strong>🔐 GitHub 연동</strong></div>
+                        <div><strong>📐 경로 최적화 설정</strong></div>
+                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
+                            - <strong>가까운순/먼순</strong> 중 원하는 방식을 선택하세요.<br>
+                            - 선택한 모드는 경로 탭 상단에도 표시됩니다.
+                        </div>
+                        <div style="margin-top:6px;"><strong>🔐 GitHub 연동</strong></div>
                         <div style="padding-left:12px; font-size:12px; color:#4a5568;">
                             - GitHub Personal Access Token을 입력하면 <strong>자동 백업</strong>이 가능해요.<br>
                             - <strong>'📤 업로드'</strong>로 현재 데이터를 저장하고, <strong>'📥 다운로드'</strong>로 불러올 수 있어요.
@@ -932,6 +871,7 @@
                         </div>
                     </div>
                 </div>
+
                 <div class="help-section">
                     <div class="help-title">💡 유용한 팁</div>
                     <div class="help-body">
@@ -996,7 +936,7 @@
         </div>
     </div>
 
-    <!-- ===== 하단 탭 ===== (절대 지우지 마세요!) -->
+    <!-- ===== 하단 탭 ===== -->
     <div class="bottom-tabs">
         <button class="bottom-tab active" data-tab="tab-places" onclick="switchTab('tab-places')">
             <span class="tab-icon">🗺️</span> 경로
