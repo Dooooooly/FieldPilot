@@ -2146,6 +2146,9 @@ async function routeCost(route, startPoint, restKey) {
 }
 
 async function twoOptRoad(route, startPoint, restKey, mode) {
+    if (typeof mode === 'undefined' || mode === null) {
+        mode = 'Distance';
+    }
     if (route.length < 4) return route;
     var improved = true;
     var pass = 0;
@@ -2184,8 +2187,6 @@ async function optimizeRouteAlgorithm(places, startLat, startLng, mode, restKey)
     if (places.length === 1) return places.slice();
 
     roadOptimizeCallCount = 0;
-    // 오래된 캐시는 좌표가 바뀌어도 키가 달라지므로 안전하지만,
-    // 이번 최적화에서는 직전 실패/성공 결과를 재사용해 API 호출을 줄인다.
     var start = { name: '출발지', lat: startLat, lng: startLng };
 
     var seeds = [];
@@ -2195,7 +2196,6 @@ async function optimizeRouteAlgorithm(places, startLat, startLng, mode, restKey)
     var roadGreedy = await buildRoadGreedySeed(places, start, restKey, mode);
     if (roadGreedy.length === places.length) seeds.push(roadGreedy);
 
-    // 16방향 군집 방식은 초기해 후보로만 유지한다.
     var clustered = places.slice().sort(function(a, b) {
         var ga = getClusterGroup16(calculateAngle(startLng, startLat, a.lng, a.lat));
         var gb = getClusterGroup16(calculateAngle(startLng, startLat, b.lng, b.lat));
@@ -2210,7 +2210,11 @@ async function optimizeRouteAlgorithm(places, startLat, startLng, mode, restKey)
 
     for (var s = 0; s < seeds.length; s++) {
         if (roadOptimizeCallCount >= ROAD_OPTIMIZE_MAX_CALLS) break;
-        var candidate = await twoOptRoad(seeds[s].slice(), start, restKey, 'Distance');
+        
+        // 🔥 수정: 'Distance' 대신 전역 routeObjective 사용
+        var objective = (typeof routeObjective !== 'undefined' && routeObjective === 'time') ? 'Time' : 'Distance';
+        var candidate = await twoOptRoad(seeds[s].slice(), start, restKey, objective);
+        
         var cost = await routeCost(candidate, start, restKey);
         if (cost.distanceKm + 0.001 < bestScore) {
             bestScore = cost.distanceKm;
