@@ -1809,6 +1809,12 @@ async function saveModal() {
 
 function closeModal() {
     document.getElementById('modal').classList.remove('active');
+    document.getElementById('modalName').value = '';
+    document.getElementById('modalAddress').value = '';
+    document.getElementById('modalLat').value = '';
+    document.getElementById('modalLng').value = '';
+    document.getElementById('modalRemark').value = '';
+    document.getElementById('modalId').value = '';
 }
 
 function addWaypointFromList(id) {
