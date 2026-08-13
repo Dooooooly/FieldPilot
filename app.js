@@ -1391,35 +1391,66 @@ function closeAddPlaceModal() {
 function saveAddPlaceModal() {
     var name = document.getElementById('modalPlaceName').value.trim();
     var address = document.getElementById('modalPlaceAddr').value.trim();
+    var lat = parseFloat(document.getElementById('modalPlaceLat').value);
+    var lng = parseFloat(document.getElementById('modalPlaceLng').value);
     var remark = document.getElementById('modalPlaceRemark').value.trim();
-    
+
+    // 현장명 필수
     if (!name) {
         showTabStatus('tab-list', '⚠️ 현장명을 입력하세요.', 'warning');
         document.getElementById('modalPlaceName').focus();
         return;
     }
-    
+
+    // 주소 또는 위경도 중 하나는 필수
+    if (!address && (isNaN(lat) || isNaN(lng))) {
+        showTabStatus('tab-list', '⚠️ 주소 또는 위도/경도를 입력하세요.', 'warning');
+        document.getElementById('modalPlaceAddr').focus();
+        return;
+    }
+
+    // 🔥 위경도 유효성 검사 (대한민국 범위: 위도 33~43, 경도 124~132)
+    if (!isNaN(lat) && !isNaN(lng)) {
+        if (lat < 33 || lat > 43 || lng < 124 || lng > 132) {
+            showTabStatus('tab-list', '⚠️ 대한민국 범위를 벗어났습니다.\n위도: 33~43, 경도: 124~132', 'warning');
+            return;
+        }
+    }
+
+    // 중복 체크
     if (places.some(function(p) { return normalizeName(p.name) === normalizeName(name); })) {
         showTabStatus('tab-list', '⚠️ 이미 존재하는 현장명입니다.', 'warning');
         document.getElementById('modalPlaceName').focus();
         return;
     }
-    
-    var lat = 0, lng = 0, fullAddress = address;
-    var restKey = settings.kakaoRestKey;
-    
-    if (address && restKey) {
-        geocodeAddress(address, restKey).then(function(geo) {
-            if (geo) {
-                lat = geo.lat;
-                lng = geo.lng;
-                fullAddress = geo.address || address;
-            }
-            savePlaceFromModal(name, fullAddress, lat, lng, remark);
-        });
-    } else {
-        savePlaceFromModal(name, fullAddress, lat, lng, remark);
+
+    var fullAddress = address;
+    var finalLat = lat;
+    var finalLng = lng;
+
+    // 주소는 있는데 위경도가 없으면 geocoding
+    if (address && (isNaN(lat) || isNaN(lng))) {
+        var restKey = settings.kakaoRestKey;
+        if (restKey) {
+            geocodeAddress(address, restKey).then(function(geo) {
+                if (geo) {
+                    finalLat = geo.lat;
+                    finalLng = geo.lng;
+                    fullAddress = geo.address || address;
+                } else {
+                    showTabStatus('tab-list', '⚠️ 주소 변환 실패. 위도/경도를 직접 입력하세요.', 'warning');
+                    return;
+                }
+                savePlaceFromModal(name, fullAddress, finalLat, finalLng, remark);
+            });
+            return;
+        } else {
+            showTabStatus('tab-list', '⚠️ 카카오 REST API 키가 없습니다. 위도/경도를 직접 입력하세요.', 'warning');
+            return;
+        }
     }
+
+    savePlaceFromModal(name, fullAddress, finalLat, finalLng, remark);
 }
 
 function savePlaceFromModal(name, address, lat, lng, remark) {
@@ -1701,20 +1732,36 @@ async function saveModal() {
     var id = document.getElementById('modalId').value;
     var name = document.getElementById('modalName').value.trim();
     var address = document.getElementById('modalAddress').value.trim();
+    var lat = parseFloat(document.getElementById('modalLat').value);
+    var lng = parseFloat(document.getElementById('modalLng').value);
     var remark = document.getElementById('modalRemark').value.trim();
-    
+
     var place = places.find(function(p) { return p.id === id; });
-    if (!place) {
-        closeModal();
-        return;
-    }
-    
+    if (!place) { closeModal(); return; }
+
+    // 현장명 필수
     if (!name) {
         showTabStatus('tab-list', '⚠️ 현장명을 입력하세요.', 'warning');
         document.getElementById('modalName').focus();
         return;
     }
-    
+
+    // 주소 또는 위경도 중 하나는 필수
+    if (!address && (isNaN(lat) || isNaN(lng))) {
+        showTabStatus('tab-list', '⚠️ 주소 또는 위도/경도를 입력하세요.', 'warning');
+        document.getElementById('modalAddress').focus();
+        return;
+    }
+
+    // 🔥 위경도 유효성 검사 (대한민국 범위: 위도 33~43, 경도 124~132)
+    if (!isNaN(lat) && !isNaN(lng)) {
+        if (lat < 33 || lat > 43 || lng < 124 || lng > 132) {
+            showTabStatus('tab-list', '⚠️ 대한민국 범위를 벗어났습니다.\n위도: 33~43, 경도: 124~132', 'warning');
+            return;
+        }
+    }
+
+    // 중복 체크 (자기 자신 제외)
     var existing = places.find(function(p) {
         return p.id !== id && normalizeName(p.name) === normalizeName(name);
     });
@@ -1723,26 +1770,37 @@ async function saveModal() {
         document.getElementById('modalName').focus();
         return;
     }
-    
-    var lat = place.lat, lng = place.lng, fullAddress = address;
-    if (address && address !== place.address) {
+
+    var fullAddress = address;
+    var finalLat = lat;
+    var finalLng = lng;
+
+    // 주소는 있는데 위경도가 없으면 geocoding
+    if (address && (isNaN(lat) || isNaN(lng))) {
         var restKey = settings.kakaoRestKey;
         if (restKey) {
             var geo = await geocodeAddress(address, restKey);
             if (geo) {
-                lat = geo.lat;
-                lng = geo.lng;
+                finalLat = geo.lat;
+                finalLng = geo.lng;
                 fullAddress = geo.address || address;
+            } else {
+                showTabStatus('tab-list', '⚠️ 주소 변환 실패. 위도/경도를 직접 입력하세요.', 'warning');
+                return;
             }
+        } else {
+            showTabStatus('tab-list', '⚠️ 카카오 REST API 키가 없습니다. 위도/경도를 직접 입력하세요.', 'warning');
+            return;
         }
     }
-    
+
+    // 데이터 업데이트
     place.name = name;
     place.address = fullAddress;
-    place.lat = lat;
-    place.lng = lng;
+    place.lat = finalLat;
+    place.lng = finalLng;
     place.remark = remark;
-    
+
     savePlaces();
     closeModal();
     renderPlaces();
