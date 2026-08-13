@@ -4362,7 +4362,7 @@ function openRegionManager() {
 // 36. 최적화 라이브 요약 업데이트
 // ============================================================
 function updateOptimizationLiveSummary() {
-    var text = document.getElementById('optimizationLiveText');
+    var text = document.getElementById('optimizationStatus');
     if (!text) return;
     var mode = (typeof optimizeMode !== 'undefined' && optimizeMode === 'Farthest') ? '먼순' : '가까운순';
     var objective = (typeof routeObjective !== 'undefined' && routeObjective === 'time') ? '최소시간'
