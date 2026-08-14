@@ -1996,21 +1996,18 @@ async function getRoadMetric(from, to, restKey) {
     var key = roadMetricKey(from, to);
     if (roadMetricCache.has(key)) return roadMetricCache.get(key);
 
-    // 기본 fallback (직선거리)
     var fallback = {
         distanceKm: getStraightDistance(from, to),
         durationMin: Math.max(1, Math.round(getStraightDistance(from, to) / 40 * 60)),
         source: 'straight'
     };
 
-    // ★ 실제 도로 기준이 꺼져있으면 무조건 fallback
     if (!useRoadOptimization) {
         roadMetricCache.set(key, fallback);
         roadCallFallbackCount++;
         return fallback;
     }
 
-    // API 키 없거나 호출 제한 초과
     if (!restKey || roadOptimizeCallCount >= ROAD_OPTIMIZE_MAX_CALLS) {
         roadMetricCache.set(key, fallback);
         roadCallFallbackCount++;
@@ -2019,22 +2016,23 @@ async function getRoadMetric(from, to, restKey) {
 
     roadOptimizeCallCount++;
     try {
-        var url = 'https://apis-navi.kakaomobility.com/v1/directions';
-        var payload = {
-            origin: { name: from.name || '출발지', x: Number(from.lng), y: Number(from.lat) },
-            destination: { name: to.name || '목적지', x: Number(to.lng), y: Number(to.lat) },
-            priority: 'RECOMMEND'
-        };
+        // ★ 카카오모빌리티 단일 경로 API (GET) ★
+        var url = 'https://apis-navi.kakaomobility.com/v1/directions'
+            + '?origin=' + Number(from.lng) + ',' + Number(from.lat)
+            + '&destination=' + Number(to.lng) + ',' + Number(to.lat)
+            + '&priority=RECOMMEND';
+
         var response = await fetch(url, {
-            method: 'POST',
+            method: 'GET',
             headers: {
-                'Authorization': 'KakaoAK ' + restKey,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
+                'Authorization': 'KakaoAK ' + restKey
+            }
         });
+
         if (!response.ok) throw new Error('HTTP ' + response.status);
         var data = await response.json();
+
+        // 응답 구조 확인
         var route = data && data.routes && data.routes[0];
         if (!route || !route.summary) throw new Error('도로 경로 없음');
 
@@ -2047,6 +2045,7 @@ async function getRoadMetric(from, to, restKey) {
         roadCallSuccessCount++;
         return metric;
     } catch (e) {
+        console.warn('도로 API 오류, 직선거리 fallback:', e.message);
         roadMetricCache.set(key, fallback);
         roadCallFallbackCount++;
         return fallback;
