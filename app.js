@@ -1,5 +1,5 @@
 // ============================================================
-// 경로 최적화 PWA - app.js (최종)
+// 경로 최적화 PWA - app.js (수정 완료)
 // ============================================================
 
 // --- 저장소 키 ---
@@ -1839,11 +1839,30 @@ async function geocodeBatch(rows, restKey, batchSize, onProgress) {
 }
 
 // ============================================================
-// 17. 경로 최적화
+// 17. 경로 최적화 (★ 핵심 수정 ★)
 // ============================================================
 var routeObjective = 'distance';
 var useRoadOptimization = true;
 var useDirectionHint = true;
+
+// ★★★★★ 12번: 통합 점수 함수 ★★★★★
+function getOptimizationScore(cost) {
+    if (routeObjective === 'time') {
+        return cost.durationMin;
+    }
+
+    if (routeObjective === 'balanced') {
+        // 정규화 기준 (평균적인 거리/시간)
+        var refDistance = 30; // km
+        var refTime = 60;     // 분
+        var distanceScore = cost.distanceKm / Math.max(1, refDistance);
+        var timeScore = cost.durationMin / Math.max(1, refTime);
+        return distanceScore * 0.5 + timeScore * 0.5;
+    }
+
+    // 기본: 최단거리
+    return cost.distanceKm;
+}
 
 function setRouteObjective(objective) {
     routeObjective = objective || 'distance';
@@ -1914,10 +1933,16 @@ function setOptimizeMode(mode) {
         info.textContent = '💡 현재 초기 경로: ' + (mode === 'Nearest' ? '가까운순' : '먼순');
     }
     
-    // 경로 탭 라벨 업데이트
-    var label = document.getElementById('currentOptimizeModeLabel');
+    // 경로 탭 라벨 업데이트 (optimizationStatus)
+    var label = document.getElementById('optimizationStatus');
     if (label) {
-        label.textContent = mode === 'Nearest' ? '가까운순' : '먼순';
+        var modeLabel = mode === 'Nearest' ? '가까운순' : '먼순';
+        var objectiveLabel = routeObjective === 'time' ? '최소시간' 
+            : routeObjective === 'balanced' ? '거리+시간 균형' 
+            : '최단거리';
+        var roadLabel = useRoadOptimization ? '실제 도로' : '직선거리 보완';
+        var dirLabel = useDirectionHint ? '방향 고려' : '방향 미고려';
+        label.textContent = modeLabel + ' · ' + objectiveLabel + ' · ' + roadLabel + ' · ' + dirLabel;
     }
     
     // 설정 탭 라디오 버튼 동기화
@@ -1952,6 +1977,8 @@ var roadMetricCache = new Map();
 var ROAD_CANDIDATE_COUNT = 3;
 var ROAD_OPTIMIZE_MAX_CALLS = 80;
 var roadOptimizeCallCount = 0;
+var roadCallSuccessCount = 0;   // ★ 실제 도로 API 호출 성공 횟수
+var roadCallFallbackCount = 0; // ★ 직선거리 fallback 횟수
 
 function roadMetricKey(from, to) {
     return [
@@ -1964,18 +1991,29 @@ function getStraightDistance(a, b) {
     return haversineKm(a.lat, a.lng, b.lat, b.lng);
 }
 
+// ★★★★★ 7번: useRoadOptimization 체크 추가 ★★★★★
 async function getRoadMetric(from, to, restKey) {
     var key = roadMetricKey(from, to);
     if (roadMetricCache.has(key)) return roadMetricCache.get(key);
 
+    // 기본 fallback (직선거리)
     var fallback = {
         distanceKm: getStraightDistance(from, to),
         durationMin: Math.max(1, Math.round(getStraightDistance(from, to) / 40 * 60)),
         source: 'straight'
     };
 
+    // ★ 실제 도로 기준이 꺼져있으면 무조건 fallback
+    if (!useRoadOptimization) {
+        roadMetricCache.set(key, fallback);
+        roadCallFallbackCount++;
+        return fallback;
+    }
+
+    // API 키 없거나 호출 제한 초과
     if (!restKey || roadOptimizeCallCount >= ROAD_OPTIMIZE_MAX_CALLS) {
         roadMetricCache.set(key, fallback);
+        roadCallFallbackCount++;
         return fallback;
     }
 
@@ -2006,9 +2044,11 @@ async function getRoadMetric(from, to, restKey) {
             source: 'road'
         };
         roadMetricCache.set(key, metric);
+        roadCallSuccessCount++;
         return metric;
     } catch (e) {
         roadMetricCache.set(key, fallback);
+        roadCallFallbackCount++;
         return fallback;
     }
 }
@@ -2038,19 +2078,38 @@ async function chooseNextRoadPoint(current, candidates, restKey, mode) {
     return best || shortlist[0];
 }
 
+// ★★★★★ 8번: useDirectionHint 반영 ★★★★★
 function buildGeometricSeed(places, startPoint, mode) {
     var remaining = places.slice();
     var result = [];
     var current = startPoint;
 
-    if (mode === 'Farthest') {
-        remaining.sort(function(a, b) {
-            return getStraightDistance(startPoint, b) - getStraightDistance(startPoint, a);
-        });
+    if (useDirectionHint) {
+        // 방향 고려 ON: 16방향 정렬
+        if (mode === 'Farthest') {
+            remaining.sort(function(a, b) {
+                var ga = getClusterGroup16(calculateAngle(startPoint.lng, startPoint.lat, a.lng, a.lat));
+                var gb = getClusterGroup16(calculateAngle(startPoint.lng, startPoint.lat, b.lng, b.lat));
+                return gb - ga;
+            });
+        } else {
+            remaining.sort(function(a, b) {
+                var ga = getClusterGroup16(calculateAngle(startPoint.lng, startPoint.lat, a.lng, a.lat));
+                var gb = getClusterGroup16(calculateAngle(startPoint.lng, startPoint.lat, b.lng, b.lat));
+                return ga - gb;
+            });
+        }
     } else {
-        remaining.sort(function(a, b) {
-            return getStraightDistance(startPoint, a) - getStraightDistance(startPoint, b);
-        });
+        // 방향 고려 OFF: 기존 거리 기반 정렬
+        if (mode === 'Farthest') {
+            remaining.sort(function(a, b) {
+                return getStraightDistance(startPoint, b) - getStraightDistance(startPoint, a);
+            });
+        } else {
+            remaining.sort(function(a, b) {
+                return getStraightDistance(startPoint, a) - getStraightDistance(startPoint, b);
+            });
+        }
     }
 
     while (remaining.length) {
@@ -2127,8 +2186,9 @@ async function twoOptRoad(route, startPoint, restKey, mode) {
                     .concat(route.slice(j + 1));
                 var candidateCost = await routeCost(candidate, startPoint, restKey);
 
-                var currentScore = mode === 'Time' ? currentCost.durationMin : currentCost.distanceKm;
-                var candidateScore = mode === 'Time' ? candidateCost.durationMin : candidateCost.distanceKm;
+                // ★★★★★ 5번: getOptimizationScore 사용 ★★★★★
+                var currentScore = getOptimizationScore(currentCost);
+                var candidateScore = getOptimizationScore(candidateCost);
                 if (candidateScore + 0.001 < currentScore) {
                     route = candidate;
                     currentCost = candidateCost;
@@ -2146,7 +2206,12 @@ async function optimizeRouteAlgorithm(places, startLat, startLng, mode, restKey)
     if (!places || places.length === 0) return [];
     if (places.length === 1) return places.slice();
 
+    // ★ 카운터 초기화 ★
     roadOptimizeCallCount = 0;
+    roadCallSuccessCount = 0;
+    roadCallFallbackCount = 0;
+    roadMetricCache.clear(); // 새로운 최적화마다 캐시 초기화 (메모리 및 정확성)
+
     var start = { name: '출발지', lat: startLat, lng: startLng };
 
     var seeds = [];
@@ -2156,6 +2221,7 @@ async function optimizeRouteAlgorithm(places, startLat, startLng, mode, restKey)
     var roadGreedy = await buildRoadGreedySeed(places, start, restKey, mode);
     if (roadGreedy.length === places.length) seeds.push(roadGreedy);
 
+    // 16방향 clustered seed (useDirectionHint가 true일 때만 의미 있음)
     var clustered = places.slice().sort(function(a, b) {
         var ga = getClusterGroup16(calculateAngle(startLng, startLat, a.lng, a.lat));
         var gb = getClusterGroup16(calculateAngle(startLng, startLat, b.lng, b.lat));
@@ -2166,15 +2232,16 @@ async function optimizeRouteAlgorithm(places, startLat, startLng, mode, restKey)
 
     var bestRoute = seeds[0];
     var bestCost = await routeCost(bestRoute, start, restKey);
-    var bestScore = bestCost.distanceKm;
+    var bestScore = getOptimizationScore(bestCost); // ★ 통합 점수 사용
 
     for (var s = 0; s < seeds.length; s++) {
         if (roadOptimizeCallCount >= ROAD_OPTIMIZE_MAX_CALLS) break;
         var objective = (typeof routeObjective !== 'undefined' && routeObjective === 'time') ? 'Time' : 'Distance';
         var candidate = await twoOptRoad(seeds[s].slice(), start, restKey, objective);
         var cost = await routeCost(candidate, start, restKey);
-        if (cost.distanceKm + 0.001 < bestScore) {
-            bestScore = cost.distanceKm;
+        var candidateScore = getOptimizationScore(cost); // ★ 통합 점수 사용
+        if (candidateScore + 0.001 < bestScore) {
+            bestScore = candidateScore;
             bestCost = cost;
             bestRoute = candidate;
         }
@@ -2182,6 +2249,8 @@ async function optimizeRouteAlgorithm(places, startLat, startLng, mode, restKey)
 
     bestRoute._optimizationMeta = {
         roadCalls: roadOptimizeCallCount,
+        roadSuccess: roadCallSuccessCount,
+        roadFallback: roadCallFallbackCount,
         distanceKm: bestCost.distanceKm,
         durationMin: bestCost.durationMin,
         method: '도로거리 기반 Greedy + Multi-start + 2-opt'
@@ -2403,10 +2472,40 @@ async function runOptimize() {
             }, 500);
         }
         
-        switchTab('tab-route');
+        // ★★★★★ 11번: 최적화 결과에 도로 API 사용 현황 표시 ★★★★★
         var meta = sorted._optimizationMeta || {};
-        var metaText = meta.roadCalls ? ' (도로조회 ' + meta.roadCalls + '회)' : '';
-        showTabStatus('tab-route', '✅ 최적화 완료! ' + validPlaces.length + '개소' + metaText, 'ok');
+        var roadMsg = '';
+        if (meta.roadSuccess !== undefined && meta.roadFallback !== undefined) {
+            var totalRoadCalls = meta.roadSuccess + meta.roadFallback;
+            if (totalRoadCalls > 0) {
+                var roadPercent = Math.round((meta.roadSuccess / totalRoadCalls) * 100);
+                if (roadPercent === 100) {
+                    roadMsg = '🛣️ 모든 구간 실제 도로 정보 사용 (' + totalRoadCalls + '구간)';
+                } else if (roadPercent >= 50) {
+                    roadMsg = '🛣️ ' + roadPercent + '% 도로 정보 사용 (' + meta.roadSuccess + '/' + totalRoadCalls + '구간)';
+                } else {
+                    roadMsg = '⚠️ 일부 구간은 도로정보 대신 직선거리로 보완했습니다. (' + meta.roadFallback + '/' + totalRoadCalls + '구간)';
+                }
+            }
+        }
+        var modeText = optimizeMode === 'Nearest' ? '가까운순' : '먼순';
+        var objectiveText = routeObjective === 'time' ? '최소시간' 
+            : routeObjective === 'balanced' ? '거리+시간 균형' 
+            : '최단거리';
+        var resultMsg = '✅ 최적화 완료! ' + validPlaces.length + '개소 · ' + totalKm + 'km · ' + totalMin + '분';
+        if (roadMsg) resultMsg += ' · ' + roadMsg;
+        showTabStatus('tab-route', resultMsg, 'ok');
+        
+        // optimizationStatus 업데이트
+        var statusLabel = document.getElementById('optimizationStatus');
+        if (statusLabel) {
+            var modeLabel = optimizeMode === 'Nearest' ? '가까운순' : '먼순';
+            var roadLabel = useRoadOptimization ? '실제 도로' : '직선거리 보완';
+            var dirLabel = useDirectionHint ? '방향 고려' : '방향 미고려';
+            statusLabel.textContent = modeLabel + ' · ' + objectiveText + ' · ' + roadLabel + ' · ' + dirLabel;
+        }
+        
+        switchTab('tab-route');
     } catch(e) {
         showTabStatus('tab-places', '❌ 오류 발생: ' + e.message, 'error');
     } finally {
