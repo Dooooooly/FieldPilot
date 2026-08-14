@@ -4399,9 +4399,9 @@ function updateOptimizationLiveSummary() {
         var dx = e.touches[0].clientX - startX;
         var dy = e.touches[0].clientY - startY;
         if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 30) {
-            e.preventDefault();
+            //e.preventDefault();
         }
-    }, { passive: false });
+    }, { passive: true });
 
     document.addEventListener('touchend', function(e) {
         if (!isSwiping) return;
