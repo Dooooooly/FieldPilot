@@ -82,6 +82,7 @@ let singlePlaceInfoWindow = null;
 let autoSyncTimer = null;
 let sdkLoading = false;
 let isShowingRouteMarkers = false;
+let pendingMapCenter = null;
 
 const searchIndexState = {
     selected: -1,
@@ -2455,20 +2456,8 @@ async function runOptimize() {
         
         showRouteList();
         
-        if (kakaoMap && startPoint && startPoint.lat && startPoint.lng) {
-            var center = new kakao.maps.LatLng(startPoint.lat, startPoint.lng);
-            kakaoMap.setCenter(center);
-            kakaoMap.setLevel(5);
-            kakaoMap.relayout();
-        } else if (!kakaoMap) {
-            initMap();
-            setTimeout(function() {
-                if (kakaoMap && startPoint && startPoint.lat && startPoint.lng) {
-                    kakaoMap.setCenter(new kakao.maps.LatLng(startPoint.lat, startPoint.lng));
-                    kakaoMap.setLevel(5);
-                    kakaoMap.relayout();
-                }
-            }, 500);
+        if (startPoint && startPoint.lat && startPoint.lng) {
+            focusRouteStart();
         }
         
         // ★★★★★ 11번: 최적화 결과에 도로 API 사용 현황 표시 ★★★★★
@@ -2542,7 +2531,7 @@ function showRouteList() {
         var addrDisplay = p.address ? '<div class="addr">' + escapeHtml(shortenAddress(p.address)) + '</div>' : '';
         var remarkDisplay = p.remark ? '<span class="remark">' + escapeHtml(p.remark) + '</span>' : '';
 
-        html += '<div class="route-item sortable-item" data-index="' + i + '" data-lat="' + p.lat + '" data-lng="' + p.lng + '" data-name="' + escapeHtml(p.name) + '" style="border-left-color:' + color + ';">';
+        html += '<div class="route-item sortable-item" data-index="' + i + '" data-lat="' + p.lat + '" data-lng="' + p.lng + '" data-name="' + escapeHtml(p.name) + '" style="border-left-color:' + color + ';cursor:pointer;" onclick="if(!event.target.closest(\'.kakao-route-btn\') && !event.target.closest(\'.drag-handle\')) moveToRoutePoint(this)">';
         html += '<div class="idx" style="background:' + color + ';color:white;">' + (i + 1) + '</div>';
         html += '<div class="info">';
         html += '<div class="name">' + escapeHtml(p.name) + ' ' + remarkDisplay + '</div>';
@@ -2632,21 +2621,24 @@ function openKakaoMapFromRoute(btn) {
 }
 
 function moveToRoutePoint(el) {
-    var lat = parseFloat(el.dataset.lat), lng = parseFloat(el.dataset.lng), name = el.dataset.name || '장소';
-    if (!lat || !lng || !kakaoMap) {
-        showTabStatus('tab-route', '⚠️ 위치 정보가 없거나 지도가 준비되지 않았습니다.', 'warning');
+    if (!el) {
+        showTabStatus('tab-route', '⚠️ 위치 정보가 없습니다.', 'warning');
         return;
     }
-    kakaoMap.setCenter(new kakao.maps.LatLng(lat, lng));
-    kakaoMap.setLevel(4);
-    document.querySelectorAll('.route-item').forEach(function(item) {
-        item.style.background = '';
-        item.style.borderLeftColor = '';
-    });
+    var lat = parseFloat(el.dataset.lat);
+    var lng = parseFloat(el.dataset.lng);
+    var name = el.dataset.name || '장소';
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        showTabStatus('tab-route', '⚠️ 위치 정보가 올바르지 않습니다.', 'warning');
+        return;
+    }
+    switchTab('tab-route');
+    focusMapOnPoint(lat, lng, 4);
+    document.querySelectorAll('.route-item').forEach(function(item) { item.style.background = ''; });
     el.style.background = '#ebf8ff';
-    el.style.borderLeftColor = '#2b6cb0';
     showTabStatus('tab-route', '📍 "' + name + '" 위치로 이동했습니다.', 'info');
 }
+
 
 // ============================================================
 // 19. 카카오맵 연결
@@ -2978,6 +2970,46 @@ function drawRoute(path) {
 }
 
 // ============================================================
+// 지도 중심 이동 공통 함수
+// ============================================================
+function focusMapOnPoint(lat, lng, level) {
+    lat = Number(lat);
+    lng = Number(lng);
+    level = Number(level) || 5;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < 33 || lat > 39 || lng < 124 || lng > 132) return false;
+    var center = {lat: lat, lng: lng, level: level};
+    if (typeof kakao !== 'undefined' && kakao.maps && kakaoMap) {
+        try {
+            kakaoMap.relayout();
+            kakaoMap.setCenter(new kakao.maps.LatLng(lat, lng));
+            kakaoMap.setLevel(level);
+            kakaoMap.relayout();
+            pendingMapCenter = null;
+            return true;
+        } catch (e) {}
+    }
+    pendingMapCenter = center;
+    if (!sdkLoading) { try { initMap(); } catch (e) {} }
+    return false;
+}
+
+function applyPendingMapCenter() {
+    if (!pendingMapCenter || !kakaoMap) return;
+    var p = pendingMapCenter;
+    try {
+        kakaoMap.relayout();
+        kakaoMap.setCenter(new kakao.maps.LatLng(p.lat, p.lng));
+        kakaoMap.setLevel(p.level || 5);
+        kakaoMap.relayout();
+        pendingMapCenter = null;
+    } catch (e) {}
+}
+
+function focusRouteStart() {
+    return startPoint ? focusMapOnPoint(startPoint.lat, startPoint.lng, 5) : false;
+}
+
+// ============================================================
 // 22. 지도 초기화
 // ============================================================
 function initMap() {
@@ -3039,6 +3071,7 @@ function createMap(container) {
         kakaoMap.setZoomable(true);
         kakaoMap.setCenter(new kakao.maps.LatLng(centerLat, centerLng));
         kakaoMap.relayout();
+        applyPendingMapCenter();
         
         var zoomControl = new kakao.maps.ZoomControl();
         kakaoMap.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
@@ -4472,60 +4505,33 @@ function updateOptimizationLiveSummary() {
 }
 
 // ============================================================
-// 37. 탭 스와이프 (터치) - 지도 영역 제외
+// 37. 탭 스와이프 (세로 스크롤 우선)
 // ============================================================
 (function() {
-    var startX = 0, startY = 0;
-    var isSwiping = false;
+    var startX = 0, startY = 0, tracking = false;
     var tabOrder = ['tab-places', 'tab-route', 'tab-list', 'tab-settings', 'tab-help'];
-
     document.addEventListener('touchstart', function(e) {
         var target = e.target;
-        // 입력 요소, 하단 탭, 지도 영역에서는 스와이프 무시
-        if (target.closest('input') || target.closest('textarea') || 
-            target.closest('select') || target.closest('.bottom-tabs') ||
-            target.closest('#map')) {
-            return;
+        if (target.closest('input, textarea, select, button, .bottom-tabs, #map, .waypoint-list, .route-item') || !e.touches || e.touches.length !== 1) {
+            tracking = false; return;
         }
         startX = e.touches[0].clientX;
         startY = e.touches[0].clientY;
-        isSwiping = true;
-    }, { passive: true });
-
-    document.addEventListener('touchmove', function(e) {
-        if (!isSwiping) return;
-        var dx = e.touches[0].clientX - startX;
-        var dy = e.touches[0].clientY - startY;
-        if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 30) {
-            //e.preventDefault();
-        }
-    }, { passive: true });
-
+        tracking = true;
+    }, {passive:true});
     document.addEventListener('touchend', function(e) {
-        if (!isSwiping) return;
-        isSwiping = false;
-        var endX = e.changedTouches[0].clientX;
-        var endY = e.changedTouches[0].clientY;
-        var dx = endX - startX;
-        var dy = endY - startY;
-        if (Math.abs(dx) < 30 || Math.abs(dx) < Math.abs(dy) * 0.8) return;
-
+        if (!tracking || !e.changedTouches || !e.changedTouches.length) return;
+        tracking = false;
+        var dx = e.changedTouches[0].clientX - startX;
+        var dy = e.changedTouches[0].clientY - startY;
+        if (Math.abs(dy) >= Math.abs(dx) || Math.abs(dx) < 70 || Math.abs(dy) > 60) return;
         var activeTab = document.querySelector('.tab-content.active');
         if (!activeTab) return;
-        var currentId = activeTab.id;
-        var currentIndex = tabOrder.indexOf(currentId);
-        if (currentIndex === -1) return;
-
-        var newIndex;
-        if (dx < 0) {
-            newIndex = Math.min(currentIndex + 1, tabOrder.length - 1);
-        } else {
-            newIndex = Math.max(currentIndex - 1, 0);
-        }
-        if (newIndex !== currentIndex) {
-            switchTab(tabOrder[newIndex]);
-        }
-    }, { passive: true });
+        var currentIndex = tabOrder.indexOf(activeTab.id);
+        if (currentIndex < 0) return;
+        var nextIndex = dx < 0 ? Math.min(currentIndex + 1, tabOrder.length - 1) : Math.max(currentIndex - 1, 0);
+        if (nextIndex !== currentIndex) switchTab(tabOrder[nextIndex]);
+    }, {passive:true});
 })();
 
 // ============================================================
