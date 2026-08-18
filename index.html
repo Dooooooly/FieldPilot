@@ -18,12 +18,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <style>
-        /* ===== 초기화 ===== */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         html {
             height: 100%;
@@ -43,7 +38,7 @@
             touch-action: pan-y;
         }
 
-        /* ===== 오프라인 배너 ===== */
+        /* 오프라인 배너 */
         #offlineBanner {
             display: none;
             background: #e53e3e;
@@ -56,11 +51,9 @@
             top: 0;
             z-index: 999;
         }
-        #offlineBanner.show {
-            display: block;
-        }
+        #offlineBanner.show { display: block; }
 
-        /* ===== 하단 탭 고정 ===== */
+        /* 하단 탭 */
         .bottom-tabs {
             position: fixed !important;
             left: 0 !important;
@@ -76,11 +69,10 @@
             border-top: 1px solid #e2e8f0 !important;
             z-index: 2147483647 !important;
             pointer-events: auto !important;
-            box-shadow: 0 -4px 18px rgba(0, 0, 0, 0.08) !important;
+            box-shadow: 0 -4px 18px rgba(0,0,0,0.08) !important;
             align-items: stretch !important;
             padding: 0 !important;
         }
-
         .bottom-tab {
             flex: 1 1 0 !important;
             display: flex !important;
@@ -100,26 +92,10 @@
             -webkit-tap-highlight-color: transparent !important;
             padding: 4px 2px !important;
         }
-
-        .bottom-tab .tab-icon {
-            display: block !important;
-            font-size: 20px !important;
-            line-height: 1 !important;
-            margin-bottom: 3px !important;
-        }
-
-        .bottom-tab.active {
-            color: #2563eb !important;
-            background: #eff6ff !important;
-        }
-
-        .bottom-tab.help-tab {
-            color: #7c3aed !important;
-        }
-        .bottom-tab.help-tab.active {
-            color: #7c3aed !important;
-            background: #f5f3ff !important;
-        }
+        .bottom-tab .tab-icon { display: block !important; font-size: 20px !important; line-height: 1 !important; margin-bottom: 3px !important; }
+        .bottom-tab.active { color: #2563eb !important; background: #eff6ff !important; }
+        .bottom-tab.help-tab { color: #7c3aed !important; }
+        .bottom-tab.help-tab.active { color: #7c3aed !important; background: #f5f3ff !important; }
 
         @media (max-width: 700px) {
             body { padding-bottom: 76px !important; }
@@ -127,7 +103,7 @@
             .bottom-tab { height: 68px !important; font-size: 10px !important; }
         }
 
-        /* ===== 공통 ===== */
+        /* 공통 */
         .flex-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
         .flex-1 { flex: 1; min-width: 0; }
         .flex-between { display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; }
@@ -139,14 +115,13 @@
             position: sticky;
             top: 0;
             z-index: 100;
-            box-shadow: 0 2px 16px rgba(75, 111, 165, 0.2);
+            box-shadow: 0 2px 16px rgba(75,111,165,0.2);
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
             gap: 6px;
         }
-
         .header-left h1 { font-size: 17px; font-weight: 700; letter-spacing: -0.5px; }
         .header-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
@@ -154,53 +129,34 @@
             display: flex;
             align-items: center;
             gap: 4px;
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(255,255,255,0.15);
             padding: 4px 12px;
             border-radius: 30px;
             font-size: 12px;
             cursor: pointer;
             transition: all 0.25s ease;
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255,255,255,0.08);
             height: 32px;
             color: white;
             white-space: nowrap;
         }
-        .weather:hover { background: rgba(255, 255, 255, 0.25); transform: translateY(-1px); }
+        .weather:hover { background: rgba(255,255,255,0.25); transform: translateY(-1px); }
         .weather .temp { font-weight: 700; font-size: 13px; }
-
-        .header-divider {
-            width: 1px;
-            height: 20px;
-            background: rgba(255, 255, 255, 0.2);
-            flex-shrink: 0;
-        }
+        .header-divider { width: 1px; height: 20px; background: rgba(255,255,255,0.2); flex-shrink: 0; }
 
         .main { max-width: 600px; margin: 0 auto; padding: 12px 14px 80px; }
-
         .tab-content { display: none; animation: fadeUp 0.3s ease; }
         .tab-content.active { display: block; }
-        @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
         .card {
             background: white;
             border-radius: 12px;
             padding: 12px 14px;
             margin-bottom: 10px;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.04);
         }
-
-        .card-title {
-            font-size: 14px;
-            font-weight: 700;
-            color: #1a202c;
-            margin-bottom: 6px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
+        .card-title { font-size: 14px; font-weight: 700; color: #1a202c; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
 
         .btn {
             padding: 8px 16px;
@@ -221,20 +177,12 @@
 
         .btn-primary { background: #4f7eb3; color: white; }
         .btn-primary:hover:not(:disabled) { background: #3d6a9e; box-shadow: 0 4px 12px rgba(79,126,179,0.3); }
-
         .btn-success { background: #5a9e6f; color: white; }
         .btn-success:hover:not(:disabled) { background: #4a8a5e; box-shadow: 0 4px 12px rgba(90,158,111,0.3); }
-
         .btn-danger { background: #e53e3e; color: white; }
         .btn-danger:hover:not(:disabled) { background: #c53030; box-shadow: 0 4px 12px rgba(229,62,62,0.3); }
-
-        .btn-outline {
-            background: transparent;
-            color: #4a5568;
-            border: 2px solid #e2e8f0;
-        }
+        .btn-outline { background: transparent; color: #4a5568; border: 2px solid #e2e8f0; }
         .btn-outline:hover:not(:disabled) { background: #f7fafc; border-color: #cbd5e0; }
-
         .btn-sm { padding: 4px 10px; font-size: 11px; min-height: 30px; border-radius: 6px; }
         .btn-block { width: 100%; }
         .btn-lg { padding: 14px 20px; font-size: 16px; min-height: 50px; border-radius: 10px; }
@@ -254,7 +202,7 @@
         .input-field::placeholder { color: #a0aec0; }
         .input-field-sm { min-height: 30px; font-size: 11px; padding: 4px 8px; }
 
-        /* 즐겨찾기 필터 토글 */
+        /* 즐겨찾기 필터 */
         .fav-filter-btn {
             font-size: 12px;
             padding: 4px 12px;
@@ -266,11 +214,7 @@
             transition: all 0.2s;
             min-height: 30px;
         }
-        .fav-filter-btn.active {
-            background: #f6ad55;
-            border-color: #f6ad55;
-            color: white;
-        }
+        .fav-filter-btn.active { background: #f6ad55; border-color: #f6ad55; color: white; }
 
         .place-item {
             display: flex;
@@ -287,24 +231,11 @@
             transition: background 0.15s;
         }
         .place-item:hover { background: #edf2f7; }
-        .place-item .info {
-            flex: 1;
-            min-width: 0;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            flex-wrap: wrap;
-            overflow: hidden;
-        }
+        .place-item .info { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; overflow: hidden; }
         .place-item .info .name { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .place-item .info .addr { font-size: 11px; color: #718096; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .place-item .info .remark { font-size: 10px; color: #a0aec0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60px; }
-        .place-item .actions {
-            display: flex;
-            gap: 2px;
-            flex-shrink: 0;
-            align-items: center;
-        }
+        .place-item .actions { display: flex; gap: 2px; flex-shrink: 0; align-items: center; }
         .place-item .actions button {
             background: none;
             border: none;
@@ -349,26 +280,9 @@
         }
         .waypoint-list li:hover { background: #edf2f7; }
         .waypoint-list li:active { cursor: grabbing; }
-        .waypoint-list li.sortable-chosen {
-            background: #bee3f8;
-            border-color: #4f7eb3;
-            box-shadow: 0 4px 12px rgba(79,126,179,0.2);
-        }
+        .waypoint-list li.sortable-chosen { background: #bee3f8; border-color: #4f7eb3; box-shadow: 0 4px 12px rgba(79,126,179,0.2); }
         .waypoint-list li .drag-handle { color: #a0aec0; margin-right: 6px; font-size: 14px; cursor: grab; }
-        .waypoint-list li .idx {
-            background: #4f7eb3;
-            color: white;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-            font-weight: 700;
-            margin-right: 8px;
-            flex-shrink: 0;
-        }
+        .waypoint-list li .idx { background: #4f7eb3; color: white; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; margin-right: 8px; flex-shrink: 0; }
         .waypoint-list li .remove { color: #e53e3e; cursor: pointer; font-weight: 700; padding: 0 6px; }
 
         .empty-msg { text-align: center; color: #a0aec0; padding: 16px; font-size: 13px; }
@@ -409,12 +323,7 @@
             padding: 12px 16px;
             margin-top: 8px;
         }
-        .summary-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 3px 0;
-            font-size: 13px;
-        }
+        .summary-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 13px; }
         .summary-row .label { color: #4a5568; }
         .summary-row .value { font-weight: 700; color: #2d3748; }
         .summary-row .saved { color: #38a169; font-weight: 700; }
@@ -432,20 +341,9 @@
         .tab-status.error { background: #fed7d7; color: #9b2c2c; }
         .tab-status.warning { background: #fefcbf; color: #975a16; }
         .tab-status.info { background: #bee3f8; color: #2a4365; }
-        @keyframes fadeSlide {
-            from { opacity: 0; transform: translateY(-6px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        @keyframes fadeSlide { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
 
-        #map {
-            width: 100%;
-            height: 340px;
-            border-radius: 12px;
-            background: #e2e8f0;
-            margin-bottom: 10px;
-            touch-action: auto;
-            overflow: hidden;
-        }
+        #map { width: 100%; height: 340px; border-radius: 12px; background: #e2e8f0; margin-bottom: 10px; touch-action: auto; overflow: hidden; }
 
         .route-item {
             background: white;
@@ -462,19 +360,7 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.02);
         }
         .route-item:hover { background: #f0fff4; }
-        .route-item .idx {
-            color: white;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 11px;
-            font-weight: 700;
-            flex-shrink: 0;
-            margin-right: 8px;
-        }
+        .route-item .idx { color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; margin-right: 8px; }
         .route-item .info { flex: 1; min-width: 0; }
         .route-item .info .name { font-weight: 600; }
         .route-item .info .addr { font-size: 11px; color: #718096; }
@@ -501,16 +387,7 @@
         .preset-item .preset-info { flex: 1; }
         .preset-item .preset-name { font-weight: 600; font-size: 13px; }
         .preset-item .preset-detail { font-size: 11px; color: #718096; }
-        .preset-item .preset-delete {
-            background: none;
-            border: none;
-            color: #a0aec0;
-            font-size: 16px;
-            cursor: pointer;
-            padding: 4px 8px;
-            border-radius: 6px;
-            transition: all 0.2s;
-        }
+        .preset-item .preset-delete { background: none; border: none; color: #a0aec0; font-size: 16px; cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: all 0.2s; }
         .preset-item .preset-delete:hover { color: #e53e3e; background: #fff5f5; }
 
         .setting-group {
@@ -519,41 +396,13 @@
             padding: 10px 12px;
             margin-bottom: 6px;
         }
-        .setting-group h4 {
-            font-size: 13px;
-            margin-bottom: 6px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .setting-group .row {
-            display: flex;
-            gap: 4px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-        .setting-group .row label {
-            font-size: 12px;
-            font-weight: 600;
-            color: #4a5568;
-            min-width: 60px;
-        }
-        .setting-group .row input {
-            flex: 1;
-            min-width: 88px;
-            padding: 5px 8px;
-            border: 2px solid #e2e8f0;
-            border-radius: 6px;
-            font-size: 12px;
-        }
+        .setting-group h4 { font-size: 13px; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+        .setting-group .row { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+        .setting-group .row label { font-size: 12px; font-weight: 600; color: #4a5568; min-width: 60px; }
+        .setting-group .row input { flex: 1; min-width: 88px; padding: 5px 8px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 12px; }
         .setting-group .row input:focus { border-color: #4f7eb3; outline: none; }
 
-        .badge {
-            font-size: 11px;
-            padding: 2px 10px;
-            border-radius: 20px;
-            display: inline-block;
-        }
+        .badge { font-size: 11px; padding: 2px 10px; border-radius: 20px; display: inline-block; }
         .badge-ok { background: #c6f6d5; color: #22543d; }
         .badge-wait { background: #e2e8f0; color: #4a5568; }
         .badge-fail { background: #fed7d7; color: #9b2c2c; }
@@ -580,58 +429,18 @@
             box-shadow: 0 20px 60px rgba(0,0,0,0.2);
         }
         #addPlaceModal .modal { max-width: 400px; padding: 20px 24px; }
+        #optimizeSettingsModal .modal { max-width: 420px; max-height: 90vh; overflow-y: auto; }
         .modal h3 { font-size: 17px; margin-bottom: 12px; }
         .modal .btn-row { margin-top: 12px; }
-        .modal input {
-            width: 100%;
-            padding: 8px 12px;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 13px;
-            margin-bottom: 8px;
-        }
+        .modal input { width: 100%; padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 13px; margin-bottom: 8px; }
         .modal input:focus { border-color: #4f7eb3; outline: none; }
 
-        .help-section {
-            margin-bottom: 14px;
-            padding-bottom: 14px;
-            border-bottom: 1px solid #e2e8f0;
-        }
+        .help-section { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid #e2e8f0; }
         .help-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-        .help-section .help-title {
-            font-weight: 700;
-            font-size: 14px;
-            color: #4f7eb3;
-            margin-bottom: 4px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .help-section .help-body {
-            font-size: 13px;
-            color: #4a5568;
-            line-height: 1.7;
-            padding-left: 4px;
-        }
+        .help-section .help-title { font-weight: 700; font-size: 14px; color: #4f7eb3; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+        .help-section .help-body { font-size: 13px; color: #4a5568; line-height: 1.7; padding-left: 4px; }
 
-        /* ===== 최적화 설정 카드 ===== */
-        .route-settings-card {
-            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-            border: 1px solid #e2e8f0;
-            border-radius: 14px;
-            padding: 16px;
-            margin: 12px 0;
-            box-shadow: 0 3px 12px rgba(15,23,42,0.06);
-        }
-        .route-settings-header {
-            display: flex;
-            justify-content: space-between;
-            gap: 12px;
-            align-items: flex-start;
-            margin-bottom: 14px;
-        }
-        .route-settings-title { font-size: 16px; font-weight: 700; color: #1a202c; }
-        .route-settings-subtitle { font-size: 12px; color: #718096; margin-top: 4px; line-height: 1.5; }
+        /* 선택 그리드 */
         .choice-grid { display: grid; gap: 8px; }
         .choice-grid.two { grid-template-columns: 1fr 1fr; }
         .choice-grid.three { grid-template-columns: repeat(3, 1fr); }
@@ -650,28 +459,17 @@
             min-height: 52px;
         }
         .choice-card:hover, .metric-card:hover { border-color: #90cdf4; transform: translateY(-1px); }
-        .choice-card.active, .metric-card.active {
-            border-color: #3182ce;
-            background: #ebf8ff;
-            box-shadow: 0 0 0 1px rgba(49,130,206,0.08);
-        }
+        .choice-card.active, .metric-card.active { border-color: #3182ce; background: #ebf8ff; box-shadow: 0 0 0 1px rgba(49,130,206,0.08); }
         .choice-radio, .metric-radio { font-size: 13px; color: #a0aec0; width: 14px; }
         .choice-card.active .choice-radio, .metric-card.active .metric-radio { color: #3182ce; }
         .choice-icon, .metric-icon { font-size: 18px; }
         .choice-content, .metric-content { display: flex; flex-direction: column; min-width: 0; }
         .choice-content strong, .metric-content strong { font-size: 13px; font-weight: 700; color: #2d3748; }
         .choice-content small, .metric-content small { font-size: 11px; color: #718096; line-height: 1.35; margin-top: 2px; }
-        .selection-hint {
-            font-size: 11px;
-            color: #4a5568;
-            background: #f7fafc;
-            border-radius: 6px;
-            padding: 6px 10px;
-            margin-top: 8px;
-        }
+        .selection-hint { font-size: 11px; color: #4a5568; background: #f7fafc; border-radius: 6px; padding: 6px 10px; margin-top: 8px; }
         .metric-card input { position: absolute; opacity: 0; pointer-events: none; }
+
         .advanced-options {
-            margin-top: 0;
             border: 1px solid #edf2f7;
             border-radius: 10px;
             background: #fff;
@@ -699,39 +497,12 @@
             flex: 0 0 36px;
             transition: 0.18s;
         }
-        .switch-ui:after {
-            content: "";
-            position: absolute;
-            width: 16px;
-            height: 16px;
-            top: 2px;
-            left: 2px;
-            border-radius: 50%;
-            background: #fff;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-            transition: 0.18s;
-        }
+        .switch-ui:after { content: ""; position: absolute; width: 16px; height: 16px; top: 2px; left: 2px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.2); transition: 0.18s; }
         .switch-row input:checked + .switch-ui { background: #3182ce; }
         .switch-row input:checked + .switch-ui:after { transform: translateX(16px); }
 
-        .ux-tab-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 2px 3px 10px;
-        }
-        .ux-tab-icon {
-            width: 36px;
-            height: 36px;
-            border-radius: 11px;
-            background: #eff6ff;
-            color: #2563eb;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            flex: 0 0 36px;
-        }
+        .ux-tab-header { display: flex; align-items: center; gap: 10px; padding: 2px 3px 10px; }
+        .ux-tab-icon { width: 36px; height: 36px; border-radius: 11px; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 20px; flex: 0 0 36px; }
         .ux-tab-title { font-weight: 800; font-size: 15px; color: #1f2937; }
         .ux-tab-sub { font-size: 10px; color: #718096; margin-top: 2px; line-height: 1.4; }
         #tab-list .ux-tab-icon { background: #f0fdf4; color: #16a34a; }
@@ -749,16 +520,7 @@
         .commit-item .commit-info { flex: 1; min-width: 0; }
         .commit-item .commit-msg { font-weight: 600; }
         .commit-item .commit-date { color: #a0aec0; font-size: 10px; }
-        .commit-item .restore-btn {
-            font-size: 10px;
-            padding: 2px 10px;
-            border-radius: 12px;
-            background: #4f7eb3;
-            color: white;
-            border: none;
-            cursor: pointer;
-            flex-shrink: 0;
-        }
+        .commit-item .restore-btn { font-size: 10px; padding: 2px 10px; border-radius: 12px; background: #4f7eb3; color: white; border: none; cursor: pointer; flex-shrink: 0; }
         .commit-item .restore-btn:hover { background: #3d6a9e; }
 
         @media (max-width: 480px) {
@@ -777,8 +539,6 @@
             .place-item .info .addr { font-size: 10px; }
             .place-item .info .remark { font-size: 9px; max-width: 40px; }
             .place-item .actions button { font-size: 12px; min-width: 26px; min-height: 26px; }
-            .segment-control { min-width: 100px; }
-            .segment-btn { font-size: 11px; padding: 4px 8px; }
             .search-results .result-item { padding: 5px 8px; font-size: 12px; }
             .route-item { font-size: 12px; padding: 4px 8px; }
             .route-item .idx { width: 20px; height: 20px; font-size: 10px; }
@@ -796,7 +556,6 @@
 </head>
 <body>
 
-    <!-- 오프라인 배너 -->
     <div id="offlineBanner">📡 오프라인 상태 - 변경사항이 저장되지 않을 수 있습니다</div>
 
     <header class="header">
@@ -852,102 +611,18 @@
 
                 <div id="modeStatus" style="font-size:11px; color:#a0aec0; margin-top:4px; text-align:center;">💡 일반 모드 - 경유지를 입력하고 추가하세요</div>
 
+                <!-- 버튼 영역 (가로 배치 - 실행, 초기화, 설정) -->
                 <div style="display:flex; gap:8px; margin-top:8px;">
                     <button class="btn btn-primary btn-lg" id="runOptimizeBtn" onclick="runOptimize()" style="flex:1;">⚡ 경로 최적화 실행</button>
                     <button class="btn btn-danger btn-lg" onclick="resetRoute()" style="flex:1;">🔄 초기화</button>
+                    <button class="btn btn-outline btn-lg" onclick="openOptimizeSettingsModal()" style="flex:0.6; font-size:14px; min-height:50px;">⚙️ 설정</button>
                 </div>
 
+                <!-- 현재 최적화 상태 표시 -->
                 <div id="optimizationStatus" style="font-size:11px; color:#4a5568; text-align:center; margin-top:6px; padding:4px 8px; background:#f7fafc; border-radius:6px;">
-                    가까운순 · 최단거리 · 직선거리 보완 · 방향 미고려
+                    가까운순 · 최단거리 · 직선거리 보완 · 방향 미고려 · 카카오맵
                 </div>
             </div>
-
-            <!-- ===== 최적화 설정 카드 ===== -->
-            <section class="route-settings-card" id="routeOptimizationSettings">
-                <div class="route-settings-header">
-                    <div>
-                        <div class="route-settings-title">⚙️ 경로 최적화 설정</div>
-                        <div class="route-settings-subtitle">초기 경로 생성 방식과 최종 최적화 기준을 선택하세요.</div>
-                    </div>
-                </div>
-
-                <div style="margin-bottom:16px;">
-                    <div style="font-size:13px; font-weight:600; color:#2d3748; margin-bottom:8px;">① 초기 경로 생성</div>
-                    <div class="choice-grid two" style="gap:8px;">
-                        <button type="button" class="choice-card active" id="modeNearest" onclick="setOptimizeMode('Nearest')" aria-pressed="true" style="padding:10px 12px; min-height:52px;">
-                            <span class="choice-radio" style="font-size:13px; color:#3182ce;">●</span>
-                            <span class="choice-icon" style="font-size:18px;">📍</span>
-                            <span class="choice-content">
-                                <strong style="font-size:13px; font-weight:700;">가까운순</strong>
-                                <small style="font-size:11px; color:#718096;">현재 위치에서 가까운 경유지부터 시작</small>
-                            </span>
-                        </button>
-                        <button type="button" class="choice-card" id="modeFarthest" onclick="setOptimizeMode('Farthest')" aria-pressed="false" style="padding:10px 12px; min-height:52px;">
-                            <span class="choice-radio" style="font-size:13px; color:#a0aec0;">○</span>
-                            <span class="choice-icon" style="font-size:18px;">🎯</span>
-                            <span class="choice-content">
-                                <strong style="font-size:13px; font-weight:700;">먼순</strong>
-                                <small style="font-size:11px; color:#718096;">먼 경유지를 먼저 처리하도록 시작</small>
-                            </span>
-                        </button>
-                    </div>
-                    <div id="modeInfo" class="selection-hint" style="font-size:11px; color:#4a5568; background:#f7fafc; padding:6px 10px; border-radius:6px; margin-top:8px;">
-                        💡 현재 초기 경로: 가까운순
-                    </div>
-                </div>
-
-                <div style="margin-bottom:16px;">
-                    <div style="font-size:13px; font-weight:600; color:#2d3748; margin-bottom:8px;">② 최종 최적화 기준</div>
-                    <div class="choice-grid three" style="gap:8px;">
-                        <label class="metric-card active" id="metricDistanceCard" style="padding:10px 12px; min-height:52px; cursor:pointer;">
-                            <input type="radio" name="routeObjective" value="distance" checked onchange="setRouteObjective('distance')" style="position:absolute; opacity:0;">
-                            <span class="metric-radio" style="font-size:13px; color:#3182ce;">●</span>
-                            <span class="metric-icon" style="font-size:18px;">🛣️</span>
-                            <span class="metric-content">
-                                <strong style="font-size:13px; font-weight:700;">최단거리</strong>
-                                <small style="font-size:11px; color:#718096;">총 주행거리 최소화</small>
-                            </span>
-                        </label>
-                        <label class="metric-card" id="metricTimeCard" style="padding:10px 12px; min-height:52px; cursor:pointer;">
-                            <input type="radio" name="routeObjective" value="time" onchange="setRouteObjective('time')" style="position:absolute; opacity:0;">
-                            <span class="metric-radio" style="font-size:13px; color:#a0aec0;">○</span>
-                            <span class="metric-icon" style="font-size:18px;">⏱️</span>
-                            <span class="metric-content">
-                                <strong style="font-size:13px; font-weight:700;">최소시간</strong>
-                                <small style="font-size:11px; color:#718096;">예상 주행시간 최소화</small>
-                            </span>
-                        </label>
-                        <label class="metric-card" id="metricBalancedCard" style="padding:10px 12px; min-height:52px; cursor:pointer;">
-                            <input type="radio" name="routeObjective" value="balanced" onchange="setRouteObjective('balanced')" style="position:absolute; opacity:0;">
-                            <span class="metric-radio" style="font-size:13px; color:#a0aec0;">○</span>
-                            <span class="metric-icon" style="font-size:18px;">⚖️</span>
-                            <span class="metric-content">
-                                <strong style="font-size:13px; font-weight:700;">거리+시간 균형</strong>
-                                <small style="font-size:11px; color:#718096;">거리와 시간을 함께 고려</small>
-                            </span>
-                        </label>
-                    </div>
-                </div>
-
-                <div class="advanced-options" style="border:1px solid #edf2f7; border-radius:10px; overflow:hidden;">
-                    <label class="switch-row" style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; cursor:pointer; border-bottom:1px solid #edf2f7;">
-                        <span class="switch-text">
-                            <strong style="font-size:12px; font-weight:600; color:#2d3748;">실제 도로 기준 최적화</strong>
-                            <small style="font-size:10px; color:#718096;">가능하면 실제 도로거리·시간을 사용합니다.</small>
-                        </span>
-                        <input type="checkbox" id="useRoadOptimization" checked onchange="setRoadOptimization(this.checked)" style="position:absolute; opacity:0;">
-                        <span class="switch-ui"></span>
-                    </label>
-                    <label class="switch-row" style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; cursor:pointer;">
-                        <span class="switch-text">
-                            <strong style="font-size:12px; font-weight:600; color:#2d3748;">경유지 방향 고려</strong>
-                            <small style="font-size:10px; color:#718096;">기존 16방향 정보를 초기 경로 생성에 활용합니다.</small>
-                        </span>
-                        <input type="checkbox" id="useDirectionHint" checked onchange="setDirectionHint(this.checked)" style="position:absolute; opacity:0;">
-                        <span class="switch-ui"></span>
-                    </label>
-                </div>
-            </section>
 
             <div id="placesStatus" class="tab-status"></div>
         </div>
@@ -1025,7 +700,7 @@
                     <button class="btn btn-outline btn-sm" style="flex:1;" onclick="showGitHubHistory()">📋 히스토리</button>
                 </div>
                 <div id="githubStatus" class="badge badge-wait" style="margin-top:4px;">⏳ 토큰 미설정</div>
-                <div id="githubHistory"></div>
+                <div id="githubHistory" style="display:none;"></div>
             </div>
 
             <div class="setting-group">
@@ -1094,7 +769,7 @@
                         <div style="margin-top:6px;"><strong>3. 경로 최적화</strong></div>
                         <div style="padding-left:12px; font-size:12px; color:#4a5568;">
                             - <strong>'⚡ 경로 최적화 실행'</strong> 버튼을 누르면 최적 경로가 계산됩니다.<br>
-                            - <strong>가까운순/먼순</strong>, <strong>최단거리/최소시간/균형</strong>, <strong>실제 도로 기준</strong> 등을 직접 설정할 수 있어요.
+                            - <strong>'⚙️ 설정'</strong> 버튼에서 최적화 모드와 API를 변경할 수 있어요.
                         </div>
                         <div style="margin-top:6px;"><strong>💾 프리셋 저장</strong></div>
                         <div style="padding-left:12px; font-size:12px; color:#4a5568;">
@@ -1106,11 +781,11 @@
                 <div class="help-section">
                     <div class="help-title">📍 지도 탭</div>
                     <div class="help-body">
-                        <div>📍 최적화된 경로를 <strong>카카오맵</strong>으로 확인하세요.</div>
+                        <div>📍 최적화된 경로를 <strong>카카오맵 / TMap</strong>으로 확인하세요.</div>
                         <div style="padding-left:12px; font-size:12px; color:#4a5568;">
                             - 각 구간별로 <strong>다른 색상</strong>으로 표시되어 구분이 쉬워요.<br>
                             - 경로 목록에서 <strong>클릭</strong>하면 해당 위치로 지도가 이동합니다.<br>
-                            - <strong>'🗺️ 카카오맵에서 열기'</strong> 버튼으로 실제 길찾기를 확인할 수 있어요.
+                            - <strong>'🗺️'</strong> 버튼으로 선택한 API의 길찾기를 실행할 수 있어요.
                         </div>
                         <div style="margin-top:6px;">📊 <strong>요약 정보</strong></div>
                         <div style="padding-left:12px; font-size:12px; color:#4a5568;">
@@ -1211,13 +886,15 @@
         </div>
     </div>
 
-    <!-- ===== 현장 편집 모달 ===== -->
+    <!-- ===== 현장 편집 모달 (오류 영역 추가) ===== -->
     <div class="modal-overlay" id="modal">
         <div class="modal">
             <h3 id="modalTitle" style="font-size:17px; margin-bottom:12px;">✏️ 현장 편집</h3>
             <div style="font-size:12px; color:#718096; margin-bottom:10px; padding:6px 10px; background:#f7fafc; border-radius:6px; border-left:3px solid #e53e3e;">
                 💡 주소 또는 위도/경도 중 <strong>하나는 필수</strong>입니다.
             </div>
+            <!-- 오류 표시 영역 -->
+            <div id="modalEditError" style="display:none; font-size:12px; color:#e53e3e; background:#fed7d7; padding:6px 10px; border-radius:6px; margin-bottom:8px;"></div>
             <input type="text" id="modalName" placeholder="현장명" style="width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px; margin-bottom:8px;">
             <input type="text" id="modalAddress" placeholder="주소 (선택)" style="width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px; margin-bottom:8px;">
             <div style="display:flex; gap:8px; margin-bottom:8px;">
@@ -1229,6 +906,126 @@
             <div class="btn-row flex-row" style="justify-content:flex-end;">
                 <button class="btn btn-outline btn-sm" onclick="closeModal()" style="padding:6px 16px;">취소</button>
                 <button class="btn btn-primary btn-sm" onclick="saveModal()" style="padding:6px 16px;">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 최적화 설정 모달 ===== -->
+    <div class="modal-overlay" id="optimizeSettingsModal">
+        <div class="modal" style="max-width:420px; max-height:90vh; overflow-y:auto;">
+            <h3 style="font-size:17px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+                <span>⚙️ 경로 최적화 설정</span>
+                <button onclick="closeOptimizeSettingsModal()" style="background:none; border:none; font-size:22px; cursor:pointer; color:#a0aec0;">&times;</button>
+            </h3>
+
+            <!-- 초기 경로 생성 -->
+            <div style="margin-bottom:16px;">
+                <div style="font-size:13px; font-weight:600; color:#2d3748; margin-bottom:8px;">① 초기 경로 생성</div>
+                <div class="choice-grid two" style="gap:8px;">
+                    <button type="button" class="choice-card active" id="modalModeNearest" onclick="setModalOptimizeMode('Nearest')" aria-pressed="true" style="padding:10px 12px; min-height:52px;">
+                        <span class="choice-radio" style="font-size:13px; color:#3182ce;">●</span>
+                        <span class="choice-icon" style="font-size:18px;">📍</span>
+                        <span class="choice-content">
+                            <strong style="font-size:13px; font-weight:700;">가까운순</strong>
+                            <small style="font-size:11px; color:#718096;">현재 위치에서 가까운 경유지부터 시작</small>
+                        </span>
+                    </button>
+                    <button type="button" class="choice-card" id="modalModeFarthest" onclick="setModalOptimizeMode('Farthest')" aria-pressed="false" style="padding:10px 12px; min-height:52px;">
+                        <span class="choice-radio" style="font-size:13px; color:#a0aec0;">○</span>
+                        <span class="choice-icon" style="font-size:18px;">🎯</span>
+                        <span class="choice-content">
+                            <strong style="font-size:13px; font-weight:700;">먼순</strong>
+                            <small style="font-size:11px; color:#718096;">먼 경유지를 먼저 처리하도록 시작</small>
+                        </span>
+                    </button>
+                </div>
+                <div id="modalModeInfo" class="selection-hint" style="font-size:11px; color:#4a5568; background:#f7fafc; padding:6px 10px; border-radius:6px; margin-top:8px;">
+                    💡 현재 초기 경로: 가까운순
+                </div>
+            </div>
+
+            <!-- 최종 최적화 기준 -->
+            <div style="margin-bottom:16px;">
+                <div style="font-size:13px; font-weight:600; color:#2d3748; margin-bottom:8px;">② 최종 최적화 기준</div>
+                <div class="choice-grid three" style="gap:8px;">
+                    <label class="metric-card active" id="modalMetricDistance" style="padding:10px 12px; min-height:52px; cursor:pointer;">
+                        <input type="radio" name="modalRouteObjective" value="distance" checked onchange="setModalRouteObjective('distance')" style="position:absolute; opacity:0;">
+                        <span class="metric-radio" style="font-size:13px; color:#3182ce;">●</span>
+                        <span class="metric-icon" style="font-size:18px;">🛣️</span>
+                        <span class="metric-content">
+                            <strong style="font-size:13px; font-weight:700;">최단거리</strong>
+                            <small style="font-size:11px; color:#718096;">총 주행거리 최소화</small>
+                        </span>
+                    </label>
+                    <label class="metric-card" id="modalMetricTime" style="padding:10px 12px; min-height:52px; cursor:pointer;">
+                        <input type="radio" name="modalRouteObjective" value="time" onchange="setModalRouteObjective('time')" style="position:absolute; opacity:0;">
+                        <span class="metric-radio" style="font-size:13px; color:#a0aec0;">○</span>
+                        <span class="metric-icon" style="font-size:18px;">⏱️</span>
+                        <span class="metric-content">
+                            <strong style="font-size:13px; font-weight:700;">최소시간</strong>
+                            <small style="font-size:11px; color:#718096;">예상 주행시간 최소화</small>
+                        </span>
+                    </label>
+                    <label class="metric-card" id="modalMetricBalanced" style="padding:10px 12px; min-height:52px; cursor:pointer;">
+                        <input type="radio" name="modalRouteObjective" value="balanced" onchange="setModalRouteObjective('balanced')" style="position:absolute; opacity:0;">
+                        <span class="metric-radio" style="font-size:13px; color:#a0aec0;">○</span>
+                        <span class="metric-icon" style="font-size:18px;">⚖️</span>
+                        <span class="metric-content">
+                            <strong style="font-size:13px; font-weight:700;">거리+시간 균형</strong>
+                            <small style="font-size:11px; color:#718096;">거리와 시간을 함께 고려</small>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 고급 옵션 -->
+            <div class="advanced-options" style="border:1px solid #edf2f7; border-radius:10px; overflow:hidden; margin-bottom:16px;">
+                <label class="switch-row" style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; cursor:pointer; border-bottom:1px solid #edf2f7;">
+                    <span class="switch-text">
+                        <strong style="font-size:12px; font-weight:600; color:#2d3748;">실제 도로 기준 최적화</strong>
+                        <small style="font-size:10px; color:#718096;">가능하면 실제 도로거리·시간을 사용합니다.</small>
+                    </span>
+                    <input type="checkbox" id="modalUseRoadOptimization" checked onchange="setModalRoadOptimization(this.checked)" style="position:absolute; opacity:0;">
+                    <span class="switch-ui"></span>
+                </label>
+                <label class="switch-row" style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; cursor:pointer;">
+                    <span class="switch-text">
+                        <strong style="font-size:12px; font-weight:600; color:#2d3748;">경유지 방향 고려</strong>
+                        <small style="font-size:10px; color:#718096;">기존 16방향 정보를 초기 경로 생성에 활용합니다.</small>
+                    </span>
+                    <input type="checkbox" id="modalUseDirectionHint" checked onchange="setModalDirectionHint(this.checked)" style="position:absolute; opacity:0;">
+                    <span class="switch-ui"></span>
+                </label>
+            </div>
+
+            <!-- API 선택 -->
+            <div style="margin-bottom:12px;">
+                <div style="font-size:13px; font-weight:600; color:#2d3748; margin-bottom:8px;">③ 경로 API 선택</div>
+                <div class="choice-grid two" style="gap:8px;">
+                    <label class="choice-card active" id="modalApiKakao" style="padding:10px 12px; min-height:52px; cursor:pointer;">
+                        <input type="radio" name="modalRouteApi" value="kakao" checked onchange="setModalRouteApi('kakao')" style="position:absolute; opacity:0;">
+                        <span class="choice-radio" style="font-size:13px; color:#3182ce;">●</span>
+                        <span class="choice-icon" style="font-size:18px;">🗺️</span>
+                        <span class="choice-content">
+                            <strong style="font-size:13px; font-weight:700;">카카오맵</strong>
+                            <small style="font-size:11px; color:#718096;">기본 길찾기</small>
+                        </span>
+                    </label>
+                    <label class="choice-card" id="modalApiTmap" style="padding:10px 12px; min-height:52px; cursor:pointer;">
+                        <input type="radio" name="modalRouteApi" value="tmap" onchange="setModalRouteApi('tmap')" style="position:absolute; opacity:0;">
+                        <span class="choice-radio" style="font-size:13px; color:#a0aec0;">○</span>
+                        <span class="choice-icon" style="font-size:18px;">🚗</span>
+                        <span class="choice-content">
+                            <strong style="font-size:13px; font-weight:700;">TMap</strong>
+                            <small style="font-size:11px; color:#718096;">국내 정확도 높은 길찾기</small>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <div style="display:flex; gap:8px; justify-content:flex-end; border-top:1px solid #e2e8f0; padding-top:12px;">
+                <button class="btn btn-outline btn-sm" onclick="closeOptimizeSettingsModal()" style="padding:6px 16px;">닫기</button>
+                <button class="btn btn-primary btn-sm" onclick="saveOptimizeSettings()" style="padding:6px 16px;">저장</button>
             </div>
         </div>
     </div>
