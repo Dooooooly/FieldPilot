@@ -1,5 +1,5 @@
 // ============================================================
-// 경로 최적화 PWA - app.js (수정 완료 - 4,7,12 제외 전부 반영)
+// 경로 최적화 PWA - app.js (완전한 버전 - 오류 수정)
 // ============================================================
 
 // --- 저장소 키 ---
@@ -72,8 +72,9 @@ let multiSelectMode = false;
 let selectedWaypoints = [];
 let presets = [];
 let currentPlaceId = null;
-let favFilterActive = false;
-let pendingUpload = null; // 지역 전환 시 재시도용
+let favFilterActive = false; // ★ 한 번만 선언
+let pendingUpload = null;
+let originalRouteCost = null;
 
 // --- 마커/검색 상태 ---
 let startMarker = null;
@@ -192,7 +193,7 @@ function switchTab(tabId) {
 }
 
 // ============================================================
-// 3. 설정 관리 (API 키 인코딩 추가)
+// 3. 설정 관리 (API 키 인코딩)
 // ============================================================
 function encodeKey(val) {
     if (!val) return '';
@@ -294,7 +295,7 @@ async function testGitHubToken() {
 }
 
 // ============================================================
-// 4. 저장소 및 지역 관리 (재시도 로직 추가)
+// 4. 저장소 및 지역 관리
 // ============================================================
 function savePlaces() {
     var key = getStorageKey(currentRegion);
@@ -448,156 +449,11 @@ function switchRegion(region) {
     }
     fetchWeather();
     
-    // 지역 전환 시 GitHub 업로드 재시도
     if (settings.githubToken && navigator.onLine) {
         setTimeout(function() {
             uploadToGitHub(true);
         }, 3000);
     }
-}
-
-function addRegion() {
-    var existing = document.getElementById('customRegionModal');
-    if (existing) existing.remove();
-    
-    var modalHtml = `
-        <div id="customRegionModal" style="
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.5);
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
-            z-index: 99999;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            animation: fadeIn 0.2s ease;
-        " onclick="if(event.target===this) this.remove()">
-            <div style="
-                background: white;
-                border-radius: 16px;
-                padding: 24px;
-                max-width: 380px;
-                width: 100%;
-                box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-            " onclick="event.stopPropagation()">
-                <h3 style="font-size:17px; font-weight:700; color:#1a202c; margin-bottom:8px;">📍 지역 추가</h3>
-                <p style="font-size:14px; color:#4a5568; margin-bottom:16px; line-height:1.6;">
-                    새 지역명을 입력하세요:
-                </p>
-                <input id="customRegionInput" type="text" placeholder="예: 강남구" 
-                       style="width:100%; padding:10px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:14px; margin-bottom:16px;"
-                       onkeydown="if(event.key==='Enter') document.getElementById('customRegionConfirmBtn').click();">
-                <div style="display:flex; gap:8px; justify-content:flex-end;">
-                    <button class="btn btn-outline btn-sm" onclick="document.getElementById('customRegionModal').remove();" style="padding:6px 16px; border:1px solid #cbd5e0; border-radius:8px; background:white; cursor:pointer;">취소</button>
-                    <button id="customRegionConfirmBtn" class="btn btn-primary btn-sm" style="padding:6px 16px; background:#4f7eb3; color:white; border:none; border-radius:8px; cursor:pointer;">추가</button>
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-    
-    setTimeout(function() {
-        var input = document.getElementById('customRegionInput');
-        if (input) {
-            input.focus();
-            input.select();
-        }
-    }, 100);
-    
-    document.getElementById('customRegionConfirmBtn').addEventListener('click', function() {
-        var input = document.getElementById('customRegionInput');
-        var name = input ? input.value.trim() : '';
-        document.getElementById('customRegionModal').remove();
-        
-        if (!name) {
-            showTabStatus('tab-settings', '⚠️ 지역명을 입력하세요.', 'warning');
-            return;
-        }
-        
-        var region = name.replace(/[\/\\:*?"<>|]/g, '');
-        if (!region) {
-            showTabStatus('tab-settings', '⚠️ 사용할 수 없는 지역명입니다.', 'warning');
-            return;
-        }
-        
-        var select = document.getElementById('regionSelect');
-        if (!select) {
-            showTabStatus('tab-settings', '⚠️ 오류 발생, 새로고침 후 다시 시도하세요.', 'error');
-            return;
-        }
-        
-        for (var i = 0; i < select.options.length; i++) {
-            if (select.options[i].value === region) {
-                showTabStatus('tab-settings', '⚠️ 이미 존재하는 지역입니다.', 'warning');
-                return;
-            }
-        }
-        
-        var key = getStorageKey(region);
-        localStorage.setItem(key, JSON.stringify([]));
-        
-        var opt = document.createElement('option');
-        opt.value = region;
-        opt.textContent = region;
-        select.appendChild(opt);
-        select.value = region;
-        
-        switchRegion(region);
-        showTabStatus('tab-settings', '✅ "' + region + '" 지역 추가됨', 'ok');
-    });
-}
-
-function deleteRegion() {
-    var select = document.getElementById('regionSelect');
-    if (!select) return;
-    
-    var currentRegion = select.value;
-    if (!currentRegion || currentRegion === '') {
-        showTabStatus('tab-settings', '⚠️ 삭제할 지역을 선택하세요.', 'warning');
-        return;
-    }
-    
-    if (select.options.length <= 1) {
-        showTabStatus('tab-settings', '⚠️ 삭제할 지역이 없습니다.', 'warning');
-        return;
-    }
-    
-    showConfirmModal(
-        '🗑️ 지역 삭제',
-        '"' + currentRegion + '" 지역을 삭제하시겠습니까?\n해당 지역의 모든 현장 데이터도 함께 삭제됩니다.',
-        function() {
-            var key = getStorageKey(currentRegion);
-            localStorage.removeItem(key);
-            
-            for (var i = 0; i < select.options.length; i++) {
-                if (select.options[i].value === currentRegion) {
-                    select.remove(i);
-                    break;
-                }
-            }
-            
-            if (select.options.length > 0) {
-                var newRegion = select.options[0].value;
-                select.value = newRegion;
-                switchRegion(newRegion);
-                showTabStatus('tab-settings', '✅ "' + currentRegion + '" 지역 삭제됨', 'ok');
-            } else {
-                select.innerHTML = '';
-                var defaultOpt = document.createElement('option');
-                defaultOpt.value = '';
-                defaultOpt.textContent = '📍 지역 선택';
-                defaultOpt.selected = true;
-                select.appendChild(defaultOpt);
-                currentRegion = '';
-                localStorage.removeItem(SELECTED_REGION_KEY);
-                places = [];
-                renderPlaces();
-                showTabStatus('tab-settings', '📭 모든 지역이 삭제되었습니다.', 'info');
-            }
-        }
-    );
 }
 
 // ============================================================
@@ -1268,8 +1124,6 @@ function selectAddress(name, address, lat, lng) {
 // ============================================================
 // 12. 현장 관리 (즐겨찾기 필터 분리)
 // ============================================================
-var favFilterActive = false;
-
 function toggleFavFilter() {
     favFilterActive = !favFilterActive;
     var btn = document.getElementById('favFilterBtn');
@@ -1296,7 +1150,6 @@ function getFilteredAndSortedPlaces() {
 
     var filtered = [...places];
     
-    // 즐겨찾기 필터 적용
     if (favFilterActive) {
         filtered = filtered.filter(function(p) { return p.favorite === true; });
     }
@@ -1508,7 +1361,7 @@ function searchAddressForModal(query) {
 }
 
 // ============================================================
-// 14. 내부 팝업 모달 (커스텀 confirm, prompt - 네이티브 alert 대체)
+// 14. 내부 팝업 모달
 // ============================================================
 function showConfirmModal(title, message, onConfirm, onCancel) {
     var existing = document.getElementById('confirmModal');
@@ -1886,12 +1739,11 @@ async function geocodeBatch(rows, restKey, batchSize, onProgress) {
 }
 
 // ============================================================
-// 17. 경로 최적화 (절약 효과 추가)
+// 17. 경로 최적화 (절약 효과 포함)
 // ============================================================
 var routeObjective = 'distance';
 var useRoadOptimization = true;
 var useDirectionHint = true;
-var originalRouteCost = null; // 최적화 전 경로 비용 저장
 
 function getOptimizationScore(cost) {
     if (routeObjective === 'time') {
@@ -1940,10 +1792,6 @@ function setRoadOptimization(enabled) {
 
 function setDirectionHint(enabled) {
     useDirectionHint = !!enabled;
-    setRouteObjective(routeObjective);
-}
-
-function updateOptimizationSettingsStatus() {
     setRouteObjective(routeObjective);
 }
 
@@ -2367,9 +2215,7 @@ async function runOptimize() {
             return;
         }
         
-        // ★ 최적화 전 경로 비용 계산 (원래 순서)
-        var originalOrder = validPlaces.slice();
-        originalRouteCost = await routeCost(originalOrder, startPoint, restKey);
+        originalRouteCost = await routeCost(validPlaces.slice(), startPoint, restKey);
         
         showTabStatus('tab-places', '🛣️ 실제 도로거리 기반 최적화 계산 중...', 'info');
         var sorted = await optimizeRouteAlgorithm(validPlaces, startPoint.lat, startPoint.lng, optimizeMode, restKey);
@@ -2489,7 +2335,7 @@ async function runOptimize() {
         document.getElementById('totalTime').textContent = totalMin + ' 분';
         document.getElementById('optimizeMode').textContent = optimizeMode === 'Nearest' ? '가까운순' : '먼순';
         
-        // ★ 절약 효과 표시
+        // 절약 효과 표시
         if (originalRouteCost) {
             var savedKm = parseFloat((originalRouteCost.distanceKm - totalKm).toFixed(2));
             var savedMin = Math.round(originalRouteCost.durationMin - totalMin);
@@ -2531,7 +2377,6 @@ async function runOptimize() {
             }
         }
         
-        // API 호출 제한 경고
         if (meta.roadCalls >= ROAD_OPTIMIZE_MAX_CALLS) {
             roadMsg += ' ⚠️ API 호출 제한 도달';
             showTabStatus('tab-route', '⚠️ 도로 API 호출 제한에 도달했습니다. 일부 구간은 직선거리로 계산됨.', 'warning');
@@ -3029,7 +2874,7 @@ function drawRoute(path) {
 }
 
 // ============================================================
-// 지도 중심 이동 공통 함수
+// 22. 지도 중심 이동 공통 함수
 // ============================================================
 function focusMapOnPoint(lat, lng, level) {
     lat = Number(lat);
@@ -3069,7 +2914,7 @@ function focusRouteStart() {
 }
 
 // ============================================================
-// 22. 지도 초기화
+// 23. 지도 초기화
 // ============================================================
 function initMap() {
     var container = document.getElementById('map');
@@ -3203,8 +3048,565 @@ function clearRouteMarkers() {
 }
 
 // ============================================================
-// 19. GitHub 히스토리 복원 기능 (신규)
+// 24. 프리셋 관리
 // ============================================================
+function loadPresets() {
+    var saved = localStorage.getItem(PRESETS_KEY);
+    presets = saved ? JSON.parse(saved) : [];
+    renderPresets();
+}
+
+function savePresets() {
+    localStorage.setItem(PRESETS_KEY, JSON.stringify(presets));
+    renderPresets();
+}
+
+function renderPresets() {
+    var container = document.getElementById('presetList');
+    if (!container) return;
+
+    if (presets.length === 0) {
+        container.innerHTML = '<div class="empty-msg" style="padding:8px;font-size:12px;">저장된 프리셋이 없습니다</div>';
+        return;
+    }
+
+    var html = '';
+    for (var i = 0; i < presets.length; i++) {
+        var p = presets[i];
+        html += '<div class="preset-item" onclick="loadPreset(' + i + ')">';
+        html += '<div class="preset-info"><div class="preset-name">' + escapeHtml(p.name) + '</div>';
+        html += '<div class="preset-detail">🚩 ' + escapeHtml(p.startPoint ? p.startPoint.name : '없음') + ' → ' + (p.waypoints ? p.waypoints.length : 0) + '개 경유지</div></div>';
+        html += '<button class="preset-delete" onclick="event.stopPropagation(); deletePreset(' + i + ')">✕</button></div>';
+    }
+    container.innerHTML = html;
+}
+
+function addPreset() {
+    if (!startPoint || !startPoint.name) {
+        showTabStatus('tab-places', '⚠️ 출발지를 먼저 설정하세요.', 'warning');
+        return;
+    }
+    if (waypoints.length === 0) {
+        showTabStatus('tab-places', '⚠️ 경유지를 최소 1개 이상 추가하세요.', 'warning');
+        return;
+    }
+
+    var existing = document.getElementById('customPresetModal');
+    if (existing) existing.remove();
+
+    var modalHtml = `
+        <div id="customPresetModal" style="
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 99999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            animation: fadeIn 0.2s ease;
+        " onclick="if(event.target===this) this.remove()">
+            <div style="
+                background: white;
+                border-radius: 16px;
+                padding: 24px;
+                max-width: 380px;
+                width: 100%;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            " onclick="event.stopPropagation()">
+                <h3 style="font-size:17px; font-weight:700; color:#1a202c; margin-bottom:8px;">💾 프리셋 저장</h3>
+                <p style="font-size:14px; color:#4a5568; margin-bottom:12px; line-height:1.6;">
+                    프리셋 이름을 입력하세요:
+                </p>
+                <input id="presetNameInput" type="text" placeholder="프리셋 이름" 
+                       value="프리셋 ${presets.length + 1}"
+                       style="width:100%; padding:10px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:14px; margin-bottom:16px;"
+                       onkeydown="if(event.key==='Enter') document.getElementById('presetSaveBtn').click();">
+                <div style="display:flex; gap:8px; justify-content:flex-end;">
+                    <button class="btn btn-outline btn-sm" onclick="document.getElementById('customPresetModal').remove();" style="padding:6px 16px; border:1px solid #cbd5e0; border-radius:8px; background:white; cursor:pointer;">취소</button>
+                    <button id="presetSaveBtn" class="btn btn-primary btn-sm" style="padding:6px 16px; background:#4f7eb3; color:white; border:none; border-radius:8px; cursor:pointer;">저장</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    setTimeout(function() {
+        var input = document.getElementById('presetNameInput');
+        if (input) {
+            input.focus();
+            input.select();
+        }
+    }, 100);
+
+    document.getElementById('presetSaveBtn').addEventListener('click', function() {
+        var input = document.getElementById('presetNameInput');
+        var name = input ? input.value.trim() : '';
+        document.getElementById('customPresetModal').remove();
+
+        if (!name) {
+            showTabStatus('tab-places', '⚠️ 프리셋 이름을 입력하세요.', 'warning');
+            return;
+        }
+
+        var preset = {
+            id: Date.now(),
+            name: name,
+            startPoint: {
+                name: startPoint.name,
+                address: startPoint.address || '',
+                lat: startPoint.lat,
+                lng: startPoint.lng
+            },
+            waypoints: waypoints.map(function(w) {
+                return {
+                    name: w.name,
+                    address: w.address || '',
+                    lat: w.lat || 0,
+                    lng: w.lng || 0
+                };
+            })
+        };
+
+        presets.push(preset);
+        savePresets();
+        renderPresets();
+        showTabStatus('tab-places', '✅ 프리셋 "' + preset.name + '" 저장됨!', 'ok');
+    });
+}
+
+function loadPreset(index) {
+    var preset = presets[index];
+    if (!preset) {
+        showTabStatus('tab-places', '⚠️ 프리셋을 찾을 수 없습니다.', 'warning');
+        return;
+    }
+
+    showConfirmModal(
+        '📂 프리셋 불러오기',
+        '"' + preset.name + '" 프리셋을 불러오시겠습니까?\n현재 데이터는 초기화됩니다.',
+        function() {
+            var sp = preset.startPoint;
+            if (sp && sp.lat && sp.lng) {
+                selectStartPoint(sp.name, sp.address, sp.lat, sp.lng);
+            } else {
+                showTabStatus('tab-places', '⚠️ 출발지 정보가 없습니다.', 'warning');
+                return;
+            }
+
+            waypoints = [];
+            for (var i = 0; i < preset.waypoints.length; i++) {
+                var w = preset.waypoints[i];
+                waypoints.push({
+                    name: w.name,
+                    address: w.address || '',
+                    lat: w.lat || 0,
+                    lng: w.lng || 0
+                });
+            }
+            renderWaypointList();
+
+            routeResult = null;
+            document.getElementById('placeCount').textContent = '0개소';
+            document.getElementById('totalDistance').textContent = '0.00 km';
+            document.getElementById('totalTime').textContent = '0 분';
+            document.getElementById('optimizeMode').textContent = '-';
+            document.getElementById('routeList').innerHTML = '';
+
+            clearRouteMarkers();
+            clearSingleMarker();
+            isShowingRouteMarkers = false;
+
+            if (kakaoMap && sp && sp.lat && sp.lng) {
+                kakaoMap.setCenter(new kakao.maps.LatLng(sp.lat, sp.lng));
+                kakaoMap.setLevel(5);
+                kakaoMap.relayout();
+            }
+
+            showTabStatus('tab-places', '✅ 프리셋 "' + preset.name + '" 불러오기 완료!', 'ok');
+        }
+    );
+}
+
+function deletePreset(index) {
+    showConfirmModal(
+        '🗑️ 프리셋 삭제',
+        '프리셋을 삭제하시겠습니까?',
+        function() {
+            presets.splice(index, 1);
+            savePresets();
+            showTabStatus('tab-places', '🗑️ 프리셋 삭제됨', 'ok');
+        }
+    );
+}
+
+// ============================================================
+// 25. GitHub 연동
+// ============================================================
+function utf8ToBase64(str) {
+    try {
+        var bytes = new TextEncoder().encode(str);
+        var binString = String.fromCodePoint.apply(null, bytes);
+        return btoa(binString);
+    } catch(e) {
+        return btoa(unescape(encodeURIComponent(str)));
+    }
+}
+
+async function uploadToGitHub(silent) {
+    silent = silent || false;
+    var token = settings.githubToken;
+    if (!token) {
+        if (!silent) showTabStatus('tab-settings', '⚠️ GitHub 토큰이 없습니다.', 'warning');
+        return;
+    }
+    if (!currentRegion || currentRegion.trim() === '') {
+        if (!silent) showTabStatus('tab-settings', '⚠️ 현재 선택된 지역이 없습니다.', 'warning');
+        return;
+    }
+    if (!navigator.onLine) {
+        if (!silent) showTabStatus('tab-settings', '📡 오프라인 상태 - 업로드 보류됨', 'warning');
+        return;
+    }
+    
+    try {
+        if (!silent) showTabStatus('tab-settings', '☁️ GitHub 업로드 중...', 'info');
+        
+        var userRes = await fetch('https://api.github.com/user', {
+            headers: { 'Authorization': 'token ' + token }
+        });
+        if (!userRes.ok) {
+            throw new Error('토큰 인증 실패: ' + userRes.status);
+        }
+        var user = await userRes.json();
+        var username = user.login;
+        
+        var repoName = 'route-data';
+        var fileName = currentRegion + '.json';
+        var content = JSON.stringify(places, null, 2);
+        var b64Content = utf8ToBase64(content);
+        
+        var repoUrl = 'https://api.github.com/repos/' + username + '/' + repoName;
+        var repoRes = await fetch(repoUrl, {
+            headers: { 'Authorization': 'token ' + token }
+        });
+        
+        if (repoRes.status === 404) {
+            var isPrivate = await new Promise(function(resolve) {
+                showConfirmModal(
+                    '📢 GitHub 저장소 생성',
+                    '저장소를 비공개로 생성하시겠습니까?\n(취소 시 공개 저장소로 생성됩니다)',
+                    function() { resolve(true); },
+                    function() { resolve(false); }
+                );
+            });
+            
+            var createRes = await fetch('https://api.github.com/user/repos', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'token ' + token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: repoName,
+                    description: '경로 최적화 데이터 저장소',
+                    private: !!isPrivate,
+                    auto_init: true
+                })
+            });
+            if (!createRes.ok) throw new Error('저장소 생성 실패');
+            if (!silent) showTabStatus('tab-settings', '✅ 저장소 생성됨: ' + repoName, 'ok');
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        } else if (!repoRes.ok) {
+            throw new Error('저장소 확인 실패: ' + repoRes.status);
+        }
+        
+        var fileUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents/' + encodeURIComponent(fileName);
+        var fileRes = await fetch(fileUrl, {
+            headers: { 'Authorization': 'token ' + token }
+        });
+        
+        var sha = null;
+        if (fileRes.ok) {
+            var fileData = await fileRes.json();
+            sha = fileData.sha;
+        }
+        
+        var putData = {
+            message: 'Auto sync: ' + currentRegion + ' (' + new Date().toLocaleString() + ')',
+            content: b64Content
+        };
+        if (sha) putData.sha = sha;
+        
+        var putRes = await fetch(fileUrl, {
+            method: 'PUT',
+            headers: {
+                'Authorization': 'token ' + token,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(putData)
+        });
+        
+        // 충돌 처리 (409 Conflict)
+        if (putRes.status === 409) {
+            showConfirmModal(
+                '⚠️ 동기화 충돌',
+                '다른 기기에서 동시에 수정한 것으로 보입니다.\n최신 버전을 가져와 병합하시겠습니까?',
+                async function() {
+                    var latestRes = await fetch(fileUrl, {
+                        headers: { 'Authorization': 'token ' + token }
+                    });
+                    if (latestRes.ok) {
+                        var latestData = await latestRes.json();
+                        var latestContent = new TextDecoder('utf-8').decode(
+                            Uint8Array.from(atob(latestData.content), function(c) { return c.charCodeAt(0); })
+                        );
+                        var latestPlaces = JSON.parse(latestContent);
+                        var merged = latestPlaces.slice();
+                        places.forEach(function(localP) {
+                            var existing = merged.find(function(m) { return normalizeName(m.name) === normalizeName(localP.name); });
+                            if (existing) {
+                                existing.address = localP.address || existing.address;
+                                existing.lat = localP.lat || existing.lat;
+                                existing.lng = localP.lng || existing.lng;
+                                existing.remark = localP.remark || existing.remark;
+                                existing.favorite = localP.favorite !== undefined ? localP.favorite : existing.favorite;
+                            } else {
+                                merged.push(localP);
+                            }
+                        });
+                        places = merged;
+                        savePlaces();
+                        await uploadToGitHub(silent);
+                    } else {
+                        showTabStatus('tab-settings', '❌ 충돌 해결 실패', 'error');
+                    }
+                },
+                function() {
+                    showTabStatus('tab-settings', '⏸️ 충돌로 인해 업로드가 취소되었습니다.', 'warning');
+                }
+            );
+            return;
+        }
+        
+        if (!putRes.ok) {
+            var errorText = await putRes.text();
+            throw new Error('업로드 실패: ' + putRes.status + ' - ' + errorText);
+        }
+        
+        if (!silent) {
+            showTabStatus('tab-settings', '✅ GitHub 업로드 완료! (' + places.length + '개)', 'ok');
+        }
+    } catch(error) {
+        if (!silent) {
+            showTabStatus('tab-settings', '❌ 업로드 실패: ' + error.message, 'error');
+        }
+    }
+}
+
+async function downloadFromGitHub() {
+    var token = settings.githubToken;
+    if (!token) {
+        showTabStatus('tab-settings', '⚠️ GitHub 토큰이 없습니다.', 'warning');
+        return;
+    }
+    
+    try {
+        showTabStatus('tab-settings', '☁️ GitHub 저장소 목록 불러오는 중...', 'info');
+        
+        var userRes = await fetch('https://api.github.com/user', {
+            headers: { 'Authorization': 'token ' + token }
+        });
+        if (!userRes.ok) throw new Error('토큰 인증 실패');
+        var user = await userRes.json();
+        var username = user.login;
+        
+        var repoName = 'route-data';
+        var repoUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents';
+        var repoRes = await fetch(repoUrl, {
+            headers: { 'Authorization': 'token ' + token }
+        });
+        
+        if (repoRes.status === 404) {
+            showTabStatus('tab-settings', '📭 GitHub에 저장된 데이터가 없습니다.\n먼저 "업로드"를 실행하세요.', 'warning');
+            return;
+        }
+        if (!repoRes.ok) {
+            throw new Error('저장소 조회 실패: ' + repoRes.status);
+        }
+        
+        var files = await repoRes.json();
+        var regions = [];
+        files.forEach(function(file) {
+            if (file.name.endsWith('.json') && file.name !== '.json') {
+                var region = file.name.replace('.json', '');
+                regions.push(region);
+            }
+        });
+        
+        if (regions.length === 0) {
+            showTabStatus('tab-settings', '📭 GitHub에 저장된 지역 데이터가 없습니다.', 'warning');
+            return;
+        }
+        
+        showRegionSelectModal(regions, function(selectedRegion) {
+            if (selectedRegion) {
+                processDownloadFromGitHub(selectedRegion);
+            }
+        });
+    } catch(error) {
+        showTabStatus('tab-settings', '❌ 목록 조회 실패: ' + error.message, 'error');
+    }
+}
+
+function showRegionSelectModal(regions, onSelect) {
+    var existing = document.getElementById('regionSelectModal');
+    if (existing) existing.remove();
+    
+    var optionsHtml = '';
+    regions.forEach(function(region) {
+        optionsHtml += '<option value="' + escapeHtml(region) + '">' + escapeHtml(region) + '</option>';
+    });
+    
+    var modalHtml = `
+        <div id="regionSelectModal" style="
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            animation: fadeIn 0.2s ease;
+        " onclick="if(event.target===this) this.remove()">
+            <div style="
+                background: white;
+                border-radius: 16px;
+                padding: 24px;
+                max-width: 380px;
+                width: 100%;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            " onclick="event.stopPropagation()">
+                <h3 style="font-size:17px; font-weight:700; color:#1a202c; margin-bottom:8px;">📥 다운로드할 지역 선택</h3>
+                <p style="font-size:14px; color:#4a5568; margin-bottom:16px; line-height:1.6;">
+                    GitHub에 저장된 지역 중 선택하세요:
+                </p>
+                <select id="regionSelectDropdown" style="
+                    width:100%; padding:10px 12px; border:2px solid #e2e8f0; border-radius:8px; 
+                    font-size:14px; margin-bottom:16px; background:white; cursor:pointer;
+                ">
+                    <option value="">-- 지역 선택 --</option>
+                    ${optionsHtml}
+                </select>
+                <div style="display:flex; gap:8px; justify-content:flex-end;">
+                    <button class="btn btn-outline btn-sm" onclick="document.getElementById('regionSelectModal').remove();" style="padding:6px 16px;">취소</button>
+                    <button class="btn btn-primary btn-sm" id="confirmDownloadBtn" style="padding:6px 16px;">다운로드</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    document.getElementById('confirmDownloadBtn').addEventListener('click', function() {
+        var select = document.getElementById('regionSelectDropdown');
+        var selected = select.value;
+        document.getElementById('regionSelectModal').remove();
+        if (selected && typeof onSelect === 'function') {
+            onSelect(selected);
+        } else if (!selected) {
+            showTabStatus('tab-settings', '⚠️ 다운로드할 지역을 선택해주세요.', 'warning');
+        }
+    });
+}
+
+async function processDownloadFromGitHub(region) {
+    var token = settings.githubToken;
+    if (!token) {
+        showTabStatus('tab-settings', '⚠️ GitHub 토큰이 없습니다.', 'warning');
+        return;
+    }
+    
+    try {
+        showTabStatus('tab-settings', '☁️ GitHub 다운로드 중...', 'info');
+        
+        var userRes = await fetch('https://api.github.com/user', {
+            headers: { 'Authorization': 'token ' + token }
+        });
+        if (!userRes.ok) throw new Error('토큰 인증 실패');
+        var user = await userRes.json();
+        var username = user.login;
+        
+        var repoName = 'route-data';
+        var fileName = region + '.json';
+        var fileUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents/' + encodeURIComponent(fileName);
+        
+        var fileRes = await fetch(fileUrl, {
+            headers: { 'Authorization': 'token ' + token },
+            cache: 'no-store'
+        });
+        
+        if (fileRes.status === 404) {
+            showTabStatus('tab-settings', '📭 GitHub에 "' + region + '" 지역의 데이터가 없습니다.', 'warning');
+            return;
+        }
+        if (!fileRes.ok) {
+            throw new Error('다운로드 실패: ' + fileRes.status);
+        }
+        
+        var data = await fileRes.json();
+        var binaryString = atob(data.content);
+        var bytes = new Uint8Array(binaryString.length);
+        for (var i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        var content = new TextDecoder('utf-8').decode(bytes);
+        var loadedPlaces = JSON.parse(content);
+        
+        places = loadedPlaces;
+        
+        var key = getStorageKey(region);
+        localStorage.setItem(key, JSON.stringify(places));
+        
+        var select = document.getElementById('regionSelect');
+        var exists = false;
+        for (var i = 0; i < select.options.length; i++) {
+            if (select.options[i].value === region) {
+                exists = true;
+                break;
+            }
+        }
+        if (!exists) {
+            var opt = document.createElement('option');
+            opt.value = region;
+            opt.textContent = region;
+            select.appendChild(opt);
+        }
+        
+        select.value = region;
+        currentRegion = region;
+        localStorage.setItem(SELECTED_REGION_KEY, region);
+        
+        renderPlaces();
+        updateStorageInfo();
+        
+        if (kakaoMap) {
+            var center = getRegionCenter(region);
+            kakaoMap.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
+            kakaoMap.setLevel(5);
+            kakaoMap.relayout();
+        }
+        
+        showTabStatus('tab-settings', '✅ GitHub 다운로드 완료! (' + loadedPlaces.length + '개)', 'ok');
+    } catch(error) {
+        showTabStatus('tab-settings', '❌ 다운로드 실패: ' + error.message, 'error');
+    }
+}
+
 async function showGitHubHistory() {
     var token = settings.githubToken;
     if (!token) {
@@ -3303,7 +3705,6 @@ async function restoreFromGitHub(sha) {
                 var content = new TextDecoder('utf-8').decode(bytes);
                 var loadedPlaces = JSON.parse(content);
                 
-                // 복원
                 places = loadedPlaces;
                 var key = getStorageKey(currentRegion);
                 localStorage.setItem(key, JSON.stringify(places));
@@ -3326,7 +3727,7 @@ async function restoreFromGitHub(sha) {
 }
 
 // ============================================================
-// 20. 오프라인 상태 감지
+// 26. 오프라인 상태 감지
 // ============================================================
 function updateOnlineStatus() {
     var banner = document.getElementById('offlineBanner');
@@ -3336,7 +3737,6 @@ function updateOnlineStatus() {
         showTabStatus('tab-settings', '📡 오프라인 상태 - 변경사항이 GitHub에 동기화되지 않을 수 있습니다.', 'warning');
     } else {
         banner.classList.remove('show');
-        // 온라인 복귀 시 자동 동기화 재시도
         if (settings.githubToken) {
             setTimeout(function() {
                 uploadToGitHub(true);
@@ -3349,13 +3749,230 @@ window.addEventListener('online', updateOnlineStatus);
 window.addEventListener('offline', updateOnlineStatus);
 
 // ============================================================
-// 21. 엑셀 처리 (기존과 동일)
+// 27. 엑셀 처리
 // ============================================================
-// (parseCSVLine, handleFile, processExcelFile, importPlaces, showUploadResult, exportData)
+function parseCSVLine(line) {
+    var result = [], current = '', inQuotes = false;
+    for (var i = 0; i < line.length; i++) {
+        var ch = line[i];
+        if (inQuotes) {
+            if (ch === '"' && (i + 1 < line.length && line[i + 1] === '"')) {
+                current += '"';
+                i++;
+            } else if (ch === '"') {
+                inQuotes = false;
+            } else {
+                current += ch;
+            }
+        } else {
+            if (ch === '"') {
+                inQuotes = true;
+            } else if (ch === ',') {
+                result.push(current.trim());
+                current = '';
+            } else {
+                current += ch;
+            }
+        }
+    }
+    result.push(current.trim());
+    return result;
+}
+
+function handleFile(event) {
+    var file = event.target.files[0];
+    if (!file) return;
+    processExcelFile(file);
+    event.target.value = '';
+}
+
+async function processExcelFile(file) {
+    var btn = document.querySelector('.btn-outline[onclick*="document.getElementById(\'fileInput\').click()"]');
+    if (btn) btn.disabled = true;
+    try {
+        var resultDiv = document.getElementById('uploadResult');
+        resultDiv.style.display = 'block';
+        var ext = file.name.split('.').pop().toLowerCase();
+        if (ext === 'csv') {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                var text = e.target.result;
+                var lines = text.split('\n').filter(function(l) { return l.trim(); });
+                if (lines.length === 0) {
+                    showUploadResult('❌ 데이터 없음', 'error');
+                    return;
+                }
+                var header = parseCSVLine(lines[0]);
+                var rows = [];
+                for (var i = 1; i < lines.length; i++) {
+                    var vals = parseCSVLine(lines[i]);
+                    if (vals.length < 2) continue;
+                    var row = {};
+                    for (var j = 0; j < header.length; j++) {
+                        row[header[j]] = vals[j] || '';
+                    }
+                    rows.push(row);
+                }
+                importPlaces(rows);
+            };
+            reader.readAsText(file, 'UTF-8');
+            return;
+        }
+        if (ext === 'xlsx' || ext === 'xls') {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    var data = new Uint8Array(e.target.result);
+                    var wb = XLSX.read(data, { type: 'array' });
+                    var sheet = wb.Sheets[wb.SheetNames[0]];
+                    var json = XLSX.utils.sheet_to_json(sheet);
+                    importPlaces(json);
+                } catch(error) {
+                    showUploadResult('❌ 엑셀 읽기 오류: ' + error.message, 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+            return;
+        }
+        showUploadResult('❌ 지원 안 함 (.csv, .xlsx, .xls)', 'error');
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
+async function importPlaces(data) {
+    if (!data || data.length === 0) {
+        showUploadResult('❌ 데이터 없음', 'error');
+        return;
+    }
+    var added = 0, updated = 0, skipped = 0;
+    var restKey = settings.kakaoRestKey;
+    var rowsToGeocode = [];
+    for (var i = 0; i < data.length; i++) {
+        var row = data[i];
+        var name = String(row['현장명'] || row['개소명'] || row['name'] || row['Name'] || '').trim();
+        var address = String(row['도로명주소'] || row['address'] || row['Address'] || '').trim();
+        var remark = String(row['비고'] || row['remark'] || row['Remark'] || '').trim();
+        if (!name) continue;
+        var normalized = normalizeName(name);
+        var existing = places.find(function(p) { return normalizeName(p.name) === normalized; });
+        if (existing) {
+            if (existing.address !== address || existing.remark !== remark) {
+                existing.address = address;
+                existing.remark = remark;
+                if (address && restKey) {
+                    rowsToGeocode.push({ name: name, address: address, existing: existing });
+                }
+                updated++;
+            } else {
+                skipped++;
+            }
+        } else {
+            var newPlace = {
+                id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+                name: name,
+                address: address,
+                lat: 0,
+                lng: 0,
+                remark: remark,
+                favorite: false
+            };
+            places.push(newPlace);
+            if (address && restKey) {
+                rowsToGeocode.push({ name: name, address: address, existing: newPlace });
+            }
+            added++;
+        }
+    }
+    if (rowsToGeocode.length > 0 && restKey) {
+        showUploadResult('📍 ' + rowsToGeocode.length + '개 주소 변환 중...', 'info');
+        await geocodeBatch(rowsToGeocode, restKey, 5, function(done, total) {
+            showUploadResult('📍 주소 변환 중... ' + done + '/' + total, 'info');
+        });
+        for (var i = 0; i < rowsToGeocode.length; i++) {
+            var item = rowsToGeocode[i];
+            if (item.existing && item.geo) {
+                item.existing.lat = item.geo.lat;
+                item.existing.lng = item.geo.lng;
+                item.existing.address = item.geo.address || item.existing.address;
+            }
+        }
+    }
+    if (added > 0 || updated > 0) savePlaces();
+    showUploadResult('✅ 추가 ' + added + ', 업데이트 ' + updated + ', 건너뜀 ' + skipped, 'success');
+    searchPlaces();
+}
+
+function showUploadResult(msg, type) {
+    var el = document.getElementById('uploadResult');
+    el.textContent = msg;
+    el.style.display = 'block';
+    var colors = { success: '#c6f6d5', error: '#fed7d7', warning: '#fefcbf', info: '#bee3f8' };
+    el.style.background = colors[type] || colors.info;
+}
+
+function exportData() {
+    var data = [];
+    if (places.length === 0) {
+        data = [
+            { '현장명': '예시_현장명_1', '도로명주소': '서울시 강남구 테헤란로 123', '비고': '', '위도': 0, '경도': 0 },
+            { '현장명': '예시_현장명_2', '도로명주소': '서울시 서초구 서초대로 456', '비고': '', '위도': 0, '경도': 0 },
+            { '현장명': '예시_현장명_3', '도로명주소': '서울시 종로구 종로 789', '비고': '', '위도': 0, '경도': 0 }
+        ];
+        showTabStatus('tab-list', '📄 예시 양식이 다운로드됩니다.', 'info');
+    } else {
+        data = places.map(function(p) {
+            return {
+                '현장명': p.name,
+                '도로명주소': p.address || '',
+                '비고': p.remark || '',
+                '위도': p.lat || 0,
+                '경도': p.lng || 0,
+                '즐겨찾기': p.favorite ? 'Y' : 'N',
+                '주소변환상태': (p.lat && p.lng && p.lat !== 0 && p.lng !== 0) ? '완료' : '미변환'
+            };
+        });
+        showTabStatus('tab-list', '✅ 내보내기 완료 (' + data.length + '개)', 'ok');
+    }
+    var wb = XLSX.utils.book_new();
+    var ws = XLSX.utils.json_to_sheet(data);
+    XLSX.utils.book_append_sheet(wb, ws, '현장리스트');
+    var now = new Date();
+    var timestamp = now.toISOString().slice(0,10) + '_' + String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0') + String(now.getSeconds()).padStart(2,'0');
+    XLSX.writeFile(wb, '현장리스트_' + currentRegion + '_' + timestamp + '.xlsx');
+}
 
 // ============================================================
-// 22. 날씨 (네이티브 alert 제거)
+// 28. 날씨
 // ============================================================
+async function fetchWeather() {
+    var weatherEl = document.getElementById('weatherDisplay');
+    if (!weatherEl) return false;
+    try {
+        var apiKey = 'b84c1b9a09d8316b679320cceb3a1097';
+        var center = getRegionCenter(currentRegion);
+        var url = 'https://api.openweathermap.org/data/2.5/weather?lat=' + center.lat + '&lon=' + center.lng + '&appid=' + apiKey + '&units=metric&lang=kr';
+        var response = await fetch(url);
+        if (!response.ok) throw new Error('날씨 API 호출 실패');
+        var data = await response.json();
+        var temp = Math.round(data.main.temp);
+        var desc = data.weather[0].description;
+        var icon = data.weather[0].icon;
+        var iconMap = {
+            '01d': '☀️', '01n': '🌙', '02d': '⛅', '02n': '☁️',
+            '03d': '☁️', '03n': '☁️', '04d': '☁️', '04n': '☁️',
+            '09d': '🌧️', '09n': '🌧️', '10d': '🌦️', '10n': '🌦️',
+            '11d': '⛈️', '11n': '⛈️', '13d': '❄️', '13n': '❄️',
+            '50d': '🌫️', '50n': '🌫️'
+        };
+        weatherEl.innerHTML = '<span>' + (iconMap[icon] || '🌡️') + '</span><span class="temp">' + temp + '°C</span><span>' + desc + '</span>';
+        return true;
+    } catch(error) {
+        weatherEl.innerHTML = '<span>⏳</span><span class="temp">--°C</span><span>날씨</span>';
+        return false;
+    }
+}
+
 async function showWeekWeather() {
     var existingModal = document.getElementById('weekWeatherModal');
     if (existingModal) {
@@ -3409,248 +4026,536 @@ async function showWeekWeather() {
 }
 
 // ============================================================
-// 23. Service Worker 및 기타
+// 29. Service Worker
 // ============================================================
-// (registerServiceWorker, displayAppVersion, checkForUpdates, forceUpdateApp)
+function registerServiceWorker() {
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/route-optimizer-pwa/sw.js')
+            .then(function(reg) {})
+            .catch(function(err) {});
+    }
+}
 
 // ============================================================
-// 24. 초기화 실행
+// 30. CACHE_NAME 버전 표시
 // ============================================================
-document.addEventListener('DOMContentLoaded', function() {
-    loadSettings();
-    loadRegionList();
-    loadPresets();
+function displayAppVersion() {
+    var statusEl = document.getElementById('updateStatus');
+    if (!statusEl) return;
     
-    if (currentRegion) {
-        var key = getStorageKey(currentRegion);
-        var data = localStorage.getItem(key);
-        places = data ? JSON.parse(data) : [];
-    } else {
-        places = [];
-    }
-    
-    updateRegionDisplay();
-    
-    var sortSelect = document.getElementById('sortPlaces');
-    if (sortSelect) currentSort = sortSelect.value;
-    
-    renderPlaces();
-    renderWaypointList();
-    setOptimizeMode(optimizeMode);
-    updateStorageInfo();
-    setTimeout(initMap, 500);
-    setTimeout(function() {
-        if (!kakaoMap && !sdkLoading) initMap();
-    }, 3000);
-    registerServiceWorker();
-    setTimeout(displayAppVersion, 1000);
-    
-    // 오프라인 상태 초기 체크
-    updateOnlineStatus();
-    
-    function initWeather() {
-        fetchWeather().then(function(success) {
-            if (!success) setTimeout(initWeather, 5000);
+    fetch('/route-optimizer-pwa/sw.js?v=' + Date.now())
+        .then(function(response) {
+            if (!response.ok) throw new Error('sw.js 로드 실패');
+            return response.text();
+        })
+        .then(function(text) {
+            var match = text.match(/CACHE_NAME\s*=\s*['"](.+)['"]/);
+            if (match && match[1]) {
+                var version = match[1];
+                statusEl.innerHTML = '✅ 현재 버전: <strong>' + version + '</strong>';
+                statusEl.style.color = '#38a169';
+                localStorage.setItem('app_cache_name', version);
+            } else {
+                statusEl.innerHTML = '✅ 최신 버전입니다.';
+                statusEl.style.color = '#38a169';
+            }
+        })
+        .catch(function() {
+            var cachedVersion = localStorage.getItem('app_cache_name');
+            if (cachedVersion) {
+                statusEl.innerHTML = '✅ 현재 버전: <strong>' + cachedVersion + '</strong>';
+                statusEl.style.color = '#38a169';
+            } else {
+                statusEl.innerHTML = '✅ 최신 버전입니다.';
+                statusEl.style.color = '#38a169';
+            }
         });
+}
+
+function checkForUpdates() {
+    var statusEl = document.getElementById('updateStatus');
+    if (!statusEl) return;
+    if (!('serviceWorker' in navigator)) {
+        statusEl.innerHTML = '⚠️ Service Worker를 지원하지 않는 브라우저입니다.';
+        statusEl.style.color = '#e53e3e';
+        return;
     }
-    setTimeout(initWeather, 3000);
+    statusEl.innerHTML = '⏳ 업데이트 확인 중...';
+    statusEl.style.color = '#d69e2e';
+    
+    navigator.serviceWorker.ready
+        .then(function(registration) {
+            return registration.update();
+        })
+        .then(function() {
+            return fetch('/route-optimizer-pwa/sw.js?v=' + Date.now());
+        })
+        .then(function(response) {
+            if (!response.ok) throw new Error('sw.js 로드 실패');
+            return response.text();
+        })
+        .then(function(text) {
+            var match = text.match(/CACHE_NAME\s*=\s*['"](.+)['"]/);
+            if (match && match[1]) {
+                var version = match[1];
+                statusEl.innerHTML = '✅ 새 버전 적용됨: <strong>' + version + '</strong>';
+                statusEl.style.color = '#38a169';
+                localStorage.setItem('app_cache_name', version);
+            } else {
+                statusEl.innerHTML = '✅ 최신 버전입니다.';
+                statusEl.style.color = '#38a169';
+            }
+            setTimeout(function() {
+                if (navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({ type: 'CHECK_UPDATE' });
+                }
+            }, 500);
+        })
+        .catch(function(err) {
+            statusEl.innerHTML = '❌ 업데이트 확인 실패: ' + err.message;
+            statusEl.style.color = '#e53e3e';
+        });
+}
+
+function forceUpdateApp() {
+    var statusEl = document.getElementById('updateStatus');
+    if (!statusEl) return;
+    if (!('serviceWorker' in navigator)) {
+        statusEl.innerHTML = '⚠️ Service Worker를 지원하지 않는 브라우저입니다.';
+        statusEl.style.color = '#e53e3e';
+        return;
+    }
+    statusEl.innerHTML = '⏳ 캐시 초기화 중... (3초 후 새로고침)';
+    statusEl.style.color = '#d69e2e';
+    
+    navigator.serviceWorker.ready
+        .then(function(registration) {
+            return registration.update();
+        })
+        .then(function() {
+            return caches.keys().then(function(cacheNames) {
+                return Promise.all(
+                    cacheNames.map(function(cacheName) {
+                        return caches.delete(cacheName);
+                    })
+                );
+            });
+        })
+        .then(function() {
+            statusEl.innerHTML = '🔄 캐시 초기화 완료. 3초 후 새로고침됩니다...';
+            statusEl.style.color = '#2b6cb0';
+            setTimeout(function() {
+                window.location.reload(true);
+            }, 3000);
+        })
+        .catch(function(err) {
+            statusEl.innerHTML = '❌ 캐시 초기화 실패: ' + err.message;
+            statusEl.style.color = '#e53e3e';
+        });
+}
+
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('controllerchange', function() {
+        var statusEl = document.getElementById('updateStatus');
+        if (statusEl) {
+            statusEl.innerHTML = '🔄 새 버전이 적용되었습니다. 페이지를 새로고침하세요.';
+            statusEl.style.color = '#2b6cb0';
+        }
+    });
+}
+
+// ============================================================
+// 31. 지역 관리 팝업 내부 함수
+// ============================================================
+function updateRegionDisplay() {
+    var nameEl = document.getElementById('currentRegionName');
+    if (!nameEl) return;
+    var currentRegion = localStorage.getItem(SELECTED_REGION_KEY);
+    if (currentRegion) {
+        nameEl.textContent = currentRegion;
+    } else {
+        nameEl.textContent = '지역 선택';
+    }
+}
+
+function selectRegionFromPopup(region) {
+    if (!region) return;
+    switchRegion(region);
+    var modal = document.getElementById('regionManagerModal');
+    if (modal) modal.remove();
+}
+
+function addRegionFromPopup() {
+    var input = document.getElementById('newRegionInput');
+    if (!input) return;
+    var name = input.value.trim();
+    if (!name) {
+        showTabStatus('tab-settings', '⚠️ 지역명을 입력하세요.', 'warning');
+        return;
+    }
+    var region = name.replace(/[\/\\:*?"<>|]/g, '');
+    if (!region) {
+        showTabStatus('tab-settings', '⚠️ 사용할 수 없는 지역명입니다.', 'warning');
+        return;
+    }
+    var select = document.getElementById('regionSelect');
+    if (!select) return;
+    for (var i = 0; i < select.options.length; i++) {
+        if (select.options[i].value === region) {
+            showTabStatus('tab-settings', '⚠️ 이미 존재하는 지역입니다.', 'warning');
+            input.value = '';
+            input.focus();
+            return;
+        }
+    }
+    var key = getStorageKey(region);
+    localStorage.setItem(key, JSON.stringify([]));
+    var opt = document.createElement('option');
+    opt.value = region;
+    opt.textContent = region;
+    select.appendChild(opt);
+    select.value = region;
+    switchRegion(region);
+    updateRegionDisplay();
+    input.value = '';
+    input.focus();
+    showTabStatus('tab-settings', '✅ "' + region + '" 지역 추가됨', 'ok');
+    var modal = document.getElementById('regionManagerModal');
+    if (modal) modal.remove();
+    openRegionManager();
+}
+
+function deleteRegionFromPopup() {
+    var currentRegion = localStorage.getItem(SELECTED_REGION_KEY);
+    if (!currentRegion) {
+        showTabStatus('tab-settings', '⚠️ 삭제할 지역이 없습니다.', 'warning');
+        return;
+    }
+    var select = document.getElementById('regionSelect');
+    if (!select || select.options.length <= 1) {
+        showTabStatus('tab-settings', '⚠️ 마지막 남은 지역은 삭제할 수 없습니다.', 'warning');
+        return;
+    }
+    showConfirmModal(
+        '🗑️ 지역 삭제',
+        '"' + currentRegion + '" 지역을 삭제하시겠습니까?\n해당 지역의 모든 현장 데이터도 함께 삭제됩니다.',
+        function() {
+            var key = getStorageKey(currentRegion);
+            localStorage.removeItem(key);
+            for (var i = 0; i < select.options.length; i++) {
+                if (select.options[i].value === currentRegion) {
+                    select.remove(i);
+                    break;
+                }
+            }
+            if (select.options.length > 0) {
+                var newRegion = select.options[0].value;
+                select.value = newRegion;
+                switchRegion(newRegion);
+            } else {
+                select.innerHTML = '';
+                var defaultOpt = document.createElement('option');
+                defaultOpt.value = '';
+                defaultOpt.textContent = '📍 지역 선택';
+                defaultOpt.selected = true;
+                defaultOpt.disabled = true;
+                select.appendChild(defaultOpt);
+                currentRegion = '';
+                localStorage.removeItem(SELECTED_REGION_KEY);
+                places = [];
+                renderPlaces();
+            }
+            updateRegionDisplay();
+            showTabStatus('tab-settings', '✅ "' + currentRegion + '" 지역 삭제됨', 'ok');
+            var modal = document.getElementById('regionManagerModal');
+            if (modal) modal.remove();
+            openRegionManager();
+        },
+        function() {}
+    );
+}
+
+// ============================================================
+// 32. 검색 결과 팝업 외부 클릭 시 닫기
+// ============================================================
+document.addEventListener('click', function(event) {
+    var startContainer = document.getElementById('startSearchResults');
+    var startInput = document.getElementById('startPoint');
+    if (startContainer && startContainer.style.display === 'block') {
+        if (!startContainer.contains(event.target) && event.target !== startInput) {
+            startContainer.style.display = 'none';
+        }
+    }
+    
+    var waypointContainer = document.getElementById('waypointSearchResults');
+    var waypointInput = document.getElementById('waypointInput');
+    if (waypointContainer && waypointContainer.style.display === 'block') {
+        if (!waypointContainer.contains(event.target) && event.target !== waypointInput) {
+            waypointContainer.style.display = 'none';
+        }
+    }
+    
+    var addrContainer = document.getElementById('addrSearchResults');
+    var addrInput = document.getElementById('newPlaceAddr');
+    if (addrContainer && addrContainer.style.display === 'block') {
+        if (!addrContainer.contains(event.target) && event.target !== addrInput) {
+            addrContainer.style.display = 'none';
+        }
+    }
 });
 
 // ============================================================
-// 25. GitHub 업로드 (재시도 및 충돌 처리 강화)
+// 33. 카카오맵 장소 검색
 // ============================================================
-async function uploadToGitHub(silent) {
-    silent = silent || false;
-    var token = settings.githubToken;
-    if (!token) {
-        if (!silent) showTabStatus('tab-settings', '⚠️ GitHub 토큰이 없습니다.', 'warning');
-        return;
-    }
-    if (!currentRegion || currentRegion.trim() === '') {
-        if (!silent) showTabStatus('tab-settings', '⚠️ 현재 선택된 지역이 없습니다.', 'warning');
-        return;
-    }
-    if (!navigator.onLine) {
-        if (!silent) showTabStatus('tab-settings', '📡 오프라인 상태 - 업로드 보류됨', 'warning');
-        return;
-    }
-    
+async function searchKakaoPlaces(query, size) {
+    size = size || 5;
+    var restKey = settings.kakaoRestKey;
+    if (!query || query.length < 2 || !restKey) return [];
     try {
-        if (!silent) showTabStatus('tab-settings', '☁️ GitHub 업로드 중...', 'info');
-        
-        var userRes = await fetch('https://api.github.com/user', {
-            headers: { 'Authorization': 'token ' + token }
-        });
-        if (!userRes.ok) {
-            throw new Error('토큰 인증 실패: ' + userRes.status);
-        }
-        var user = await userRes.json();
-        var username = user.login;
-        
-        var repoName = 'route-data';
-        var fileName = currentRegion + '.json';
-        var content = JSON.stringify(places, null, 2);
-        var b64Content = utf8ToBase64(content);
-        
-        var repoUrl = 'https://api.github.com/repos/' + username + '/' + repoName;
-        var repoRes = await fetch(repoUrl, {
-            headers: { 'Authorization': 'token ' + token }
-        });
-        
-        if (repoRes.status === 404) {
-            // GitHub 저장소 생성 시 네이티브 confirm 대신 커스텀 모달 사용
-            var isPrivate = await new Promise(function(resolve) {
-                showConfirmModal(
-                    '📢 GitHub 저장소 생성',
-                    '저장소를 비공개로 생성하시겠습니까?\n(취소 시 공개 저장소로 생성됩니다)',
-                    function() { resolve(true); },
-                    function() { resolve(false); }
-                );
-            });
-            
-            var createRes = await fetch('https://api.github.com/user/repos', {
-                method: 'POST',
-                headers: {
-                    'Authorization': 'token ' + token,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    name: repoName,
-                    description: '경로 최적화 데이터 저장소',
-                    private: !!isPrivate,
-                    auto_init: true
-                })
-            });
-            if (!createRes.ok) throw new Error('저장소 생성 실패');
-            if (!silent) showTabStatus('tab-settings', '✅ 저장소 생성됨: ' + repoName, 'ok');
-            await new Promise(resolve => setTimeout(resolve, 2000));
-        } else if (!repoRes.ok) {
-            throw new Error('저장소 확인 실패: ' + repoRes.status);
-        }
-        
-        var fileUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents/' + encodeURIComponent(fileName);
-        var fileRes = await fetch(fileUrl, {
-            headers: { 'Authorization': 'token ' + token }
-        });
-        
-        var sha = null;
-        if (fileRes.ok) {
-            var fileData = await fileRes.json();
-            sha = fileData.sha;
-        }
-        
-        var putData = {
-            message: 'Auto sync: ' + currentRegion + ' (' + new Date().toLocaleString() + ')',
-            content: b64Content
-        };
-        if (sha) putData.sha = sha;
-        
-        var putRes = await fetch(fileUrl, {
-            method: 'PUT',
-            headers: {
-                'Authorization': 'token ' + token,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(putData)
-        });
-        
-        // 충돌 처리 (409 Conflict)
-        if (putRes.status === 409) {
-            showConfirmModal(
-                '⚠️ 동기화 충돌',
-                '다른 기기에서 동시에 수정한 것으로 보입니다.\n최신 버전을 가져와 병합하시겠습니까?',
-                async function() {
-                    // 최신 버전 가져오기
-                    var latestRes = await fetch(fileUrl, {
-                        headers: { 'Authorization': 'token ' + token }
-                    });
-                    if (latestRes.ok) {
-                        var latestData = await latestRes.json();
-                        var latestContent = new TextDecoder('utf-8').decode(
-                            Uint8Array.from(atob(latestData.content), function(c) { return c.charCodeAt(0); })
-                        );
-                        var latestPlaces = JSON.parse(latestContent);
-                        // 간단한 병합: 서로 다른 이름의 현장을 합치고, 같은 이름은 최신 수정(로컬) 우선
-                        var merged = latestPlaces.slice();
-                        places.forEach(function(localP) {
-                            var existing = merged.find(function(m) { return normalizeName(m.name) === normalizeName(localP.name); });
-                            if (existing) {
-                                // 기존 항목 업데이트 (로컬 우선)
-                                existing.address = localP.address || existing.address;
-                                existing.lat = localP.lat || existing.lat;
-                                existing.lng = localP.lng || existing.lng;
-                                existing.remark = localP.remark || existing.remark;
-                                existing.favorite = localP.favorite !== undefined ? localP.favorite : existing.favorite;
-                            } else {
-                                merged.push(localP);
-                            }
-                        });
-                        places = merged;
-                        savePlaces();
-                        // 다시 업로드 시도
-                        await uploadToGitHub(silent);
-                    } else {
-                        showTabStatus('tab-settings', '❌ 충돌 해결 실패', 'error');
-                    }
-                },
-                function() {
-                    // 취소: 로컬 데이터 유지, 업로드 안 함
-                    showTabStatus('tab-settings', '⏸️ 충돌로 인해 업로드가 취소되었습니다.', 'warning');
-                }
-            );
-            return;
-        }
-        
-        if (!putRes.ok) {
-            var errorText = await putRes.text();
-            throw new Error('업로드 실패: ' + putRes.status + ' - ' + errorText);
-        }
-        
-        if (!silent) {
-            showTabStatus('tab-settings', '✅ GitHub 업로드 완료! (' + places.length + '개)', 'ok');
-        }
-    } catch(error) {
-        if (!silent) {
-            showTabStatus('tab-settings', '❌ 업로드 실패: ' + error.message, 'error');
-            // 재시도 버튼 표시
-            var statusEl = document.getElementById('settingsStatus');
-            if (statusEl) {
-                var retryBtn = document.createElement('button');
-                retryBtn.className = 'btn btn-primary btn-sm';
-                retryBtn.textContent = '🔄 재시도';
-                retryBtn.onclick = function() { uploadToGitHub(false); };
-                statusEl.appendChild(retryBtn);
+        var res = await fetch(
+            'https://dapi.kakao.com/v2/local/search/keyword.json?query=' + encodeURIComponent(query) + '&size=' + size,
+            { headers: { 'Authorization': 'KakaoAK ' + restKey } }
+        );
+        if (!res.ok) return [];
+        var data = await res.json();
+        return data.documents || [];
+    } catch(e) {
+        return [];
+    }
+}
+
+// ============================================================
+// 34. 키보드 네비게이션
+// ============================================================
+function handleStartKeydown(event) {
+    var results = document.querySelectorAll('#startSearchResults .result-item');
+    if (results.length === 0) return;
+    var index = searchIndexState.selected || -1;
+    if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        index = Math.min(index + 1, results.length - 1);
+    } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        index = Math.max(index - 1, -1);
+    } else if (event.key === 'Enter' && index >= 0) {
+        event.preventDefault();
+        results[index].click();
+        return;
+    } else if (event.key === 'Escape') {
+        document.getElementById('startSearchResults').style.display = 'none';
+        index = -1;
+    }
+    searchIndexState.selected = index;
+    for (var i = 0; i < results.length; i++) {
+        results[i].style.background = i === index ? '#bee3f8' : '';
+    }
+}
+
+function handleWaypointKeydown(event) {
+    var results = document.querySelectorAll('#waypointSearchResults .result-item');
+    if (results.length === 0) return;
+    var index = searchIndexState.waypoint || -1;
+    if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        index = Math.min(index + 1, results.length - 1);
+    } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        index = Math.max(index - 1, -1);
+    } else if (event.key === 'Enter' && index >= 0) {
+        event.preventDefault();
+        results[index].click();
+        return;
+    } else if (event.key === 'Escape') {
+        document.getElementById('waypointSearchResults').style.display = 'none';
+        index = -1;
+    }
+    searchIndexState.waypoint = index;
+    for (var i = 0; i < results.length; i++) {
+        results[i].style.background = i === index ? '#bee3f8' : '';
+    }
+}
+
+function handleAddrKeydown(event) {
+    var results = document.querySelectorAll('#addrSearchResults .result-item');
+    if (results.length === 0) return;
+    var index = searchIndexState.addr || -1;
+    if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        index = Math.min(index + 1, results.length - 1);
+    } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        index = Math.max(index - 1, -1);
+    } else if (event.key === 'Enter' && index >= 0) {
+        event.preventDefault();
+        results[index].click();
+        return;
+    } else if (event.key === 'Escape') {
+        document.getElementById('addrSearchResults').style.display = 'none';
+        index = -1;
+    }
+    searchIndexState.addr = index;
+    for (var i = 0; i < results.length; i++) {
+        results[i].style.background = i === index ? '#bee3f8' : '';
+    }
+}
+
+// ============================================================
+// 35. 지역 관리 팝업 (메인)
+// ============================================================
+function openRegionManager() {
+    var existing = document.getElementById('regionManagerModal');
+    if (existing) existing.remove();
+    
+    var regions = [];
+    for (var i = 0; i < localStorage.length; i++) {
+        var key = localStorage.key(i);
+        if (key && key.startsWith(STORAGE_KEY_PREFIX)) {
+            var region = key.replace(STORAGE_KEY_PREFIX, '');
+            if (region && !regions.includes(region)) {
+                regions.push(region);
             }
         }
     }
+    regions.sort();
+    
+    var currentRegion = localStorage.getItem(SELECTED_REGION_KEY) || '';
+    var regionListHtml = '';
+    
+    if (regions.length === 0) {
+        regionListHtml = '<div style="text-align:center;color:#a0aec0;padding:10px;">저장된 지역이 없습니다</div>';
+    } else {
+        regions.forEach(function(region) {
+            var isActive = (region === currentRegion);
+            regionListHtml += `
+                <div class="region-item ${isActive ? 'active' : ''}" onclick="selectRegionFromPopup('${region}')" style="
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 8px 12px;
+                    margin-bottom: 4px;
+                    background: ${isActive ? '#ebf8ff' : '#f7fafc'};
+                    border-radius: 6px;
+                    cursor: pointer;
+                    border-left: 3px solid ${isActive ? '#4f7eb3' : 'transparent'};
+                    transition: all 0.2s;
+                ">
+                    <span style="font-weight: ${isActive ? '600' : '400'};">
+                        ${isActive ? '📍 ' : ''}${region}
+                    </span>
+                    ${isActive ? '<span style="font-size:11px;color:#4f7eb3;font-weight:600;">현재</span>' : ''}
+                </div>
+            `;
+        });
+    }
+    
+    var modalHtml = `
+        <div id="regionManagerModal" style="
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 999999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            animation: fadeIn 0.2s ease;
+        " onclick="if(event.target===this) this.remove()">
+            <div style="
+                background: white;
+                border-radius: 16px;
+                padding: 24px;
+                max-width: 380px;
+                width: 100%;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+                max-height: 80vh;
+                overflow-y: auto;
+            " onclick="event.stopPropagation()">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                    <h3 style="font-size:17px; font-weight:700; color:#1a202c; margin:0;">📍 지역 관리</h3>
+                    <button onclick="document.getElementById('regionManagerModal').remove()" style="background:none; border:none; font-size:22px; cursor:pointer; color:#a0aec0;">&times;</button>
+                </div>
+                
+                <div style="font-size:13px; color:#4a5568; margin-bottom:12px;">
+                    현재: <strong id="popupCurrentRegion">${currentRegion || '선택 안 됨'}</strong>
+                </div>
+                
+                <div style="margin-bottom:12px; max-height:250px; overflow-y:auto;">
+                    ${regionListHtml}
+                </div>
+                
+                <div style="display:flex; gap:8px; margin-top:8px; border-top:1px solid #e2e8f0; padding-top:12px;">
+                    <input id="newRegionInput" type="text" placeholder="새 지역명 입력" 
+                           style="flex:1; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px;"
+                           onkeydown="if(event.key==='Enter') addRegionFromPopup();">
+                    <button class="btn btn-primary btn-sm" onclick="addRegionFromPopup()" 
+                            style="padding:6px 14px; background:#4f7eb3; color:white; border:none; border-radius:8px; cursor:pointer;">추가</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteRegionFromPopup()" 
+                            style="padding:6px 14px; background:#e53e3e; color:white; border:none; border-radius:8px; cursor:pointer;">삭제</button>
+                </div>
+                
+                <div style="font-size:11px; color:#a0aec0; margin-top:8px; text-align:center;">
+                    팝업을 닫으려면 배경을 클릭하세요
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    setTimeout(function() {
+        var input = document.getElementById('newRegionInput');
+        if (input) input.focus();
+    }, 100);
 }
 
 // ============================================================
-// 26. 도우미 함수 (tab-status 표시)
+// 36. 최적화 라이브 요약 업데이트
 // ============================================================
-function showTabStatus(tabId, msg, type) {
-    var statusEl = document.getElementById(tabId + 'Status');
-    if (!statusEl) {
-        var tabContent = document.getElementById(tabId);
-        if (tabContent) {
-            statusEl = document.createElement('div');
-            statusEl.id = tabId + 'Status';
-            statusEl.className = 'tab-status';
-            tabContent.appendChild(statusEl);
+function updateOptimizationLiveSummary() {
+    var text = document.getElementById('optimizationStatus');
+    if (!text) return;
+    var mode = (typeof optimizeMode !== 'undefined' && optimizeMode === 'Farthest') ? '먼순' : '가까운순';
+    var objective = (typeof routeObjective !== 'undefined' && routeObjective === 'time') ? '최소시간'
+        : (typeof routeObjective !== 'undefined' && routeObjective === 'balanced') ? '거리+시간 균형'
+        : '최단거리';
+    var road = (typeof useRoadOptimization === 'undefined' || useRoadOptimization) ? '실제 도로' : '직선거리 보완';
+    var direction = (typeof useDirectionHint === 'undefined' || useDirectionHint) ? '방향 고려' : '방향 미고려';
+    text.textContent = mode + ' · ' + objective + ' · ' + road + ' · ' + direction;
+}
+
+// ============================================================
+// 37. 탭 스와이프 (세로 스크롤 우선)
+// ============================================================
+(function() {
+    var startX = 0, startY = 0, tracking = false;
+    var tabOrder = ['tab-places', 'tab-route', 'tab-list', 'tab-settings', 'tab-help'];
+    document.addEventListener('touchstart', function(e) {
+        var target = e.target;
+        if (target.closest('input, textarea, select, button, .bottom-tabs, #map, .waypoint-list, .route-item') || !e.touches || e.touches.length !== 1) {
+            tracking = false; return;
         }
-    }
-    if (statusEl) {
-        statusEl.textContent = msg;
-        statusEl.className = 'tab-status show ' + (type || 'info');
-        clearTimeout(statusEl._hideTimer);
-        statusEl._hideTimer = setTimeout(function() {
-            statusEl.classList.remove('show');
-        }, 5000);
-    }
-}
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        tracking = true;
+    }, {passive:true});
+    document.addEventListener('touchend', function(e) {
+        if (!tracking || !e.changedTouches || !e.changedTouches.length) return;
+        tracking = false;
+        var dx = e.changedTouches[0].clientX - startX;
+        var dy = e.changedTouches[0].clientY - startY;
+        if (Math.abs(dy) >= Math.abs(dx) || Math.abs(dx) < 70 || Math.abs(dy) > 60) return;
+        var activeTab = document.querySelector('.tab-content.active');
+        if (!activeTab) return;
+        var currentIndex = tabOrder.indexOf(activeTab.id);
+        if (currentIndex < 0) return;
+        var nextIndex = dx < 0 ? Math.min(currentIndex + 1, tabOrder.length - 1) : Math.max(currentIndex - 1, 0);
+        if (nextIndex !== currentIndex) switchTab(tabOrder[nextIndex]);
+    }, {passive:true});
+})();
 
 // ============================================================
-// 27. 하단 탭 이벤트 재바인딩
+// 38. 하단 탭 이벤트 재바인딩
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
     var tabs = document.querySelectorAll('.bottom-tab');
@@ -3687,34 +4592,70 @@ document.addEventListener('DOMContentLoaded', function() {
         nav.style.visibility = 'visible';
         nav.style.opacity = '1';
     }
+    
+    updateOnlineStatus();
 });
 
 // ============================================================
-// 28. 탭 스와이프
+// 39. 초기화 실행
 // ============================================================
-(function() {
-    var startX = 0, startY = 0, tracking = false;
-    var tabOrder = ['tab-places', 'tab-route', 'tab-list', 'tab-settings', 'tab-help'];
-    document.addEventListener('touchstart', function(e) {
-        var target = e.target;
-        if (target.closest('input, textarea, select, button, .bottom-tabs, #map, .waypoint-list, .route-item') || !e.touches || e.touches.length !== 1) {
-            tracking = false; return;
+document.addEventListener('DOMContentLoaded', function() {
+    loadSettings();
+    loadRegionList();
+    loadPresets();
+    
+    if (currentRegion) {
+        var key = getStorageKey(currentRegion);
+        var data = localStorage.getItem(key);
+        places = data ? JSON.parse(data) : [];
+    } else {
+        places = [];
+    }
+    
+    updateRegionDisplay();
+    
+    var sortSelect = document.getElementById('sortPlaces');
+    if (sortSelect) currentSort = sortSelect.value;
+    
+    renderPlaces();
+    renderWaypointList();
+    setOptimizeMode(optimizeMode);
+    updateStorageInfo();
+    setTimeout(initMap, 500);
+    setTimeout(function() {
+        if (!kakaoMap && !sdkLoading) initMap();
+    }, 3000);
+    registerServiceWorker();
+    setTimeout(displayAppVersion, 1000);
+    
+    function initWeather() {
+        fetchWeather().then(function(success) {
+            if (!success) setTimeout(initWeather, 5000);
+        });
+    }
+    setTimeout(initWeather, 3000);
+});
+
+// ============================================================
+// 40. 도우미 함수 (tab-status 표시)
+// ============================================================
+function showTabStatus(tabId, msg, type) {
+    var statusEl = document.getElementById(tabId + 'Status');
+    if (!statusEl) {
+        var tabContent = document.getElementById(tabId);
+        if (tabContent) {
+            statusEl = document.createElement('div');
+            statusEl.id = tabId + 'Status';
+            statusEl.className = 'tab-status';
+            tabContent.appendChild(statusEl);
         }
-        startX = e.touches[0].clientX;
-        startY = e.touches[0].clientY;
-        tracking = true;
-    }, {passive:true});
-    document.addEventListener('touchend', function(e) {
-        if (!tracking || !e.changedTouches || !e.changedTouches.length) return;
-        tracking = false;
-        var dx = e.changedTouches[0].clientX - startX;
-        var dy = e.changedTouches[0].clientY - startY;
-        if (Math.abs(dy) >= Math.abs(dx) || Math.abs(dx) < 70 || Math.abs(dy) > 60) return;
-        var activeTab = document.querySelector('.tab-content.active');
-        if (!activeTab) return;
-        var currentIndex = tabOrder.indexOf(activeTab.id);
-        if (currentIndex < 0) return;
-        var nextIndex = dx < 0 ? Math.min(currentIndex + 1, tabOrder.length - 1) : Math.max(currentIndex - 1, 0);
-        if (nextIndex !== currentIndex) switchTab(tabOrder[nextIndex]);
-    }, {passive:true});
-})();
+    }
+    if (statusEl) {
+        statusEl.textContent = msg;
+        statusEl.className = 'tab-status show ' + (type || 'info');
+        clearTimeout(statusEl._hideTimer);
+        statusEl._hideTimer = setTimeout(function() {
+            statusEl.classList.remove('show');
+        }, 5000);
+    }
+}
