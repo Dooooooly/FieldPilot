@@ -25,26 +25,27 @@
             box-sizing: border-box;
         }
 
-        html,
+        /* 스크롤 컨테이너는 html 하나로만 고정 (html/body 이중 스크롤 박스 방지) */
+        html {
+            height: 100%;
+            overflow-x: hidden;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
         body {
             min-height: 100%;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
             background: #f7f8fc;
             color: #1a202c;
             -webkit-font-smoothing: antialiased;
-            overflow-x: hidden;
-            /* iOS 관성 스크롤 보정 */
-            -webkit-overflow-scrolling: touch;
+            /* body는 overflow를 절대 별도 지정하지 않음 (html의 스크롤 박스에 얹혀감) */
         }
 
         /* ===== 하단 탭 고정 (강제) ===== */
         body {
             padding-bottom: 80px !important;
-            /* 🔥 브라우저 기본 스와이프(뒤로가기)는 body에만 적용
-               (html에 걸면 일부 안드로이드 웹뷰에서 세로 스크롤 자체가
-               막히는 알려진 버그가 있어 body로 한정함) */
             overscroll-behavior-y: contain;
-            /* 세로 스크롤은 허용, 가로 스와이프만 앱이 처리 */
             touch-action: pan-y;
         }
 
