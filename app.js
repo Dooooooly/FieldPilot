@@ -2648,42 +2648,82 @@ function openRouteMap(fromName, fromLat, fromLng, toName, toLat, toLng) {
         return; 
     }
 
-    var url;
     var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
     if (routeApi === 'tmap') {
+        // ★★★ TMap 스킴 (Android/iOS 모두 지원) ★★★
+        var tmapUrl = 'tmap://route?'
+            + 'startName=' + encodeURIComponent(fromName)
+            + '&startX=' + fromLng
+            + '&startY=' + fromLat
+            + '&endName=' + encodeURIComponent(toName)
+            + '&endX=' + toLng
+            + '&endY=' + toLat
+            + '&startPoiType=1'
+            + '&endPoiType=1'
+            + '&searchOption=0';
+        
+        // 웹 URL (PC에서 TMap 웹으로 열기)
+        var webUrl = 'https://apis-navi.tmap.co.kr/routes/'
+            + fromLat + ',' + fromLng + '/' + toLat + ',' + toLng
+            + '?name=' + encodeURIComponent(fromName + '→' + toName);
+
         if (isMobile) {
-            var tmapUrl = 'tmap://route?'
-                + 'sname=' + encodeURIComponent(fromName)
-                + '&slat=' + fromLat + '&slon=' + fromLng
-                + '&dname=' + encodeURIComponent(toName)
-                + '&dlat=' + toLat + '&dlon=' + toLng
-                + '&navi=true';
-            var webUrl = 'https://apis-navi.tmap.co.kr/routes/'
-                + fromLat + ',' + fromLng + '/' + toLat + ',' + toLng
-                + '?name=' + encodeURIComponent(fromName + '→' + toName);
+            // 모바일: 스킴 실행
             window.location.href = tmapUrl;
+            
+            // 2초 후에도 앱이 실행되지 않으면 웹으로 fallback
             setTimeout(function() {
-                if (window.location.href.startsWith('tmap://')) {
+                // 현재 URL이 tmap://로 시작하지 않으면 (스킴 실패)
+                if (!window.location.href.startsWith('tmap://')) {
                     window.open(webUrl, '_blank');
                 }
             }, 2000);
+            
             showTabStatus('tab-route', '🗺️ TMap 길찾기: ' + fromName + ' → ' + toName, 'info');
             return;
         } else {
-            url = 'https://apis-navi.tmap.co.kr/routes/'
-                + fromLat + ',' + fromLng + '/' + toLat + ',' + toLng
-                + '?name=' + encodeURIComponent(fromName + '→' + toName);
+            // PC: 웹으로 열기
+            window.open(webUrl, '_blank');
+            showTabStatus('tab-route', '🗺️ TMap 웹 길찾기: ' + fromName + ' → ' + toName, 'info');
+            return;
         }
-    } else {
-        url = 'https://map.kakao.com/link/from/'
+    }
+
+    // ===== 카카오맵 =====
+    if (isMobile) {
+        // 모바일: 카카오맵 스킴
+        var kakaoUrl = 'kakaomap://route?'
+            + 'sp=' + fromLat + ',' + fromLng
+            + '&ep=' + toLat + ',' + toLng
+            + '&sname=' + encodeURIComponent(fromName)
+            + '&dname=' + encodeURIComponent(toName)
+            + '&by=CAR';
+        
+        // 웹 URL fallback
+        var webUrl = 'https://map.kakao.com/link/from/'
             + encodeURIComponent(fromName) + ',' + fromLat + ',' + fromLng
             + '/to/'
             + encodeURIComponent(toName) + ',' + toLat + ',' + toLng;
+        
+        window.location.href = kakaoUrl;
+        
+        setTimeout(function() {
+            if (!window.location.href.startsWith('kakaomap://')) {
+                window.open(webUrl, '_blank');
+            }
+        }, 2000);
+        
+        showTabStatus('tab-route', '🗺️ 카카오맵 길찾기: ' + fromName + ' → ' + toName, 'info');
+    } else {
+        // PC: 웹으로 열기
+        var url = 'https://map.kakao.com/link/from/'
+            + encodeURIComponent(fromName) + ',' + fromLat + ',' + fromLng
+            + '/to/'
+            + encodeURIComponent(toName) + ',' + toLat + ',' + toLng;
+        window.open(url, '_blank');
+        showTabStatus('tab-route', '🗺️ 카카오맵 길찾기: ' + fromName + ' → ' + toName, 'info');
     }
-
-    window.open(url, '_blank');
-    showTabStatus('tab-route', '🗺️ 길찾기: ' + fromName + ' → ' + toName, 'info');
 }
 
 // 기존 호환성 유지
