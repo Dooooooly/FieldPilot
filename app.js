@@ -2562,24 +2562,645 @@ async function runOptimize() {
 }
 
 // ============================================================
-// 18. 경로 표시 (기존과 동일, 생략)
+// 18. 경로 표시
 // ============================================================
-// (이하 코드는 기존과 동일하므로 생략 - 실제 파일에는 모든 함수 포함)
-// showRouteList, openKakaoMapFromRoute, moveToRoutePoint, openKakaoMap,
-// openKakaoMapFromPlace, showPlaceOnMap, clearSingleMarker,
-// callKakaoMobilityRoute, drawRoadRoute, drawRoute, focusMapOnPoint,
-// applyPendingMapCenter, focusRouteStart, initMap, createMap,
-// addRouteMarker, clearRouteMarkers, loadPresets, savePresets,
-// renderPresets, addPreset, loadPreset, deletePreset,
-// uploadToGitHub, downloadFromGitHub, showRegionSelectModal,
-// processDownloadFromGitHub, showGitHubHistory, parseCSVLine,
-// handleFile, processExcelFile, importPlaces, showUploadResult,
-// exportData, fetchWeather, showWeekWeather, registerServiceWorker,
-// displayAppVersion, checkForUpdates, forceUpdateApp,
-// updateRegionDisplay, selectRegionFromPopup, addRegionFromPopup,
-// deleteRegionFromPopup, openRegionManager, updateOptimizationLiveSummary,
-// showTabStatus 등
+function showRouteList() {
+    if (!routeResult) return;
+    var container = document.getElementById('routeList');
+    var { places: sorted, startPoint, totalKm, totalMin } = routeResult;
+    if (!sorted || sorted.length === 0) {
+        container.innerHTML = '<div style="text-align:center;padding:20px;color:#a0aec0;">최적화된 경로가 없습니다.</div>';
+        return;
+    }
+
+    var html = '<div style="font-weight:600;font-size:14px;margin-bottom:8px;">📋 최적 경로</div>';
+    html += '<div id="routeSortable">';
+
+    html += '<div class="route-item route-start" data-no-drag="true" data-lat="' + startPoint.lat + '" data-lng="' + startPoint.lng + '" data-name="' + escapeHtml(startPoint.name) + '" style="cursor:pointer;" onclick="moveToRoutePoint(this)">';
+    html += '<div class="idx" style="background:#4a5568;color:white;">🚩</div>';
+    html += '<div class="info"><div class="name">' + escapeHtml(startPoint.name) + '</div><div class="addr">' + escapeHtml(startPoint.address || '') + '</div></div>';
+    html += '</div>';
+
+    var colors = ['#FF6B6B', '#FF9F43', '#FECA57', '#48DBFB', '#0ABDE3', '#10AC84', '#EE5A24', '#5F27CD', '#1DD1A1', '#F368E0', '#00D2D3', '#54A0FF', '#FF9FF3', '#F368E0'];
+    for (var i = 0; i < sorted.length; i++) {
+        var p = sorted[i];
+        var prev = i === 0 ? startPoint : sorted[i - 1];
+        var segDist = p._segDist || haversineKm(prev.lat, prev.lng, p.lat, p.lng);
+        var segTime = p._segTime || Math.round(segDist / 40 * 60);
+        var color = colors[i % colors.length];
+        var addrDisplay = p.address ? '<div class="addr">' + escapeHtml(shortenAddress(p.address)) + '</div>' : '';
+        var remarkDisplay = p.remark ? '<span class="remark">' + escapeHtml(p.remark) + '</span>' : '';
+
+        html += '<div class="route-item sortable-item" data-index="' + i + '" data-lat="' + p.lat + '" data-lng="' + p.lng + '" data-name="' + escapeHtml(p.name) + '" style="border-left-color:' + color + ';cursor:pointer;" onclick="if(!event.target.closest(\'.kakao-route-btn\') && !event.target.closest(\'.drag-handle\')) moveToRoutePoint(this)">';
+        html += '<div class="idx" style="background:' + color + ';color:white;">' + (i + 1) + '</div>';
+        html += '<div class="info">';
+        html += '<div class="name">' + escapeHtml(p.name) + ' ' + remarkDisplay + '</div>';
+        html += addrDisplay;
+        html += '</div>';
+        html += '<div class="dist" style="text-align:right;font-size:12px;font-weight:600;flex-shrink:0;min-width:80px;color:' + color + ';">';
+        html += segDist.toFixed(1) + 'km<br><span style="font-size:10px;color:#718096;">' + segTime + '분</span></div>';
+        
+        html += '<button class="btn btn-outline kakao-route-btn" style="margin-left:4px;padding:4px 8px;font-size:12px;flex-shrink:0;min-height:32px;border-radius:4px;position:relative;z-index:10;" onclick="openKakaoMapFromRoute(this)" title="카카오맵에서 구간 길찾기"';
+        html += ' data-from-name="' + escapeHtml(prev.name) + '"';
+        html += ' data-from-lat="' + prev.lat + '"';
+        html += ' data-from-lng="' + prev.lng + '"';
+        html += ' data-to-name="' + escapeHtml(p.name) + '"';
+        html += ' data-to-lat="' + p.lat + '"';
+        html += ' data-to-lng="' + p.lng + '">';
+        html += '🗺️';
+        html += '</button>';
+        
+        html += '<span class="drag-handle" style="color:#a0aec0;font-size:20px;cursor:grab;padding:4px 6px;user-select:none;margin-left:2px;" title="드래그하여 순서 변경">⠿</span>';
+        html += '</div>';
+    }
+
+    html += '</div>';
+    container.innerHTML = html;
+
+    var sortableEl = document.getElementById('routeSortable');
+    if (sortableEl && window.Sortable) {
+        if (window._routeSortable) window._routeSortable.destroy();
+        window._routeSortable = new Sortable(sortableEl, {
+            handle: '.drag-handle',
+            animation: 150,
+            onMove: function(evt) {
+                if (evt.toIndex === 0) {
+                    showTabStatus('tab-route', '⚠️ 출발지 위치로는 이동할 수 없습니다.', 'warning');
+                    return false;
+                }
+                return true;
+            },
+            onEnd: function(evt) {
+                var oldIndex = evt.oldIndex - 1;
+                var newIndex = evt.newIndex - 1;
+                if (oldIndex === newIndex || oldIndex < 0 || newIndex < 0) return;
+
+                var moved = routeResult.places.splice(oldIndex, 1)[0];
+                routeResult.places.splice(newIndex, 0, moved);
+                showRouteList();
+
+                var allPoints = [{ name: startPoint.name, lat: startPoint.lat, lng: startPoint.lng }].concat(routeResult.places);
+                clearRouteMarkers();
+                addRouteMarker(startPoint.lat, startPoint.lng, '🚩 ' + startPoint.name, true, -1);
+                for (var i = 0; i < routeResult.places.length; i++) {
+                    var p = routeResult.places[i];
+                    addRouteMarker(p.lat, p.lng, (i + 1) + '. ' + p.name, false, i);
+                }
+                var restKey = settings.kakaoRestKey;
+                if (restKey) {
+                    callKakaoMobilityRoute(allPoints, restKey).then(function(routeData) {
+                        if (routeData) drawRoadRoute(routeData);
+                        else drawRoute(allPoints);
+                    });
+                } else drawRoute(allPoints);
+                showTabStatus('tab-route', '🔄 경로 순서 변경됨', 'ok');
+            }
+        });
+    }
+}
+
+function openKakaoMapFromRoute(btn) {
+    if (!btn) {
+        showTabStatus('tab-route', '⚠️ 버튼 정보가 없습니다.', 'warning');
+        return;
+    }
+
+    var fromName = btn.dataset.fromName;
+    var fromLat = parseFloat(btn.dataset.fromLat);
+    var fromLng = parseFloat(btn.dataset.fromLng);
+    var toName = btn.dataset.toName;
+    var toLat = parseFloat(btn.dataset.toLat);
+    var toLng = parseFloat(btn.dataset.toLng);
+
+    if (!fromName || !toName || isNaN(fromLat) || isNaN(toLat)) {
+        showTabStatus('tab-route', '⚠️ 경로 정보가 올바르지 않습니다.', 'warning');
+        return;
+    }
+
+    openKakaoMap(fromName, fromLat, fromLng, toName, toLat, toLng);
+}
+
+function moveToRoutePoint(el) {
+    if (!el) {
+        showTabStatus('tab-route', '⚠️ 위치 정보가 없습니다.', 'warning');
+        return;
+    }
+    var lat = parseFloat(el.dataset.lat);
+    var lng = parseFloat(el.dataset.lng);
+    var name = el.dataset.name || '장소';
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        showTabStatus('tab-route', '⚠️ 위치 정보가 올바르지 않습니다.', 'warning');
+        return;
+    }
+    switchTab('tab-route');
+    focusMapOnPoint(lat, lng, 4);
+    document.querySelectorAll('.route-item').forEach(function(item) { item.style.background = ''; });
+    el.style.background = '#ebf8ff';
+    showTabStatus('tab-route', '📍 "' + name + '" 위치로 이동했습니다.', 'info');
+}
+
 // ============================================================
+// 19. 카카오맵 연결
+// ============================================================
+function openKakaoMap(fromName, fromLat, fromLng, toName, toLat, toLng) {
+    if (!toName || !toLat || !toLng) { 
+        showTabStatus('tab-route', '⚠️ 목적지 정보가 없습니다.', 'warning'); 
+        return; 
+    }
+    if (!fromName || !fromLat || !fromLng) { 
+        showTabStatus('tab-route', '⚠️ 출발지 정보가 없습니다.', 'warning'); 
+        return; 
+    }
+
+    var url = 'https://map.kakao.com/link/from/'
+        + encodeURIComponent(fromName) + ',' + fromLat + ',' + fromLng
+        + '/to/'
+        + encodeURIComponent(toName) + ',' + toLat + ',' + toLng;
+
+    window.open(url, '_blank');
+    showTabStatus('tab-route', '🗺️ 카카오맵 길찾기: ' + fromName + ' → ' + toName, 'info');
+}
+
+function openKakaoMapFromPlace(id) {
+    var place = places.find(function(p) { return p.id === id; });
+    if (!place) {
+        showTabStatus('tab-list', '❌ 현장을 찾을 수 없습니다.', 'error');
+        return;
+    }
+    if (!place.lat || !place.lng || place.lat === 0 || place.lng === 0) {
+        showTabStatus('tab-list', '⚠️ "' + place.name + '"의 좌표가 없습니다.', 'warning');
+        return;
+    }
+
+    var webUrl;
+    var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    if (startPoint && startPoint.lat && startPoint.lng) {
+        webUrl = 'https://map.kakao.com/link/from/'
+            + encodeURIComponent(startPoint.name) + ',' + startPoint.lat + ',' + startPoint.lng
+            + '/to/'
+            + encodeURIComponent(place.name) + ',' + place.lat + ',' + place.lng;
+        showTabStatus('tab-list', '🗺️ 카카오맵 길찾기: ' + startPoint.name + ' → ' + place.name, 'info');
+    } else {
+        webUrl = 'https://map.kakao.com/link/map/'
+            + encodeURIComponent(place.name) + ',' + place.lat + ',' + place.lng;
+        showTabStatus('tab-list', '🗺️ 카카오맵에서 "' + place.name + '" 위치 열기', 'info');
+    }
+
+    if (isMobile) {
+        var kakaoUrl;
+        if (startPoint && startPoint.lat && startPoint.lng) {
+            kakaoUrl = 'kakaomap://route?'
+                + 'sp=' + startPoint.lat + ',' + startPoint.lng
+                + '&ep=' + place.lat + ',' + place.lng
+                + '&sname=' + encodeURIComponent(startPoint.name)
+                + '&dname=' + encodeURIComponent(place.name)
+                + '&by=car';
+        } else {
+            kakaoUrl = 'kakaomap://open?page=map&lat=' + place.lat + '&lng=' + place.lng
+                + '&q=' + encodeURIComponent(place.name);
+        }
+
+        window.location.href = kakaoUrl;
+
+        setTimeout(function() {
+            if (window.location.href.startsWith('kakaomap://')) {
+                window.open(webUrl, '_blank');
+            }
+        }, 2000);
+
+    } else {
+        window.open(webUrl, '_blank');
+    }
+}
+
+function openCurrentPlaceInKakaoMap() {
+    if (!currentPlaceId) {
+        showTabStatus('tab-route', '⚠️ 표시된 현장이 없습니다.', 'warning');
+        return;
+    }
+
+    var place = places.find(function(p) { return p.id === currentPlaceId; });
+    if (!place) {
+        showTabStatus('tab-route', '❌ 현장을 찾을 수 없습니다.', 'error');
+        return;
+    }
+    if (!place.lat || !place.lng || place.lat === 0 || place.lng === 0) {
+        showTabStatus('tab-route', '⚠️ "' + place.name + '"의 좌표가 없습니다.', 'warning');
+        return;
+    }
+
+    var url;
+    if (startPoint && startPoint.lat && startPoint.lng) {
+        url = 'https://map.kakao.com/link/from/'
+            + encodeURIComponent(startPoint.name) + ',' + startPoint.lat + ',' + startPoint.lng
+            + '/to/'
+            + encodeURIComponent(place.name) + ',' + place.lat + ',' + place.lng;
+        showTabStatus('tab-route', '🗺️ 카카오맵 길찾기: ' + startPoint.name + ' → ' + place.name, 'info');
+    } else {
+        url = 'https://map.kakao.com/link/map/'
+            + encodeURIComponent(place.name) + ',' + place.lat + ',' + place.lng;
+        showTabStatus('tab-route', '🗺️ 카카오맵에서 "' + place.name + '" 위치 열기', 'info');
+    }
+
+    window.open(url, '_blank');
+}
+
+// ============================================================
+// 20. 지도 표시
+// ============================================================
+function showPlaceOnMap(id) {
+    var place = places.find(function(p) { return p.id === id; });
+    if (!place) {
+        showTabStatus('tab-list', '❌ 현장을 찾을 수 없습니다.', 'error');
+        return;
+    }
+    if (!place.lat || !place.lng || place.lat === 0 || place.lng === 0) {
+        showTabStatus('tab-list', '⚠️ "' + place.name + '"의 좌표가 없습니다.', 'warning');
+        return;
+    }
+    routeResult = null;
+    document.getElementById('placeCount').textContent = '0개소';
+    document.getElementById('totalDistance').textContent = '0.00 km';
+    document.getElementById('totalTime').textContent = '0 분';
+    document.getElementById('optimizeMode').textContent = '-';
+    document.getElementById('routeList').innerHTML = '';
+    clearRouteMarkers();
+    clearSingleMarker();
+    isShowingRouteMarkers = false;
+    
+    if (!kakaoMap) {
+        initMap();
+        setTimeout(function() { showPlaceOnMap(id); }, 500);
+        return;
+    }
+    
+    var pos = new kakao.maps.LatLng(place.lat, place.lng);
+    var content = '<div style="background:rgba(255,255,255,0.95);padding:8px 18px;border-radius:24px;border:2.5px solid rgba(37,99,235,0.5);box-shadow:0 8px 32px rgba(37,99,235,0.2);font-size:14px;font-weight:700;color:#1a202c;white-space:nowrap;backdrop-filter:blur(12px);">📍 ' + escapeHtml(place.name) + '</div>';
+    var customOverlay = new kakao.maps.CustomOverlay({
+        map: kakaoMap,
+        position: pos,
+        content: content,
+        yAnchor: 1.4,
+        xAnchor: 0.5
+    });
+    singlePlaceMarker = customOverlay;
+    singlePlaceMarker._placeId = id;
+    kakaoMap.setCenter(pos);
+    kakaoMap.setLevel(4);
+    switchTab('tab-route');
+    showTabStatus('tab-route', '📍 "' + place.name + '" 위치 표시 중 (경로 초기화됨)', 'info');
+}
+
+function clearSingleMarker() {
+    if (singlePlaceMarker) {
+        try { singlePlaceMarker.setMap(null); } catch(e) {}
+        singlePlaceMarker = null;
+    }
+    if (singlePlaceInfoWindow) {
+        try { singlePlaceInfoWindow.close(); } catch(e) {}
+        singlePlaceInfoWindow = null;
+    }
+}
+
+// ============================================================
+// 21. 카카오모빌리티 API
+// ============================================================
+async function callKakaoMobilityRoute(points, restKey) {
+    if (!restKey || points.length < 2) return null;
+    try {
+        var origin = points[0], destination = points[points.length - 1], waypoints = points.slice(1, -1);
+        var url = 'https://apis-navi.kakaomobility.com/v1/waypoints/directions';
+        var payload = {
+            origin: { name: origin.name || '출발지', x: origin.lng, y: origin.lat },
+            destination: { name: destination.name || '도착지', x: destination.lng, y: destination.lat },
+            priority: 'RECOMMEND'
+        };
+        if (waypoints.length > 0) {
+            payload.waypoints = waypoints.map(function(w) {
+                return { name: w.name || '경유지', x: w.lng, y: w.lat };
+            });
+        }
+        var response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': 'KakaoAK ' + restKey,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+        if (!response.ok) return null;
+        return await response.json();
+    } catch(e) {
+        return null;
+    }
+}
+
+function drawRoadRoute(routeData) {
+    if (!kakaoMap || !routeData) return;
+    try {
+        var route = routeData.routes[0];
+        if (!route || !route.sections) return;
+        
+        if (kakaoPolyline) { kakaoPolyline.setMap(null); kakaoPolyline = null; }
+        if (window._sectionPolylines) {
+            for (var i = 0; i < window._sectionPolylines.length; i++) {
+                try { window._sectionPolylines[i].setMap(null); } catch(e) {}
+            }
+            window._sectionPolylines = [];
+        }
+        
+        var totalBounds = new kakao.maps.LatLngBounds();
+        var sectionIndex = 0;
+        
+        for (var s = 0; s < route.sections.length; s++) {
+            var section = route.sections[s];
+            if (!section.roads) continue;
+            var sectionPath = [];
+            for (var r = 0; r < section.roads.length; r++) {
+                var road = section.roads[r];
+                if (road.vertexes) {
+                    for (var v = 0; v < road.vertexes.length; v += 2) {
+                        var lng = road.vertexes[v];
+                        var lat = road.vertexes[v + 1];
+                        if (lat && lng) {
+                            var point = new kakao.maps.LatLng(lat, lng);
+                            sectionPath.push(point);
+                            totalBounds.extend(point);
+                        }
+                    }
+                }
+            }
+            if (sectionPath.length > 1) {
+                var color = COLORS[sectionIndex % COLORS.length];
+                
+                var polyline = new kakao.maps.Polyline({
+                    map: kakaoMap,
+                    path: sectionPath,
+                    strokeWeight: 6,
+                    strokeColor: color,
+                    strokeOpacity: 0.85,
+                    strokeStyle: 'solid',
+                    zIndex: 1
+                });
+                var glowPolyline = new kakao.maps.Polyline({
+                    map: kakaoMap,
+                    path: sectionPath,
+                    strokeWeight: 12,
+                    strokeColor: color,
+                    strokeOpacity: 0.2,
+                    strokeStyle: 'solid',
+                    zIndex: 0
+                });
+                if (!window._sectionPolylines) window._sectionPolylines = [];
+                window._sectionPolylines.push(polyline);
+                window._sectionPolylines.push(glowPolyline);
+                sectionIndex++;
+            }
+        }
+        
+        if (totalBounds.getSouthWest() && totalBounds.getNorthEast()) {
+            var sw = totalBounds.getSouthWest();
+            var ne = totalBounds.getNorthEast();
+            var latMargin = (ne.getLat() - sw.getLat()) * 0.2;
+            var lngMargin = (ne.getLng() - sw.getLng()) * 0.2;
+            var newSw = new kakao.maps.LatLng(sw.getLat() - latMargin, sw.getLng() - lngMargin);
+            var newNe = new kakao.maps.LatLng(ne.getLat() + latMargin, ne.getLng() + lngMargin);
+            var newBounds = new kakao.maps.LatLngBounds(newSw, newNe);
+            kakaoMap.setBounds(newBounds);
+        }
+        
+        setTimeout(function() {
+            kakaoMap.relayout();
+        }, 100);
+    } catch(e) {}
+}
+
+function drawRoute(path) {
+    if (!kakaoMap || !path || path.length < 2) return;
+    try {
+        if (kakaoPolyline) { kakaoPolyline.setMap(null); kakaoPolyline = null; }
+        if (window._sectionPolylines) {
+            for (var i = 0; i < window._sectionPolylines.length; i++) {
+                try { window._sectionPolylines[i].setMap(null); } catch(e) {}
+            }
+            window._sectionPolylines = [];
+        }
+        
+        var bounds = new kakao.maps.LatLngBounds();
+        var allPoints = [];
+        for (var i = 0; i < path.length; i++) {
+            var p = path[i];
+            var latlng = new kakao.maps.LatLng(p.lat, p.lng);
+            allPoints.push(latlng);
+            bounds.extend(latlng);
+        }
+        
+        for (var i = 0; i < allPoints.length - 1; i++) {
+            var color = COLORS[i % COLORS.length];
+            var polyline = new kakao.maps.Polyline({
+                map: kakaoMap,
+                path: [allPoints[i], allPoints[i + 1]],
+                strokeWeight: 6,
+                strokeColor: color,
+                strokeOpacity: 0.85,
+                strokeStyle: 'solid',
+                zIndex: 1
+            });
+            if (!window._sectionPolylines) window._sectionPolylines = [];
+            window._sectionPolylines.push(polyline);
+        }
+        
+        if (bounds.getSouthWest() && bounds.getNorthEast()) {
+            var sw = bounds.getSouthWest();
+            var ne = bounds.getNorthEast();
+            var latMargin = (ne.getLat() - sw.getLat()) * 0.2;
+            var lngMargin = (ne.getLng() - sw.getLng()) * 0.2;
+            var newSw = new kakao.maps.LatLng(sw.getLat() - latMargin, sw.getLng() - lngMargin);
+            var newNe = new kakao.maps.LatLng(ne.getLat() + latMargin, ne.getLng() + lngMargin);
+            var newBounds = new kakao.maps.LatLngBounds(newSw, newNe);
+            kakaoMap.setBounds(newBounds);
+        }
+        
+        setTimeout(function() {
+            kakaoMap.relayout();
+        }, 100);
+    } catch(e) {}
+}
+
+// ============================================================
+// 지도 중심 이동 공통 함수
+// ============================================================
+function focusMapOnPoint(lat, lng, level) {
+    lat = Number(lat);
+    lng = Number(lng);
+    level = Number(level) || 5;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < 33 || lat > 39 || lng < 124 || lng > 132) return false;
+    var center = {lat: lat, lng: lng, level: level};
+    if (typeof kakao !== 'undefined' && kakao.maps && kakaoMap) {
+        try {
+            kakaoMap.relayout();
+            kakaoMap.setCenter(new kakao.maps.LatLng(lat, lng));
+            kakaoMap.setLevel(level);
+            kakaoMap.relayout();
+            pendingMapCenter = null;
+            return true;
+        } catch (e) {}
+    }
+    pendingMapCenter = center;
+    if (!sdkLoading) { try { initMap(); } catch (e) {} }
+    return false;
+}
+
+function applyPendingMapCenter() {
+    if (!pendingMapCenter || !kakaoMap) return;
+    var p = pendingMapCenter;
+    try {
+        kakaoMap.relayout();
+        kakaoMap.setCenter(new kakao.maps.LatLng(p.lat, p.lng));
+        kakaoMap.setLevel(p.level || 5);
+        kakaoMap.relayout();
+        pendingMapCenter = null;
+    } catch (e) {}
+}
+
+function focusRouteStart() {
+    return startPoint ? focusMapOnPoint(startPoint.lat, startPoint.lng, 5) : false;
+}
+
+// ============================================================
+// 22. 지도 초기화
+// ============================================================
+function initMap() {
+    var container = document.getElementById('map');
+    if (!container) return;
+    var jsKey = settings.kakaoJsKey;
+    if (!jsKey) {
+        container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;color:#e53e3e;font-size:14px;background:#fff5f5;border-radius:12px;padding:20px;text-align:center;">⚠️ 설정 탭에서<br>카카오 JavaScript 키를 입력하세요</div>';
+        showTabStatus('tab-settings', '⚠️ 카카오 JavaScript 키가 필요합니다.', 'warning');
+        return;
+    }
+    container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;color:#d69e2e;font-size:14px;background:#fffff0;border-radius:12px;">⏳ 카카오 지도 로딩 중...</div>';
+    if (typeof kakao === 'undefined' || !kakao.maps) {
+        if (sdkLoading) return;
+        sdkLoading = true;
+        var script = document.createElement('script');
+        script.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=' + jsKey + '&autoload=false&libraries=services';
+        script.async = true;
+        script.defer = true;
+        script.onload = function() {
+            sdkLoading = false;
+            kakao.maps.load(function() { createMap(container); });
+        };
+        script.onerror = function() {
+            sdkLoading = false;
+            container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;color:#e53e3e;font-size:14px;background:#fff5f5;border-radius:12px;padding:20px;text-align:center;">❌ SDK 로드 실패</div>';
+        };
+        document.head.appendChild(script);
+        return;
+    }
+    kakao.maps.load(function() { createMap(container); });
+}
+
+function createMap(container) {
+    try {
+        var region = currentRegion || '서울';
+        var centerInfo = getRegionCenter(region);
+        var centerLat = centerInfo.lat, centerLng = centerInfo.lng;
+        var zoomLevel = 5;
+        var isStartValid = startPoint && typeof startPoint.lat === 'number' && typeof startPoint.lng === 'number' &&
+                           startPoint.lat > 33 && startPoint.lat < 39 && startPoint.lng > 124 && startPoint.lng < 132 &&
+                           !(startPoint.lat === 0 && startPoint.lng === 0);
+        if (isStartValid && !singlePlaceMarker && !isShowingRouteMarkers) {
+            centerLat = startPoint.lat;
+            centerLng = startPoint.lng;
+        }
+        
+        var options = {
+            center: new kakao.maps.LatLng(centerLat, centerLng),
+            level: zoomLevel,
+            draggable: true,
+            zoomable: true,
+            zoomControl: true,
+            scrollwheel: true,
+            disableKineticPan: false
+        };
+        kakaoMap = new kakao.maps.Map(container, options);
+        kakaoMap.setDraggable(true);
+        kakaoMap.setZoomable(true);
+        kakaoMap.setCenter(new kakao.maps.LatLng(centerLat, centerLng));
+        kakaoMap.relayout();
+        applyPendingMapCenter();
+        
+        var zoomControl = new kakao.maps.ZoomControl();
+        kakaoMap.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
+        kakaoMap.setZoomable(true);
+        
+        showTabStatus('tab-route', '🗺️ 지도 로드 완료', 'ok');
+    } catch(e) {
+        container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;color:#e53e3e;font-size:14px;background:#fff5f5;border-radius:12px;padding:20px;text-align:center;">❌ 지도 생성 실패</div>';
+        showTabStatus('tab-settings', '⚠️ 지도 생성 실패', 'error');
+    }
+}
+
+function addRouteMarker(lat, lng, title, isStart, colorIndex) {
+    if (!kakaoMap) return;
+    try {
+        if (isStart && startMarker) {
+            try { startMarker.setMap(null); } catch(e) {}
+            startMarker = null;
+            for (var i = routeMarkers.length - 1; i >= 0; i--) {
+                if (routeMarkers[i] === startMarker) routeMarkers.splice(i, 1);
+            }
+        }
+        var pos = new kakao.maps.LatLng(lat, lng);
+        var content;
+        
+        if (isStart) {
+            content = '<div style="background:white;padding:6px 14px;border-radius:20px;box-shadow:0 4px 16px rgba(0,0,0,0.15);font-size:13px;font-weight:700;color:#1a202c;white-space:nowrap;border:2px solid #2d3748;z-index:10;">🚩 ' + escapeHtml(title) + '</div>';
+        } else {
+            var idx = (colorIndex !== undefined && colorIndex !== null) ? colorIndex : 0;
+            var color = COLORS[idx % COLORS.length];
+            content = '<div style="background:' + color + ';padding:6px 14px;border-radius:20px;box-shadow:0 4px 16px rgba(0,0,0,0.15);font-size:13px;font-weight:700;color:white;white-space:nowrap;border:1px solid rgba(255,255,255,0.3);z-index:5;">📍 ' + escapeHtml(title) + '</div>';
+        }
+        
+        var customOverlay = new kakao.maps.CustomOverlay({
+            map: kakaoMap,
+            position: pos,
+            content: content,
+            yAnchor: 1.4,
+            xAnchor: 0.5,
+            zIndex: isStart ? 10 : 5
+        });
+        if (isStart) startMarker = customOverlay;
+        routeMarkers.push(customOverlay);
+        return customOverlay;
+    } catch(e) {
+        return null;
+    }
+}
+
+function clearRouteMarkers() {
+    for (var i = 0; i < routeMarkers.length; i++) {
+        try { routeMarkers[i].setMap(null); } catch(e) {}
+    }
+    routeMarkers = [];
+    if (startMarker) {
+        try { startMarker.setMap(null); } catch(e) {}
+        startMarker = null;
+    }
+    if (window._sectionPolylines) {
+        for (var i = 0; i < window._sectionPolylines.length; i++) {
+            try { window._sectionPolylines[i].setMap(null); } catch(e) {}
+        }
+        window._sectionPolylines = [];
+    }
+    if (kakaoPolyline) {
+        try { kakaoPolyline.setMap(null); } catch(e) {}
+        kakaoPolyline = null;
+    }
+    isShowingRouteMarkers = false;
+}
 
 // ============================================================
 // 19. GitHub 히스토리 복원 기능 (신규)
