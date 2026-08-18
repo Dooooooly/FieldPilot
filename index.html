@@ -25,7 +25,6 @@
             box-sizing: border-box;
         }
 
-        /* 스크롤 컨테이너는 html 하나로만 고정 (html/body 이중 스크롤 박스 방지) */
         html {
             height: 100%;
             overflow-x: hidden;
@@ -39,16 +38,29 @@
             background: #f7f8fc;
             color: #1a202c;
             -webkit-font-smoothing: antialiased;
-            /* body는 overflow를 절대 별도 지정하지 않음 (html의 스크롤 박스에 얹혀감) */
-        }
-
-        /* ===== 하단 탭 고정 (강제) ===== */
-        body {
             padding-bottom: 80px !important;
             overscroll-behavior-y: contain;
             touch-action: pan-y;
         }
 
+        /* ===== 오프라인 배너 ===== */
+        #offlineBanner {
+            display: none;
+            background: #e53e3e;
+            color: white;
+            text-align: center;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 999;
+        }
+        #offlineBanner.show {
+            display: block;
+        }
+
+        /* ===== 하단 탭 고정 ===== */
         .bottom-tabs {
             position: fixed !important;
             left: 0 !important;
@@ -104,44 +116,21 @@
         .bottom-tab.help-tab {
             color: #7c3aed !important;
         }
-
         .bottom-tab.help-tab.active {
             color: #7c3aed !important;
             background: #f5f3ff !important;
         }
 
         @media (max-width: 700px) {
-            body {
-                padding-bottom: 76px !important;
-            }
-            .bottom-tabs {
-                height: 68px !important;
-                min-height: 68px !important;
-            }
-            .bottom-tab {
-                height: 68px !important;
-                font-size: 10px !important;
-            }
+            body { padding-bottom: 76px !important; }
+            .bottom-tabs { height: 68px !important; min-height: 68px !important; }
+            .bottom-tab { height: 68px !important; font-size: 10px !important; }
         }
 
-        /* ===== 기타 공통 스타일 ===== */
-        .flex-row {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-        .flex-1 {
-            flex: 1;
-            min-width: 0;
-        }
-        .flex-between {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 6px;
-            flex-wrap: wrap;
-        }
+        /* ===== 공통 ===== */
+        .flex-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+        .flex-1 { flex: 1; min-width: 0; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; }
 
         .header {
             background: linear-gradient(135deg, #4a6fa5, #6b9bd2);
@@ -158,18 +147,8 @@
             gap: 6px;
         }
 
-        .header-left h1 {
-            font-size: 17px;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-        }
-
-        .header-right {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
+        .header-left h1 { font-size: 17px; font-weight: 700; letter-spacing: -0.5px; }
+        .header-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
         .weather {
             display: flex;
@@ -186,16 +165,8 @@
             color: white;
             white-space: nowrap;
         }
-
-        .weather:hover {
-            background: rgba(255, 255, 255, 0.25);
-            transform: translateY(-1px);
-        }
-
-        .weather .temp {
-            font-weight: 700;
-            font-size: 13px;
-        }
+        .weather:hover { background: rgba(255, 255, 255, 0.25); transform: translateY(-1px); }
+        .weather .temp { font-weight: 700; font-size: 13px; }
 
         .header-divider {
             width: 1px;
@@ -204,30 +175,13 @@
             flex-shrink: 0;
         }
 
-        .main {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 12px 14px 80px;
-        }
+        .main { max-width: 600px; margin: 0 auto; padding: 12px 14px 80px; }
 
-        .tab-content {
-            display: none;
-            animation: fadeUp 0.3s ease;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
+        .tab-content { display: none; animation: fadeUp 0.3s ease; }
+        .tab-content.active { display: block; }
         @keyframes fadeUp {
-            from {
-                opacity: 0;
-                transform: translateY(8px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .card {
@@ -262,74 +216,28 @@
             justify-content: center;
             min-height: 36px;
         }
+        .btn:active { transform: scale(0.96); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .btn:active {
-            transform: scale(0.96);
-        }
+        .btn-primary { background: #4f7eb3; color: white; }
+        .btn-primary:hover:not(:disabled) { background: #3d6a9e; box-shadow: 0 4px 12px rgba(79,126,179,0.3); }
 
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
+        .btn-success { background: #5a9e6f; color: white; }
+        .btn-success:hover:not(:disabled) { background: #4a8a5e; box-shadow: 0 4px 12px rgba(90,158,111,0.3); }
 
-        .btn-primary {
-            background: #4f7eb3;
-            color: white;
-        }
-
-        .btn-primary:hover:not(:disabled) {
-            background: #3d6a9e;
-            box-shadow: 0 4px 12px rgba(79, 126, 179, 0.3);
-        }
-
-        .btn-success {
-            background: #5a9e6f;
-            color: white;
-        }
-
-        .btn-success:hover:not(:disabled) {
-            background: #4a8a5e;
-            box-shadow: 0 4px 12px rgba(90, 158, 111, 0.3);
-        }
-
-        .btn-danger {
-            background: #e53e3e;
-            color: white;
-        }
-
-        .btn-danger:hover:not(:disabled) {
-            background: #c53030;
-            box-shadow: 0 4px 12px rgba(229, 62, 62, 0.3);
-        }
+        .btn-danger { background: #e53e3e; color: white; }
+        .btn-danger:hover:not(:disabled) { background: #c53030; box-shadow: 0 4px 12px rgba(229,62,62,0.3); }
 
         .btn-outline {
             background: transparent;
             color: #4a5568;
             border: 2px solid #e2e8f0;
         }
+        .btn-outline:hover:not(:disabled) { background: #f7fafc; border-color: #cbd5e0; }
 
-        .btn-outline:hover:not(:disabled) {
-            background: #f7fafc;
-            border-color: #cbd5e0;
-        }
-
-        .btn-sm {
-            padding: 4px 10px;
-            font-size: 11px;
-            min-height: 30px;
-            border-radius: 6px;
-        }
-
-        .btn-block {
-            width: 100%;
-        }
-
-        .btn-lg {
-            padding: 14px 20px;
-            font-size: 16px;
-            min-height: 50px;
-            border-radius: 10px;
-        }
+        .btn-sm { padding: 4px 10px; font-size: 11px; min-height: 30px; border-radius: 6px; }
+        .btn-block { width: 100%; }
+        .btn-lg { padding: 14px 20px; font-size: 16px; min-height: 50px; border-radius: 10px; }
 
         .input-field {
             padding: 6px 10px;
@@ -342,51 +250,26 @@
             width: 100%;
             color: #1a202c;
         }
+        .input-field:focus { border-color: #4f7eb3; outline: none; box-shadow: 0 0 0 3px rgba(79,126,179,0.15); }
+        .input-field::placeholder { color: #a0aec0; }
+        .input-field-sm { min-height: 30px; font-size: 11px; padding: 4px 8px; }
 
-        .input-field:focus {
-            border-color: #4f7eb3;
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(79, 126, 179, 0.15);
-        }
-
-        .input-field::placeholder {
-            color: #a0aec0;
-        }
-
-        .input-field-sm {
-            min-height: 30px;
-            font-size: 11px;
-            padding: 4px 8px;
-        }
-
-        .segment-control {
-            display: flex;
-            border-radius: 8px;
-            overflow: hidden;
-            border: 2px solid #4f7eb3;
-            flex: 1;
-            min-width: 140px;
-        }
-
-        .segment-btn {
-            flex: 1;
-            padding: 6px 12px;
-            border: none;
+        /* 즐겨찾기 필터 토글 */
+        .fav-filter-btn {
             font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
+            padding: 4px 12px;
+            border-radius: 20px;
+            border: 2px solid #e2e8f0;
             background: white;
             color: #4a5568;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-height: 30px;
         }
-
-        .segment-btn.active {
-            background: #4f7eb3;
+        .fav-filter-btn.active {
+            background: #f6ad55;
+            border-color: #f6ad55;
             color: white;
-        }
-
-        .segment-btn:hover:not(.active) {
-            background: #edf2f7;
         }
 
         .place-item {
@@ -403,11 +286,7 @@
             cursor: pointer;
             transition: background 0.15s;
         }
-
-        .place-item:hover {
-            background: #edf2f7;
-        }
-
+        .place-item:hover { background: #edf2f7; }
         .place-item .info {
             flex: 1;
             min-width: 0;
@@ -417,39 +296,15 @@
             flex-wrap: wrap;
             overflow: hidden;
         }
-
-        .place-item .info .name {
-            font-weight: 600;
-            font-size: 13px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .place-item .info .addr {
-            font-size: 11px;
-            color: #718096;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .place-item .info .remark {
-            font-size: 10px;
-            color: #a0aec0;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 60px;
-        }
-
+        .place-item .info .name { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .place-item .info .addr { font-size: 11px; color: #718096; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .place-item .info .remark { font-size: 10px; color: #a0aec0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60px; }
         .place-item .actions {
             display: flex;
             gap: 2px;
             flex-shrink: 0;
             align-items: center;
         }
-
         .place-item .actions button {
             background: none;
             border: none;
@@ -464,52 +319,21 @@
             align-items: center;
             justify-content: center;
         }
-
-        .place-item .actions button:hover {
-            background: rgba(0, 0, 0, 0.06);
-        }
-
-        .place-item .actions button:active {
-            transform: scale(0.92);
-        }
-
-        .place-item .actions .add:hover {
-            color: #5a9e6f;
-        }
-
-        .place-item .actions .del:hover {
-            color: #e53e3e;
-        }
-
-        .place-item .actions .map:hover {
-            color: #4f7eb3;
-        }
-
-        .place-item .actions .fav {
-            font-size: 16px;
-            transition: all 0.2s;
-        }
-
-        .place-item .actions .fav.active {
-            color: #f6ad55;
-            text-shadow: 0 0 8px rgba(246, 173, 85, 0.3);
-        }
-
-        .place-item .actions .fav.inactive {
-            color: #cbd5e0;
-        }
-
-        .place-item .actions .fav:hover {
-            transform: scale(1.15);
-            background: rgba(0, 0, 0, 0.04);
-        }
+        .place-item .actions button:hover { background: rgba(0,0,0,0.06); }
+        .place-item .actions button:active { transform: scale(0.92); }
+        .place-item .actions .add:hover { color: #5a9e6f; }
+        .place-item .actions .del:hover { color: #e53e3e; }
+        .place-item .actions .map:hover { color: #4f7eb3; }
+        .place-item .actions .fav { font-size: 16px; transition: all 0.2s; }
+        .place-item .actions .fav.active { color: #f6ad55; text-shadow: 0 0 8px rgba(246,173,85,0.3); }
+        .place-item .actions .fav.inactive { color: #cbd5e0; }
+        .place-item .actions .fav:hover { transform: scale(1.15); background: rgba(0,0,0,0.04); }
 
         .waypoint-list {
             list-style: none;
             max-height: 200px;
             overflow-y: auto;
         }
-
         .waypoint-list li {
             display: flex;
             justify-content: space-between;
@@ -523,28 +347,14 @@
             transition: background 0.2s;
             border: 1px solid transparent;
         }
-
-        .waypoint-list li:hover {
-            background: #edf2f7;
-        }
-
-        .waypoint-list li:active {
-            cursor: grabbing;
-        }
-
+        .waypoint-list li:hover { background: #edf2f7; }
+        .waypoint-list li:active { cursor: grabbing; }
         .waypoint-list li.sortable-chosen {
             background: #bee3f8;
             border-color: #4f7eb3;
-            box-shadow: 0 4px 12px rgba(79, 126, 179, 0.2);
+            box-shadow: 0 4px 12px rgba(79,126,179,0.2);
         }
-
-        .waypoint-list li .drag-handle {
-            color: #a0aec0;
-            margin-right: 6px;
-            font-size: 14px;
-            cursor: grab;
-        }
-
+        .waypoint-list li .drag-handle { color: #a0aec0; margin-right: 6px; font-size: 14px; cursor: grab; }
         .waypoint-list li .idx {
             background: #4f7eb3;
             color: white;
@@ -559,20 +369,9 @@
             margin-right: 8px;
             flex-shrink: 0;
         }
+        .waypoint-list li .remove { color: #e53e3e; cursor: pointer; font-weight: 700; padding: 0 6px; }
 
-        .waypoint-list li .remove {
-            color: #e53e3e;
-            cursor: pointer;
-            font-weight: 700;
-            padding: 0 6px;
-        }
-
-        .empty-msg {
-            text-align: center;
-            color: #a0aec0;
-            padding: 16px;
-            font-size: 13px;
-        }
+        .empty-msg { text-align: center; color: #a0aec0; padding: 16px; font-size: 13px; }
 
         .search-results {
             position: absolute;
@@ -586,9 +385,8 @@
             display: none;
             z-index: 50;
             margin-top: -2px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
         }
-
         .search-results .result-item {
             display: flex;
             align-items: center;
@@ -599,33 +397,11 @@
             border-bottom: 1px solid #f0f2f5;
             transition: background 0.15s;
         }
-
-        .search-results .result-item:hover {
-            background: #ebf8ff;
-        }
-
-        .search-results .result-item .result-check {
-            width: 16px;
-            height: 16px;
-            cursor: pointer;
-            flex-shrink: 0;
-        }
-
-        .search-results .result-item .result-info {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .search-results .result-item .result-info .addr {
-            font-size: 11px;
-            color: #718096;
-        }
-
-        .search-results .result-item .result-info .source {
-            font-size: 10px;
-            color: #a0aec0;
-            margin-left: 4px;
-        }
+        .search-results .result-item:hover { background: #ebf8ff; }
+        .search-results .result-item .result-check { width: 16px; height: 16px; cursor: pointer; flex-shrink: 0; }
+        .search-results .result-item .result-info { flex: 1; min-width: 0; }
+        .search-results .result-item .result-info .addr { font-size: 11px; color: #718096; }
+        .search-results .result-item .result-info .source { font-size: 10px; color: #a0aec0; margin-left: 4px; }
 
         .summary {
             background: linear-gradient(135deg, #ebf8ff, #e6f0fa);
@@ -633,22 +409,15 @@
             padding: 12px 16px;
             margin-top: 8px;
         }
-
         .summary-row {
             display: flex;
             justify-content: space-between;
             padding: 3px 0;
             font-size: 13px;
         }
-
-        .summary-row .label {
-            color: #4a5568;
-        }
-
-        .summary-row .value {
-            font-weight: 700;
-            color: #2d3748;
-        }
+        .summary-row .label { color: #4a5568; }
+        .summary-row .value { font-weight: 700; color: #2d3748; }
+        .summary-row .saved { color: #38a169; font-weight: 700; }
 
         .tab-status {
             display: none;
@@ -658,41 +427,14 @@
             margin-top: 6px;
             animation: fadeSlide 0.3s ease;
         }
-
-        .tab-status.show {
-            display: block !important;
-        }
-
-        .tab-status.ok,
-        .tab-status.success {
-            background: #c6f6d5;
-            color: #22543d;
-        }
-
-        .tab-status.error {
-            background: #fed7d7;
-            color: #9b2c2c;
-        }
-
-        .tab-status.warning {
-            background: #fefcbf;
-            color: #975a16;
-        }
-
-        .tab-status.info {
-            background: #bee3f8;
-            color: #2a4365;
-        }
-
+        .tab-status.show { display: block !important; }
+        .tab-status.ok, .tab-status.success { background: #c6f6d5; color: #22543d; }
+        .tab-status.error { background: #fed7d7; color: #9b2c2c; }
+        .tab-status.warning { background: #fefcbf; color: #975a16; }
+        .tab-status.info { background: #bee3f8; color: #2a4365; }
         @keyframes fadeSlide {
-            from {
-                opacity: 0;
-                transform: translateY(-6px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(-6px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         #map {
@@ -717,13 +459,9 @@
             cursor: pointer;
             transition: all 0.2s;
             font-size: 13px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
         }
-
-        .route-item:hover {
-            background: #f0fff4;
-        }
-
+        .route-item:hover { background: #f0fff4; }
         .route-item .idx {
             color: white;
             width: 24px;
@@ -737,45 +475,14 @@
             flex-shrink: 0;
             margin-right: 8px;
         }
-
-        .route-item .info {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .route-item .info .name {
-            font-weight: 600;
-        }
-
-        .route-item .info .addr {
-            font-size: 11px;
-            color: #718096;
-        }
-
-        .route-item .info .remark {
-            font-size: 10px;
-            color: #a0aec0;
-            margin-left: 4px;
-        }
-
-        .route-item .dist {
-            font-size: 12px;
-            font-weight: 600;
-            text-align: right;
-            flex-shrink: 0;
-        }
-
-        .route-start {
-            border-left-color: #4f7eb3;
-        }
-
-        .route-start .idx {
-            background: #4f7eb3;
-        }
-
-        .route-start:hover {
-            background: #ebf8ff;
-        }
+        .route-item .info { flex: 1; min-width: 0; }
+        .route-item .info .name { font-weight: 600; }
+        .route-item .info .addr { font-size: 11px; color: #718096; }
+        .route-item .info .remark { font-size: 10px; color: #a0aec0; margin-left: 4px; }
+        .route-item .dist { font-size: 12px; font-weight: 600; text-align: right; flex-shrink: 0; }
+        .route-start { border-left-color: #4f7eb3; }
+        .route-start .idx { background: #4f7eb3; }
+        .route-start:hover { background: #ebf8ff; }
 
         .preset-item {
             display: flex;
@@ -788,28 +495,12 @@
             cursor: pointer;
             border-left: 3px solid #4f7eb3;
             transition: all 0.2s;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
         }
-
-        .preset-item:hover {
-            background: #ebf8ff;
-            transform: translateX(3px);
-        }
-
-        .preset-item .preset-info {
-            flex: 1;
-        }
-
-        .preset-item .preset-name {
-            font-weight: 600;
-            font-size: 13px;
-        }
-
-        .preset-item .preset-detail {
-            font-size: 11px;
-            color: #718096;
-        }
-
+        .preset-item:hover { background: #ebf8ff; transform: translateX(3px); }
+        .preset-item .preset-info { flex: 1; }
+        .preset-item .preset-name { font-weight: 600; font-size: 13px; }
+        .preset-item .preset-detail { font-size: 11px; color: #718096; }
         .preset-item .preset-delete {
             background: none;
             border: none;
@@ -820,11 +511,7 @@
             border-radius: 6px;
             transition: all 0.2s;
         }
-
-        .preset-item .preset-delete:hover {
-            color: #e53e3e;
-            background: #fff5f5;
-        }
+        .preset-item .preset-delete:hover { color: #e53e3e; background: #fff5f5; }
 
         .setting-group {
             background: #f7fafc;
@@ -832,7 +519,6 @@
             padding: 10px 12px;
             margin-bottom: 6px;
         }
-
         .setting-group h4 {
             font-size: 13px;
             margin-bottom: 6px;
@@ -840,21 +526,18 @@
             align-items: center;
             gap: 6px;
         }
-
         .setting-group .row {
             display: flex;
             gap: 4px;
             flex-wrap: wrap;
             align-items: center;
         }
-
         .setting-group .row label {
             font-size: 12px;
             font-weight: 600;
             color: #4a5568;
             min-width: 60px;
         }
-
         .setting-group .row input {
             flex: 1;
             min-width: 88px;
@@ -863,11 +546,7 @@
             border-radius: 6px;
             font-size: 12px;
         }
-
-        .setting-group .row input:focus {
-            border-color: #4f7eb3;
-            outline: none;
-        }
+        .setting-group .row input:focus { border-color: #4f7eb3; outline: none; }
 
         .badge {
             font-size: 11px;
@@ -875,27 +554,15 @@
             border-radius: 20px;
             display: inline-block;
         }
-
-        .badge-ok {
-            background: #c6f6d5;
-            color: #22543d;
-        }
-
-        .badge-wait {
-            background: #e2e8f0;
-            color: #4a5568;
-        }
-
-        .badge-fail {
-            background: #fed7d7;
-            color: #9b2c2c;
-        }
+        .badge-ok { background: #c6f6d5; color: #22543d; }
+        .badge-wait { background: #e2e8f0; color: #4a5568; }
+        .badge-fail { background: #fed7d7; color: #9b2c2c; }
 
         .modal-overlay {
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0,0,0,0.5);
             backdrop-filter: blur(4px);
             -webkit-backdrop-filter: blur(4px);
             z-index: 200;
@@ -903,34 +570,18 @@
             align-items: center;
             padding: 20px;
         }
-
-        .modal-overlay.active {
-            display: flex;
-        }
-
+        .modal-overlay.active { display: flex; }
         .modal {
             background: white;
             border-radius: 16px;
             padding: 24px;
             max-width: 360px;
             width: 100%;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
         }
-
-        #addPlaceModal .modal {
-            max-width: 400px;
-            padding: 20px 24px;
-        }
-
-        .modal h3 {
-            font-size: 17px;
-            margin-bottom: 12px;
-        }
-
-        .modal .btn-row {
-            margin-top: 12px;
-        }
-
+        #addPlaceModal .modal { max-width: 400px; padding: 20px 24px; }
+        .modal h3 { font-size: 17px; margin-bottom: 12px; }
+        .modal .btn-row { margin-top: 12px; }
         .modal input {
             width: 100%;
             padding: 8px 12px;
@@ -939,24 +590,14 @@
             font-size: 13px;
             margin-bottom: 8px;
         }
-
-        .modal input:focus {
-            border-color: #4f7eb3;
-            outline: none;
-        }
+        .modal input:focus { border-color: #4f7eb3; outline: none; }
 
         .help-section {
             margin-bottom: 14px;
             padding-bottom: 14px;
             border-bottom: 1px solid #e2e8f0;
         }
-
-        .help-section:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-            padding-bottom: 0;
-        }
-
+        .help-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
         .help-section .help-title {
             font-weight: 700;
             font-size: 14px;
@@ -966,7 +607,6 @@
             align-items: center;
             gap: 6px;
         }
-
         .help-section .help-body {
             font-size: 13px;
             color: #4a5568;
@@ -981,7 +621,7 @@
             border-radius: 14px;
             padding: 16px;
             margin: 12px 0;
-            box-shadow: 0 3px 12px rgba(15, 23, 42, 0.06);
+            box-shadow: 0 3px 12px rgba(15,23,42,0.06);
         }
         .route-settings-header {
             display: flex;
@@ -990,29 +630,12 @@
             align-items: flex-start;
             margin-bottom: 14px;
         }
-        .route-settings-title {
-            font-size: 16px;
-            font-weight: 700;
-            color: #1a202c;
-        }
-        .route-settings-subtitle {
-            font-size: 12px;
-            color: #718096;
-            margin-top: 4px;
-            line-height: 1.5;
-        }
-        .choice-grid {
-            display: grid;
-            gap: 8px;
-        }
-        .choice-grid.two {
-            grid-template-columns: 1fr 1fr;
-        }
-        .choice-grid.three {
-            grid-template-columns: repeat(3, 1fr);
-        }
-        .choice-card,
-        .metric-card {
+        .route-settings-title { font-size: 16px; font-weight: 700; color: #1a202c; }
+        .route-settings-subtitle { font-size: 12px; color: #718096; margin-top: 4px; line-height: 1.5; }
+        .choice-grid { display: grid; gap: 8px; }
+        .choice-grid.two { grid-template-columns: 1fr 1fr; }
+        .choice-grid.three { grid-template-columns: repeat(3, 1fr); }
+        .choice-card, .metric-card {
             position: relative;
             display: flex;
             align-items: center;
@@ -1026,50 +649,18 @@
             transition: 0.18s ease;
             min-height: 52px;
         }
-        .choice-card:hover,
-        .metric-card:hover {
-            border-color: #90cdf4;
-            transform: translateY(-1px);
-        }
-        .choice-card.active,
-        .metric-card.active {
+        .choice-card:hover, .metric-card:hover { border-color: #90cdf4; transform: translateY(-1px); }
+        .choice-card.active, .metric-card.active {
             border-color: #3182ce;
             background: #ebf8ff;
-            box-shadow: 0 0 0 1px rgba(49, 130, 206, 0.08);
+            box-shadow: 0 0 0 1px rgba(49,130,206,0.08);
         }
-        .choice-radio,
-        .metric-radio {
-            font-size: 13px;
-            color: #a0aec0;
-            width: 14px;
-        }
-        .choice-card.active .choice-radio,
-        .metric-card.active .metric-radio {
-            color: #3182ce;
-        }
-        .choice-icon,
-        .metric-icon {
-            font-size: 18px;
-        }
-        .choice-content,
-        .metric-content {
-            display: flex;
-            flex-direction: column;
-            min-width: 0;
-        }
-        .choice-content strong,
-        .metric-content strong {
-            font-size: 13px;
-            font-weight: 700;
-            color: #2d3748;
-        }
-        .choice-content small,
-        .metric-content small {
-            font-size: 11px;
-            color: #718096;
-            line-height: 1.35;
-            margin-top: 2px;
-        }
+        .choice-radio, .metric-radio { font-size: 13px; color: #a0aec0; width: 14px; }
+        .choice-card.active .choice-radio, .metric-card.active .metric-radio { color: #3182ce; }
+        .choice-icon, .metric-icon { font-size: 18px; }
+        .choice-content, .metric-content { display: flex; flex-direction: column; min-width: 0; }
+        .choice-content strong, .metric-content strong { font-size: 13px; font-weight: 700; color: #2d3748; }
+        .choice-content small, .metric-content small { font-size: 11px; color: #718096; line-height: 1.35; margin-top: 2px; }
         .selection-hint {
             font-size: 11px;
             color: #4a5568;
@@ -1078,11 +669,7 @@
             padding: 6px 10px;
             margin-top: 8px;
         }
-        .metric-card input {
-            position: absolute;
-            opacity: 0;
-            pointer-events: none;
-        }
+        .metric-card input { position: absolute; opacity: 0; pointer-events: none; }
         .advanced-options {
             margin-top: 0;
             border: 1px solid #edf2f7;
@@ -1098,27 +685,11 @@
             padding: 10px 14px;
             cursor: pointer;
         }
-        .switch-row+.switch-row {
-            border-top: 1px solid #edf2f7;
-        }
-        .switch-text {
-            display: flex;
-            flex-direction: column;
-        }
-        .switch-text strong {
-            font-size: 12px;
-            font-weight: 600;
-            color: #2d3748;
-        }
-        .switch-text small {
-            font-size: 10px;
-            color: #718096;
-            margin-top: 2px;
-        }
-        .switch-row input {
-            position: absolute;
-            opacity: 0;
-        }
+        .switch-row + .switch-row { border-top: 1px solid #edf2f7; }
+        .switch-text { display: flex; flex-direction: column; }
+        .switch-text strong { font-size: 12px; font-weight: 600; color: #2d3748; }
+        .switch-text small { font-size: 10px; color: #718096; margin-top: 2px; }
+        .switch-row input { position: absolute; opacity: 0; }
         .switch-ui {
             width: 36px;
             height: 20px;
@@ -1137,15 +708,11 @@
             left: 2px;
             border-radius: 50%;
             background: #fff;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
             transition: 0.18s;
         }
-        .switch-row input:checked+.switch-ui {
-            background: #3182ce;
-        }
-        .switch-row input:checked+.switch-ui:after {
-            transform: translateX(16px);
-        }
+        .switch-row input:checked + .switch-ui { background: #3182ce; }
+        .switch-row input:checked + .switch-ui:after { transform: translateX(16px); }
 
         .ux-tab-header {
             display: flex;
@@ -1165,142 +732,72 @@
             font-size: 20px;
             flex: 0 0 36px;
         }
-        .ux-tab-title {
-            font-weight: 800;
-            font-size: 15px;
-            color: #1f2937;
+        .ux-tab-title { font-weight: 800; font-size: 15px; color: #1f2937; }
+        .ux-tab-sub { font-size: 10px; color: #718096; margin-top: 2px; line-height: 1.4; }
+        #tab-list .ux-tab-icon { background: #f0fdf4; color: #16a34a; }
+        #tab-settings .ux-tab-icon { background: #f5f3ff; color: #7c3aed; }
+        #tab-help .ux-tab-icon { background: #fff7ed; color: #ea580c; }
+
+        .commit-item {
+            padding: 6px 10px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
-        .ux-tab-sub {
+        .commit-item .commit-info { flex: 1; min-width: 0; }
+        .commit-item .commit-msg { font-weight: 600; }
+        .commit-item .commit-date { color: #a0aec0; font-size: 10px; }
+        .commit-item .restore-btn {
             font-size: 10px;
-            color: #718096;
-            margin-top: 2px;
-            line-height: 1.4;
+            padding: 2px 10px;
+            border-radius: 12px;
+            background: #4f7eb3;
+            color: white;
+            border: none;
+            cursor: pointer;
+            flex-shrink: 0;
         }
-        #tab-list .ux-tab-icon {
-            background: #f0fdf4;
-            color: #16a34a;
-        }
-        #tab-settings .ux-tab-icon {
-            background: #f5f3ff;
-            color: #7c3aed;
-        }
-        #tab-help .ux-tab-icon {
-            background: #fff7ed;
-            color: #ea580c;
-        }
+        .commit-item .restore-btn:hover { background: #3d6a9e; }
 
         @media (max-width: 480px) {
-            .header {
-                padding: 6px 10px;
-            }
-            .header-left h1 {
-                font-size: 14px;
-            }
-            .weather {
-                font-size: 10px;
-                padding: 2px 8px;
-                height: 26px;
-            }
-            .weather .temp {
-                font-size: 11px;
-            }
-            .main {
-                padding: 8px 8px 70px;
-            }
-            .card {
-                padding: 10px 12px;
-            }
-            .btn {
-                font-size: 12px;
-                padding: 6px 12px;
-                min-height: 32px;
-                border-radius: 6px;
-            }
-            .btn-lg {
-                font-size: 14px;
-                padding: 12px 16px;
-                min-height: 44px;
-            }
-            .input-field {
-                font-size: 12px;
-                padding: 5px 8px;
-                min-height: 30px;
-            }
-            #map {
-                height: 260px;
-            }
-            .place-item {
-                padding: 4px 6px;
-                min-height: 34px;
-            }
-            .place-item .info .name {
-                font-size: 12px;
-            }
-            .place-item .info .addr {
-                font-size: 10px;
-            }
-            .place-item .info .remark {
-                font-size: 9px;
-                max-width: 40px;
-            }
-            .place-item .actions button {
-                font-size: 12px;
-                min-width: 26px;
-                min-height: 26px;
-            }
-            .segment-control {
-                min-width: 100px;
-            }
-            .segment-btn {
-                font-size: 11px;
-                padding: 4px 8px;
-            }
-            .search-results .result-item {
-                padding: 5px 8px;
-                font-size: 12px;
-            }
-            .route-item {
-                font-size: 12px;
-                padding: 4px 8px;
-            }
-            .route-item .idx {
-                width: 20px;
-                height: 20px;
-                font-size: 10px;
-            }
-            .route-item .info .addr {
-                font-size: 10px;
-            }
-            .route-item .info .remark {
-                font-size: 9px;
-            }
-            .modal {
-                padding: 16px;
-            }
-            .bottom-tabs {
-                height: 56px !important;
-                min-height: 56px !important;
-            }
-            .bottom-tab {
-                height: 56px !important;
-                font-size: 9px !important;
-            }
-            .bottom-tab .tab-icon {
-                font-size: 18px !important;
-            }
-            body {
-                padding-bottom: 64px !important;
-            }
-            .choice-grid.two {
-                grid-template-columns: 1fr;
-            }
-            .choice-grid.three {
-                grid-template-columns: 1fr;
-            }
+            .header { padding: 6px 10px; }
+            .header-left h1 { font-size: 14px; }
+            .weather { font-size: 10px; padding: 2px 8px; height: 26px; }
+            .weather .temp { font-size: 11px; }
+            .main { padding: 8px 8px 70px; }
+            .card { padding: 10px 12px; }
+            .btn { font-size: 12px; padding: 6px 12px; min-height: 32px; border-radius: 6px; }
+            .btn-lg { font-size: 14px; padding: 12px 16px; min-height: 44px; }
+            .input-field { font-size: 12px; padding: 5px 8px; min-height: 30px; }
+            #map { height: 260px; }
+            .place-item { padding: 4px 6px; min-height: 34px; }
+            .place-item .info .name { font-size: 12px; }
+            .place-item .info .addr { font-size: 10px; }
+            .place-item .info .remark { font-size: 9px; max-width: 40px; }
+            .place-item .actions button { font-size: 12px; min-width: 26px; min-height: 26px; }
+            .segment-control { min-width: 100px; }
+            .segment-btn { font-size: 11px; padding: 4px 8px; }
+            .search-results .result-item { padding: 5px 8px; font-size: 12px; }
+            .route-item { font-size: 12px; padding: 4px 8px; }
+            .route-item .idx { width: 20px; height: 20px; font-size: 10px; }
+            .route-item .info .addr { font-size: 10px; }
+            .route-item .info .remark { font-size: 9px; }
+            .modal { padding: 16px; }
+            .bottom-tabs { height: 56px !important; min-height: 56px !important; }
+            .bottom-tab { height: 56px !important; font-size: 9px !important; }
+            .bottom-tab .tab-icon { font-size: 18px !important; }
+            body { padding-bottom: 64px !important; }
+            .choice-grid.two { grid-template-columns: 1fr; }
+            .choice-grid.three { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
+
+    <!-- 오프라인 배너 -->
+    <div id="offlineBanner">📡 오프라인 상태 - 변경사항이 저장되지 않을 수 있습니다</div>
 
     <header class="header">
         <div class="header-left"><h1>🚗 경로 최적화</h1></div>
@@ -1339,7 +836,6 @@
                 <div id="startInfo" style="font-size:12px; color:#718096; margin-top:4px;">⏳ 출발지를 검색하거나 🎯 현재 위치 버튼을 눌러 설정하세요</div>
             </div>
 
-            <!-- ===== 경유지 카드 (버튼 포함) ===== -->
             <div class="card">
                 <div class="flex-between" style="margin-bottom:6px;">
                     <div class="card-title" style="margin-bottom:0; font-size:14px;">📍 경유지 <span id="wpCount" style="font-size:12px;color:#a0aec0;font-weight:400;"></span></div>
@@ -1354,16 +850,13 @@
                 </div>
                 <ul class="waypoint-list" id="waypointList"><li class="empty-msg">경유지를 추가하세요 (드래그로 순서 변경 가능)</li></ul>
 
-                <!-- 🔥 모드 상태 & 버튼 & 최적화 상태 표시 -->
                 <div id="modeStatus" style="font-size:11px; color:#a0aec0; margin-top:4px; text-align:center;">💡 일반 모드 - 경유지를 입력하고 추가하세요</div>
 
-                <!-- 버튼 영역 (가로 배치) -->
                 <div style="display:flex; gap:8px; margin-top:8px;">
                     <button class="btn btn-primary btn-lg" id="runOptimizeBtn" onclick="runOptimize()" style="flex:1;">⚡ 경로 최적화 실행</button>
                     <button class="btn btn-danger btn-lg" onclick="resetRoute()" style="flex:1;">🔄 초기화</button>
                 </div>
 
-                <!-- 현재 최적화 상태 표시 -->
                 <div id="optimizationStatus" style="font-size:11px; color:#4a5568; text-align:center; margin-top:6px; padding:4px 8px; background:#f7fafc; border-radius:6px;">
                     가까운순 · 최단거리 · 직선거리 보완 · 방향 미고려
                 </div>
@@ -1471,6 +964,7 @@
                 <div class="summary-row"><span class="label">📏 총 거리</span><span class="value" id="totalDistance">0.00 km</span></div>
                 <div class="summary-row"><span class="label">⏱️ 총 시간</span><span class="value" id="totalTime">0 분</span></div>
                 <div class="summary-row"><span class="label">📐 최적화</span><span class="value" id="optimizeMode">-</span></div>
+                <div class="summary-row" id="savedRow" style="display:none;"><span class="label">💡 절약 효과</span><span class="saved" id="savedAmount">-</span></div>
             </div>
             <div id="routeList" style="margin-top:8px;"></div>
             <div id="routeStatus" class="tab-status"></div>
@@ -1485,6 +979,7 @@
             <div class="card">
                 <div class="flex-between" style="margin-bottom:6px;">
                     <span class="card-title" style="margin-bottom:0; font-size:14px;">📋 현장리스트 <span id="listCount" style="font-size:12px;color:#a0aec0;font-weight:400;"></span></span>
+                    <button class="fav-filter-btn" id="favFilterBtn" onclick="toggleFavFilter()">⭐ 즐겨찾기</button>
                 </div>
                 <div class="flex-row" style="margin-bottom:6px; gap:6px;">
                     <button class="btn btn-outline btn-sm" style="flex:1; font-size:11px; padding:6px 8px;" onclick="document.getElementById('fileInput').click()">📥 엑셀 가져오기</button>
@@ -1500,7 +995,6 @@
                         <select id="sortPlaces" onchange="applySort()" style="padding:3px 8px; border:2px solid #e2e8f0; border-radius:6px; font-size:11px; background:white; height:28px;">
                             <option value="name-asc">이름 ↑</option>
                             <option value="name-desc">이름 ↓</option>
-                            <option value="favorite">⭐ 즐겨찾기</option>
                             <option value="no-coord">⚠️ 주소 변환 실패</option>
                         </select>
                     </div>
@@ -1620,7 +1114,7 @@
                         </div>
                         <div style="margin-top:6px;">📊 <strong>요약 정보</strong></div>
                         <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                            - 총 방문지 개수, 총 거리, 총 소요 시간을 한눈에 확인하세요.
+                            - 총 방문지 개수, 총 거리, 총 소요 시간, 그리고 <strong>절약 효과</strong>를 한눈에 확인하세요.
                         </div>
                     </div>
                 </div>
@@ -1631,7 +1125,8 @@
                         <div style="padding-left:12px; font-size:12px; color:#4a5568;">
                             - <strong>'➕ 현장추가'</strong> 버튼으로 새 현장을 등록하세요.<br>
                             - 현장을 <strong>클릭</strong>하면 이름, 주소, 비고를 편집할 수 있어요.<br>
-                            - <strong>'⭐ 즐겨찾기'</strong> 버튼으로 자주 가는 현장을 상단에 고정하세요.
+                            - <strong>'⭐ 즐겨찾기'</strong> 버튼으로 자주 가는 현장을 상단에 고정하세요.<br>
+                            - <strong>'⭐ 즐겨찾기'</strong> 필터 버튼으로 즐겨찾기한 현장만 모아볼 수 있어요.
                         </div>
                         <div style="margin-top:6px;"><strong>📥 엑셀 가져오기/내보내기</strong></div>
                         <div style="padding-left:12px; font-size:12px; color:#4a5568;">
@@ -1641,7 +1136,7 @@
                         <div style="margin-top:6px;"><strong>🔍 검색 및 정렬</strong></div>
                         <div style="padding-left:12px; font-size:12px; color:#4a5568;">
                             - 현장명이나 주소로 <strong>검색</strong>할 수 있어요.<br>
-                            - <strong>이름순</strong> 또는 <strong>즐겨찾기</strong> 순으로 정렬할 수 있습니다.
+                            - <strong>이름순</strong> 또는 <strong>주소 변환 실패</strong> 순으로 정렬할 수 있습니다.
                         </div>
                     </div>
                 </div>
@@ -1651,7 +1146,8 @@
                         <div><strong>🔐 GitHub 연동</strong></div>
                         <div style="padding-left:12px; font-size:12px; color:#4a5568;">
                             - GitHub Personal Access Token을 입력하면 <strong>자동 백업</strong>이 가능해요.<br>
-                            - <strong>'📤 업로드'</strong>로 현재 데이터를 저장하고, <strong>'📥 다운로드'</strong>로 불러올 수 있어요.
+                            - <strong>'📤 업로드'</strong>로 현재 데이터를 저장하고, <strong>'📥 다운로드'</strong>로 불러올 수 있어요.<br>
+                            - <strong>'📋 히스토리'</strong>에서 과거 버전을 확인하고 <strong>복원</strong>할 수 있어요.
                         </div>
                         <div style="margin-top:6px;"><strong>🗺️ 카카오 API</strong></div>
                         <div style="padding-left:12px; font-size:12px; color:#4a5568;">
@@ -1680,6 +1176,10 @@
                         <div style="margin-top:6px;">☁️ <strong>데이터 백업</strong></div>
                         <div style="padding-left:12px; font-size:12px; color:#4a5568;">
                             - GitHub에 백업하면 <strong>다른 기기</strong>에서도 데이터를 불러올 수 있어요.
+                        </div>
+                        <div style="margin-top:6px;">📊 <strong>절약 효과</strong></div>
+                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
+                            - 최적화 후 <strong>절약된 거리와 시간</strong>을 확인하여 효과를 체감할 수 있어요.
                         </div>
                     </div>
                 </div>
