@@ -577,56 +577,67 @@
     <div class="main">
 
         <!-- ===== 탭: 경로 ===== -->
-        <div id="tab-places" class="tab-content active">
-            <div class="card">
-                <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; width:100%; margin-bottom:8px;">
-                    <span>🚩 출발지</span>
-                    <button class="btn btn-outline btn-sm" onclick="setCurrentLocation()" style="font-size:11px; padding:3px 10px; min-height:28px; display:flex; align-items:center; gap:4px; border-color:#cbd5e0; color:#4a5568; background:#f7fafc; border-radius:20px;">
-                        <span style="font-size:14px;">🎯</span> 현재 위치
-                    </button>
-                </div>
-                <div style="position:relative;">
-                    <div class="flex-row" style="gap:6px;">
-                        <input type="text" id="startPoint" class="input-field flex-1" placeholder="출발지 검색" style="min-height:38px;" oninput="searchStartPoint(this.value)" onclick="searchStartPoint(this.value)" onkeydown="handleStartKeydown(event)">
-                        <button class="btn btn-primary" onclick="setStartPoint()" style="font-size:12px; padding:6px 12px; min-height:38px; white-space:nowrap;">설정</button>
-                    </div>
-                    <div id="startSearchResults" class="search-results"></div>
-                </div>
-                <div id="startInfo" style="font-size:12px; color:#718096; margin-top:4px;">⏳ 출발지를 검색하거나 🎯 현재 위치 버튼을 눌러 설정하세요</div>
+<div id="tab-places" class="tab-content active">
+    <div class="card">
+        <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; width:100%; margin-bottom:8px;">
+            <span>🚩 출발지</span>
+            <button class="btn btn-outline btn-sm" onclick="setCurrentLocation()" style="font-size:11px; padding:3px 10px; min-height:28px; display:flex; align-items:center; gap:4px; border-color:#cbd5e0; color:#4a5568; background:#f7fafc; border-radius:20px;">
+                <span style="font-size:14px;">🎯</span> 현재 위치
+            </button>
+        </div>
+        <div style="position:relative;">
+            <div class="flex-row" style="gap:6px;">
+                <input type="text" id="startPoint" class="input-field flex-1" placeholder="출발지 검색" style="min-height:38px;" oninput="searchStartPoint(this.value)" onclick="searchStartPoint(this.value)" onkeydown="handleStartKeydown(event)">
+                <button class="btn btn-primary" onclick="setStartPoint()" style="font-size:12px; padding:6px 12px; min-height:38px; white-space:nowrap;">설정</button>
             </div>
+            <div id="startSearchResults" class="search-results"></div>
+        </div>
+        <div id="startInfo" style="font-size:12px; color:#718096; margin-top:4px;">⏳ 출발지를 검색하거나 🎯 현재 위치 버튼을 눌러 설정하세요</div>
+    </div>
 
-            <div class="card">
-                <div class="flex-between" style="margin-bottom:6px;">
-                    <div class="card-title" style="margin-bottom:0; font-size:14px;">📍 경유지 <span id="wpCount" style="font-size:12px;color:#a0aec0;font-weight:400;"></span></div>
-                    <button id="multiToggleBtn" onclick="toggleMultiSelect()" style="font-size:11px; padding:4px 14px; min-height:30px; border-radius:16px; border:2px solid #cbd5e0; background:white; color:#4a5568; cursor:pointer; transition:all 0.2s; font-weight:600; display:flex; align-items:center; gap:4px;">📋 여러개 추가</button>
-                </div>
-                <div style="position:relative;">
-                    <div class="flex-row" style="margin-bottom:4px; gap:6px;">
-                        <input type="text" id="waypointInput" class="input-field flex-1" placeholder="경유지 입력" style="min-height:38px;" oninput="searchWaypoint(this.value)" onkeydown="handleWaypointKeydown(event)">
-                        <button id="addWaypointBtn" class="btn btn-success" onclick="addWaypoint()" style="font-size:13px; padding:6px 18px; min-height:38px; font-weight:600; white-space:nowrap; transition:all 0.3s;">➕ 추가</button>
-                    </div>
-                    <div id="waypointSearchResults" class="search-results"></div>
-                </div>
-                <ul class="waypoint-list" id="waypointList"><li class="empty-msg">경유지를 추가하세요 (드래그로 순서 변경 가능)</li></ul>
-
-                <div id="modeStatus" style="font-size:11px; color:#a0aec0; margin-top:4px; text-align:center;">💡 일반 모드 - 경유지를 입력하고 추가하세요</div>
-
-                <!-- 버튼 영역 (가로 배치 - 실행, 초기화, 설정) -->
-                <div style="display:flex; gap:8px; margin-top:8px;">
-                    <button class="btn btn-primary btn-lg" id="runOptimizeBtn" onclick="runOptimize()" style="flex:1;">⚡ 경로 최적화 실행</button>
-                    <button class="btn btn-danger btn-lg" onclick="resetRoute()" style="flex:1;">🔄 초기화</button>
-                    <button class="btn btn-outline btn-lg" onclick="openOptimizeSettingsModal()" style="flex:0.6; font-size:14px; min-height:50px;">⚙️ 설정</button>
-                </div>
-
-                <!-- 현재 최적화 상태 표시 -->
-                <div id="optimizationStatus" style="font-size:11px; color:#4a5568; text-align:center; margin-top:6px; padding:4px 8px; background:#f7fafc; border-radius:6px;">
-                    가까운순 · 최단거리 · 직선거리 보완 · 방향 미고려 · 카카오맵
-                </div>
+    <div class="card">
+        <div class="flex-between" style="margin-bottom:6px;">
+            <div class="card-title" style="margin-bottom:0; font-size:14px;">📍 경유지 <span id="wpCount" style="font-size:12px;color:#a0aec0;font-weight:400;"></span></div>
+            <button id="multiToggleBtn" onclick="toggleMultiSelect()" style="font-size:11px; padding:4px 14px; min-height:30px; border-radius:16px; border:2px solid #cbd5e0; background:white; color:#4a5568; cursor:pointer; transition:all 0.2s; font-weight:600; display:flex; align-items:center; gap:4px;">📋 여러개 추가</button>
+        </div>
+        <div style="position:relative;">
+            <div class="flex-row" style="margin-bottom:4px; gap:6px;">
+                <input type="text" id="waypointInput" class="input-field flex-1" placeholder="경유지 입력" style="min-height:38px;" oninput="searchWaypoint(this.value)" onkeydown="handleWaypointKeydown(event)">
+                <button id="addWaypointBtn" class="btn btn-success" onclick="addWaypoint()" style="font-size:13px; padding:6px 18px; min-height:38px; font-weight:600; white-space:nowrap; transition:all 0.3s;">➕ 추가</button>
             </div>
+            <div id="waypointSearchResults" class="search-results"></div>
+        </div>
+        <ul class="waypoint-list" id="waypointList"><li class="empty-msg">경유지를 추가하세요 (드래그로 순서 변경 가능)</li></ul>
 
-            <div id="placesStatus" class="tab-status"></div>
+        <div id="modeStatus" style="font-size:11px; color:#a0aec0; margin-top:4px; text-align:center;">💡 일반 모드 - 경유지를 입력하고 추가하세요</div>
+
+        <!-- ===== 버튼 영역 (세로 배치, 중앙 정렬) ===== -->
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
+            <button class="btn btn-primary btn-lg" id="runOptimizeBtn" onclick="runOptimize()" style="width:100%; justify-content:center; align-items:center;">⚡ 경로 최적화 실행</button>
+            <div style="display:flex; gap:8px; width:100%;">
+                <button class="btn btn-danger btn-lg" onclick="resetRoute()" style="flex:1; justify-content:center; align-items:center;">🔄 초기화</button>
+                <button class="btn btn-outline btn-lg" onclick="openOptimizeSettingsModal()" style="flex:1; justify-content:center; align-items:center;">⚙️ 설정</button>
+            </div>
         </div>
 
+        <!-- ===== 현재 최적화 상태 표시 ===== -->
+        <div id="optimizationStatus" style="font-size:11px; color:#4a5568; text-align:center; margin-top:6px; padding:4px 8px; background:#f7fafc; border-radius:6px;">
+            가까운순 · 최단거리 · 직선거리 보완 · 방향 미고려 · 카카오맵
+        </div>
+    </div>
+
+    <!-- ===== 프리셋 영역 ===== -->
+    <div class="card">
+        <div class="flex-between" style="margin-bottom:6px;">
+            <span class="card-title" style="margin-bottom:0; font-size:14px;">💾 프리셋</span>
+            <button class="btn btn-primary btn-sm" onclick="addPreset()" style="font-size:11px; padding:4px 14px; min-height:30px;">➕ 저장</button>
+        </div>
+        <div id="presetList" style="max-height:150px; overflow-y:auto;"></div>
+        <div style="font-size:10px; color:#a0aec0; margin-top:4px;">프리셋을 클릭하면 불러오고, ✕ 버튼으로 삭제할 수 있어요</div>
+    </div>
+
+    <div id="placesStatus" class="tab-status"></div>
+</div>
         <!-- ===== 탭: 지도 ===== -->
         <div id="tab-route" class="tab-content">
             <div id="tab-route-uxheader" class="ux-tab-header">
