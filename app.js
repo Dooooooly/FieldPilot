@@ -2652,12 +2652,12 @@ function openRouteMap(fromName, fromLat, fromLng, toName, toLat, toLng) {
     var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
     if (routeApi === 'tmap') {
-        // ★★★ TMap 스킴 (iOS/Android 모두 출발지+목적지 전달) ★★★
+        // ★★★ TMap 스킴 (iOS/Android 모두 출발지+목적지 이름 전달) ★★★
         var tmapUrl;
         var webUrl;
         
         if (isIOS) {
-            // iOS: sName/sX/sY (출발지) + rGoName/rGoX/rGoY (목적지)
+            // iOS: sName (출발지 이름) + rGoName (목적지 이름) - 좌표도 함께 전달
             tmapUrl = 'tmap://route?'
                 + 'sName=' + encodeURIComponent(fromName)
                 + '&sX=' + fromLng
@@ -2666,7 +2666,7 @@ function openRouteMap(fromName, fromLat, fromLng, toName, toLat, toLng) {
                 + '&rGoX=' + toLng
                 + '&rGoY=' + toLat;
         } else {
-            // Android: startName/startX/startY (출발지) + endName/endX/endY (목적지)
+            // Android: startName (출발지 이름) + endName (목적지 이름)
             tmapUrl = 'tmap://route?'
                 + 'startName=' + encodeURIComponent(fromName)
                 + '&startX=' + fromLng
@@ -2707,10 +2707,10 @@ function openRouteMap(fromName, fromLat, fromLng, toName, toLat, toLng) {
 
     // ===== 카카오맵 =====
     if (isMobile) {
-        // 모바일: 카카오맵 스킴
+        // ★★★ 카카오맵 스킴 (출발지/목적지 이름 전달) ★★★
         var kakaoUrl;
         if (isIOS) {
-            // iOS 카카오맵 스킴
+            // iOS: sname (출발지 이름) + dname (목적지 이름)
             kakaoUrl = 'kakaomap://route?'
                 + 'sp=' + fromLat + ',' + fromLng
                 + '&ep=' + toLat + ',' + toLng
@@ -2718,7 +2718,7 @@ function openRouteMap(fromName, fromLat, fromLng, toName, toLat, toLng) {
                 + '&dname=' + encodeURIComponent(toName)
                 + '&by=CAR';
         } else {
-            // Android 카카오맵 스킴 (동일)
+            // Android: sname (출발지 이름) + dname (목적지 이름)
             kakaoUrl = 'kakaomap://route?'
                 + 'sp=' + fromLat + ',' + fromLng
                 + '&ep=' + toLat + ',' + toLng
@@ -2733,6 +2733,7 @@ function openRouteMap(fromName, fromLat, fromLng, toName, toLat, toLng) {
             + '/to/'
             + encodeURIComponent(toName) + ',' + toLat + ',' + toLng;
         
+        // ★★★ 카카오맵 스킴 실행 ★★★
         window.location.href = kakaoUrl;
         
         setTimeout(function() {
