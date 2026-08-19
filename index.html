@@ -691,6 +691,33 @@
                 <div class="summary-row"><span class="label">📐 최적화</span><span class="value" id="optimizeMode">-</span></div>
                 <div class="summary-row" id="savedRow" style="display:none;"><span class="label">💡 절약 효과</span><span class="saved" id="savedAmount">-</span></div>
             </div>
+            <!-- 경로 요약 및 네비게이션 토글 영역 -->
+            <div id="route-summary-card" class="card" style="display: none; margin-top: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <h3 style="margin: 0; font-size: 1rem; color: var(--text-primary);">✨ 최적 경로 계산 완료</h3>
+                    <button id="toggle-waypoints-btn" class="btn btn-sm" style="padding: 4px 8px; font-size: 0.8rem; background: var(--primary-color); color: white; border: none; border-radius: 6px;">
+                        🚌 경유지 연결 <span id="waypoint-count-badge" style="margin-left: 4px; background: rgba(255,255,255,0.3); border-radius: 10px; padding: 2px 6px; font-size: 0.7rem;">0</span>
+                    </button>
+                </div>
+                <p id="summary-text" style="color: var(--text-secondary); font-size: 0.9rem; margin: 0 0 8px 0;"></p>
+                
+                <!-- 토글 시 나타나는 경유지 리스트 및 네비게이션 버튼 -->
+                <div id="waypoints-panel" style="display: none; border-top: 1px solid var(--border-color); padding-top: 12px;">
+                    <div id="optimized-waypoints-list" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; max-height: 300px; overflow-y: auto;">
+                        <!-- 자바스크립트로 경유지 카드 생성 -->
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        <button id="nav-tmap-btn" class="btn" style="width: 100%; background: #0064d8; color: white; border: none; font-weight: 600;">
+                            🚗 티맵으로 시작
+                        </button>
+                        <button id="nav-kakao-btn" class="btn" style="width: 100%; background: #fee500; color: #333; border: none; font-weight: 600;">
+                            🚙 카카오로 시작
+                        </button>
+                    </div>
+                    <p id="nav-limit-msg" style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 8px;"></p>
+                </div>
+            </div>
+            
             <div id="routeList" style="margin-top:8px;"></div>
             <div id="routeStatus" class="tab-status"></div>
         </div>
