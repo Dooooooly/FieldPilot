@@ -4410,22 +4410,28 @@ function syncModalSettings() {
     document.getElementById('modalUseRoadOptimization').checked = useRoadOptimization;
     document.getElementById('modalUseDirectionHint').checked = useDirectionHint;
 
-    // API 선택
+    // ★★★ API 선택 (라디오 버튼으로 직접 제어) ★★★
+    var apiKakaoRadio = document.querySelector('input[name="modalRouteApi"][value="kakao"]');
+    var apiTmapRadio = document.querySelector('input[name="modalRouteApi"][value="tmap"]');
     var apiKakao = document.getElementById('modalApiKakao');
     var apiTmap = document.getElementById('modalApiTmap');
+    
     if (routeApi === 'kakao') {
+        if (apiKakaoRadio) apiKakaoRadio.checked = true;
+        if (apiTmapRadio) apiTmapRadio.checked = false;
         apiKakao.classList.add('active');
         apiTmap.classList.remove('active');
         apiKakao.querySelector('.choice-radio').textContent = '●';
         apiTmap.querySelector('.choice-radio').textContent = '○';
     } else {
+        if (apiKakaoRadio) apiKakaoRadio.checked = false;
+        if (apiTmapRadio) apiTmapRadio.checked = true;
         apiKakao.classList.remove('active');
         apiTmap.classList.add('active');
         apiKakao.querySelector('.choice-radio').textContent = '○';
         apiTmap.querySelector('.choice-radio').textContent = '●';
     }
 }
-
 function setModalOptimizeMode(mode) {
     var nearest = document.getElementById('modalModeNearest');
     var farthest = document.getElementById('modalModeFarthest');
@@ -4472,12 +4478,19 @@ function setModalDirectionHint(enabled) {
 function setModalRouteApi(api) {
     var apiKakao = document.getElementById('modalApiKakao');
     var apiTmap = document.getElementById('modalApiTmap');
+    var apiKakaoRadio = document.querySelector('input[name="modalRouteApi"][value="kakao"]');
+    var apiTmapRadio = document.querySelector('input[name="modalRouteApi"][value="tmap"]');
+    
     if (api === 'kakao') {
+        if (apiKakaoRadio) apiKakaoRadio.checked = true;
+        if (apiTmapRadio) apiTmapRadio.checked = false;
         apiKakao.classList.add('active');
         apiTmap.classList.remove('active');
         apiKakao.querySelector('.choice-radio').textContent = '●';
         apiTmap.querySelector('.choice-radio').textContent = '○';
     } else {
+        if (apiKakaoRadio) apiKakaoRadio.checked = false;
+        if (apiTmapRadio) apiTmapRadio.checked = true;
         apiKakao.classList.remove('active');
         apiTmap.classList.add('active');
         apiKakao.querySelector('.choice-radio').textContent = '○';
@@ -4500,6 +4513,7 @@ function saveOptimizeSettings() {
     if (tempSettings.routeApi !== undefined) {
         routeApi = tempSettings.routeApi;
         localStorage.setItem(ROUTE_API_KEY, routeApi);
+        console.log('✅ API 변경됨:', routeApi); // 디버깅용
     }
     tempSettings = {};
     closeOptimizeSettingsModal();
