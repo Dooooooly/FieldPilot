@@ -1,1 +1,4 @@
-Nothing needs to be added to .gitignore since only a markdown file (IMPROVEMENT_PROPOSAL.md) was added, which is a source/config file and not a build artifact, dependency, or temporary file.
+```
+# Backup files
+*.backup
+```
