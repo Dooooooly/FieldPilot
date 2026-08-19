@@ -4156,16 +4156,22 @@ async function fetchWeather() {
         if (!response.ok) throw new Error('날씨 API 호출 실패');
         var data = await response.json();
         var temp = Math.round(data.main.temp);
-        var desc = data.weather[0].description;
         var icon = data.weather[0].icon;
+        
         var iconMap = {
-            '01d': '☀️', '01n': '🌙', '02d': '⛅', '02n': '☁️',
-            '03d': '☁️', '03n': '☁️', '04d': '☁️', '04n': '☁️',
-            '09d': '🌧️', '09n': '🌧️', '10d': '🌦️', '10n': '🌦️',
-            '11d': '⛈️', '11n': '⛈️', '13d': '❄️', '13n': '❄️',
-            '50d': '🌫️', '50n': '🌫️'
+            '01d': '☀️ 맑음', '01n': '🌙 맑음',
+            '02d': '⛅ 구름조금', '02n': '⛅ 구름조금',
+            '03d': '☁️ 구름많음', '03n': '☁️ 구름많음',
+            '04d': '☁️ 흐림', '04n': '☁️ 흐림',
+            '09d': '🌧️ 비', '09n': '🌧️ 비',
+            '10d': '🌦️ 비', '10n': '🌦️ 비',
+            '11d': '⛈️ 천둥번개', '11n': '⛈️ 천둥번개',
+            '13d': '❄️ 눈', '13n': '❄️ 눈',
+            '50d': '🌫️ 안개', '50n': '🌫️ 안개'
         };
-        weatherEl.innerHTML = '<span>' + (iconMap[icon] || '🌡️') + '</span><span class="temp">' + temp + '°C</span><span>' + desc + '</span>';
+        
+        var desc = iconMap[icon] || '🌡️ ' + data.weather[0].description;
+        weatherEl.innerHTML = '<span style="font-size:13px;">' + desc + '</span><span class="temp" style="margin-left:4px;">' + temp + '°C</span>';
         return true;
     } catch(error) {
         weatherEl.innerHTML = '<span>⏳</span><span class="temp">--°C</span><span>날씨</span>';
