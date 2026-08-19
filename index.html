@@ -50,38 +50,6 @@
             --fav-inactive: #cbd5e0;
         }
 
-        [data-theme="dark"] {
-            /* Dark Theme - DISABLED */
-            /* --bg-primary: #0f1419; */
-            /* --bg-secondary: #1a202c; */
-            /* --bg-tertiary: #2d3748; */
-            /* --bg-hover: #4a5568; */
-            /* --bg-active: #2a4365; */
-            /* --text-primary: #f7fafc; */
-            /* --text-secondary: #cbd5e0; */
-            /* --text-muted: #a0aec0; */
-            /* --text-placeholder: #718096; */
-            /* --border-color: #4a5568; */
-            /* --border-light: #2d3748; */
-            /* --primary-color: #6b9bd2; */
-            /* --primary-hover: #4a6fa5; */
-            /* --success-color: #68d391; */
-            /* --success-hover: #5a9e6f; */
-            /* --danger-color: #fc8181; */
-            /* --danger-hover: #e53e3e; */
-            /* --warning-color: #f6ad55; */
-            /* --purple-color: #9f7aea; */
-            /* --shadow-sm: 0 1px 4px rgba(0,0,0,0.2); */
-            /* --shadow-md: 0 2px 16px rgba(0,0,0,0.4); */
-            /* --shadow-lg: 0 4px 18px rgba(0,0,0,0.5); */
-            /* --header-gradient: linear-gradient(135deg, #2a4365, #4a6fa5); */
-            /* --summary-bg: linear-gradient(135deg, #2a4365, #1a365d); */
-            /* --map-bg: #2d3748; */
-            /* --tab-icon-color: #718096; */
-            /* --fav-active: #f6ad55; */
-            /* --fav-inactive: #4a5568; */
-        }
-
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         html {
@@ -629,9 +597,6 @@
     <header class="header">
         <div class="header-left"><h1>🚗 경로 최적화</h1></div>
         <div class="header-right">
-            <button id="themeToggle" style="display:none;" onclick="toggleTheme()" title="다크 모드 기능 비활성화">
-                <span id="themeIcon">🌙</span>
-            </button>
             <button id="tmapAllBtn" onclick="openTmapWithAllWaypoints()" style="background:#0064d9; border:1px solid rgba(255,255,255,0.2); border-radius:30px; padding:4px 12px; height:32px; display:flex; align-items:center; gap:4px; cursor:pointer; transition:all 0.25s ease; color:white; font-size:12px; font-weight:700;" title="경유지 전체를 TMap 으로 연결">
                 🚗 티맵연결
             </button>
@@ -726,6 +691,33 @@
                 <div class="summary-row"><span class="label">📐 최적화</span><span class="value" id="optimizeMode">-</span></div>
                 <div class="summary-row" id="savedRow" style="display:none;"><span class="label">💡 절약 효과</span><span class="saved" id="savedAmount">-</span></div>
             </div>
+            <!-- 경로 요약 및 네비게이션 토글 영역 -->
+            <div id="route-summary-card" class="card" style="display: none; margin-top: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <h3 style="margin: 0; font-size: 1rem; color: var(--text-primary);">✨ 최적 경로 계산 완료</h3>
+                    <button id="toggle-waypoints-btn" class="btn btn-sm" style="padding: 4px 8px; font-size: 0.8rem; background: var(--primary-color); color: white; border: none; border-radius: 6px;">
+                        🚌 경유지 연결 <span id="waypoint-count-badge" style="margin-left: 4px; background: rgba(255,255,255,0.3); border-radius: 10px; padding: 2px 6px; font-size: 0.7rem;">0</span>
+                    </button>
+                </div>
+                <p id="summary-text" style="color: var(--text-secondary); font-size: 0.9rem; margin: 0 0 8px 0;"></p>
+                
+                <!-- 토글 시 나타나는 경유지 리스트 및 네비게이션 버튼 -->
+                <div id="waypoints-panel" style="display: none; border-top: 1px solid var(--border-color); padding-top: 12px;">
+                    <div id="optimized-waypoints-list" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; max-height: 300px; overflow-y: auto;">
+                        <!-- 자바스크립트로 경유지 카드 생성 -->
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        <button id="nav-tmap-btn" class="btn" style="width: 100%; background: #0064d8; color: white; border: none; font-weight: 600;">
+                            🚗 티맵으로 시작
+                        </button>
+                        <button id="nav-kakao-btn" class="btn" style="width: 100%; background: #fee500; color: #333; border: none; font-weight: 600;">
+                            🚙 카카오로 시작
+                        </button>
+                    </div>
+                    <p id="nav-limit-msg" style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 8px;"></p>
+                </div>
+            </div>
+            
             <div id="routeList" style="margin-top:8px;"></div>
             <div id="routeStatus" class="tab-status"></div>
         </div>
@@ -1135,46 +1127,6 @@
 
     <script src="app.js" defer></script>
     <script>
-        // 다크 모드 테마 토글 기능
-        function toggleTheme() {
-            const html = document.documentElement;
-            const themeIcon = document.getElementById('themeIcon');
-            const currentTheme = html.getAttribute('data-theme');
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            
-            html.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-            
-            if (themeIcon) {
-                themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
-            }
-            
-            // 테마 색상 업데이트
-            const themeColorMeta = document.querySelector('meta[name="theme-color"]');
-            if (themeColorMeta) {
-                themeColorMeta.setAttribute('content', newTheme === 'dark' ? '#1a202c' : '#6b9bd2');
-            }
-        }
-        
-        // 페이지 로드 시 저장된 테마 적용
-        (function initTheme() {
-            const savedTheme = localStorage.getItem('theme') || 'light';
-            const html = document.documentElement;
-            const themeIcon = document.getElementById('themeIcon');
-            
-            html.setAttribute('data-theme', savedTheme);
-            
-            if (themeIcon) {
-                themeIcon.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
-            }
-            
-            // 테마 색상 업데이트
-            const themeColorMeta = document.querySelector('meta[name="theme-color"]');
-            if (themeColorMeta) {
-                themeColorMeta.setAttribute('content', savedTheme === 'dark' ? '#1a202c' : '#6b9bd2');
-            }
-        })();
-
         // 티맵 전체 경유지 연결 함수
         function openTmapWithAllWaypoints() {
             if (waypoints.length === 0) {
