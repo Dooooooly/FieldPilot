@@ -1009,31 +1009,30 @@
                 </label>
             </div>
 
-            <!-- API 선택 -->
-            <div style="margin-bottom:12px;">
-                <div style="font-size:13px; font-weight:600; color:#2d3748; margin-bottom:8px;">③ 경로 API 선택</div>
-                <div class="choice-grid two" style="gap:8px;">
-                    <label class="choice-card active" id="modalApiKakao" style="padding:10px 12px; min-height:52px; cursor:pointer;">
-                        <input type="radio" name="modalRouteApi" value="kakao" checked onchange="setModalRouteApi('kakao')" style="position:absolute; opacity:0;">
-                        <span class="choice-radio" style="font-size:13px; color:#3182ce;">●</span>
-                        <span class="choice-icon" style="font-size:18px;">🗺️</span>
-                        <span class="choice-content">
-                            <strong style="font-size:13px; font-weight:700;">카카오맵</strong>
-                            <small style="font-size:11px; color:#718096;">기본 길찾기</small>
-                        </span>
-                    </label>
-                    <label class="choice-card" id="modalApiTmap" style="padding:10px 12px; min-height:52px; cursor:pointer;">
-                        <input type="radio" name="modalRouteApi" value="tmap" onchange="setModalRouteApi('tmap')" style="position:absolute; opacity:0;">
-                        <span class="choice-radio" style="font-size:13px; color:#a0aec0;">○</span>
-                        <span class="choice-icon" style="font-size:18px;">🚗</span>
-                        <span class="choice-content">
-                            <strong style="font-size:13px; font-weight:700;">TMap</strong>
-                            <small style="font-size:11px; color:#718096;">국내 정확도 높은 길찾기</small>
-                        </span>
-                    </label>
-                </div>
-            </div>
-
+           <!-- API 선택 -->
+<div style="margin-bottom:12px;">
+    <div style="font-size:13px; font-weight:600; color:#2d3748; margin-bottom:8px;">③ 경로 API 선택</div>
+    <div class="choice-grid two" style="gap:8px;">
+        <label class="choice-card active" id="modalApiKakao" style="padding:10px 12px; min-height:52px; cursor:pointer;" onclick="setModalRouteApi('kakao')">
+            <input type="radio" name="modalRouteApi" value="kakao" checked style="position:absolute; opacity:0;">
+            <span class="choice-radio" style="font-size:13px; color:#3182ce;">●</span>
+            <span class="choice-icon" style="font-size:18px;">🗺️</span>
+            <span class="choice-content">
+                <strong style="font-size:13px; font-weight:700;">카카오맵</strong>
+                <small style="font-size:11px; color:#718096;">기본 길찾기</small>
+            </span>
+        </label>
+        <label class="choice-card" id="modalApiTmap" style="padding:10px 12px; min-height:52px; cursor:pointer;" onclick="setModalRouteApi('tmap')">
+            <input type="radio" name="modalRouteApi" value="tmap" style="position:absolute; opacity:0;">
+            <span class="choice-radio" style="font-size:13px; color:#a0aec0;">○</span>
+            <span class="choice-icon" style="font-size:18px;">🚗</span>
+            <span class="choice-content">
+                <strong style="font-size:13px; font-weight:700;">TMap</strong>
+                <small style="font-size:11px; color:#718096;">국내 정확도 높은 길찾기</small>
+            </span>
+        </label>
+    </div>
+</div>
             <div style="display:flex; gap:8px; justify-content:flex-end; border-top:1px solid #e2e8f0; padding-top:12px;">
                 <button class="btn btn-outline btn-sm" onclick="closeOptimizeSettingsModal()" style="padding:6px 16px;">닫기</button>
                 <button class="btn btn-primary btn-sm" onclick="saveOptimizeSettings()" style="padding:6px 16px;">저장</button>
