@@ -1,0 +1,10 @@
+{
+  "name": "경로 최적화",
+  "short_name": "RouteOpt",
+  "description": "경로 최적화 시스템",
+  "start_url": "/route-optimizer-pwa/",
+  "display": "standalone",
+  "theme_color": "#2b6cb0",
+  "background_color": "#f0f2f5",
+  "icons": []
+}
