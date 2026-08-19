@@ -51,35 +51,35 @@
         }
 
         [data-theme="dark"] {
-            /* Dark Theme */
-            --bg-primary: #0f1419;
-            --bg-secondary: #1a202c;
-            --bg-tertiary: #2d3748;
-            --bg-hover: #4a5568;
-            --bg-active: #2a4365;
-            --text-primary: #f7fafc;
-            --text-secondary: #cbd5e0;
-            --text-muted: #a0aec0;
-            --text-placeholder: #718096;
-            --border-color: #4a5568;
-            --border-light: #2d3748;
-            --primary-color: #6b9bd2;
-            --primary-hover: #4a6fa5;
-            --success-color: #68d391;
-            --success-hover: #5a9e6f;
-            --danger-color: #fc8181;
-            --danger-hover: #e53e3e;
-            --warning-color: #f6ad55;
-            --purple-color: #9f7aea;
-            --shadow-sm: 0 1px 4px rgba(0,0,0,0.2);
-            --shadow-md: 0 2px 16px rgba(0,0,0,0.4);
-            --shadow-lg: 0 4px 18px rgba(0,0,0,0.5);
-            --header-gradient: linear-gradient(135deg, #2a4365, #4a6fa5);
-            --summary-bg: linear-gradient(135deg, #2a4365, #1a365d);
-            --map-bg: #2d3748;
-            --tab-icon-color: #718096;
-            --fav-active: #f6ad55;
-            --fav-inactive: #4a5568;
+            /* Dark Theme - DISABLED */
+            /* --bg-primary: #0f1419; */
+            /* --bg-secondary: #1a202c; */
+            /* --bg-tertiary: #2d3748; */
+            /* --bg-hover: #4a5568; */
+            /* --bg-active: #2a4365; */
+            /* --text-primary: #f7fafc; */
+            /* --text-secondary: #cbd5e0; */
+            /* --text-muted: #a0aec0; */
+            /* --text-placeholder: #718096; */
+            /* --border-color: #4a5568; */
+            /* --border-light: #2d3748; */
+            /* --primary-color: #6b9bd2; */
+            /* --primary-hover: #4a6fa5; */
+            /* --success-color: #68d391; */
+            /* --success-hover: #5a9e6f; */
+            /* --danger-color: #fc8181; */
+            /* --danger-hover: #e53e3e; */
+            /* --warning-color: #f6ad55; */
+            /* --purple-color: #9f7aea; */
+            /* --shadow-sm: 0 1px 4px rgba(0,0,0,0.2); */
+            /* --shadow-md: 0 2px 16px rgba(0,0,0,0.4); */
+            /* --shadow-lg: 0 4px 18px rgba(0,0,0,0.5); */
+            /* --header-gradient: linear-gradient(135deg, #2a4365, #4a6fa5); */
+            /* --summary-bg: linear-gradient(135deg, #2a4365, #1a365d); */
+            /* --map-bg: #2d3748; */
+            /* --tab-icon-color: #718096; */
+            /* --fav-active: #f6ad55; */
+            /* --fav-inactive: #4a5568; */
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -629,8 +629,11 @@
     <header class="header">
         <div class="header-left"><h1>🚗 경로 최적화</h1></div>
         <div class="header-right">
-            <button id="themeToggle" onclick="toggleTheme()" style="background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.08); border-radius:30px; padding:4px 12px; height:32px; display:flex; align-items:center; gap:4px; cursor:pointer; transition:all 0.25s ease; color:white; font-size:12px;" title="다크 모드 전환">
+            <button id="themeToggle" style="display:none;" onclick="toggleTheme()" title="다크 모드 기능 비활성화">
                 <span id="themeIcon">🌙</span>
+            </button>
+            <button id="tmapAllBtn" onclick="openTmapWithAllWaypoints()" style="background:#0064d9; border:1px solid rgba(255,255,255,0.2); border-radius:30px; padding:4px 12px; height:32px; display:flex; align-items:center; gap:4px; cursor:pointer; transition:all 0.25s ease; color:white; font-size:12px; font-weight:700;" title="경유지 전체를 TMap 으로 연결">
+                🚗 티맵연결
             </button>
             <div class="weather" id="weatherDisplay" onclick="showWeekWeather()">
                 <span>⏳</span><span class="temp">--°C</span>
@@ -1171,6 +1174,118 @@
                 themeColorMeta.setAttribute('content', savedTheme === 'dark' ? '#1a202c' : '#6b9bd2');
             }
         })();
+
+        // 티맵 전체 경유지 연결 함수
+        function openTmapWithAllWaypoints() {
+            if (waypoints.length === 0) {
+                showTabStatus('tab-places', '📍 경유지가 없습니다. 경유지를 추가해주세요.', 'warning');
+                return;
+            }
+            if (!startPoint || !startPoint.lat) {
+                showTabStatus('tab-places', '🚩 출발지를 설정해주세요.', 'warning');
+                return;
+            }
+
+            let isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            let isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+            // 경유지 좌표 확인 및 변환
+            let validWaypoints = [];
+            let hasError = false;
+
+            for (let i = 0; i < waypoints.length; i++) {
+                let wp = waypoints[i];
+                let lat = wp.lat || 0;
+                let lng = wp.lng || 0;
+
+                if (!lat || !lng) {
+                    let found = places.find(function(p) { return p.name === wp.name; });
+                    if (found && found.lat && found.lng) {
+                        lat = found.lat;
+                        lng = found.lng;
+                    } else {
+                        showTabStatus('tab-places', '❌ "' + wp.name + '"의 좌표를 찾을 수 없습니다.', 'error');
+                        hasError = true;
+                        break;
+                    }
+                }
+                validWaypoints.push({ name: wp.name, lat: lat, lng: lng });
+            }
+
+            if (hasError || validWaypoints.length === 0) {
+                return;
+            }
+
+            // TMap 스킴 URL 생성 (출발지 + 경유지 + 목적지)
+            let tmapUrl;
+
+            if (isIOS) {
+                // iOS: 출발지 + 경유지들 + 목적지 (최대 10 개 지점)
+                let params = 'sName=' + encodeURIComponent(startPoint.name)
+                    + '&sX=' + startPoint.lng
+                    + '&sY=' + startPoint.lat;
+
+                // 경유지 추가 (via1~via9)
+                for (let i = 0; i < Math.min(validWaypoints.length, 9); i++) {
+                    let wp = validWaypoints[i];
+                    params += '&viaName' + (i + 1) + '=' + encodeURIComponent(wp.name);
+                    params += '&viaX' + (i + 1) + '=' + wp.lng;
+                    params += '&viaY' + (i + 1) + '=' + wp.lat;
+                }
+
+                // 마지막 지점을 목적지로 설정
+                let lastWp = validWaypoints[validWaypoints.length - 1];
+                params += '&rGoName=' + encodeURIComponent(lastWp.name);
+                params += '&rGoX=' + lastWp.lng;
+                params += '&rGoY=' + lastWp.lat;
+
+                tmapUrl = 'tmap://route?' + params;
+            } else {
+                // Android: 출발지 + 경유지들 + 목적지
+                let params = 'startName=' + encodeURIComponent(startPoint.name)
+                    + '&startX=' + startPoint.lng
+                    + '&startY=' + startPoint.lat
+                    + '&startPoiType=1';
+
+                // 경유지 추가 (wayPointName1~9, wayPointX1~9, wayPointY1~9)
+                for (let i = 0; i < Math.min(validWaypoints.length - 1, 9); i++) {
+                    let wp = validWaypoints[i];
+                    params += '&wayPointName' + (i + 1) + '=' + encodeURIComponent(wp.name);
+                    params += '&wayPointX' + (i + 1) + '=' + wp.lng;
+                    params += '&wayPointY' + (i + 1) + '=' + wp.lat;
+                }
+
+                // 마지막 지점을 목적지로 설정
+                let lastWp = validWaypoints[validWaypoints.length - 1];
+                params += '&endName=' + encodeURIComponent(lastWp.name);
+                params += '&endX=' + lastWp.lng;
+                params += '&endY=' + lastWp.lat;
+                params += '&endPoiType=1';
+                params += '&searchOption=0';
+
+                tmapUrl = 'tmap://route?' + params;
+            }
+
+            // 웹 URL (PC fallback)
+            let webUrl = 'https://apis-navi.tmap.co.kr/routes/'
+                + startPoint.lat + ',' + startPoint.lng + '/'
+                + validWaypoints[validWaypoints.length - 1].lat + ','
+                + validWaypoints[validWaypoints.length - 1].lng
+                + '?name=' + encodeURIComponent(startPoint.name + '→' + validWaypoints[validWaypoints.length - 1].name);
+
+            if (isMobile) {
+                window.location.href = tmapUrl;
+                setTimeout(function() {
+                    if (!window.location.href.startsWith('tmap://')) {
+                        window.open(webUrl, '_blank');
+                    }
+                }, 2000);
+                showTabStatus('tab-route', '🗺️ TMap 으로 전체 경로 연결 중...', 'info');
+            } else {
+                window.open(webUrl, '_blank');
+                showTabStatus('tab-route', '🗺️ TMap 웹에서 전체 경로 열기', 'info');
+            }
+        }
     </script>
 </body>
 </html>
