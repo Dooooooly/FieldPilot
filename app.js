@@ -103,16 +103,16 @@ const searchIndexState = {
 // 1. 유틸리티 함수
 // ============================================================
 function escapeHtml(str) {
-    var div = document.createElement('div');
+    let div = document.createElement('div');
     div.textContent = (str == null) ? '' : String(str);
     return div.innerHTML;
 }
 
 function haversineKm(lat1, lng1, lat2, lng2) {
-    var R = 6371;
-    var dLat = (lat2 - lat1) * Math.PI / 180;
-    var dLng = (lng2 - lng1) * Math.PI / 180;
-    var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    let R = 6371;
+    let dLat = (lat2 - lat1) * Math.PI / 180;
+    let dLng = (lng2 - lng1) * Math.PI / 180;
+    let a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
             Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
             Math.sin(dLng / 2) * Math.sin(dLng / 2);
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
@@ -120,13 +120,13 @@ function haversineKm(lat1, lng1, lat2, lng2) {
 
 function shortenAddress(address) {
     if (!address) return '';
-    var parts = address.split(' ');
-    var result = [];
-    var skipWords = ['서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종', 
+    let parts = address.split(' ');
+    let result = [];
+    let skipWords = ['서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종', 
                      '경기', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주',
                      '시', '도', '군', '구'];
-    for (var i = 0; i < parts.length; i++) {
-        var part = parts[i];
+    for (let i = 0; i < parts.length; i++) {
+        let part = parts[i];
         if (skipWords.some(function(w) { return part === w || part.endsWith(w); })) {
             continue;
         }
@@ -137,7 +137,7 @@ function shortenAddress(address) {
 
 function getRegionCenter(region) {
     if (REGION_CENTERS[region]) return REGION_CENTERS[region];
-    for (var key in REGION_CENTERS) {
+    for (let key in REGION_CENTERS) {
         if (region.includes(key) || key.includes(region)) return REGION_CENTERS[key];
     }
     return { lat: 37.5665, lng: 126.9780 };
@@ -160,7 +160,7 @@ function switchTab(tabId) {
         return;
     }
 
-    var target = document.getElementById(tabId);
+    let target = document.getElementById(tabId);
     if (!target) {
         console.warn('switchTab: 탭 요소 없음 -', tabId);
         return;
@@ -172,7 +172,7 @@ function switchTab(tabId) {
     target.classList.add('active');
 
     document.querySelectorAll('.bottom-tab').forEach(function(btn) {
-        var isActive = btn.getAttribute('data-tab') === tabId;
+        let isActive = btn.getAttribute('data-tab') === tabId;
         btn.classList.toggle('active', isActive);
         btn.setAttribute('aria-current', isActive ? 'page' : 'false');
     });
@@ -211,7 +211,7 @@ function decodeKey(val) {
 }
 
 function loadSettings() {
-    var saved = localStorage.getItem(SETTINGS_KEY);
+    let saved = localStorage.getItem(SETTINGS_KEY);
     if (saved) {
         try {
             settings = JSON.parse(saved);
@@ -224,7 +224,7 @@ function loadSettings() {
 }
 
 function saveSettings() {
-    var encoded = {
+    let encoded = {
         githubToken: encodeKey(settings.githubToken || ''),
         kakaoJsKey: encodeKey(settings.kakaoJsKey || ''),
         kakaoRestKey: encodeKey(settings.kakaoRestKey || '')
@@ -234,7 +234,7 @@ function saveSettings() {
 }
 
 function updateSettingsStatus() {
-    var gs = document.getElementById('githubStatus');
+    let gs = document.getElementById('githubStatus');
     if (settings.githubToken) {
         gs.textContent = '✅ 토큰 설정됨';
         gs.className = 'badge badge-ok';
@@ -242,7 +242,7 @@ function updateSettingsStatus() {
         gs.textContent = '⏳ 토큰 미설정';
         gs.className = 'badge badge-wait';
     }
-    var ks = document.getElementById('kakaoStatus');
+    let ks = document.getElementById('kakaoStatus');
     if (settings.kakaoJsKey && settings.kakaoRestKey) {
         ks.textContent = '✅ API 키 설정됨';
         ks.className = 'badge badge-ok';
@@ -263,7 +263,7 @@ function saveKakaoKeys() {
     settings.kakaoRestKey = document.getElementById('kakaoRestKey').value.trim();
     saveSettings();
     showTabStatus('tab-settings', '✅ 카카오 API 키 저장됨', 'ok');
-    var container = document.getElementById('map');
+    let container = document.getElementById('map');
     if (container) {
         container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;color:#d69e2e;font-size:14px;background:#fffff0;border-radius:12px;">⏳ 키 저장됨, 지도 재로딩 중...</div>';
     }
@@ -272,20 +272,20 @@ function saveKakaoKeys() {
 }
 
 async function testGitHubToken() {
-    var token = settings.githubToken || document.getElementById('githubToken').value.trim();
+    let token = settings.githubToken || document.getElementById('githubToken').value.trim();
     if (!token) {
         showTabStatus('tab-settings', '토큰을 입력하세요.', 'warning');
         return;
     }
-    var gs = document.getElementById('githubStatus');
+    let gs = document.getElementById('githubStatus');
     gs.textContent = '⏳ 테스트 중...';
     gs.className = 'badge badge-wait';
     try {
-        var res = await fetch('https://api.github.com/user', {
+        let res = await fetch('https://api.github.com/user', {
             headers: { 'Authorization': 'token ' + token }
         });
         if (res.ok) {
-            var user = await res.json();
+            let user = await res.json();
             gs.textContent = '✅ ' + user.login;
             gs.className = 'badge badge-ok';
             settings.githubToken = token;
@@ -304,7 +304,7 @@ async function testGitHubToken() {
 // 4. 저장소 및 지역 관리
 // ============================================================
 function savePlaces() {
-    var key = getStorageKey(currentRegion);
+    let key = getStorageKey(currentRegion);
     localStorage.setItem(key, JSON.stringify(places));
     renderPlaces();
     updateStorageInfo();
@@ -324,23 +324,23 @@ function scheduleAutoSync() {
 }
 
 function updateStorageInfo() {
-    var size = 0;
-    for (var i = 0; i < localStorage.length; i++) {
-        var key = localStorage.key(i);
+    let size = 0;
+    for (let i = 0; i < localStorage.length; i++) {
+        let key = localStorage.key(i);
         if (key) size += localStorage.getItem(key).length * 2;
     }
     document.getElementById('storageInfo').textContent = '저장소: ' + (size / 1024).toFixed(1) + ' KB';
 }
 
 function loadRegionList() {
-    var select = document.getElementById('regionSelect');
+    let select = document.getElementById('regionSelect');
     select.innerHTML = '';
     
-    var regions = [];
-    for (var i = 0; i < localStorage.length; i++) {
-        var key = localStorage.key(i);
+    let regions = [];
+    for (let i = 0; i < localStorage.length; i++) {
+        let key = localStorage.key(i);
         if (key && key.startsWith(STORAGE_KEY_PREFIX)) {
-            var region = key.replace(STORAGE_KEY_PREFIX, '');
+            let region = key.replace(STORAGE_KEY_PREFIX, '');
             if (region && !regions.includes(region)) {
                 regions.push(region);
             }
@@ -348,7 +348,7 @@ function loadRegionList() {
     }
     
     if (regions.length === 0) {
-        var defaultOpt = document.createElement('option');
+        let defaultOpt = document.createElement('option');
         defaultOpt.value = '';
         defaultOpt.textContent = '📍 지역 선택';
         defaultOpt.selected = true;
@@ -359,14 +359,14 @@ function loadRegionList() {
     }
     
     regions.sort();
-    for (var i = 0; i < regions.length; i++) {
-        var opt = document.createElement('option');
+    for (let i = 0; i < regions.length; i++) {
+        let opt = document.createElement('option');
         opt.value = regions[i];
         opt.textContent = regions[i];
         select.appendChild(opt);
     }
     
-    var savedRegion = localStorage.getItem(SELECTED_REGION_KEY);
+    let savedRegion = localStorage.getItem(SELECTED_REGION_KEY);
     if (savedRegion && regions.includes(savedRegion)) {
         select.value = savedRegion;
         currentRegion = savedRegion;
@@ -378,14 +378,14 @@ function loadRegionList() {
     
     updateRegionDisplay();
     
-    var key = getStorageKey(currentRegion);
-    var data = localStorage.getItem(key);
+    let key = getStorageKey(currentRegion);
+    let data = localStorage.getItem(key);
     places = data ? JSON.parse(data) : [];
     renderPlaces();
     updateStorageInfo();
     
     if (kakaoMap) {
-        var center = getRegionCenter(currentRegion);
+        let center = getRegionCenter(currentRegion);
         kakaoMap.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
         kakaoMap.setLevel(5);
         kakaoMap.relayout();
@@ -399,10 +399,10 @@ function switchRegion(region) {
     currentRegion = region;
     localStorage.setItem(SELECTED_REGION_KEY, region);
     
-    var select = document.getElementById('regionSelect');
+    let select = document.getElementById('regionSelect');
     if (select) {
         select.value = region;
-        for (var i = 0; i < select.options.length; i++) {
+        for (let i = 0; i < select.options.length; i++) {
             if (select.options[i].value === region) {
                 select.selectedIndex = i;
                 break;
@@ -412,8 +412,8 @@ function switchRegion(region) {
     
     updateRegionDisplay();
     
-    var key = getStorageKey(region);
-    var data = localStorage.getItem(key);
+    let key = getStorageKey(region);
+    let data = localStorage.getItem(key);
     places = data ? JSON.parse(data) : [];
     
     renderPlaces();
@@ -436,20 +436,20 @@ function switchRegion(region) {
     document.getElementById('routeList').innerHTML = '';
     document.getElementById('savedRow').style.display = 'none';
     
-    var btnContainer = document.getElementById('kakaoMapButtonContainer');
+    let btnContainer = document.getElementById('kakaoMapButtonContainer');
     if (btnContainer) {
         btnContainer.style.display = 'none';
     }
     currentPlaceId = null;
     
     if (kakaoMap) {
-        var center = getRegionCenter(region);
+        let center = getRegionCenter(region);
         kakaoMap.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
         kakaoMap.setLevel(5);
         kakaoMap.relayout();
     }
     
-    var activeTab = document.querySelector('.tab-content.active');
+    let activeTab = document.querySelector('.tab-content.active');
     if (activeTab) {
         showTabStatus(activeTab.id, '📍 ' + region + ' 지역으로 전환됨 (' + places.length + '개 현장)', 'info');
     }
@@ -463,10 +463,10 @@ function switchRegion(region) {
 }
 
 function addRegion() {
-    var existing = document.getElementById('customRegionModal');
+    let existing = document.getElementById('customRegionModal');
     if (existing) existing.remove();
     
-    var modalHtml = `
+    let modalHtml = `
         <div id="customRegionModal" style="
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -505,7 +505,7 @@ function addRegion() {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     
     setTimeout(function() {
-        var input = document.getElementById('customRegionInput');
+        let input = document.getElementById('customRegionInput');
         if (input) {
             input.focus();
             input.select();
@@ -513,8 +513,8 @@ function addRegion() {
     }, 100);
     
     document.getElementById('customRegionConfirmBtn').addEventListener('click', function() {
-        var input = document.getElementById('customRegionInput');
-        var name = input ? input.value.trim() : '';
+        let input = document.getElementById('customRegionInput');
+        let name = input ? input.value.trim() : '';
         document.getElementById('customRegionModal').remove();
         
         if (!name) {
@@ -522,29 +522,29 @@ function addRegion() {
             return;
         }
         
-        var region = name.replace(/[\/\\:*?"<>|]/g, '');
+        let region = name.replace(/[\/\\:*?"<>|]/g, '');
         if (!region) {
             showTabStatus('tab-settings', '⚠️ 사용할 수 없는 지역명입니다.', 'warning');
             return;
         }
         
-        var select = document.getElementById('regionSelect');
+        let select = document.getElementById('regionSelect');
         if (!select) {
             showTabStatus('tab-settings', '⚠️ 오류 발생, 새로고침 후 다시 시도하세요.', 'error');
             return;
         }
         
-        for (var i = 0; i < select.options.length; i++) {
+        for (let i = 0; i < select.options.length; i++) {
             if (select.options[i].value === region) {
                 showTabStatus('tab-settings', '⚠️ 이미 존재하는 지역입니다.', 'warning');
                 return;
             }
         }
         
-        var key = getStorageKey(region);
+        let key = getStorageKey(region);
         localStorage.setItem(key, JSON.stringify([]));
         
-        var opt = document.createElement('option');
+        let opt = document.createElement('option');
         opt.value = region;
         opt.textContent = region;
         select.appendChild(opt);
@@ -556,10 +556,10 @@ function addRegion() {
 }
 
 function deleteRegion() {
-    var select = document.getElementById('regionSelect');
+    let select = document.getElementById('regionSelect');
     if (!select) return;
     
-    var currentRegion = select.value;
+    let currentRegion = select.value;
     if (!currentRegion || currentRegion === '') {
         showTabStatus('tab-settings', '⚠️ 삭제할 지역을 선택하세요.', 'warning');
         return;
@@ -574,10 +574,10 @@ function deleteRegion() {
         '🗑️ 지역 삭제',
         '"' + currentRegion + '" 지역을 삭제하시겠습니까?\n해당 지역의 모든 현장 데이터도 함께 삭제됩니다.',
         function() {
-            var key = getStorageKey(currentRegion);
+            let key = getStorageKey(currentRegion);
             localStorage.removeItem(key);
             
-            for (var i = 0; i < select.options.length; i++) {
+            for (let i = 0; i < select.options.length; i++) {
                 if (select.options[i].value === currentRegion) {
                     select.remove(i);
                     break;
@@ -585,13 +585,13 @@ function deleteRegion() {
             }
             
             if (select.options.length > 0) {
-                var newRegion = select.options[0].value;
+                let newRegion = select.options[0].value;
                 select.value = newRegion;
                 switchRegion(newRegion);
                 showTabStatus('tab-settings', '✅ "' + currentRegion + '" 지역 삭제됨', 'ok');
             } else {
                 select.innerHTML = '';
-                var defaultOpt = document.createElement('option');
+                let defaultOpt = document.createElement('option');
                 defaultOpt.value = '';
                 defaultOpt.textContent = '📍 지역 선택';
                 defaultOpt.selected = true;
@@ -610,16 +610,16 @@ function deleteRegion() {
 // 5. 설정 내보내기/가져오기
 // ============================================================
 function exportSettings() {
-    var data = {
+    let data = {
         githubToken: settings.githubToken || '',
         kakaoJsKey: settings.kakaoJsKey || '',
         kakaoRestKey: settings.kakaoRestKey || '',
         routeApi: routeApi || 'kakao',
         exportDate: new Date().toISOString()
     };
-    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
+    let blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    let url = URL.createObjectURL(blob);
+    let a = document.createElement('a');
     a.href = url;
     a.download = 'settings_' + new Date().toISOString().slice(0,10) + '.json';
     a.click();
@@ -628,12 +628,12 @@ function exportSettings() {
 }
 
 function importSettings(event) {
-    var file = event.target.files[0];
+    let file = event.target.files[0];
     if (!file) return;
-    var reader = new FileReader();
+    let reader = new FileReader();
     reader.onload = function(e) {
         try {
-            var data = JSON.parse(e.target.result);
+            let data = JSON.parse(e.target.result);
             if (!data.githubToken && !data.kakaoJsKey && !data.kakaoRestKey) {
                 showTabStatus('tab-settings', '❌ 유효한 설정 파일이 아닙니다.', 'error');
                 return;
@@ -664,11 +664,11 @@ function renderSearchResults(container, results, onClickName, isMultiSelect) {
         container.style.display = 'none';
         return;
     }
-    var html = '';
-    for (var i = 0; i < results.length; i++) {
-        var item = results[i];
-        var sourceLabel = item._source || '카카오맵';
-        var checked = selectedWaypoints.some(function(w) { return w.name === item.place_name; });
+    let html = '';
+    for (let i = 0; i < results.length; i++) {
+        let item = results[i];
+        let sourceLabel = item._source || '카카오맵';
+        let checked = selectedWaypoints.some(function(w) { return w.name === item.place_name; });
         html += '<div class="result-item" data-name="' + escapeHtml(item.place_name) + '" data-address="' + escapeHtml(item.address_name) + '" data-lat="' + item.y + '" data-lng="' + item.x + '" data-index="' + i + '">';
         if (isMultiSelect) {
             html += '<input type="checkbox" class="result-check" ' + (checked ? 'checked' : '') + ' onclick="event.stopPropagation(); toggleWaypointSelection(\'' + escapeHtml(item.place_name) + '\', \'' + escapeHtml(item.address_name) + '\', ' + item.y + ', ' + item.x + ')">';
@@ -683,17 +683,17 @@ function renderSearchResults(container, results, onClickName, isMultiSelect) {
         el.addEventListener('click', function(e) {
             if (e.target.closest('.result-check')) return;
             
-            var name = this.dataset.name;
-            var address = this.dataset.address;
-            var lat = parseFloat(this.dataset.lat);
-            var lng = parseFloat(this.dataset.lng);
+            let name = this.dataset.name;
+            let address = this.dataset.address;
+            let lat = parseFloat(this.dataset.lat);
+            let lng = parseFloat(this.dataset.lng);
             
             if (onClickName === 'selectStartPoint') {
                 selectStartPoint(name, address, lat, lng);
             } else if (onClickName === 'selectAddress') {
                 selectAddress(name, address, lat, lng);
             } else {
-                var fn = window[onClickName];
+                let fn = window[onClickName];
                 if (typeof fn === 'function') {
                     fn(name, address, lat, lng);
                 }
@@ -708,10 +708,10 @@ function renderSearchResults(container, results, onClickName, isMultiSelect) {
 function toggleMultiSelect() {
     multiSelectMode = !multiSelectMode;
     
-    var toggleBtn = document.getElementById('multiToggleBtn');
-    var addBtn = document.getElementById('addWaypointBtn');
-    var input = document.getElementById('waypointInput');
-    var statusEl = document.getElementById('modeStatus');
+    let toggleBtn = document.getElementById('multiToggleBtn');
+    let addBtn = document.getElementById('addWaypointBtn');
+    let input = document.getElementById('waypointInput');
+    let statusEl = document.getElementById('modeStatus');
     
     if (multiSelectMode) {
         if (toggleBtn) {
@@ -751,7 +751,7 @@ function toggleMultiSelect() {
             statusEl.style.color = '#a0aec0';
         }
         selectedWaypoints = [];
-        var resultsContainer = document.getElementById('waypointSearchResults');
+        let resultsContainer = document.getElementById('waypointSearchResults');
         if (resultsContainer) {
             resultsContainer.style.display = 'none';
         }
@@ -763,7 +763,7 @@ function toggleMultiSelect() {
 // 8. 경유지 선택 토글
 // ============================================================
 function toggleWaypointSelection(name, address, lat, lng) {
-    var idx = selectedWaypoints.findIndex(function(w) { return w.name === name; });
+    let idx = selectedWaypoints.findIndex(function(w) { return w.name === name; });
     if (idx >= 0) {
         selectedWaypoints.splice(idx, 1);
     } else {
@@ -773,10 +773,10 @@ function toggleWaypointSelection(name, address, lat, lng) {
         }
         selectedWaypoints.push({ name: name, address: address, lat: lat, lng: lng });
     }
-    var container = document.getElementById('waypointSearchResults');
+    let container = document.getElementById('waypointSearchResults');
     if (container) {
         container.querySelectorAll('.result-item').forEach(function(el) {
-            var cb = el.querySelector('.result-check');
+            let cb = el.querySelector('.result-check');
             if (cb) {
                 cb.checked = selectedWaypoints.some(function(w) { return w.name === el.dataset.name; });
             }
@@ -786,18 +786,18 @@ function toggleWaypointSelection(name, address, lat, lng) {
 
 function getRecentStartPoints() {
     try {
-        var key = 'recentStartPoints_' + currentRegion;
-        var data = localStorage.getItem(key);
+        let key = 'recentStartPoints_' + currentRegion;
+        let data = localStorage.getItem(key);
         return data ? JSON.parse(data) : [];
     } catch { return []; }
 }
 
 function saveRecentStartPoint(name, address, lat, lng) {
-    var recent = getRecentStartPoints();
+    let recent = getRecentStartPoints();
     recent = recent.filter(function(item) { return item.name !== name; });
     recent.unshift({ name: name, address: address, lat: lat, lng: lng });
     recent = recent.slice(0, 3);
-    var key = 'recentStartPoints_' + currentRegion;
+    let key = 'recentStartPoints_' + currentRegion;
     localStorage.setItem(key, JSON.stringify(recent));
 }
 
@@ -805,17 +805,17 @@ function saveRecentStartPoint(name, address, lat, lng) {
 // 9. 출발지 검색 및 설정
 // ============================================================
 function searchStartPoint(query) {
-    var container = document.getElementById('startSearchResults');
+    let container = document.getElementById('startSearchResults');
     
     if (!query || query.length === 0) {
-        var recent = getRecentStartPoints();
+        let recent = getRecentStartPoints();
         if (recent.length === 0) {
             container.style.display = 'none';
             return;
         }
-        var html = '';
-        for (var i = 0; i < recent.length; i++) {
-            var item = recent[i];
+        let html = '';
+        for (let i = 0; i < recent.length; i++) {
+            let item = recent[i];
             html += '<div class="result-item" data-name="' + escapeHtml(item.name) + '" data-address="' + escapeHtml(item.address) + '" data-lat="' + item.lat + '" data-lng="' + item.lng + '">';
             html += '<div>🕐 ' + escapeHtml(item.name) + ' <span style="font-size:10px;color:#a0aec0;">최근</span></div>';
             html += '<div class="addr">' + escapeHtml(item.address) + '</div></div>';
@@ -825,10 +825,10 @@ function searchStartPoint(query) {
         
         container.querySelectorAll('.result-item').forEach(function(el) {
             el.addEventListener('click', function() {
-                var name = this.dataset.name;
-                var address = this.dataset.address;
-                var lat = parseFloat(this.dataset.lat);
-                var lng = parseFloat(this.dataset.lng);
+                let name = this.dataset.name;
+                let address = this.dataset.address;
+                let lat = parseFloat(this.dataset.lat);
+                let lng = parseFloat(this.dataset.lng);
                 selectStartPoint(name, address, lat, lng);
             });
         });
@@ -842,14 +842,14 @@ function searchStartPoint(query) {
     
     clearTimeout(window._startSearchTimer);
     window._startSearchTimer = setTimeout(async function() {
-        var allResults = [];
-        var seenNames = {};
-        var lowerQuery = query.toLowerCase();
+        let allResults = [];
+        let seenNames = {};
+        let lowerQuery = query.toLowerCase();
         
-        for (var i = 0; i < places.length; i++) {
-            var p = places[i];
+        for (let i = 0; i < places.length; i++) {
+            let p = places[i];
             if (p.name.toLowerCase().includes(lowerQuery) || (p.address && p.address.toLowerCase().includes(lowerQuery))) {
-                var key = p.name + '|' + (p.address || '');
+                let key = p.name + '|' + (p.address || '');
                 if (!seenNames[key]) {
                     seenNames[key] = true;
                     allResults.push({
@@ -863,9 +863,9 @@ function searchStartPoint(query) {
             }
         }
         
-        var kakaoResults = await searchKakaoPlaces(query);
+        let kakaoResults = await searchKakaoPlaces(query);
         kakaoResults.slice(0, 5).forEach(function(item) {
-            var key = item.place_name + '|' + item.address_name;
+            let key = item.place_name + '|' + item.address_name;
             if (!seenNames[key]) {
                 seenNames[key] = true;
                 allResults.push(item);
@@ -877,10 +877,10 @@ function searchStartPoint(query) {
             return;
         }
         
-        var html = '';
-        for (var i = 0; i < allResults.length; i++) {
-            var item = allResults[i];
-            var sourceLabel = item._source || '카카오맵';
+        let html = '';
+        for (let i = 0; i < allResults.length; i++) {
+            let item = allResults[i];
+            let sourceLabel = item._source || '카카오맵';
             html += '<div class="result-item" data-name="' + escapeHtml(item.place_name) + '" data-address="' + escapeHtml(item.address_name) + '" data-lat="' + item.y + '" data-lng="' + item.x + '">';
             html += '<div class="result-info"><div>' + escapeHtml(item.place_name) + ' <span class="source">' + sourceLabel + '</span></div>';
             html += '<div class="addr">' + escapeHtml(item.address_name) + '</div></div></div>';
@@ -890,10 +890,10 @@ function searchStartPoint(query) {
         
         container.querySelectorAll('.result-item').forEach(function(el) {
             el.addEventListener('click', function() {
-                var name = this.dataset.name;
-                var address = this.dataset.address;
-                var lat = parseFloat(this.dataset.lat);
-                var lng = parseFloat(this.dataset.lng);
+                let name = this.dataset.name;
+                let address = this.dataset.address;
+                let lat = parseFloat(this.dataset.lat);
+                let lng = parseFloat(this.dataset.lng);
                 selectStartPoint(name, address, lat, lng);
             });
         });
@@ -933,7 +933,7 @@ function setCurrentLocation() {
         return;
     }
     
-    var btn = document.querySelector('.btn-outline[onclick*="setCurrentLocation"]');
+    let btn = document.querySelector('.btn-outline[onclick*="setCurrentLocation"]');
     if (btn) {
         btn.innerHTML = '<span style="font-size:14px;">⏳</span> 위치 확인 중...';
         btn.disabled = true;
@@ -943,31 +943,31 @@ function setCurrentLocation() {
     
     navigator.geolocation.getCurrentPosition(
         function(position) {
-            var lat = position.coords.latitude;
-            var lng = position.coords.longitude;
+            let lat = position.coords.latitude;
+            let lng = position.coords.longitude;
             
             if (btn) {
                 btn.innerHTML = '<span style="font-size:14px;">🎯</span> 현재 위치';
                 btn.disabled = false;
             }
             
-            var restKey = settings.kakaoRestKey;
+            let restKey = settings.kakaoRestKey;
             if (restKey) {
                 fetch('https://dapi.kakao.com/v2/local/geo/coord2address.json?x=' + lng + '&y=' + lat, {
                     headers: { 'Authorization': 'KakaoAK ' + restKey }
                 })
                 .then(function(res) { return res.json(); })
                 .then(function(data) {
-                    var address = '현재 위치';
+                    let address = '현재 위치';
                     if (data.documents && data.documents.length > 0) {
-                        var doc = data.documents[0];
+                        let doc = data.documents[0];
                         if (doc.road_address) {
                             address = doc.road_address.address_name;
                         } else if (doc.address) {
                             address = doc.address.address_name;
                         }
                     }
-                    var shortAddr = shortenAddress(address);
+                    let shortAddr = shortenAddress(address);
                     selectStartPoint('🎯 내 위치', shortAddr || address, lat, lng);
                     showTabStatus('tab-places', '✅ 현재 위치로 설정됨: ' + (shortAddr || address), 'ok');
                 })
@@ -986,7 +986,7 @@ function setCurrentLocation() {
                 btn.disabled = false;
             }
             
-            var msg = 'GPS 위치를 가져올 수 없습니다.';
+            let msg = 'GPS 위치를 가져올 수 없습니다.';
             if (error.code === 1) {
                 msg = '⚠️ GPS 권한이 필요합니다. 설정 → 개인정보 보호 → 위치 서비스에서 허용해주세요.';
             } else if (error.code === 2) {
@@ -1001,17 +1001,17 @@ function setCurrentLocation() {
 }
 
 async function setStartPoint() {
-    var name = document.getElementById('startPoint').value.trim();
+    let name = document.getElementById('startPoint').value.trim();
     if (!name) {
         showTabStatus('tab-places', '출발지를 입력하세요.', 'warning');
         return;
     }
-    var restKey = settings.kakaoRestKey;
+    let restKey = settings.kakaoRestKey;
     if (!restKey) {
         showTabStatus('tab-places', '⚠️ REST API 키가 필요합니다.', 'warning');
         return;
     }
-    var geo = await geocodeAddress(name, restKey);
+    let geo = await geocodeAddress(name, restKey);
     if (!geo) {
         showTabStatus('tab-places', '❌ "' + name + '" 위치를 찾을 수 없습니다.', 'error');
         return;
@@ -1035,8 +1035,8 @@ function selectWaypointFromSearch(name, address, lat, lng) {
 // 10. 경유지 관리
 // ============================================================
 function addWaypoint() {
-    var input = document.getElementById('waypointInput');
-    var name = input.value.trim();
+    let input = document.getElementById('waypointInput');
+    let name = input.value.trim();
     
     if (multiSelectMode) {
         if (selectedWaypoints.length === 0) {
@@ -1045,11 +1045,11 @@ function addWaypoint() {
             return;
         }
         
-        var added = 0;
-        var duplicated = 0;
+        let added = 0;
+        let duplicated = 0;
         
-        for (var i = 0; i < selectedWaypoints.length; i++) {
-            var w = selectedWaypoints[i];
+        for (let i = 0; i < selectedWaypoints.length; i++) {
+            let w = selectedWaypoints[i];
             if (waypoints.length >= 15) {
                 showTabStatus('tab-places', '⚠️ 최대 15개까지 가능', 'warning');
                 break;
@@ -1069,12 +1069,12 @@ function addWaypoint() {
         
         renderWaypointList();
         selectedWaypoints = [];
-        var resultsContainer = document.getElementById('waypointSearchResults');
+        let resultsContainer = document.getElementById('waypointSearchResults');
         if (resultsContainer) {
             resultsContainer.style.display = 'none';
         }
         
-        var msg = '✅ ' + added + '개 경유지 추가됨';
+        let msg = '✅ ' + added + '개 경유지 추가됨';
         if (duplicated > 0) msg += ' (' + duplicated + '개 중복 제외)';
         showTabStatus('tab-places', msg, 'ok');
         return;
@@ -1099,7 +1099,7 @@ function addWaypoint() {
     renderWaypointList();
     input.value = '';
     input.focus();
-    var resultsContainer = document.getElementById('waypointSearchResults');
+    let resultsContainer = document.getElementById('waypointSearchResults');
     if (resultsContainer) {
         resultsContainer.style.display = 'none';
     }
@@ -1112,8 +1112,8 @@ function removeWaypoint(index) {
 }
 
 function renderWaypointList() {
-    var list = document.getElementById('waypointList');
-    var countEl = document.getElementById('wpCount');
+    let list = document.getElementById('waypointList');
+    let countEl = document.getElementById('wpCount');
     if (!list) return;
     if (countEl) countEl.textContent = '(' + waypoints.length + '개)';
     if (waypoints.length === 0) {
@@ -1124,9 +1124,9 @@ function renderWaypointList() {
         }
         return;
     }
-    var html = '';
-    for (var i = 0; i < waypoints.length; i++) {
-        var wp = waypoints[i];
+    let html = '';
+    for (let i = 0; i < waypoints.length; i++) {
+        let wp = waypoints[i];
         html += '<li data-index="' + i + '" data-name="' + escapeHtml(wp.name) + '" data-lat="' + (wp.lat || 0) + '" data-lng="' + (wp.lng || 0) + '">';
         html += '<div style="display:flex;align-items:center;flex:1;"><span class="drag-handle">⠿</span>';
         html += '<span class="idx">' + (i + 1) + '</span>';
@@ -1141,10 +1141,10 @@ function renderWaypointList() {
             handle: '.drag-handle',
             animation: 150,
             onEnd: function(evt) {
-                var oldIndex = evt.oldIndex;
-                var newIndex = evt.newIndex;
+                let oldIndex = evt.oldIndex;
+                let newIndex = evt.newIndex;
                 if (oldIndex === newIndex) return;
-                var moved = waypoints.splice(oldIndex, 1)[0];
+                let moved = waypoints.splice(oldIndex, 1)[0];
                 waypoints.splice(newIndex, 0, moved);
                 renderWaypointList();
                 showTabStatus('tab-places', '🔄 경유지 순서 변경됨', 'info');
@@ -1160,17 +1160,17 @@ function renderWaypointList() {
 // 11. 경유지 검색
 // ============================================================
 function searchWaypoint(query) {
-    var container = document.getElementById('waypointSearchResults');
+    let container = document.getElementById('waypointSearchResults');
     if (!query || query.length < 1) {
         container.style.display = 'none';
         return;
     }
     clearTimeout(window._waypointSearchTimer);
     window._waypointSearchTimer = setTimeout(async function() {
-        var placeResults = [];
-        var lowerQuery = query.toLowerCase();
-        for (var i = 0; i < places.length; i++) {
-            var p = places[i];
+        let placeResults = [];
+        let lowerQuery = query.toLowerCase();
+        for (let i = 0; i < places.length; i++) {
+            let p = places[i];
             if (p.name.toLowerCase().includes(lowerQuery) || 
                 (p.address && p.address.toLowerCase().includes(lowerQuery))) {
                 placeResults.push({
@@ -1183,12 +1183,12 @@ function searchWaypoint(query) {
             }
         }
         placeResults = placeResults.slice(0, 5);
-        var kakaoResults = await searchKakaoPlaces(query, 5);
+        let kakaoResults = await searchKakaoPlaces(query, 5);
         kakaoResults = kakaoResults.slice(0, 5);
-        var allResults = [];
-        var seenNames = {};
+        let allResults = [];
+        let seenNames = {};
         placeResults.concat(kakaoResults).forEach(function(item) {
-            var key = item.place_name + '|' + item.address_name;
+            let key = item.place_name + '|' + item.address_name;
             if (!seenNames[key]) {
                 seenNames[key] = true;
                 allResults.push(item);
@@ -1199,12 +1199,12 @@ function searchWaypoint(query) {
             return;
         }
         
-        var html = '';
-        var isMulti = multiSelectMode;
-        for (var i = 0; i < allResults.length; i++) {
-            var item = allResults[i];
-            var sourceLabel = item._source || '카카오맵';
-            var checked = selectedWaypoints.some(function(w) { return w.name === item.place_name; });
+        let html = '';
+        let isMulti = multiSelectMode;
+        for (let i = 0; i < allResults.length; i++) {
+            let item = allResults[i];
+            let sourceLabel = item._source || '카카오맵';
+            let checked = selectedWaypoints.some(function(w) { return w.name === item.place_name; });
             html += '<div class="result-item" data-name="' + escapeHtml(item.place_name) + '" data-address="' + escapeHtml(item.address_name) + '" data-lat="' + item.y + '" data-lng="' + item.x + '">';
             if (isMulti) {
                 html += '<input type="checkbox" class="result-check" ' + (checked ? 'checked' : '') + ' onclick="event.stopPropagation(); toggleWaypointSelection(\'' + escapeHtml(item.place_name) + '\', \'' + escapeHtml(item.address_name) + '\', ' + item.y + ', ' + item.x + ')">';
@@ -1218,10 +1218,10 @@ function searchWaypoint(query) {
         container.querySelectorAll('.result-item').forEach(function(el) {
             el.addEventListener('click', function(e) {
                 if (e.target.closest('.result-check')) return;
-                var name = this.dataset.name;
-                var address = this.dataset.address;
-                var lat = parseFloat(this.dataset.lat);
-                var lng = parseFloat(this.dataset.lng);
+                let name = this.dataset.name;
+                let address = this.dataset.address;
+                let lat = parseFloat(this.dataset.lat);
+                let lng = parseFloat(this.dataset.lng);
                 if (multiSelectMode) {
                     toggleWaypointSelection(name, address, lat, lng);
                 } else {
@@ -1233,21 +1233,21 @@ function searchWaypoint(query) {
 }
 
 function searchAddressForPlace(query) {
-    var container = document.getElementById('addrSearchResults');
+    let container = document.getElementById('addrSearchResults');
     if (!query || query.length < 2) {
         container.style.display = 'none';
         return;
     }
     clearTimeout(window._addrSearchTimer);
     window._addrSearchTimer = setTimeout(async function() {
-        var results = await searchKakaoPlaces(query);
+        let results = await searchKakaoPlaces(query);
         if (results.length === 0) {
             container.style.display = 'none';
             return;
         }
-        var html = '';
-        for (var i = 0; i < results.length; i++) {
-            var item = results[i];
+        let html = '';
+        for (let i = 0; i < results.length; i++) {
+            let item = results[i];
             html += '<div class="result-item" data-name="' + escapeHtml(item.place_name) + '" data-address="' + escapeHtml(item.address_name) + '" data-lat="' + item.y + '" data-lng="' + item.x + '">';
             html += '<div class="result-info"><div>' + escapeHtml(item.place_name) + ' <span class="source">카카오맵</span></div>';
             html += '<div class="addr">' + escapeHtml(item.address_name) + '</div></div></div>';
@@ -1256,10 +1256,10 @@ function searchAddressForPlace(query) {
         container.style.display = 'block';
         container.querySelectorAll('.result-item').forEach(function(el) {
             el.addEventListener('click', function() {
-                var name = this.dataset.name;
-                var address = this.dataset.address;
-                var lat = parseFloat(this.dataset.lat);
-                var lng = parseFloat(this.dataset.lng);
+                let name = this.dataset.name;
+                let address = this.dataset.address;
+                let lat = parseFloat(this.dataset.lat);
+                let lng = parseFloat(this.dataset.lng);
                 selectAddress(name, address, lat, lng);
             });
         });
@@ -1269,7 +1269,7 @@ function searchAddressForPlace(query) {
 function selectAddress(name, address, lat, lng) {
     document.getElementById('newPlaceAddr').value = address;
     document.getElementById('addrSearchResults').style.display = 'none';
-    var nameInput = document.getElementById('newPlaceName');
+    let nameInput = document.getElementById('newPlaceName');
     if (!nameInput.value.trim()) nameInput.value = name;
 }
 
@@ -1278,7 +1278,7 @@ function selectAddress(name, address, lat, lng) {
 // ============================================================
 function toggleFavFilter() {
     favFilterActive = !favFilterActive;
-    var btn = document.getElementById('favFilterBtn');
+    let btn = document.getElementById('favFilterBtn');
     if (btn) {
         btn.classList.toggle('active', favFilterActive);
         btn.textContent = favFilterActive ? '⭐ 즐겨찾기 ON' : '⭐ 즐겨찾기';
@@ -1287,9 +1287,9 @@ function toggleFavFilter() {
 }
 
 function applySort() {
-    var sortSelect = document.getElementById('sortPlaces');
+    let sortSelect = document.getElementById('sortPlaces');
     if (sortSelect) {
-        var newSort = sortSelect.value;
+        let newSort = sortSelect.value;
         if (newSort !== currentSort) {
             currentSort = newSort;
             renderPlaces();
@@ -1300,7 +1300,7 @@ function applySort() {
 function getFilteredAndSortedPlaces() {
     if (!places || places.length === 0) return [];
 
-    var filtered = [...places];
+    let filtered = [...places];
     
     if (favFilterActive) {
         filtered = filtered.filter(function(p) { return p.favorite === true; });
@@ -1326,8 +1326,8 @@ function getFilteredAndSortedPlaces() {
 }
 
 function renderPlaces(filtered) {
-    var list = document.getElementById('placeList');
-    var data = filtered || getFilteredAndSortedPlaces();
+    let list = document.getElementById('placeList');
+    let data = filtered || getFilteredAndSortedPlaces();
     document.getElementById('listCount').textContent = '(' + data.length + '개)';
 
     if (data.length === 0) {
@@ -1335,16 +1335,16 @@ function renderPlaces(filtered) {
         return;
     }
 
-    var html = '';
-    for (var i = 0; i < data.length; i++) {
-        var p = data[i];
-        var shortAddr = shortenAddress(p.address || '');
-        var starIcon = p.favorite ? '★' : '☆';
-        var starClass = p.favorite ? 'fav active' : 'fav inactive';
-        var remarkDisplay = p.remark ? '<span class="remark">' + escapeHtml(p.remark) + '</span>' : '';
+    let html = '';
+    for (let i = 0; i < data.length; i++) {
+        let p = data[i];
+        let shortAddr = shortenAddress(p.address || '');
+        let starIcon = p.favorite ? '★' : '☆';
+        let starClass = p.favorite ? 'fav active' : 'fav inactive';
+        let remarkDisplay = p.remark ? '<span class="remark">' + escapeHtml(p.remark) + '</span>' : '';
 
-        var hasCoords = (p.lat && p.lng && p.lat !== 0 && p.lng !== 0);
-        var borderColor = hasCoords ? '#4f7eb3' : '#e53e3e';
+        let hasCoords = (p.lat && p.lng && p.lat !== 0 && p.lng !== 0);
+        let borderColor = hasCoords ? '#4f7eb3' : '#e53e3e';
 
         html += '<div class="place-item" style="border-left-color: ' + borderColor + ';" onclick="openEditModal(\'' + p.id + '\')" title="클릭하여 편집">';
         html += '<div class="info"><span class="name">' + escapeHtml(p.name) + '</span>';
@@ -1367,15 +1367,15 @@ function renderPlaces(filtered) {
 }
 
 function searchPlaces() {
-    var keyword = document.getElementById('searchPlace').value.trim();
-    var baseList = getFilteredAndSortedPlaces();
+    let keyword = document.getElementById('searchPlace').value.trim();
+    let baseList = getFilteredAndSortedPlaces();
 
     if (!keyword) {
         renderPlaces(baseList);
         return;
     }
 
-    var results = baseList.filter(function(p) {
+    let results = baseList.filter(function(p) {
         return (p.name && p.name.includes(keyword)) || (p.address && p.address.includes(keyword));
     });
 
@@ -1399,11 +1399,11 @@ function closeAddPlaceModal() {
 }
 
 function saveAddPlaceModal() {
-    var name = document.getElementById('modalPlaceName').value.trim();
-    var address = document.getElementById('modalPlaceAddr').value.trim();
-    var lat = parseFloat(document.getElementById('modalPlaceLat').value);
-    var lng = parseFloat(document.getElementById('modalPlaceLng').value);
-    var remark = document.getElementById('modalPlaceRemark').value.trim();
+    let name = document.getElementById('modalPlaceName').value.trim();
+    let address = document.getElementById('modalPlaceAddr').value.trim();
+    let lat = parseFloat(document.getElementById('modalPlaceLat').value);
+    let lng = parseFloat(document.getElementById('modalPlaceLng').value);
+    let remark = document.getElementById('modalPlaceRemark').value.trim();
 
     if (!name) {
         showTabStatus('tab-list', '⚠️ 현장명을 입력하세요.', 'warning');
@@ -1430,12 +1430,12 @@ function saveAddPlaceModal() {
         return;
     }
 
-    var fullAddress = address;
-    var finalLat = lat;
-    var finalLng = lng;
+    let fullAddress = address;
+    let finalLat = lat;
+    let finalLng = lng;
 
     if (address && (isNaN(lat) || isNaN(lng))) {
-        var restKey = settings.kakaoRestKey;
+        let restKey = settings.kakaoRestKey;
         if (restKey) {
             geocodeAddress(address, restKey).then(function(geo) {
                 if (geo) {
@@ -1474,21 +1474,21 @@ function savePlaceFromModal(name, address, lat, lng, remark) {
 }
 
 function searchAddressForModal(query) {
-    var container = document.getElementById('modalAddrSearchResults');
+    let container = document.getElementById('modalAddrSearchResults');
     if (!query || query.length < 2) {
         container.style.display = 'none';
         return;
     }
     clearTimeout(window._modalAddrSearchTimer);
     window._modalAddrSearchTimer = setTimeout(async function() {
-        var results = await searchKakaoPlaces(query);
+        let results = await searchKakaoPlaces(query);
         if (results.length === 0) {
             container.style.display = 'none';
             return;
         }
-        var html = '';
-        for (var i = 0; i < results.length; i++) {
-            var item = results[i];
+        let html = '';
+        for (let i = 0; i < results.length; i++) {
+            let item = results[i];
             html += '<div class="result-item" data-address="' + escapeHtml(item.address_name) + '" data-name="' + escapeHtml(item.place_name) + '" data-lat="' + item.y + '" data-lng="' + item.x + '">';
             html += '<div class="result-info"><div>' + escapeHtml(item.place_name) + ' <span class="source">카카오맵</span></div>';
             html += '<div class="addr">' + escapeHtml(item.address_name) + '</div></div></div>';
@@ -1498,10 +1498,10 @@ function searchAddressForModal(query) {
         
         container.querySelectorAll('.result-item').forEach(function(el) {
             el.addEventListener('click', function() {
-                var name = this.dataset.name;
-                var address = this.dataset.address;
-                var lat = parseFloat(this.dataset.lat);
-                var lng = parseFloat(this.dataset.lng);
+                let name = this.dataset.name;
+                let address = this.dataset.address;
+                let lat = parseFloat(this.dataset.lat);
+                let lng = parseFloat(this.dataset.lng);
                 document.getElementById('modalPlaceAddr').value = address;
                 if (!document.getElementById('modalPlaceName').value.trim()) {
                     document.getElementById('modalPlaceName').value = name;
@@ -1516,13 +1516,13 @@ function searchAddressForModal(query) {
 // 14. 내부 팝업 모달
 // ============================================================
 function showConfirmModal(title, message, onConfirm, onCancel) {
-    var existing = document.getElementById('confirmModal');
+    let existing = document.getElementById('confirmModal');
     if (existing) existing.remove();
     
     window._tempConfirm = onConfirm || null;
     window._tempCancel = onCancel || null;
     
-    var modalHtml = `
+    let modalHtml = `
         <div id="confirmModal" style="
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -1569,10 +1569,10 @@ function showConfirmModal(title, message, onConfirm, onCancel) {
 }
 
 function showPromptModal(title, message, defaultValue, onConfirm, onCancel) {
-    var existing = document.getElementById('promptModal');
+    let existing = document.getElementById('promptModal');
     if (existing) existing.remove();
     
-    var modalHtml = `
+    let modalHtml = `
         <div id="promptModal" style="
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -1602,8 +1602,8 @@ function showPromptModal(title, message, defaultValue, onConfirm, onCancel) {
                 <div style="display:flex; gap:8px; justify-content:flex-end;">
                     <button class="btn btn-outline btn-sm" onclick="document.getElementById('promptModal').remove(); if(typeof onCancel==='function') onCancel();" style="padding:6px 16px;">취소</button>
                     <button id="promptConfirmBtn" class="btn btn-primary btn-sm" onclick="
-                        var input = document.getElementById('promptInput');
-                        var value = input ? input.value.trim() : '';
+                        let input = document.getElementById('promptInput');
+                        let value = input ? input.value.trim() : '';
                         document.getElementById('promptModal').remove();
                         if(typeof onConfirm==='function') onConfirm(value);
                     " style="padding:6px 16px;">확인</button>
@@ -1613,7 +1613,7 @@ function showPromptModal(title, message, defaultValue, onConfirm, onCancel) {
     `;
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     
-    var input = document.getElementById('promptInput');
+    let input = document.getElementById('promptInput');
     if (input) {
         setTimeout(function() {
             input.focus();
@@ -1626,7 +1626,7 @@ function showPromptModal(title, message, defaultValue, onConfirm, onCancel) {
 // 15. 현장 삭제/수정/초기화 등
 // ============================================================
 function deletePlace(id) {
-    var target = places.find(function(p) { return p.id === id; });
+    let target = places.find(function(p) { return p.id === id; });
     if (!target) return;
     
     showConfirmModal(
@@ -1666,7 +1666,7 @@ function resetRoute() {
             clearSingleMarker();
             isShowingRouteMarkers = false;
             if (kakaoMap && currentRegion) {
-                var center = getRegionCenter(currentRegion);
+                let center = getRegionCenter(currentRegion);
                 kakaoMap.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
                 kakaoMap.setLevel(5);
                 kakaoMap.relayout();
@@ -1681,14 +1681,14 @@ function resetAll() {
         '⚠️ 모든 데이터 초기화',
         '모든 데이터를 초기화하시겠습니까?\n(현장리스트, 경로, 설정 모두 삭제됩니다)',
         function() {
-            var keys = [];
-            for (var i = 0; i < localStorage.length; i++) {
-                var key = localStorage.key(i);
+            let keys = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                let key = localStorage.key(i);
                 if (key && (key.startsWith(STORAGE_KEY_PREFIX) || key === SETTINGS_KEY || key === SELECTED_REGION_KEY || key === OPTIMIZE_MODE_KEY || key === PRESETS_KEY || key === ROUTE_API_KEY)) {
                     keys.push(key);
                 }
             }
-            for (var i = 0; i < keys.length; i++) localStorage.removeItem(keys[i]);
+            for (let i = 0; i < keys.length; i++) localStorage.removeItem(keys[i]);
             places = [];
             waypoints = [];
             routeResult = null;
@@ -1714,7 +1714,7 @@ function resetAll() {
 }
 
 function toggleFavorite(id) {
-    var place = places.find(function(p) { return p.id === id; });
+    let place = places.find(function(p) { return p.id === id; });
     if (!place) return;
     place.favorite = !place.favorite;
     savePlaces();
@@ -1723,7 +1723,7 @@ function toggleFavorite(id) {
 }
 
 function openEditModal(id) {
-    var place = places.find(function(p) { return p.id === id; });
+    let place = places.find(function(p) { return p.id === id; });
     if (!place) return;
     document.getElementById('modalTitle').textContent = '✏️ 현장 편집';
     document.getElementById('modalName').value = place.name;
@@ -1736,7 +1736,7 @@ function openEditModal(id) {
 }
 
 function showModalEditError(msg) {
-    var errorEl = document.getElementById('modalEditError');
+    let errorEl = document.getElementById('modalEditError');
     if (!errorEl) return;
     if (msg) {
         errorEl.textContent = msg;
@@ -1747,14 +1747,14 @@ function showModalEditError(msg) {
 }
 
 async function saveModal() {
-    var id = document.getElementById('modalId').value;
-    var name = document.getElementById('modalName').value.trim();
-    var address = document.getElementById('modalAddress').value.trim();
-    var lat = parseFloat(document.getElementById('modalLat').value);
-    var lng = parseFloat(document.getElementById('modalLng').value);
-    var remark = document.getElementById('modalRemark').value.trim();
+    let id = document.getElementById('modalId').value;
+    let name = document.getElementById('modalName').value.trim();
+    let address = document.getElementById('modalAddress').value.trim();
+    let lat = parseFloat(document.getElementById('modalLat').value);
+    let lng = parseFloat(document.getElementById('modalLng').value);
+    let remark = document.getElementById('modalRemark').value.trim();
 
-    var place = places.find(function(p) { return p.id === id; });
+    let place = places.find(function(p) { return p.id === id; });
     if (!place) { closeModal(); return; }
 
     if (!name) {
@@ -1776,7 +1776,7 @@ async function saveModal() {
         }
     }
 
-    var existing = places.find(function(p) {
+    let existing = places.find(function(p) {
         return p.id !== id && normalizeName(p.name) === normalizeName(name);
     });
     if (existing) {
@@ -1785,14 +1785,14 @@ async function saveModal() {
         return;
     }
 
-    var fullAddress = address;
-    var finalLat = lat;
-    var finalLng = lng;
+    let fullAddress = address;
+    let finalLat = lat;
+    let finalLng = lng;
 
     if (address && (isNaN(lat) || isNaN(lng))) {
-        var restKey = settings.kakaoRestKey;
+        let restKey = settings.kakaoRestKey;
         if (restKey) {
-            var geo = await geocodeAddress(address, restKey);
+            let geo = await geocodeAddress(address, restKey);
             if (geo) {
                 finalLat = geo.lat;
                 finalLng = geo.lng;
@@ -1831,7 +1831,7 @@ function closeModal() {
 }
 
 function addWaypointFromList(id) {
-    var place = places.find(function(p) { return p.id === id; });
+    let place = places.find(function(p) { return p.id === id; });
     if (!place) return;
     if (waypoints.length >= 15) {
         showTabStatus('tab-list', '⚠️ 최대 15개까지 가능', 'warning');
@@ -1852,9 +1852,9 @@ function addWaypointFromList(id) {
 async function geocodeAddress(address, restKey, retries) {
     retries = retries || 1;
     if (!address || !restKey) return null;
-    for (var attempt = 0; attempt <= retries; attempt++) {
+    for (let attempt = 0; attempt <= retries; attempt++) {
         try {
-            var res = await fetch(
+            let res = await fetch(
                 'https://dapi.kakao.com/v2/local/search/address.json?query=' + encodeURIComponent(address),
                 { headers: { 'Authorization': 'KakaoAK ' + restKey } }
             );
@@ -1865,14 +1865,14 @@ async function geocodeAddress(address, restKey, retries) {
                 }
                 return null;
             }
-            var data = await res.json();
+            let data = await res.json();
             if (data.documents && data.documents.length > 0) {
-                var doc = data.documents[0];
-                var road = doc.road_address;
+                let doc = data.documents[0];
+                let road = doc.road_address;
                 if (road) {
                     return { lat: parseFloat(road.y), lng: parseFloat(road.x), address: road.address_name };
                 }
-                var addr = doc.address;
+                let addr = doc.address;
                 return { lat: parseFloat(addr.y), lng: parseFloat(addr.x), address: addr.address_name };
             }
             return null;
@@ -1889,10 +1889,10 @@ async function geocodeAddress(address, restKey, retries) {
 
 async function geocodeBatch(rows, restKey, batchSize, onProgress) {
     batchSize = batchSize || 5;
-    var results = [];
-    for (var i = 0; i < rows.length; i += batchSize) {
-        var batch = rows.slice(i, i + batchSize);
-        var batchResults = await Promise.all(batch.map(function(row) {
+    let results = [];
+    for (let i = 0; i < rows.length; i += batchSize) {
+        let batch = rows.slice(i, i + batchSize);
+        let batchResults = await Promise.all(batch.map(function(row) {
             return geocodeAddress(row.address, restKey, 1).then(function(geo) {
                 row.geo = geo;
                 return geo;
@@ -1913,10 +1913,10 @@ function getOptimizationScore(cost) {
     }
 
     if (routeObjective === 'balanced') {
-        var refDistance = 30;
-        var refTime = 60;
-        var distanceScore = cost.distanceKm / Math.max(1, refDistance);
-        var timeScore = cost.durationMin / Math.max(1, refTime);
+        let refDistance = 30;
+        let refTime = 60;
+        let distanceScore = cost.distanceKm / Math.max(1, refDistance);
+        let timeScore = cost.durationMin / Math.max(1, refTime);
         return distanceScore * 0.5 + timeScore * 0.5;
     }
 
@@ -1948,25 +1948,25 @@ function setOptimizeMode(mode) {
 }
 
 function calculateAngle(startX, startY, targetX, targetY) {
-    var dx = targetX - startX, dy = targetY - startY;
+    let dx = targetX - startX, dy = targetY - startY;
     if (dx === 0 && dy === 0) return 0;
-    var angle = Math.atan2(dy, dx) * 180 / Math.PI;
+    let angle = Math.atan2(dy, dx) * 180 / Math.PI;
     if (angle < 0) angle += 360;
     return angle;
 }
 
 function getClusterGroup16(angle) {
-    var group = Math.floor(((angle + 11.25) % 360) / 22.5) + 1;
+    let group = Math.floor(((angle + 11.25) % 360) / 22.5) + 1;
     return group > 16 ? 16 : group;
 }
 
 // ===== 도로 기반 경로 최적화 =====
-var roadMetricCache = new Map();
-var ROAD_CANDIDATE_COUNT = 3;
-var ROAD_OPTIMIZE_MAX_CALLS = 80;
-var roadOptimizeCallCount = 0;
-var roadCallSuccessCount = 0;
-var roadCallFallbackCount = 0;
+let roadMetricCache = new Map();
+let ROAD_CANDIDATE_COUNT = 3;
+let ROAD_OPTIMIZE_MAX_CALLS = 80;
+let roadOptimizeCallCount = 0;
+let roadCallSuccessCount = 0;
+let roadCallFallbackCount = 0;
 
 function roadMetricKey(from, to) {
     return [
@@ -1980,10 +1980,10 @@ function getStraightDistance(a, b) {
 }
 
 async function getRoadMetric(from, to, restKey) {
-    var key = roadMetricKey(from, to);
+    let key = roadMetricKey(from, to);
     if (roadMetricCache.has(key)) return roadMetricCache.get(key);
 
-    var fallback = {
+    let fallback = {
         distanceKm: getStraightDistance(from, to),
         durationMin: Math.max(1, Math.round(getStraightDistance(from, to) / 40 * 60)),
         source: 'straight'
@@ -2003,12 +2003,12 @@ async function getRoadMetric(from, to, restKey) {
 
     roadOptimizeCallCount++;
     try {
-        var url = 'https://apis-navi.kakaomobility.com/v1/directions'
+        let url = 'https://apis-navi.kakaomobility.com/v1/directions'
             + '?origin=' + Number(from.lng) + ',' + Number(from.lat)
             + '&destination=' + Number(to.lng) + ',' + Number(to.lat)
             + '&priority=RECOMMEND';
 
-        var response = await fetch(url, {
+        let response = await fetch(url, {
             method: 'GET',
             headers: {
                 'Authorization': 'KakaoAK ' + restKey
@@ -2016,12 +2016,12 @@ async function getRoadMetric(from, to, restKey) {
         });
 
         if (!response.ok) throw new Error('HTTP ' + response.status);
-        var data = await response.json();
+        let data = await response.json();
 
-        var route = data && data.routes && data.routes[0];
+        let route = data && data.routes && data.routes[0];
         if (!route || !route.summary) throw new Error('도로 경로 없음');
 
-        var metric = {
+        let metric = {
             distanceKm: Number(route.summary.distance || 0) / 1000,
             durationMin: Math.max(1, Math.round(Number(route.summary.duration || 0) / 60)),
             source: 'road'
@@ -2044,13 +2044,13 @@ function rankByStraightDistance(current, candidates) {
 
 async function chooseNextRoadPoint(current, candidates, restKey, mode) {
     if (!candidates.length) return null;
-    var shortlist = rankByStraightDistance(current, candidates).slice(0, ROAD_CANDIDATE_COUNT);
-    var best = null;
-    var bestScore = mode === 'Farthest' ? -Infinity : Infinity;
+    let shortlist = rankByStraightDistance(current, candidates).slice(0, ROAD_CANDIDATE_COUNT);
+    let best = null;
+    let bestScore = mode === 'Farthest' ? -Infinity : Infinity;
 
-    for (var i = 0; i < shortlist.length; i++) {
-        var metric = await getRoadMetric(current, shortlist[i], restKey);
-        var score = metric.distanceKm;
+    for (let i = 0; i < shortlist.length; i++) {
+        let metric = await getRoadMetric(current, shortlist[i], restKey);
+        let score = metric.distanceKm;
         if ((mode === 'Nearest' && score < bestScore) ||
             (mode === 'Farthest' && score > bestScore)) {
             bestScore = score;
@@ -2062,21 +2062,21 @@ async function chooseNextRoadPoint(current, candidates, restKey, mode) {
 }
 
 function buildGeometricSeed(places, startPoint, mode) {
-    var remaining = places.slice();
-    var result = [];
-    var current = startPoint;
+    let remaining = places.slice();
+    let result = [];
+    let current = startPoint;
 
     if (useDirectionHint) {
         if (mode === 'Farthest') {
             remaining.sort(function(a, b) {
-                var ga = getClusterGroup16(calculateAngle(startPoint.lng, startPoint.lat, a.lng, a.lat));
-                var gb = getClusterGroup16(calculateAngle(startPoint.lng, startPoint.lat, b.lng, b.lat));
+                let ga = getClusterGroup16(calculateAngle(startPoint.lng, startPoint.lat, a.lng, a.lat));
+                let gb = getClusterGroup16(calculateAngle(startPoint.lng, startPoint.lat, b.lng, b.lat));
                 return gb - ga;
             });
         } else {
             remaining.sort(function(a, b) {
-                var ga = getClusterGroup16(calculateAngle(startPoint.lng, startPoint.lat, a.lng, a.lat));
-                var gb = getClusterGroup16(calculateAngle(startPoint.lng, startPoint.lat, b.lng, b.lat));
+                let ga = getClusterGroup16(calculateAngle(startPoint.lng, startPoint.lat, a.lng, a.lat));
+                let gb = getClusterGroup16(calculateAngle(startPoint.lng, startPoint.lat, b.lng, b.lat));
                 return ga - gb;
             });
         }
@@ -2093,16 +2093,16 @@ function buildGeometricSeed(places, startPoint, mode) {
     }
 
     while (remaining.length) {
-        var bestIndex = 0;
-        var bestDist = mode === 'Farthest' ? -Infinity : Infinity;
-        for (var i = 0; i < remaining.length; i++) {
-            var d = getStraightDistance(current, remaining[i]);
+        let bestIndex = 0;
+        let bestDist = mode === 'Farthest' ? -Infinity : Infinity;
+        for (let i = 0; i < remaining.length; i++) {
+            let d = getStraightDistance(current, remaining[i]);
             if ((mode === 'Nearest' && d < bestDist) || (mode === 'Farthest' && d > bestDist)) {
                 bestDist = d;
                 bestIndex = i;
             }
         }
-        var next = remaining.splice(bestIndex, 1)[0];
+        let next = remaining.splice(bestIndex, 1)[0];
         result.push(next);
         current = next;
     }
@@ -2110,11 +2110,11 @@ function buildGeometricSeed(places, startPoint, mode) {
 }
 
 async function buildRoadGreedySeed(places, startPoint, restKey, mode) {
-    var remaining = places.slice();
-    var result = [];
-    var current = startPoint;
+    let remaining = places.slice();
+    let result = [];
+    let current = startPoint;
 
-    var first = await chooseNextRoadPoint(current, remaining, restKey, mode);
+    let first = await chooseNextRoadPoint(current, remaining, restKey, mode);
     if (first) {
         result.push(first);
         remaining.splice(remaining.indexOf(first), 1);
@@ -2122,7 +2122,7 @@ async function buildRoadGreedySeed(places, startPoint, restKey, mode) {
     }
 
     while (remaining.length) {
-        var next = await chooseNextRoadPoint(current, remaining, restKey, 'Nearest');
+        let next = await chooseNextRoadPoint(current, remaining, restKey, 'Nearest');
         if (!next) break;
         result.push(next);
         remaining.splice(remaining.indexOf(next), 1);
@@ -2132,11 +2132,11 @@ async function buildRoadGreedySeed(places, startPoint, restKey, mode) {
 }
 
 async function routeCost(route, startPoint, restKey) {
-    var current = startPoint;
-    var distanceKm = 0;
-    var durationMin = 0;
-    for (var i = 0; i < route.length; i++) {
-        var metric = await getRoadMetric(current, route[i], restKey);
+    let current = startPoint;
+    let distanceKm = 0;
+    let durationMin = 0;
+    for (let i = 0; i < route.length; i++) {
+        let metric = await getRoadMetric(current, route[i], restKey);
         distanceKm += metric.distanceKm;
         durationMin += metric.durationMin;
         current = route[i];
@@ -2149,25 +2149,25 @@ async function twoOptRoad(route, startPoint, restKey, mode) {
         mode = 'Distance';
     }
     if (route.length < 4) return route;
-    var improved = true;
-    var pass = 0;
-    var maxPass = 3;
+    let improved = true;
+    let pass = 0;
+    let maxPass = 3;
 
     while (improved && pass < maxPass && roadOptimizeCallCount < ROAD_OPTIMIZE_MAX_CALLS) {
         improved = false;
         pass++;
-        var currentCost = await routeCost(route, startPoint, restKey);
+        let currentCost = await routeCost(route, startPoint, restKey);
 
-        for (var i = 0; i < route.length - 2; i++) {
-            for (var j = i + 1; j < route.length - 1; j++) {
+        for (let i = 0; i < route.length - 2; i++) {
+            for (let j = i + 1; j < route.length - 1; j++) {
                 if (roadOptimizeCallCount >= ROAD_OPTIMIZE_MAX_CALLS) break;
-                var candidate = route.slice(0, i + 1)
+                let candidate = route.slice(0, i + 1)
                     .concat(route.slice(i + 1, j + 1).reverse())
                     .concat(route.slice(j + 1));
-                var candidateCost = await routeCost(candidate, startPoint, restKey);
+                let candidateCost = await routeCost(candidate, startPoint, restKey);
 
-                var currentScore = getOptimizationScore(currentCost);
-                var candidateScore = getOptimizationScore(candidateCost);
+                let currentScore = getOptimizationScore(currentCost);
+                let candidateScore = getOptimizationScore(candidateCost);
                 if (candidateScore + 0.001 < currentScore) {
                     route = candidate;
                     currentCost = candidateCost;
@@ -2190,33 +2190,33 @@ async function optimizeRouteAlgorithm(places, startLat, startLng, mode, restKey)
     roadCallFallbackCount = 0;
     roadMetricCache.clear();
 
-    var start = { name: '출발지', lat: startLat, lng: startLng };
+    let start = { name: '출발지', lat: startLat, lng: startLng };
 
-    var seeds = [];
-    var geometric = buildGeometricSeed(places, start, mode);
+    let seeds = [];
+    let geometric = buildGeometricSeed(places, start, mode);
     seeds.push(geometric);
 
-    var roadGreedy = await buildRoadGreedySeed(places, start, restKey, mode);
+    let roadGreedy = await buildRoadGreedySeed(places, start, restKey, mode);
     if (roadGreedy.length === places.length) seeds.push(roadGreedy);
 
-    var clustered = places.slice().sort(function(a, b) {
-        var ga = getClusterGroup16(calculateAngle(startLng, startLat, a.lng, a.lat));
-        var gb = getClusterGroup16(calculateAngle(startLng, startLat, b.lng, b.lat));
+    let clustered = places.slice().sort(function(a, b) {
+        let ga = getClusterGroup16(calculateAngle(startLng, startLat, a.lng, a.lat));
+        let gb = getClusterGroup16(calculateAngle(startLng, startLat, b.lng, b.lat));
         return ga - gb;
     });
     if (mode === 'Farthest') clustered.reverse();
     seeds.push(clustered);
 
-    var bestRoute = seeds[0];
-    var bestCost = await routeCost(bestRoute, start, restKey);
-    var bestScore = getOptimizationScore(bestCost);
+    let bestRoute = seeds[0];
+    let bestCost = await routeCost(bestRoute, start, restKey);
+    let bestScore = getOptimizationScore(bestCost);
 
-    for (var s = 0; s < seeds.length; s++) {
+    for (let s = 0; s < seeds.length; s++) {
         if (roadOptimizeCallCount >= ROAD_OPTIMIZE_MAX_CALLS) break;
-        var objective = (typeof routeObjective !== 'undefined' && routeObjective === 'time') ? 'Time' : 'Distance';
-        var candidate = await twoOptRoad(seeds[s].slice(), start, restKey, objective);
-        var cost = await routeCost(candidate, start, restKey);
-        var candidateScore = getOptimizationScore(cost);
+        let objective = (typeof routeObjective !== 'undefined' && routeObjective === 'time') ? 'Time' : 'Distance';
+        let candidate = await twoOptRoad(seeds[s].slice(), start, restKey, objective);
+        let cost = await routeCost(candidate, start, restKey);
+        let candidateScore = getOptimizationScore(cost);
         if (candidateScore + 0.001 < bestScore) {
             bestScore = candidateScore;
             bestCost = cost;
@@ -2236,7 +2236,7 @@ async function optimizeRouteAlgorithm(places, startLat, startLng, mode, restKey)
 }
 
 async function runOptimize() {
-    var btn = document.getElementById('runOptimizeBtn');
+    let btn = document.getElementById('runOptimizeBtn');
     if (btn && btn.disabled) return;
     if (btn) btn.disabled = true;
     
@@ -2251,7 +2251,7 @@ async function runOptimize() {
             return;
         }
         
-        var restKey = settings.kakaoRestKey;
+        let restKey = settings.kakaoRestKey;
         if (!restKey) {
             showTabStatus('tab-places', '⚠️ REST API 키 필요 (설정 탭)', 'warning');
             return;
@@ -2259,28 +2259,28 @@ async function runOptimize() {
         
         showTabStatus('tab-places', '📍 주소 변환 중...', 'info');
         
-        var wpCoords = [];
-        var hasError = false;
+        let wpCoords = [];
+        let hasError = false;
         
-        for (var i = 0; i < waypoints.length; i++) {
-            var wp = waypoints[i];
-            var lat = wp.lat || 0;
-            var lng = wp.lng || 0;
-            var address = wp.address || '';
+        for (let i = 0; i < waypoints.length; i++) {
+            let wp = waypoints[i];
+            let lat = wp.lat || 0;
+            let lng = wp.lng || 0;
+            let address = wp.address || '';
             
             if (!lat || !lng) {
-                var found = places.find(function(p) { return p.name === wp.name; });
+                let found = places.find(function(p) { return p.name === wp.name; });
                 if (found && found.lat && found.lng) {
                     lat = found.lat;
                     lng = found.lng;
                     address = found.address || '';
                 } else {
-                    var geo = await geocodeAddress(wp.name, restKey, 1);
+                    let geo = await geocodeAddress(wp.name, restKey, 1);
                     if (geo) {
                         lat = geo.lat;
                         lng = geo.lng;
                         address = geo.address || wp.name;
-                        var place = places.find(function(p) { return p.name === wp.name; });
+                        let place = places.find(function(p) { return p.name === wp.name; });
                         if (place) {
                             place.lat = lat;
                             place.lng = lng;
@@ -2307,7 +2307,7 @@ async function runOptimize() {
             return;
         }
         
-        var validPlaces = wpCoords.filter(function(p) { return p.lat && p.lng; });
+        let validPlaces = wpCoords.filter(function(p) { return p.lat && p.lng; });
         if (validPlaces.length === 0) {
             showTabStatus('tab-places', '좌표가 있는 경유지가 없습니다.', 'error');
             return;
@@ -2316,7 +2316,7 @@ async function runOptimize() {
         originalRouteCost = await routeCost(validPlaces.slice(), startPoint, restKey);
         
         showTabStatus('tab-places', '🛣️ 실제 도로거리 기반 최적화 계산 중...', 'info');
-        var sorted = await optimizeRouteAlgorithm(validPlaces, startPoint.lat, startPoint.lng, optimizeMode, restKey);
+        let sorted = await optimizeRouteAlgorithm(validPlaces, startPoint.lat, startPoint.lng, optimizeMode, restKey);
         
         if (!sorted || sorted.length === 0) {
             showTabStatus('tab-places', '⚠️ 최적화 실패', 'error');
@@ -2329,7 +2329,7 @@ async function runOptimize() {
             startMarker = null;
         }
         if (window._sectionPolylines) {
-            for (var i = 0; i < window._sectionPolylines.length; i++) {
+            for (let i = 0; i < window._sectionPolylines.length; i++) {
                 try { window._sectionPolylines[i].setMap(null); } catch(e) {}
             }
             window._sectionPolylines = [];
@@ -2343,19 +2343,19 @@ async function runOptimize() {
         
         addRouteMarker(startPoint.lat, startPoint.lng, '🚩 ' + startPoint.name, true, -1);
         
-        for (var i = 0; i < sorted.length; i++) {
-            var p = sorted[i];
+        for (let i = 0; i < sorted.length; i++) {
+            let p = sorted[i];
             addRouteMarker(p.lat, p.lng, (i + 1) + '. ' + p.name, false, i);
         }
         
-        var allPoints = [{
+        let allPoints = [{
             name: startPoint.name,
             lat: startPoint.lat,
             lng: startPoint.lng,
             address: startPoint.address || ''
         }].concat(sorted);
         
-        var routeData = await callKakaoMobilityRoute(allPoints, restKey);
+        let routeData = await callKakaoMobilityRoute(allPoints, restKey);
         
         if (routeData) {
             drawRoadRoute(routeData);
@@ -2364,33 +2364,33 @@ async function runOptimize() {
             showTabStatus('tab-route', '⚠️ 도로 경로를 불러올 수 없어 직선으로 표시합니다.', 'warning');
         }
         
-        var totalKm = 0;
-        var totalMin = 0;
-        var sectionDistances = [];
-        var sectionTimes = [];
+        let totalKm = 0;
+        let totalMin = 0;
+        let sectionDistances = [];
+        let sectionTimes = [];
         
         if (routeData && routeData.routes && routeData.routes[0] && routeData.routes[0].sections) {
-            var route = routeData.routes[0];
+            let route = routeData.routes[0];
             
             if (route.summary) {
                 totalKm = route.summary.distance / 1000;
                 totalMin = Math.round(route.summary.duration / 60);
             }
             
-            for (var i = 0; i < route.sections.length; i++) {
-                var section = route.sections[i];
-                var distKm = section.distance / 1000;
-                var timeMin = Math.round(section.duration / 60);
+            for (let i = 0; i < route.sections.length; i++) {
+                let section = route.sections[i];
+                let distKm = section.distance / 1000;
+                let timeMin = Math.round(section.duration / 60);
                 sectionDistances.push(distKm);
                 sectionTimes.push(timeMin);
             }
             
             while (sectionDistances.length < sorted.length) {
-                var idx = sectionDistances.length;
-                var prev = idx === 0 ? startPoint : sorted[idx - 1];
-                var curr = sorted[idx];
+                let idx = sectionDistances.length;
+                let prev = idx === 0 ? startPoint : sorted[idx - 1];
+                let curr = sorted[idx];
                 if (prev && curr) {
-                    var dist = haversineKm(prev.lat, prev.lng, curr.lat, curr.lng);
+                    let dist = haversineKm(prev.lat, prev.lng, curr.lat, curr.lng);
                     sectionDistances.push(dist);
                     sectionTimes.push(Math.round(dist / 40 * 60));
                 } else {
@@ -2399,10 +2399,10 @@ async function runOptimize() {
                 }
             }
         } else {
-            for (var i = 0; i < allPoints.length - 1; i++) {
-                var p1 = allPoints[i];
-                var p2 = allPoints[i + 1];
-                var dist = haversineKm(p1.lat, p1.lng, p2.lat, p2.lng);
+            for (let i = 0; i < allPoints.length - 1; i++) {
+                let p1 = allPoints[i];
+                let p2 = allPoints[i + 1];
+                let dist = haversineKm(p1.lat, p1.lng, p2.lat, p2.lng);
                 totalKm += dist;
                 sectionDistances.push(dist);
                 sectionTimes.push(Math.round(dist / 40 * 60));
@@ -2413,9 +2413,9 @@ async function runOptimize() {
         totalKm = parseFloat(totalKm.toFixed(2));
         totalMin = Math.round(totalMin);
         
-        for (var i = 0; i < sorted.length; i++) {
-            var dist = sectionDistances[i] || 0;
-            var time = sectionTimes[i] || 0;
+        for (let i = 0; i < sorted.length; i++) {
+            let dist = sectionDistances[i] || 0;
+            let time = sectionTimes[i] || 0;
             sorted[i]._segDist = parseFloat(dist.toFixed(2));
             sorted[i]._segTime = Math.round(time);
         }
@@ -2434,14 +2434,14 @@ async function runOptimize() {
         document.getElementById('optimizeMode').textContent = optimizeMode === 'Nearest' ? '가까운순' : '먼순';
         
         if (originalRouteCost) {
-            var savedKm = parseFloat((originalRouteCost.distanceKm - totalKm).toFixed(2));
-            var savedMin = Math.round(originalRouteCost.durationMin - totalMin);
-            var savedRow = document.getElementById('savedRow');
-            var savedEl = document.getElementById('savedAmount');
+            let savedKm = parseFloat((originalRouteCost.distanceKm - totalKm).toFixed(2));
+            let savedMin = Math.round(originalRouteCost.durationMin - totalMin);
+            let savedRow = document.getElementById('savedRow');
+            let savedEl = document.getElementById('savedAmount');
             if (savedRow && savedEl) {
                 if (savedKm > 0.1 || savedMin > 0) {
                     savedRow.style.display = 'flex';
-                    var parts = [];
+                    let parts = [];
                     if (savedKm > 0.1) parts.push('-' + savedKm + 'km');
                     if (savedMin > 0) parts.push('-' + savedMin + '분');
                     savedEl.textContent = parts.join(' ') + ' 절약 ✨';
@@ -2458,12 +2458,12 @@ async function runOptimize() {
             focusRouteStart();
         }
         
-        var meta = sorted._optimizationMeta || {};
-        var roadMsg = '';
+        let meta = sorted._optimizationMeta || {};
+        let roadMsg = '';
         if (meta.roadSuccess !== undefined && meta.roadFallback !== undefined) {
-            var totalRoadCalls = meta.roadSuccess + meta.roadFallback;
+            let totalRoadCalls = meta.roadSuccess + meta.roadFallback;
             if (totalRoadCalls > 0) {
-                var roadPercent = Math.round((meta.roadSuccess / totalRoadCalls) * 100);
+                let roadPercent = Math.round((meta.roadSuccess / totalRoadCalls) * 100);
                 if (roadPercent === 100) {
                     roadMsg = '🛣️ 모든 구간 실제 도로 정보 사용 (' + totalRoadCalls + '구간)';
                 } else if (roadPercent >= 50) {
@@ -2479,11 +2479,11 @@ async function runOptimize() {
             showTabStatus('tab-route', '⚠️ 도로 API 호출 제한에 도달했습니다. 일부 구간은 직선거리로 계산됨.', 'warning');
         }
         
-        var modeText = optimizeMode === 'Nearest' ? '가까운순' : '먼순';
-        var objectiveText = routeObjective === 'time' ? '최소시간' 
+        let modeText = optimizeMode === 'Nearest' ? '가까운순' : '먼순';
+        let objectiveText = routeObjective === 'time' ? '최소시간' 
             : routeObjective === 'balanced' ? '거리+시간 균형' 
             : '최단거리';
-        var resultMsg = '✅ 최적화 완료! ' + validPlaces.length + '개소 · ' + totalKm + 'km · ' + totalMin + '분';
+        let resultMsg = '✅ 최적화 완료! ' + validPlaces.length + '개소 · ' + totalKm + 'km · ' + totalMin + '분';
         if (roadMsg) resultMsg += ' · ' + roadMsg;
         showTabStatus('tab-route', resultMsg, 'ok');
         
@@ -2502,14 +2502,14 @@ async function runOptimize() {
 // ============================================================
 function showRouteList() {
     if (!routeResult) return;
-    var container = document.getElementById('routeList');
-    var { places: sorted, startPoint, totalKm, totalMin } = routeResult;
+    let container = document.getElementById('routeList');
+    let { places: sorted, startPoint, totalKm, totalMin } = routeResult;
     if (!sorted || sorted.length === 0) {
         container.innerHTML = '<div style="text-align:center;padding:20px;color:#a0aec0;">최적화된 경로가 없습니다.</div>';
         return;
     }
 
-    var html = '<div style="font-weight:600;font-size:14px;margin-bottom:8px;">📋 최적 경로</div>';
+    let html = '<div style="font-weight:600;font-size:14px;margin-bottom:8px;">📋 최적 경로</div>';
     html += '<div id="routeSortable">';
 
     html += '<div class="route-item route-start" data-no-drag="true" data-lat="' + startPoint.lat + '" data-lng="' + startPoint.lng + '" data-name="' + escapeHtml(startPoint.name) + '" style="cursor:pointer;" onclick="moveToRoutePoint(this)">';
@@ -2517,15 +2517,15 @@ function showRouteList() {
     html += '<div class="info"><div class="name">' + escapeHtml(startPoint.name) + '</div><div class="addr">' + escapeHtml(startPoint.address || '') + '</div></div>';
     html += '</div>';
 
-    var colors = ['#FF6B6B', '#FF9F43', '#FECA57', '#48DBFB', '#0ABDE3', '#10AC84', '#EE5A24', '#5F27CD', '#1DD1A1', '#F368E0', '#00D2D3', '#54A0FF', '#FF9FF3', '#F368E0'];
-    for (var i = 0; i < sorted.length; i++) {
-        var p = sorted[i];
-        var prev = i === 0 ? startPoint : sorted[i - 1];
-        var segDist = p._segDist || haversineKm(prev.lat, prev.lng, p.lat, p.lng);
-        var segTime = p._segTime || Math.round(segDist / 40 * 60);
-        var color = colors[i % colors.length];
-        var addrDisplay = p.address ? '<div class="addr">' + escapeHtml(shortenAddress(p.address)) + '</div>' : '';
-        var remarkDisplay = p.remark ? '<span class="remark">' + escapeHtml(p.remark) + '</span>' : '';
+    let colors = ['#FF6B6B', '#FF9F43', '#FECA57', '#48DBFB', '#0ABDE3', '#10AC84', '#EE5A24', '#5F27CD', '#1DD1A1', '#F368E0', '#00D2D3', '#54A0FF', '#FF9FF3', '#F368E0'];
+    for (let i = 0; i < sorted.length; i++) {
+        let p = sorted[i];
+        let prev = i === 0 ? startPoint : sorted[i - 1];
+        let segDist = p._segDist || haversineKm(prev.lat, prev.lng, p.lat, p.lng);
+        let segTime = p._segTime || Math.round(segDist / 40 * 60);
+        let color = colors[i % colors.length];
+        let addrDisplay = p.address ? '<div class="addr">' + escapeHtml(shortenAddress(p.address)) + '</div>' : '';
+        let remarkDisplay = p.remark ? '<span class="remark">' + escapeHtml(p.remark) + '</span>' : '';
 
         html += '<div class="route-item sortable-item" data-index="' + i + '" data-lat="' + p.lat + '" data-lng="' + p.lng + '" data-name="' + escapeHtml(p.name) + '" style="border-left-color:' + color + ';cursor:pointer;" onclick="if(!event.target.closest(\'.kakao-route-btn\') && !event.target.closest(\'.drag-handle\')) moveToRoutePoint(this)">';
         html += '<div class="idx" style="background:' + color + ';color:white;">' + (i + 1) + '</div>';
@@ -2553,7 +2553,7 @@ function showRouteList() {
     html += '</div>';
     container.innerHTML = html;
 
-    var sortableEl = document.getElementById('routeSortable');
+    let sortableEl = document.getElementById('routeSortable');
     if (sortableEl && window.Sortable) {
         if (window._routeSortable) window._routeSortable.destroy();
         window._routeSortable = new Sortable(sortableEl, {
@@ -2567,22 +2567,22 @@ function showRouteList() {
                 return true;
             },
             onEnd: function(evt) {
-                var oldIndex = evt.oldIndex - 1;
-                var newIndex = evt.newIndex - 1;
+                let oldIndex = evt.oldIndex - 1;
+                let newIndex = evt.newIndex - 1;
                 if (oldIndex === newIndex || oldIndex < 0 || newIndex < 0) return;
 
-                var moved = routeResult.places.splice(oldIndex, 1)[0];
+                let moved = routeResult.places.splice(oldIndex, 1)[0];
                 routeResult.places.splice(newIndex, 0, moved);
                 showRouteList();
 
-                var allPoints = [{ name: startPoint.name, lat: startPoint.lat, lng: startPoint.lng }].concat(routeResult.places);
+                let allPoints = [{ name: startPoint.name, lat: startPoint.lat, lng: startPoint.lng }].concat(routeResult.places);
                 clearRouteMarkers();
                 addRouteMarker(startPoint.lat, startPoint.lng, '🚩 ' + startPoint.name, true, -1);
-                for (var i = 0; i < routeResult.places.length; i++) {
-                    var p = routeResult.places[i];
+                for (let i = 0; i < routeResult.places.length; i++) {
+                    let p = routeResult.places[i];
                     addRouteMarker(p.lat, p.lng, (i + 1) + '. ' + p.name, false, i);
                 }
-                var restKey = settings.kakaoRestKey;
+                let restKey = settings.kakaoRestKey;
                 if (restKey) {
                     callKakaoMobilityRoute(allPoints, restKey).then(function(routeData) {
                         if (routeData) drawRoadRoute(routeData);
@@ -2601,12 +2601,12 @@ function openKakaoMapFromRoute(btn) {
         return;
     }
 
-    var fromName = btn.dataset.fromName;
-    var fromLat = parseFloat(btn.dataset.fromLat);
-    var fromLng = parseFloat(btn.dataset.fromLng);
-    var toName = btn.dataset.toName;
-    var toLat = parseFloat(btn.dataset.toLat);
-    var toLng = parseFloat(btn.dataset.toLng);
+    let fromName = btn.dataset.fromName;
+    let fromLat = parseFloat(btn.dataset.fromLat);
+    let fromLng = parseFloat(btn.dataset.fromLng);
+    let toName = btn.dataset.toName;
+    let toLat = parseFloat(btn.dataset.toLat);
+    let toLng = parseFloat(btn.dataset.toLng);
 
     if (!fromName || !toName || isNaN(fromLat) || isNaN(toLat)) {
         showTabStatus('tab-route', '⚠️ 경로 정보가 올바르지 않습니다.', 'warning');
@@ -2621,9 +2621,9 @@ function moveToRoutePoint(el) {
         showTabStatus('tab-route', '⚠️ 위치 정보가 없습니다.', 'warning');
         return;
     }
-    var lat = parseFloat(el.dataset.lat);
-    var lng = parseFloat(el.dataset.lng);
-    var name = el.dataset.name || '장소';
+    let lat = parseFloat(el.dataset.lat);
+    let lng = parseFloat(el.dataset.lng);
+    let name = el.dataset.name || '장소';
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
         showTabStatus('tab-route', '⚠️ 위치 정보가 올바르지 않습니다.', 'warning');
         return;
@@ -2648,13 +2648,13 @@ function openRouteMap(fromName, fromLat, fromLng, toName, toLat, toLng) {
         return; 
     }
 
-    var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    let isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    let isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
     if (routeApi === 'tmap') {
         // ★★★ TMap 스킴 (iOS/Android 모두 출발지+목적지 이름 전달) ★★★
-        var tmapUrl;
-        var webUrl;
+        let tmapUrl;
+        let webUrl;
         
         if (isIOS) {
             // iOS: sName (출발지 이름) + rGoName (목적지 이름) - 좌표도 함께 전달
@@ -2708,7 +2708,7 @@ function openRouteMap(fromName, fromLat, fromLng, toName, toLat, toLng) {
     // ===== 카카오맵 =====
     if (isMobile) {
         // ★★★ 카카오맵 스킴 (출발지/목적지 이름 전달) ★★★
-        var kakaoUrl;
+        let kakaoUrl;
         if (isIOS) {
             // iOS: sname (출발지 이름) + dname (목적지 이름)
             kakaoUrl = 'kakaomap://route?'
@@ -2728,7 +2728,7 @@ function openRouteMap(fromName, fromLat, fromLng, toName, toLat, toLng) {
         }
         
         // 웹 URL fallback
-        var webUrl = 'https://map.kakao.com/link/from/'
+        let webUrl = 'https://map.kakao.com/link/from/'
             + encodeURIComponent(fromName) + ',' + fromLat + ',' + fromLng
             + '/to/'
             + encodeURIComponent(toName) + ',' + toLat + ',' + toLng;
@@ -2745,7 +2745,7 @@ function openRouteMap(fromName, fromLat, fromLng, toName, toLat, toLng) {
         showTabStatus('tab-route', '🗺️ 카카오맵 길찾기: ' + fromName + ' → ' + toName, 'info');
     } else {
         // PC: 웹으로 열기
-        var url = 'https://map.kakao.com/link/from/'
+        let url = 'https://map.kakao.com/link/from/'
             + encodeURIComponent(fromName) + ',' + fromLat + ',' + fromLng
             + '/to/'
             + encodeURIComponent(toName) + ',' + toLat + ',' + toLng;
@@ -2760,7 +2760,7 @@ function openKakaoMap(fromName, fromLat, fromLng, toName, toLat, toLng) {
 }
 
 function openKakaoMapFromPlace(id) {
-    var place = places.find(function(p) { return p.id === id; });
+    let place = places.find(function(p) { return p.id === id; });
     if (!place) {
         showTabStatus('tab-list', '❌ 현장을 찾을 수 없습니다.', 'error');
         return;
@@ -2770,8 +2770,8 @@ function openKakaoMapFromPlace(id) {
         return;
     }
 
-    var webUrl;
-    var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    let webUrl;
+    let isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
     if (startPoint && startPoint.lat && startPoint.lng) {
         webUrl = 'https://map.kakao.com/link/from/'
@@ -2786,7 +2786,7 @@ function openKakaoMapFromPlace(id) {
     }
 
     if (isMobile && routeApi === 'kakao') {
-        var kakaoUrl;
+        let kakaoUrl;
         if (startPoint && startPoint.lat && startPoint.lng) {
             kakaoUrl = 'kakaomap://route?'
                 + 'sp=' + startPoint.lat + ',' + startPoint.lng
@@ -2815,7 +2815,7 @@ function openCurrentPlaceInKakaoMap() {
         return;
     }
 
-    var place = places.find(function(p) { return p.id === currentPlaceId; });
+    let place = places.find(function(p) { return p.id === currentPlaceId; });
     if (!place) {
         showTabStatus('tab-route', '❌ 현장을 찾을 수 없습니다.', 'error');
         return;
@@ -2825,7 +2825,7 @@ function openCurrentPlaceInKakaoMap() {
         return;
     }
 
-    var url;
+    let url;
     if (startPoint && startPoint.lat && startPoint.lng) {
         url = 'https://map.kakao.com/link/from/'
             + encodeURIComponent(startPoint.name) + ',' + startPoint.lat + ',' + startPoint.lng
@@ -2845,7 +2845,7 @@ function openCurrentPlaceInKakaoMap() {
 // 20. 지도 표시
 // ============================================================
 function showPlaceOnMap(id) {
-    var place = places.find(function(p) { return p.id === id; });
+    let place = places.find(function(p) { return p.id === id; });
     if (!place) {
         showTabStatus('tab-list', '❌ 현장을 찾을 수 없습니다.', 'error');
         return;
@@ -2870,9 +2870,9 @@ function showPlaceOnMap(id) {
         return;
     }
     
-    var pos = new kakao.maps.LatLng(place.lat, place.lng);
-    var content = '<div style="background:rgba(255,255,255,0.95);padding:8px 18px;border-radius:24px;border:2.5px solid rgba(37,99,235,0.5);box-shadow:0 8px 32px rgba(37,99,235,0.2);font-size:14px;font-weight:700;color:#1a202c;white-space:nowrap;backdrop-filter:blur(12px);">📍 ' + escapeHtml(place.name) + '</div>';
-    var customOverlay = new kakao.maps.CustomOverlay({
+    let pos = new kakao.maps.LatLng(place.lat, place.lng);
+    let content = '<div style="background:rgba(255,255,255,0.95);padding:8px 18px;border-radius:24px;border:2.5px solid rgba(37,99,235,0.5);box-shadow:0 8px 32px rgba(37,99,235,0.2);font-size:14px;font-weight:700;color:#1a202c;white-space:nowrap;backdrop-filter:blur(12px);">📍 ' + escapeHtml(place.name) + '</div>';
+    let customOverlay = new kakao.maps.CustomOverlay({
         map: kakaoMap,
         position: pos,
         content: content,
@@ -2904,9 +2904,9 @@ function clearSingleMarker() {
 async function callKakaoMobilityRoute(points, restKey) {
     if (!restKey || points.length < 2) return null;
     try {
-        var origin = points[0], destination = points[points.length - 1], waypoints = points.slice(1, -1);
-        var url = 'https://apis-navi.kakaomobility.com/v1/waypoints/directions';
-        var payload = {
+        let origin = points[0], destination = points[points.length - 1], waypoints = points.slice(1, -1);
+        let url = 'https://apis-navi.kakaomobility.com/v1/waypoints/directions';
+        let payload = {
             origin: { name: origin.name || '출발지', x: origin.lng, y: origin.lat },
             destination: { name: destination.name || '도착지', x: destination.lng, y: destination.lat },
             priority: 'RECOMMEND'
@@ -2916,7 +2916,7 @@ async function callKakaoMobilityRoute(points, restKey) {
                 return { name: w.name || '경유지', x: w.lng, y: w.lat };
             });
         }
-        var response = await fetch(url, {
+        let response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Authorization': 'KakaoAK ' + restKey,
@@ -2934,32 +2934,32 @@ async function callKakaoMobilityRoute(points, restKey) {
 function drawRoadRoute(routeData) {
     if (!kakaoMap || !routeData) return;
     try {
-        var route = routeData.routes[0];
+        let route = routeData.routes[0];
         if (!route || !route.sections) return;
         
         if (kakaoPolyline) { kakaoPolyline.setMap(null); kakaoPolyline = null; }
         if (window._sectionPolylines) {
-            for (var i = 0; i < window._sectionPolylines.length; i++) {
+            for (let i = 0; i < window._sectionPolylines.length; i++) {
                 try { window._sectionPolylines[i].setMap(null); } catch(e) {}
             }
             window._sectionPolylines = [];
         }
         
-        var totalBounds = new kakao.maps.LatLngBounds();
-        var sectionIndex = 0;
+        let totalBounds = new kakao.maps.LatLngBounds();
+        let sectionIndex = 0;
         
-        for (var s = 0; s < route.sections.length; s++) {
-            var section = route.sections[s];
+        for (let s = 0; s < route.sections.length; s++) {
+            let section = route.sections[s];
             if (!section.roads) continue;
-            var sectionPath = [];
-            for (var r = 0; r < section.roads.length; r++) {
-                var road = section.roads[r];
+            let sectionPath = [];
+            for (let r = 0; r < section.roads.length; r++) {
+                let road = section.roads[r];
                 if (road.vertexes) {
-                    for (var v = 0; v < road.vertexes.length; v += 2) {
-                        var lng = road.vertexes[v];
-                        var lat = road.vertexes[v + 1];
+                    for (let v = 0; v < road.vertexes.length; v += 2) {
+                        let lng = road.vertexes[v];
+                        let lat = road.vertexes[v + 1];
                         if (lat && lng) {
-                            var point = new kakao.maps.LatLng(lat, lng);
+                            let point = new kakao.maps.LatLng(lat, lng);
                             sectionPath.push(point);
                             totalBounds.extend(point);
                         }
@@ -2967,9 +2967,9 @@ function drawRoadRoute(routeData) {
                 }
             }
             if (sectionPath.length > 1) {
-                var color = COLORS[sectionIndex % COLORS.length];
+                let color = COLORS[sectionIndex % COLORS.length];
                 
-                var polyline = new kakao.maps.Polyline({
+                let polyline = new kakao.maps.Polyline({
                     map: kakaoMap,
                     path: sectionPath,
                     strokeWeight: 6,
@@ -2978,7 +2978,7 @@ function drawRoadRoute(routeData) {
                     strokeStyle: 'solid',
                     zIndex: 1
                 });
-                var glowPolyline = new kakao.maps.Polyline({
+                let glowPolyline = new kakao.maps.Polyline({
                     map: kakaoMap,
                     path: sectionPath,
                     strokeWeight: 12,
@@ -2995,13 +2995,13 @@ function drawRoadRoute(routeData) {
         }
         
         if (totalBounds.getSouthWest() && totalBounds.getNorthEast()) {
-            var sw = totalBounds.getSouthWest();
-            var ne = totalBounds.getNorthEast();
-            var latMargin = (ne.getLat() - sw.getLat()) * 0.2;
-            var lngMargin = (ne.getLng() - sw.getLng()) * 0.2;
-            var newSw = new kakao.maps.LatLng(sw.getLat() - latMargin, sw.getLng() - lngMargin);
-            var newNe = new kakao.maps.LatLng(ne.getLat() + latMargin, ne.getLng() + lngMargin);
-            var newBounds = new kakao.maps.LatLngBounds(newSw, newNe);
+            let sw = totalBounds.getSouthWest();
+            let ne = totalBounds.getNorthEast();
+            let latMargin = (ne.getLat() - sw.getLat()) * 0.2;
+            let lngMargin = (ne.getLng() - sw.getLng()) * 0.2;
+            let newSw = new kakao.maps.LatLng(sw.getLat() - latMargin, sw.getLng() - lngMargin);
+            let newNe = new kakao.maps.LatLng(ne.getLat() + latMargin, ne.getLng() + lngMargin);
+            let newBounds = new kakao.maps.LatLngBounds(newSw, newNe);
             kakaoMap.setBounds(newBounds);
         }
         
@@ -3016,24 +3016,24 @@ function drawRoute(path) {
     try {
         if (kakaoPolyline) { kakaoPolyline.setMap(null); kakaoPolyline = null; }
         if (window._sectionPolylines) {
-            for (var i = 0; i < window._sectionPolylines.length; i++) {
+            for (let i = 0; i < window._sectionPolylines.length; i++) {
                 try { window._sectionPolylines[i].setMap(null); } catch(e) {}
             }
             window._sectionPolylines = [];
         }
         
-        var bounds = new kakao.maps.LatLngBounds();
-        var allPoints = [];
-        for (var i = 0; i < path.length; i++) {
-            var p = path[i];
-            var latlng = new kakao.maps.LatLng(p.lat, p.lng);
+        let bounds = new kakao.maps.LatLngBounds();
+        let allPoints = [];
+        for (let i = 0; i < path.length; i++) {
+            let p = path[i];
+            let latlng = new kakao.maps.LatLng(p.lat, p.lng);
             allPoints.push(latlng);
             bounds.extend(latlng);
         }
         
-        for (var i = 0; i < allPoints.length - 1; i++) {
-            var color = COLORS[i % COLORS.length];
-            var polyline = new kakao.maps.Polyline({
+        for (let i = 0; i < allPoints.length - 1; i++) {
+            let color = COLORS[i % COLORS.length];
+            let polyline = new kakao.maps.Polyline({
                 map: kakaoMap,
                 path: [allPoints[i], allPoints[i + 1]],
                 strokeWeight: 6,
@@ -3047,13 +3047,13 @@ function drawRoute(path) {
         }
         
         if (bounds.getSouthWest() && bounds.getNorthEast()) {
-            var sw = bounds.getSouthWest();
-            var ne = bounds.getNorthEast();
-            var latMargin = (ne.getLat() - sw.getLat()) * 0.2;
-            var lngMargin = (ne.getLng() - sw.getLng()) * 0.2;
-            var newSw = new kakao.maps.LatLng(sw.getLat() - latMargin, sw.getLng() - lngMargin);
-            var newNe = new kakao.maps.LatLng(ne.getLat() + latMargin, ne.getLng() + lngMargin);
-            var newBounds = new kakao.maps.LatLngBounds(newSw, newNe);
+            let sw = bounds.getSouthWest();
+            let ne = bounds.getNorthEast();
+            let latMargin = (ne.getLat() - sw.getLat()) * 0.2;
+            let lngMargin = (ne.getLng() - sw.getLng()) * 0.2;
+            let newSw = new kakao.maps.LatLng(sw.getLat() - latMargin, sw.getLng() - lngMargin);
+            let newNe = new kakao.maps.LatLng(ne.getLat() + latMargin, ne.getLng() + lngMargin);
+            let newBounds = new kakao.maps.LatLngBounds(newSw, newNe);
             kakaoMap.setBounds(newBounds);
         }
         
@@ -3071,7 +3071,7 @@ function focusMapOnPoint(lat, lng, level) {
     lng = Number(lng);
     level = Number(level) || 5;
     if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < 33 || lat > 39 || lng < 124 || lng > 132) return false;
-    var center = {lat: lat, lng: lng, level: level};
+    let center = {lat: lat, lng: lng, level: level};
     if (typeof kakao !== 'undefined' && kakao.maps && kakaoMap) {
         try {
             kakaoMap.relayout();
@@ -3089,7 +3089,7 @@ function focusMapOnPoint(lat, lng, level) {
 
 function applyPendingMapCenter() {
     if (!pendingMapCenter || !kakaoMap) return;
-    var p = pendingMapCenter;
+    let p = pendingMapCenter;
     try {
         kakaoMap.relayout();
         kakaoMap.setCenter(new kakao.maps.LatLng(p.lat, p.lng));
@@ -3107,9 +3107,9 @@ function focusRouteStart() {
 // 23. 지도 초기화
 // ============================================================
 function initMap() {
-    var container = document.getElementById('map');
+    let container = document.getElementById('map');
     if (!container) return;
-    var jsKey = settings.kakaoJsKey;
+    let jsKey = settings.kakaoJsKey;
     if (!jsKey) {
         container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;color:#e53e3e;font-size:14px;background:#fff5f5;border-radius:12px;padding:20px;text-align:center;">⚠️ 설정 탭에서<br>카카오 JavaScript 키를 입력하세요</div>';
         showTabStatus('tab-settings', '⚠️ 카카오 JavaScript 키가 필요합니다.', 'warning');
@@ -3119,7 +3119,7 @@ function initMap() {
     if (typeof kakao === 'undefined' || !kakao.maps) {
         if (sdkLoading) return;
         sdkLoading = true;
-        var script = document.createElement('script');
+        let script = document.createElement('script');
         script.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=' + jsKey + '&autoload=false&libraries=services';
         script.async = true;
         script.defer = true;
@@ -3139,11 +3139,11 @@ function initMap() {
 
 function createMap(container) {
     try {
-        var region = currentRegion || '서울';
-        var centerInfo = getRegionCenter(region);
-        var centerLat = centerInfo.lat, centerLng = centerInfo.lng;
-        var zoomLevel = 5;
-        var isStartValid = startPoint && typeof startPoint.lat === 'number' && typeof startPoint.lng === 'number' &&
+        let region = currentRegion || '서울';
+        let centerInfo = getRegionCenter(region);
+        let centerLat = centerInfo.lat, centerLng = centerInfo.lng;
+        let zoomLevel = 5;
+        let isStartValid = startPoint && typeof startPoint.lat === 'number' && typeof startPoint.lng === 'number' &&
                            startPoint.lat > 33 && startPoint.lat < 39 && startPoint.lng > 124 && startPoint.lng < 132 &&
                            !(startPoint.lat === 0 && startPoint.lng === 0);
         if (isStartValid && !singlePlaceMarker && !isShowingRouteMarkers) {
@@ -3151,7 +3151,7 @@ function createMap(container) {
             centerLng = startPoint.lng;
         }
         
-        var options = {
+        let options = {
             center: new kakao.maps.LatLng(centerLat, centerLng),
             level: zoomLevel,
             draggable: true,
@@ -3167,7 +3167,7 @@ function createMap(container) {
         kakaoMap.relayout();
         applyPendingMapCenter();
         
-        var zoomControl = new kakao.maps.ZoomControl();
+        let zoomControl = new kakao.maps.ZoomControl();
         kakaoMap.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
         kakaoMap.setZoomable(true);
         
@@ -3184,22 +3184,22 @@ function addRouteMarker(lat, lng, title, isStart, colorIndex) {
         if (isStart && startMarker) {
             try { startMarker.setMap(null); } catch(e) {}
             startMarker = null;
-            for (var i = routeMarkers.length - 1; i >= 0; i--) {
+            for (let i = routeMarkers.length - 1; i >= 0; i--) {
                 if (routeMarkers[i] === startMarker) routeMarkers.splice(i, 1);
             }
         }
-        var pos = new kakao.maps.LatLng(lat, lng);
-        var content;
+        let pos = new kakao.maps.LatLng(lat, lng);
+        let content;
         
         if (isStart) {
             content = '<div style="background:white;padding:6px 14px;border-radius:20px;box-shadow:0 4px 16px rgba(0,0,0,0.15);font-size:13px;font-weight:700;color:#1a202c;white-space:nowrap;border:2px solid #2d3748;z-index:10;">🚩 ' + escapeHtml(title) + '</div>';
         } else {
-            var idx = (colorIndex !== undefined && colorIndex !== null) ? colorIndex : 0;
-            var color = COLORS[idx % COLORS.length];
+            let idx = (colorIndex !== undefined && colorIndex !== null) ? colorIndex : 0;
+            let color = COLORS[idx % COLORS.length];
             content = '<div style="background:' + color + ';padding:6px 14px;border-radius:20px;box-shadow:0 4px 16px rgba(0,0,0,0.15);font-size:13px;font-weight:700;color:white;white-space:nowrap;border:1px solid rgba(255,255,255,0.3);z-index:5;">📍 ' + escapeHtml(title) + '</div>';
         }
         
-        var customOverlay = new kakao.maps.CustomOverlay({
+        let customOverlay = new kakao.maps.CustomOverlay({
             map: kakaoMap,
             position: pos,
             content: content,
@@ -3216,7 +3216,7 @@ function addRouteMarker(lat, lng, title, isStart, colorIndex) {
 }
 
 function clearRouteMarkers() {
-    for (var i = 0; i < routeMarkers.length; i++) {
+    for (let i = 0; i < routeMarkers.length; i++) {
         try { routeMarkers[i].setMap(null); } catch(e) {}
     }
     routeMarkers = [];
@@ -3225,7 +3225,7 @@ function clearRouteMarkers() {
         startMarker = null;
     }
     if (window._sectionPolylines) {
-        for (var i = 0; i < window._sectionPolylines.length; i++) {
+        for (let i = 0; i < window._sectionPolylines.length; i++) {
             try { window._sectionPolylines[i].setMap(null); } catch(e) {}
         }
         window._sectionPolylines = [];
@@ -3241,7 +3241,7 @@ function clearRouteMarkers() {
 // 24. 프리셋 관리
 // ============================================================
 function loadPresets() {
-    var saved = localStorage.getItem(PRESETS_KEY);
+    let saved = localStorage.getItem(PRESETS_KEY);
     presets = saved ? JSON.parse(saved) : [];
     renderPresets();
 }
@@ -3252,7 +3252,7 @@ function savePresets() {
 }
 
 function renderPresets() {
-    var container = document.getElementById('presetList');
+    let container = document.getElementById('presetList');
     if (!container) return;
 
     if (presets.length === 0) {
@@ -3260,9 +3260,9 @@ function renderPresets() {
         return;
     }
 
-    var html = '';
-    for (var i = 0; i < presets.length; i++) {
-        var p = presets[i];
+    let html = '';
+    for (let i = 0; i < presets.length; i++) {
+        let p = presets[i];
         html += '<div class="preset-item" onclick="loadPreset(' + i + ')">';
         html += '<div class="preset-info"><div class="preset-name">' + escapeHtml(p.name) + '</div>';
         html += '<div class="preset-detail">🚩 ' + escapeHtml(p.startPoint ? p.startPoint.name : '없음') + ' → ' + (p.waypoints ? p.waypoints.length : 0) + '개 경유지</div></div>';
@@ -3281,10 +3281,10 @@ function addPreset() {
         return;
     }
 
-    var existing = document.getElementById('customPresetModal');
+    let existing = document.getElementById('customPresetModal');
     if (existing) existing.remove();
 
-    var modalHtml = `
+    let modalHtml = `
         <div id="customPresetModal" style="
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -3324,7 +3324,7 @@ function addPreset() {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 
     setTimeout(function() {
-        var input = document.getElementById('presetNameInput');
+        let input = document.getElementById('presetNameInput');
         if (input) {
             input.focus();
             input.select();
@@ -3332,8 +3332,8 @@ function addPreset() {
     }, 100);
 
     document.getElementById('presetSaveBtn').addEventListener('click', function() {
-        var input = document.getElementById('presetNameInput');
-        var name = input ? input.value.trim() : '';
+        let input = document.getElementById('presetNameInput');
+        let name = input ? input.value.trim() : '';
         document.getElementById('customPresetModal').remove();
 
         if (!name) {
@@ -3341,7 +3341,7 @@ function addPreset() {
             return;
         }
 
-        var preset = {
+        let preset = {
             id: Date.now(),
             name: name,
             startPoint: {
@@ -3368,7 +3368,7 @@ function addPreset() {
 }
 
 function loadPreset(index) {
-    var preset = presets[index];
+    let preset = presets[index];
     if (!preset) {
         showTabStatus('tab-places', '⚠️ 프리셋을 찾을 수 없습니다.', 'warning');
         return;
@@ -3378,7 +3378,7 @@ function loadPreset(index) {
         '📂 프리셋 불러오기',
         '"' + preset.name + '" 프리셋을 불러오시겠습니까?\n현재 데이터는 초기화됩니다.',
         function() {
-            var sp = preset.startPoint;
+            let sp = preset.startPoint;
             if (sp && sp.lat && sp.lng) {
                 selectStartPoint(sp.name, sp.address, sp.lat, sp.lng);
             } else {
@@ -3387,8 +3387,8 @@ function loadPreset(index) {
             }
 
             waypoints = [];
-            for (var i = 0; i < preset.waypoints.length; i++) {
-                var w = preset.waypoints[i];
+            for (let i = 0; i < preset.waypoints.length; i++) {
+                let w = preset.waypoints[i];
                 waypoints.push({
                     name: w.name,
                     address: w.address || '',
@@ -3437,8 +3437,8 @@ function deletePreset(index) {
 // ============================================================
 function utf8ToBase64(str) {
     try {
-        var bytes = new TextEncoder().encode(str);
-        var binString = String.fromCodePoint.apply(null, bytes);
+        let bytes = new TextEncoder().encode(str);
+        let binString = String.fromCodePoint.apply(null, bytes);
         return btoa(binString);
     } catch(e) {
         return btoa(unescape(encodeURIComponent(str)));
@@ -3447,7 +3447,7 @@ function utf8ToBase64(str) {
 
 async function uploadToGitHub(silent) {
     silent = silent || false;
-    var token = settings.githubToken;
+    let token = settings.githubToken;
     if (!token) {
         if (!silent) showTabStatus('tab-settings', '⚠️ GitHub 토큰이 없습니다.', 'warning');
         return;
@@ -3464,27 +3464,27 @@ async function uploadToGitHub(silent) {
     try {
         if (!silent) showTabStatus('tab-settings', '☁️ GitHub 업로드 중...', 'info');
         
-        var userRes = await fetch('https://api.github.com/user', {
+        let userRes = await fetch('https://api.github.com/user', {
             headers: { 'Authorization': 'token ' + token }
         });
         if (!userRes.ok) {
             throw new Error('토큰 인증 실패: ' + userRes.status);
         }
-        var user = await userRes.json();
-        var username = user.login;
+        let user = await userRes.json();
+        let username = user.login;
         
-        var repoName = 'route-data';
-        var fileName = currentRegion + '.json';
-        var content = JSON.stringify(places, null, 2);
-        var b64Content = utf8ToBase64(content);
+        let repoName = 'route-data';
+        let fileName = currentRegion + '.json';
+        let content = JSON.stringify(places, null, 2);
+        let b64Content = utf8ToBase64(content);
         
-        var repoUrl = 'https://api.github.com/repos/' + username + '/' + repoName;
-        var repoRes = await fetch(repoUrl, {
+        let repoUrl = 'https://api.github.com/repos/' + username + '/' + repoName;
+        let repoRes = await fetch(repoUrl, {
             headers: { 'Authorization': 'token ' + token }
         });
         
         if (repoRes.status === 404) {
-            var isPrivate = await new Promise(function(resolve) {
+            let isPrivate = await new Promise(function(resolve) {
                 showConfirmModal(
                     '📢 GitHub 저장소 생성',
                     '저장소를 비공개로 생성하시겠습니까?\n(취소 시 공개 저장소로 생성됩니다)',
@@ -3493,7 +3493,7 @@ async function uploadToGitHub(silent) {
                 );
             });
             
-            var createRes = await fetch('https://api.github.com/user/repos', {
+            let createRes = await fetch('https://api.github.com/user/repos', {
                 method: 'POST',
                 headers: {
                     'Authorization': 'token ' + token,
@@ -3513,24 +3513,24 @@ async function uploadToGitHub(silent) {
             throw new Error('저장소 확인 실패: ' + repoRes.status);
         }
         
-        var fileUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents/' + encodeURIComponent(fileName);
-        var fileRes = await fetch(fileUrl, {
+        let fileUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents/' + encodeURIComponent(fileName);
+        let fileRes = await fetch(fileUrl, {
             headers: { 'Authorization': 'token ' + token }
         });
         
-        var sha = null;
+        let sha = null;
         if (fileRes.ok) {
-            var fileData = await fileRes.json();
+            let fileData = await fileRes.json();
             sha = fileData.sha;
         }
         
-        var putData = {
+        let putData = {
             message: 'Auto sync: ' + currentRegion + ' (' + new Date().toLocaleString() + ')',
             content: b64Content
         };
         if (sha) putData.sha = sha;
         
-        var putRes = await fetch(fileUrl, {
+        let putRes = await fetch(fileUrl, {
             method: 'PUT',
             headers: {
                 'Authorization': 'token ' + token,
@@ -3544,18 +3544,18 @@ async function uploadToGitHub(silent) {
                 '⚠️ 동기화 충돌',
                 '다른 기기에서 동시에 수정한 것으로 보입니다.\n최신 버전을 가져와 병합하시겠습니까?',
                 async function() {
-                    var latestRes = await fetch(fileUrl, {
+                    let latestRes = await fetch(fileUrl, {
                         headers: { 'Authorization': 'token ' + token }
                     });
                     if (latestRes.ok) {
-                        var latestData = await latestRes.json();
-                        var latestContent = new TextDecoder('utf-8').decode(
+                        let latestData = await latestRes.json();
+                        let latestContent = new TextDecoder('utf-8').decode(
                             Uint8Array.from(atob(latestData.content), function(c) { return c.charCodeAt(0); })
                         );
-                        var latestPlaces = JSON.parse(latestContent);
-                        var merged = latestPlaces.slice();
+                        let latestPlaces = JSON.parse(latestContent);
+                        let merged = latestPlaces.slice();
                         places.forEach(function(localP) {
-                            var existing = merged.find(function(m) { return normalizeName(m.name) === normalizeName(localP.name); });
+                            let existing = merged.find(function(m) { return normalizeName(m.name) === normalizeName(localP.name); });
                             if (existing) {
                                 existing.address = localP.address || existing.address;
                                 existing.lat = localP.lat || existing.lat;
@@ -3581,7 +3581,7 @@ async function uploadToGitHub(silent) {
         }
         
         if (!putRes.ok) {
-            var errorText = await putRes.text();
+            let errorText = await putRes.text();
             throw new Error('업로드 실패: ' + putRes.status + ' - ' + errorText);
         }
         
@@ -3596,7 +3596,7 @@ async function uploadToGitHub(silent) {
 }
 
 async function downloadFromGitHub() {
-    var token = settings.githubToken;
+    let token = settings.githubToken;
     if (!token) {
         showTabStatus('tab-settings', '⚠️ GitHub 토큰이 없습니다.', 'warning');
         return;
@@ -3605,16 +3605,16 @@ async function downloadFromGitHub() {
     try {
         showTabStatus('tab-settings', '☁️ GitHub 저장소 목록 불러오는 중...', 'info');
         
-        var userRes = await fetch('https://api.github.com/user', {
+        let userRes = await fetch('https://api.github.com/user', {
             headers: { 'Authorization': 'token ' + token }
         });
         if (!userRes.ok) throw new Error('토큰 인증 실패');
-        var user = await userRes.json();
-        var username = user.login;
+        let user = await userRes.json();
+        let username = user.login;
         
-        var repoName = 'route-data';
-        var repoUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents';
-        var repoRes = await fetch(repoUrl, {
+        let repoName = 'route-data';
+        let repoUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents';
+        let repoRes = await fetch(repoUrl, {
             headers: { 'Authorization': 'token ' + token }
         });
         
@@ -3626,11 +3626,11 @@ async function downloadFromGitHub() {
             throw new Error('저장소 조회 실패: ' + repoRes.status);
         }
         
-        var files = await repoRes.json();
-        var regions = [];
+        let files = await repoRes.json();
+        let regions = [];
         files.forEach(function(file) {
             if (file.name.endsWith('.json') && file.name !== '.json') {
-                var region = file.name.replace('.json', '');
+                let region = file.name.replace('.json', '');
                 regions.push(region);
             }
         });
@@ -3651,15 +3651,15 @@ async function downloadFromGitHub() {
 }
 
 function showRegionSelectModal(regions, onSelect) {
-    var existing = document.getElementById('regionSelectModal');
+    let existing = document.getElementById('regionSelectModal');
     if (existing) existing.remove();
     
-    var optionsHtml = '';
+    let optionsHtml = '';
     regions.forEach(function(region) {
         optionsHtml += '<option value="' + escapeHtml(region) + '">' + escapeHtml(region) + '</option>';
     });
     
-    var modalHtml = `
+    let modalHtml = `
         <div id="regionSelectModal" style="
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -3702,8 +3702,8 @@ function showRegionSelectModal(regions, onSelect) {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     
     document.getElementById('confirmDownloadBtn').addEventListener('click', function() {
-        var select = document.getElementById('regionSelectDropdown');
-        var selected = select.value;
+        let select = document.getElementById('regionSelectDropdown');
+        let selected = select.value;
         document.getElementById('regionSelectModal').remove();
         if (selected && typeof onSelect === 'function') {
             onSelect(selected);
@@ -3714,7 +3714,7 @@ function showRegionSelectModal(regions, onSelect) {
 }
 
 async function processDownloadFromGitHub(region) {
-    var token = settings.githubToken;
+    let token = settings.githubToken;
     if (!token) {
         showTabStatus('tab-settings', '⚠️ GitHub 토큰이 없습니다.', 'warning');
         return;
@@ -3723,18 +3723,18 @@ async function processDownloadFromGitHub(region) {
     try {
         showTabStatus('tab-settings', '☁️ GitHub 다운로드 중...', 'info');
         
-        var userRes = await fetch('https://api.github.com/user', {
+        let userRes = await fetch('https://api.github.com/user', {
             headers: { 'Authorization': 'token ' + token }
         });
         if (!userRes.ok) throw new Error('토큰 인증 실패');
-        var user = await userRes.json();
-        var username = user.login;
+        let user = await userRes.json();
+        let username = user.login;
         
-        var repoName = 'route-data';
-        var fileName = region + '.json';
-        var fileUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents/' + encodeURIComponent(fileName);
+        let repoName = 'route-data';
+        let fileName = region + '.json';
+        let fileUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents/' + encodeURIComponent(fileName);
         
-        var fileRes = await fetch(fileUrl, {
+        let fileRes = await fetch(fileUrl, {
             headers: { 'Authorization': 'token ' + token },
             cache: 'no-store'
         });
@@ -3747,30 +3747,30 @@ async function processDownloadFromGitHub(region) {
             throw new Error('다운로드 실패: ' + fileRes.status);
         }
         
-        var data = await fileRes.json();
-        var binaryString = atob(data.content);
-        var bytes = new Uint8Array(binaryString.length);
-        for (var i = 0; i < binaryString.length; i++) {
+        let data = await fileRes.json();
+        let binaryString = atob(data.content);
+        let bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
             bytes[i] = binaryString.charCodeAt(i);
         }
-        var content = new TextDecoder('utf-8').decode(bytes);
-        var loadedPlaces = JSON.parse(content);
+        let content = new TextDecoder('utf-8').decode(bytes);
+        let loadedPlaces = JSON.parse(content);
         
         places = loadedPlaces;
         
-        var key = getStorageKey(region);
+        let key = getStorageKey(region);
         localStorage.setItem(key, JSON.stringify(places));
         
-        var select = document.getElementById('regionSelect');
-        var exists = false;
-        for (var i = 0; i < select.options.length; i++) {
+        let select = document.getElementById('regionSelect');
+        let exists = false;
+        for (let i = 0; i < select.options.length; i++) {
             if (select.options[i].value === region) {
                 exists = true;
                 break;
             }
         }
         if (!exists) {
-            var opt = document.createElement('option');
+            let opt = document.createElement('option');
             opt.value = region;
             opt.textContent = region;
             select.appendChild(opt);
@@ -3784,7 +3784,7 @@ async function processDownloadFromGitHub(region) {
         updateStorageInfo();
         
         if (kakaoMap) {
-            var center = getRegionCenter(region);
+            let center = getRegionCenter(region);
             kakaoMap.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
             kakaoMap.setLevel(5);
             kakaoMap.relayout();
@@ -3798,7 +3798,7 @@ async function processDownloadFromGitHub(region) {
 
 // 히스토리 토글 기능
 async function showGitHubHistory() {
-    var historyDiv = document.getElementById('githubHistory');
+    let historyDiv = document.getElementById('githubHistory');
     if (!historyDiv) return;
     
     // 토글
@@ -3807,7 +3807,7 @@ async function showGitHubHistory() {
         return;
     }
     
-    var token = settings.githubToken;
+    let token = settings.githubToken;
     if (!token) {
         showTabStatus('tab-settings', '⚠️ GitHub 토큰이 없습니다.', 'warning');
         return;
@@ -3817,16 +3817,16 @@ async function showGitHubHistory() {
     historyDiv.style.display = 'block';
     
     try {
-        var userRes = await fetch('https://api.github.com/user', {
+        let userRes = await fetch('https://api.github.com/user', {
             headers: { 'Authorization': 'token ' + token }
         });
         if (!userRes.ok) throw new Error('토큰 인증 실패');
-        var user = await userRes.json();
-        var username = user.login;
-        var repoName = 'route-data';
-        var fileName = currentRegion + '.json';
-        var url = 'https://api.github.com/repos/' + username + '/' + repoName + '/commits?path=' + encodeURIComponent(fileName) + '&per_page=10';
-        var commitRes = await fetch(url, {
+        let user = await userRes.json();
+        let username = user.login;
+        let repoName = 'route-data';
+        let fileName = currentRegion + '.json';
+        let url = 'https://api.github.com/repos/' + username + '/' + repoName + '/commits?path=' + encodeURIComponent(fileName) + '&per_page=10';
+        let commitRes = await fetch(url, {
             headers: { 'Authorization': 'token ' + token }
         });
         if (!commitRes.ok) {
@@ -3837,16 +3837,16 @@ async function showGitHubHistory() {
             }
             throw new Error('히스토리 조회 실패');
         }
-        var commits = await commitRes.json();
+        let commits = await commitRes.json();
         if (commits.length === 0) {
             historyDiv.innerHTML = '<div style="color:#a0aec0;text-align:center;padding:8px;">📭 아직 커밋 기록이 없습니다</div>';
         } else {
-            var html = '<div style="font-weight:600;font-size:12px;margin-bottom:4px;">📋 최근 10개 커밋</div>';
-            for (var i = 0; i < commits.length; i++) {
-                var c = commits[i];
-                var date = new Date(c.commit.author.date).toLocaleString();
-                var msg = c.commit.message || 'No message';
-                var sha = c.sha;
+            let html = '<div style="font-weight:600;font-size:12px;margin-bottom:4px;">📋 최근 10개 커밋</div>';
+            for (let i = 0; i < commits.length; i++) {
+                let c = commits[i];
+                let date = new Date(c.commit.author.date).toLocaleString();
+                let msg = c.commit.message || 'No message';
+                let sha = c.sha;
                 html += '<div class="commit-item">';
                 html += '<div class="commit-info">';
                 html += '<div class="commit-msg">' + escapeHtml(msg) + '</div>';
@@ -3867,7 +3867,7 @@ async function showGitHubHistory() {
 }
 
 async function restoreFromGitHub(sha) {
-    var token = settings.githubToken;
+    let token = settings.githubToken;
     if (!token) {
         showTabStatus('tab-settings', '⚠️ GitHub 토큰이 없습니다.', 'warning');
         return;
@@ -3883,30 +3883,30 @@ async function restoreFromGitHub(sha) {
         async function() {
             try {
                 showTabStatus('tab-settings', '⏳ 복원 중...', 'info');
-                var userRes = await fetch('https://api.github.com/user', {
+                let userRes = await fetch('https://api.github.com/user', {
                     headers: { 'Authorization': 'token ' + token }
                 });
                 if (!userRes.ok) throw new Error('토큰 인증 실패');
-                var user = await userRes.json();
-                var username = user.login;
-                var repoName = 'route-data';
-                var fileName = currentRegion + '.json';
-                var url = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents/' + encodeURIComponent(fileName) + '?ref=' + sha;
-                var fileRes = await fetch(url, {
+                let user = await userRes.json();
+                let username = user.login;
+                let repoName = 'route-data';
+                let fileName = currentRegion + '.json';
+                let url = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents/' + encodeURIComponent(fileName) + '?ref=' + sha;
+                let fileRes = await fetch(url, {
                     headers: { 'Authorization': 'token ' + token }
                 });
                 if (!fileRes.ok) throw new Error('파일 조회 실패');
-                var data = await fileRes.json();
-                var binaryString = atob(data.content);
-                var bytes = new Uint8Array(binaryString.length);
-                for (var i = 0; i < binaryString.length; i++) {
+                let data = await fileRes.json();
+                let binaryString = atob(data.content);
+                let bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
                     bytes[i] = binaryString.charCodeAt(i);
                 }
-                var content = new TextDecoder('utf-8').decode(bytes);
-                var loadedPlaces = JSON.parse(content);
+                let content = new TextDecoder('utf-8').decode(bytes);
+                let loadedPlaces = JSON.parse(content);
                 
                 places = loadedPlaces;
-                var key = getStorageKey(currentRegion);
+                let key = getStorageKey(currentRegion);
                 localStorage.setItem(key, JSON.stringify(places));
                 
                 renderPlaces();
@@ -3914,7 +3914,7 @@ async function restoreFromGitHub(sha) {
                 showTabStatus('tab-settings', '✅ 복원 완료! (' + loadedPlaces.length + '개)', 'ok');
                 
                 if (kakaoMap) {
-                    var center = getRegionCenter(currentRegion);
+                    let center = getRegionCenter(currentRegion);
                     kakaoMap.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
                     kakaoMap.setLevel(5);
                     kakaoMap.relayout();
@@ -3930,7 +3930,7 @@ async function restoreFromGitHub(sha) {
 // 26. 오프라인 상태 감지
 // ============================================================
 function updateOnlineStatus() {
-    var banner = document.getElementById('offlineBanner');
+    let banner = document.getElementById('offlineBanner');
     if (!banner) return;
     if (!navigator.onLine) {
         banner.classList.add('show');
@@ -3952,9 +3952,9 @@ window.addEventListener('offline', updateOnlineStatus);
 // 27. 엑셀 처리
 // ============================================================
 function parseCSVLine(line) {
-    var result = [], current = '', inQuotes = false;
-    for (var i = 0; i < line.length; i++) {
-        var ch = line[i];
+    let result = [], current = '', inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+        let ch = line[i];
         if (inQuotes) {
             if (ch === '"' && (i + 1 < line.length && line[i + 1] === '"')) {
                 current += '"';
@@ -3980,35 +3980,35 @@ function parseCSVLine(line) {
 }
 
 function handleFile(event) {
-    var file = event.target.files[0];
+    let file = event.target.files[0];
     if (!file) return;
     processExcelFile(file);
     event.target.value = '';
 }
 
 async function processExcelFile(file) {
-    var btn = document.querySelector('.btn-outline[onclick*="document.getElementById(\'fileInput\').click()"]');
+    let btn = document.querySelector('.btn-outline[onclick*="document.getElementById(\'fileInput\').click()"]');
     if (btn) btn.disabled = true;
     try {
-        var resultDiv = document.getElementById('uploadResult');
+        let resultDiv = document.getElementById('uploadResult');
         resultDiv.style.display = 'block';
-        var ext = file.name.split('.').pop().toLowerCase();
+        let ext = file.name.split('.').pop().toLowerCase();
         if (ext === 'csv') {
-            var reader = new FileReader();
+            let reader = new FileReader();
             reader.onload = function(e) {
-                var text = e.target.result;
-                var lines = text.split('\n').filter(function(l) { return l.trim(); });
+                let text = e.target.result;
+                let lines = text.split('\n').filter(function(l) { return l.trim(); });
                 if (lines.length === 0) {
                     showUploadResult('❌ 데이터 없음', 'error');
                     return;
                 }
-                var header = parseCSVLine(lines[0]);
-                var rows = [];
-                for (var i = 1; i < lines.length; i++) {
-                    var vals = parseCSVLine(lines[i]);
+                let header = parseCSVLine(lines[0]);
+                let rows = [];
+                for (let i = 1; i < lines.length; i++) {
+                    let vals = parseCSVLine(lines[i]);
                     if (vals.length < 2) continue;
-                    var row = {};
-                    for (var j = 0; j < header.length; j++) {
+                    let row = {};
+                    for (let j = 0; j < header.length; j++) {
                         row[header[j]] = vals[j] || '';
                     }
                     rows.push(row);
@@ -4019,13 +4019,13 @@ async function processExcelFile(file) {
             return;
         }
         if (ext === 'xlsx' || ext === 'xls') {
-            var reader = new FileReader();
+            let reader = new FileReader();
             reader.onload = function(e) {
                 try {
-                    var data = new Uint8Array(e.target.result);
-                    var wb = XLSX.read(data, { type: 'array' });
-                    var sheet = wb.Sheets[wb.SheetNames[0]];
-                    var json = XLSX.utils.sheet_to_json(sheet);
+                    let data = new Uint8Array(e.target.result);
+                    let wb = XLSX.read(data, { type: 'array' });
+                    let sheet = wb.Sheets[wb.SheetNames[0]];
+                    let json = XLSX.utils.sheet_to_json(sheet);
                     importPlaces(json);
                 } catch(error) {
                     showUploadResult('❌ 엑셀 읽기 오류: ' + error.message, 'error');
@@ -4045,17 +4045,17 @@ async function importPlaces(data) {
         showUploadResult('❌ 데이터 없음', 'error');
         return;
     }
-    var added = 0, updated = 0, skipped = 0;
-    var restKey = settings.kakaoRestKey;
-    var rowsToGeocode = [];
-    for (var i = 0; i < data.length; i++) {
-        var row = data[i];
-        var name = String(row['현장명'] || row['개소명'] || row['name'] || row['Name'] || '').trim();
-        var address = String(row['도로명주소'] || row['address'] || row['Address'] || '').trim();
-        var remark = String(row['비고'] || row['remark'] || row['Remark'] || '').trim();
+    let added = 0, updated = 0, skipped = 0;
+    let restKey = settings.kakaoRestKey;
+    let rowsToGeocode = [];
+    for (let i = 0; i < data.length; i++) {
+        let row = data[i];
+        let name = String(row['현장명'] || row['개소명'] || row['name'] || row['Name'] || '').trim();
+        let address = String(row['도로명주소'] || row['address'] || row['Address'] || '').trim();
+        let remark = String(row['비고'] || row['remark'] || row['Remark'] || '').trim();
         if (!name) continue;
-        var normalized = normalizeName(name);
-        var existing = places.find(function(p) { return normalizeName(p.name) === normalized; });
+        let normalized = normalizeName(name);
+        let existing = places.find(function(p) { return normalizeName(p.name) === normalized; });
         if (existing) {
             if (existing.address !== address || existing.remark !== remark) {
                 existing.address = address;
@@ -4068,7 +4068,7 @@ async function importPlaces(data) {
                 skipped++;
             }
         } else {
-            var newPlace = {
+            let newPlace = {
                 id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
                 name: name,
                 address: address,
@@ -4089,8 +4089,8 @@ async function importPlaces(data) {
         await geocodeBatch(rowsToGeocode, restKey, 5, function(done, total) {
             showUploadResult('📍 주소 변환 중... ' + done + '/' + total, 'info');
         });
-        for (var i = 0; i < rowsToGeocode.length; i++) {
-            var item = rowsToGeocode[i];
+        for (let i = 0; i < rowsToGeocode.length; i++) {
+            let item = rowsToGeocode[i];
             if (item.existing && item.geo) {
                 item.existing.lat = item.geo.lat;
                 item.existing.lng = item.geo.lng;
@@ -4104,15 +4104,15 @@ async function importPlaces(data) {
 }
 
 function showUploadResult(msg, type) {
-    var el = document.getElementById('uploadResult');
+    let el = document.getElementById('uploadResult');
     el.textContent = msg;
     el.style.display = 'block';
-    var colors = { success: '#c6f6d5', error: '#fed7d7', warning: '#fefcbf', info: '#bee3f8' };
+    let colors = { success: '#c6f6d5', error: '#fed7d7', warning: '#fefcbf', info: '#bee3f8' };
     el.style.background = colors[type] || colors.info;
 }
 
 function exportData() {
-    var data = [];
+    let data = [];
     if (places.length === 0) {
         data = [
             { '현장명': '예시_현장명_1', '도로명주소': '서울시 강남구 테헤란로 123', '비고': '', '위도': 0, '경도': 0 },
@@ -4134,11 +4134,11 @@ function exportData() {
         });
         showTabStatus('tab-list', '✅ 내보내기 완료 (' + data.length + '개)', 'ok');
     }
-    var wb = XLSX.utils.book_new();
-    var ws = XLSX.utils.json_to_sheet(data);
+    let wb = XLSX.utils.book_new();
+    let ws = XLSX.utils.json_to_sheet(data);
     XLSX.utils.book_append_sheet(wb, ws, '현장리스트');
-    var now = new Date();
-    var timestamp = now.toISOString().slice(0,10) + '_' + String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0') + String(now.getSeconds()).padStart(2,'0');
+    let now = new Date();
+    let timestamp = now.toISOString().slice(0,10) + '_' + String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0') + String(now.getSeconds()).padStart(2,'0');
     XLSX.writeFile(wb, '현장리스트_' + currentRegion + '_' + timestamp + '.xlsx');
 }
 
@@ -4146,19 +4146,19 @@ function exportData() {
 // 28. 날씨
 // ============================================================
 async function fetchWeather() {
-    var weatherEl = document.getElementById('weatherDisplay');
+    let weatherEl = document.getElementById('weatherDisplay');
     if (!weatherEl) return false;
     try {
-        var apiKey = 'b84c1b9a09d8316b679320cceb3a1097';
-        var center = getRegionCenter(currentRegion);
-        var url = 'https://api.openweathermap.org/data/2.5/weather?lat=' + center.lat + '&lon=' + center.lng + '&appid=' + apiKey + '&units=metric&lang=kr';
-        var response = await fetch(url);
+        let apiKey = 'b84c1b9a09d8316b679320cceb3a1097';
+        let center = getRegionCenter(currentRegion);
+        let url = 'https://api.openweathermap.org/data/2.5/weather?lat=' + center.lat + '&lon=' + center.lng + '&appid=' + apiKey + '&units=metric&lang=kr';
+        let response = await fetch(url);
         if (!response.ok) throw new Error('날씨 API 호출 실패');
-        var data = await response.json();
-        var temp = Math.round(data.main.temp);
-        var icon = data.weather[0].icon;
+        let data = await response.json();
+        let temp = Math.round(data.main.temp);
+        let icon = data.weather[0].icon;
         
-        var iconMap = {
+        let iconMap = {
             '01d': '☀️ 맑음', '01n': '🌙 맑음',
             '02d': '⛅ 구름조금', '02n': '⛅ 구름조금',
             '03d': '☁️ 구름많음', '03n': '☁️ 구름많음',
@@ -4170,7 +4170,7 @@ async function fetchWeather() {
             '50d': '🌫️ 안개', '50n': '🌫️ 안개'
         };
         
-        var desc = iconMap[icon] || '🌡️ ' + data.weather[0].description;
+        let desc = iconMap[icon] || '🌡️ ' + data.weather[0].description;
         weatherEl.innerHTML = '<span style="font-size:13px;">' + desc + '</span><span class="temp" style="margin-left:4px;">' + temp + '°C</span>';
         return true;
     } catch(error) {
@@ -4180,22 +4180,22 @@ async function fetchWeather() {
 }
 
 async function showWeekWeather() {
-    var existingModal = document.getElementById('weekWeatherModal');
+    let existingModal = document.getElementById('weekWeatherModal');
     if (existingModal) {
         existingModal.remove();
         return;
     }
     await fetchWeather();
-    var center = getRegionCenter(currentRegion);
-    var apiKey = 'b84c1b9a09d8316b679320cceb3a1097';
+    let center = getRegionCenter(currentRegion);
+    let apiKey = 'b84c1b9a09d8316b679320cceb3a1097';
     try {
-        var url = 'https://api.openweathermap.org/data/2.5/forecast?lat=' + center.lat + '&lon=' + center.lng + '&appid=' + apiKey + '&units=metric&lang=kr';
-        var response = await fetch(url);
+        let url = 'https://api.openweathermap.org/data/2.5/forecast?lat=' + center.lat + '&lon=' + center.lng + '&appid=' + apiKey + '&units=metric&lang=kr';
+        let response = await fetch(url);
         if (!response.ok) throw new Error('예보 조회 실패');
-        var data = await response.json();
-        var dailyMap = {};
+        let data = await response.json();
+        let dailyMap = {};
         data.list.forEach(function(item) {
-            var date = item.dt_txt.split(' ')[0];
+            let date = item.dt_txt.split(' ')[0];
             if (!dailyMap[date]) {
                 dailyMap[date] = { temps: [], icons: [], descs: [], date: date };
             }
@@ -4203,9 +4203,9 @@ async function showWeekWeather() {
             dailyMap[date].icons.push(item.weather[0].icon);
             dailyMap[date].descs.push(item.weather[0].description);
         });
-        var dailyList = Object.values(dailyMap).slice(0, 5);
-        var modalHtml = '<div id="weekWeatherModal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);z-index:9999;display:flex;justify-content:center;align-items:center;padding:20px;" onclick="this.remove()"><div style="background:white;border-radius:24px;padding:24px 20px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:80vh;overflow-y:auto;" onclick="event.stopPropagation()"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><h3 style="font-size:18px;font-weight:700;color:#2d3748;">📅 5일 예보 (' + currentRegion + ')</h3><button onclick="document.getElementById(\'weekWeatherModal\').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#a0aec0;">&times;</button></div><div style="display:flex;flex-direction:column;gap:10px;">';
-        var iconMap = {
+        let dailyList = Object.values(dailyMap).slice(0, 5);
+        let modalHtml = '<div id="weekWeatherModal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);z-index:9999;display:flex;justify-content:center;align-items:center;padding:20px;" onclick="this.remove()"><div style="background:white;border-radius:24px;padding:24px 20px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:80vh;overflow-y:auto;" onclick="event.stopPropagation()"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><h3 style="font-size:18px;font-weight:700;color:#2d3748;">📅 5일 예보 (' + currentRegion + ')</h3><button onclick="document.getElementById(\'weekWeatherModal\').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#a0aec0;">&times;</button></div><div style="display:flex;flex-direction:column;gap:10px;">';
+        let iconMap = {
             '01d': '☀️', '01n': '🌙', '02d': '⛅', '02n': '☁️',
             '03d': '☁️', '03n': '☁️', '04d': '☁️', '04n': '☁️',
             '09d': '🌧️', '09n': '🌧️', '10d': '🌦️', '10n': '🌦️',
@@ -4213,15 +4213,15 @@ async function showWeekWeather() {
             '50d': '🌫️', '50n': '🌫️'
         };
         dailyList.forEach(function(day) {
-            var minTemp = Math.round(Math.min.apply(null, day.temps));
-            var maxTemp = Math.round(Math.max.apply(null, day.temps));
-            var iconCode = day.icons[0] || '01d';
-            var iconEmoji = iconMap[iconCode] || '🌡️';
-            var desc = day.descs[0] || '';
-            var dateObj = new Date(day.date + 'T00:00:00');
-            var weekdays = ['일', '월', '화', '수', '목', '금', '토'];
-            var dayLabel = weekdays[dateObj.getDay()] + '요일';
-            var dateLabel = (dateObj.getMonth() + 1) + '/' + dateObj.getDate();
+            let minTemp = Math.round(Math.min.apply(null, day.temps));
+            let maxTemp = Math.round(Math.max.apply(null, day.temps));
+            let iconCode = day.icons[0] || '01d';
+            let iconEmoji = iconMap[iconCode] || '🌡️';
+            let desc = day.descs[0] || '';
+            let dateObj = new Date(day.date + 'T00:00:00');
+            let weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+            let dayLabel = weekdays[dateObj.getDay()] + '요일';
+            let dateLabel = (dateObj.getMonth() + 1) + '/' + dateObj.getDate();
             modalHtml += '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f7fafc;border-radius:14px;border-left:4px solid #2563eb;"><div style="display:flex;align-items:center;gap:12px;min-width:80px;"><span style="font-size:22px;">' + iconEmoji + '</span><div><div style="font-weight:600;font-size:14px;">' + dayLabel + '</div><div style="font-size:11px;color:#a0aec0;">' + dateLabel + '</div></div></div><div style="text-align:center;flex:1;"><span style="font-size:13px;color:#718096;">' + desc + '</span></div><div style="text-align:right;font-weight:700;font-size:15px;">' + maxTemp + '° <span style="color:#a0aec0;font-weight:400;">/</span> ' + minTemp + '°</div></div>';
         });
         modalHtml += '</div><div style="margin-top:14px;font-size:11px;color:#a0aec0;text-align:center;">* 3시간 간격 예보를 평균/최고/최저로 표시했어요</div></div></div>';
@@ -4243,7 +4243,7 @@ function registerServiceWorker() {
 }
 
 function displayAppVersion() {
-    var statusEl = document.getElementById('updateStatus');
+    let statusEl = document.getElementById('updateStatus');
     if (!statusEl) return;
     
     fetch('/route-optimizer-pwa/sw.js?v=' + Date.now())
@@ -4252,9 +4252,9 @@ function displayAppVersion() {
             return response.text();
         })
         .then(function(text) {
-            var match = text.match(/CACHE_NAME\s*=\s*['"](.+)['"]/);
+            let match = text.match(/CACHE_NAME\s*=\s*['"](.+)['"]/);
             if (match && match[1]) {
-                var version = match[1];
+                let version = match[1];
                 statusEl.innerHTML = '✅ 현재 버전: <strong>' + version + '</strong>';
                 statusEl.style.color = '#38a169';
                 localStorage.setItem('app_cache_name', version);
@@ -4264,7 +4264,7 @@ function displayAppVersion() {
             }
         })
         .catch(function() {
-            var cachedVersion = localStorage.getItem('app_cache_name');
+            let cachedVersion = localStorage.getItem('app_cache_name');
             if (cachedVersion) {
                 statusEl.innerHTML = '✅ 현재 버전: <strong>' + cachedVersion + '</strong>';
                 statusEl.style.color = '#38a169';
@@ -4276,7 +4276,7 @@ function displayAppVersion() {
 }
 
 function checkForUpdates() {
-    var statusEl = document.getElementById('updateStatus');
+    let statusEl = document.getElementById('updateStatus');
     if (!statusEl) return;
     if (!('serviceWorker' in navigator)) {
         statusEl.innerHTML = '⚠️ Service Worker를 지원하지 않는 브라우저입니다.';
@@ -4298,9 +4298,9 @@ function checkForUpdates() {
             return response.text();
         })
         .then(function(text) {
-            var match = text.match(/CACHE_NAME\s*=\s*['"](.+)['"]/);
+            let match = text.match(/CACHE_NAME\s*=\s*['"](.+)['"]/);
             if (match && match[1]) {
-                var version = match[1];
+                let version = match[1];
                 statusEl.innerHTML = '✅ 새 버전 적용됨: <strong>' + version + '</strong>';
                 statusEl.style.color = '#38a169';
                 localStorage.setItem('app_cache_name', version);
@@ -4321,7 +4321,7 @@ function checkForUpdates() {
 }
 
 function forceUpdateApp() {
-    var statusEl = document.getElementById('updateStatus');
+    let statusEl = document.getElementById('updateStatus');
     if (!statusEl) return;
     if (!('serviceWorker' in navigator)) {
         statusEl.innerHTML = '⚠️ Service Worker를 지원하지 않는 브라우저입니다.';
@@ -4359,7 +4359,7 @@ function forceUpdateApp() {
 
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.addEventListener('controllerchange', function() {
-        var statusEl = document.getElementById('updateStatus');
+        let statusEl = document.getElementById('updateStatus');
         if (statusEl) {
             statusEl.innerHTML = '🔄 새 버전이 적용되었습니다. 페이지를 새로고침하세요.';
             statusEl.style.color = '#2b6cb0';
@@ -4371,21 +4371,21 @@ if ('serviceWorker' in navigator) {
 // 30. 최적화 설정 모달
 // ============================================================
 function openOptimizeSettingsModal() {
-    var modal = document.getElementById('optimizeSettingsModal');
+    let modal = document.getElementById('optimizeSettingsModal');
     if (!modal) return;
     syncModalSettings();
     modal.classList.add('active');
 }
 
 function closeOptimizeSettingsModal() {
-    var modal = document.getElementById('optimizeSettingsModal');
+    let modal = document.getElementById('optimizeSettingsModal');
     if (modal) modal.classList.remove('active');
 }
 
 function syncModalSettings() {
     // optimizeMode
-    var nearest = document.getElementById('modalModeNearest');
-    var farthest = document.getElementById('modalModeFarthest');
+    let nearest = document.getElementById('modalModeNearest');
+    let farthest = document.getElementById('modalModeFarthest');
     if (optimizeMode === 'Nearest') {
         nearest.classList.add('active');
         farthest.classList.remove('active');
@@ -4400,17 +4400,17 @@ function syncModalSettings() {
     document.getElementById('modalModeInfo').textContent = '💡 현재 초기 경로: ' + (optimizeMode === 'Nearest' ? '가까운순' : '먼순');
 
     // routeObjective
-    var cards = {
+    let cards = {
         distance: document.getElementById('modalMetricDistance'),
         time: document.getElementById('modalMetricTime'),
         balanced: document.getElementById('modalMetricBalanced')
     };
     Object.keys(cards).forEach(function(k) {
-        var active = (k === routeObjective);
+        let active = (k === routeObjective);
         cards[k].classList.toggle('active', active);
-        var radio = cards[k].querySelector('input');
+        let radio = cards[k].querySelector('input');
         if (radio) radio.checked = active;
-        var mark = cards[k].querySelector('.metric-radio');
+        let mark = cards[k].querySelector('.metric-radio');
         if (mark) mark.textContent = active ? '●' : '○';
     });
 
@@ -4418,10 +4418,10 @@ function syncModalSettings() {
     document.getElementById('modalUseDirectionHint').checked = useDirectionHint;
 
     // ★★★ API 선택 (라디오 버튼으로 직접 제어) ★★★
-    var apiKakaoRadio = document.querySelector('input[name="modalRouteApi"][value="kakao"]');
-    var apiTmapRadio = document.querySelector('input[name="modalRouteApi"][value="tmap"]');
-    var apiKakao = document.getElementById('modalApiKakao');
-    var apiTmap = document.getElementById('modalApiTmap');
+    let apiKakaoRadio = document.querySelector('input[name="modalRouteApi"][value="kakao"]');
+    let apiTmapRadio = document.querySelector('input[name="modalRouteApi"][value="tmap"]');
+    let apiKakao = document.getElementById('modalApiKakao');
+    let apiTmap = document.getElementById('modalApiTmap');
     
     if (routeApi === 'kakao') {
         if (apiKakaoRadio) apiKakaoRadio.checked = true;
@@ -4440,8 +4440,8 @@ function syncModalSettings() {
     }
 }
 function setModalOptimizeMode(mode) {
-    var nearest = document.getElementById('modalModeNearest');
-    var farthest = document.getElementById('modalModeFarthest');
+    let nearest = document.getElementById('modalModeNearest');
+    let farthest = document.getElementById('modalModeFarthest');
     if (mode === 'Nearest') {
         nearest.classList.add('active');
         farthest.classList.remove('active');
@@ -4458,17 +4458,17 @@ function setModalOptimizeMode(mode) {
 }
 
 function setModalRouteObjective(objective) {
-    var cards = {
+    let cards = {
         distance: document.getElementById('modalMetricDistance'),
         time: document.getElementById('modalMetricTime'),
         balanced: document.getElementById('modalMetricBalanced')
     };
     Object.keys(cards).forEach(function(k) {
-        var active = (k === objective);
+        let active = (k === objective);
         cards[k].classList.toggle('active', active);
-        var radio = cards[k].querySelector('input');
+        let radio = cards[k].querySelector('input');
         if (radio) radio.checked = active;
-        var mark = cards[k].querySelector('.metric-radio');
+        let mark = cards[k].querySelector('.metric-radio');
         if (mark) mark.textContent = active ? '●' : '○';
     });
     tempSettings.routeObjective = objective;
@@ -4483,10 +4483,10 @@ function setModalDirectionHint(enabled) {
 }
 
 function setModalRouteApi(api) {
-    var apiKakao = document.getElementById('modalApiKakao');
-    var apiTmap = document.getElementById('modalApiTmap');
-    var apiKakaoRadio = document.querySelector('input[name="modalRouteApi"][value="kakao"]');
-    var apiTmapRadio = document.querySelector('input[name="modalRouteApi"][value="tmap"]');
+    let apiKakao = document.getElementById('modalApiKakao');
+    let apiTmap = document.getElementById('modalApiTmap');
+    let apiKakaoRadio = document.querySelector('input[name="modalRouteApi"][value="kakao"]');
+    let apiTmapRadio = document.querySelector('input[name="modalRouteApi"][value="tmap"]');
     
     if (api === 'kakao') {
         if (apiKakaoRadio) apiKakaoRadio.checked = true;
@@ -4532,15 +4532,15 @@ function saveOptimizeSettings() {
 // 31. 최적화 라이브 요약 업데이트
 // ============================================================
 function updateOptimizationLiveSummary() {
-    var text = document.getElementById('optimizationStatus');
+    let text = document.getElementById('optimizationStatus');
     if (!text) return;
-    var mode = (typeof optimizeMode !== 'undefined' && optimizeMode === 'Farthest') ? '먼순' : '가까운순';
-    var objective = (typeof routeObjective !== 'undefined' && routeObjective === 'time') ? '최소시간'
+    let mode = (typeof optimizeMode !== 'undefined' && optimizeMode === 'Farthest') ? '먼순' : '가까운순';
+    let objective = (typeof routeObjective !== 'undefined' && routeObjective === 'time') ? '최소시간'
         : (typeof routeObjective !== 'undefined' && routeObjective === 'balanced') ? '거리+시간 균형'
         : '최단거리';
-    var road = (typeof useRoadOptimization === 'undefined' || useRoadOptimization) ? '실제 도로' : '직선거리 보완';
-    var direction = (typeof useDirectionHint === 'undefined' || useDirectionHint) ? '방향 고려' : '방향 미고려';
-    var api = (routeApi === 'tmap') ? 'TMap' : '카카오맵';
+    let road = (typeof useRoadOptimization === 'undefined' || useRoadOptimization) ? '실제 도로' : '직선거리 보완';
+    let direction = (typeof useDirectionHint === 'undefined' || useDirectionHint) ? '방향 고려' : '방향 미고려';
+    let api = (routeApi === 'tmap') ? 'TMap' : '카카오맵';
     text.textContent = mode + ' · ' + objective + ' · ' + road + ' · ' + direction + ' · ' + api;
 }
 
@@ -4548,9 +4548,9 @@ function updateOptimizationLiveSummary() {
 // 32. 지역 관리 팝업
 // ============================================================
 function updateRegionDisplay() {
-    var nameEl = document.getElementById('currentRegionName');
+    let nameEl = document.getElementById('currentRegionName');
     if (!nameEl) return;
-    var currentRegion = localStorage.getItem(SELECTED_REGION_KEY);
+    let currentRegion = localStorage.getItem(SELECTED_REGION_KEY);
     if (currentRegion) {
         nameEl.textContent = currentRegion;
     } else {
@@ -4561,26 +4561,26 @@ function updateRegionDisplay() {
 function selectRegionFromPopup(region) {
     if (!region) return;
     switchRegion(region);
-    var modal = document.getElementById('regionManagerModal');
+    let modal = document.getElementById('regionManagerModal');
     if (modal) modal.remove();
 }
 
 function addRegionFromPopup() {
-    var input = document.getElementById('newRegionInput');
+    let input = document.getElementById('newRegionInput');
     if (!input) return;
-    var name = input.value.trim();
+    let name = input.value.trim();
     if (!name) {
         showTabStatus('tab-settings', '⚠️ 지역명을 입력하세요.', 'warning');
         return;
     }
-    var region = name.replace(/[\/\\:*?"<>|]/g, '');
+    let region = name.replace(/[\/\\:*?"<>|]/g, '');
     if (!region) {
         showTabStatus('tab-settings', '⚠️ 사용할 수 없는 지역명입니다.', 'warning');
         return;
     }
-    var select = document.getElementById('regionSelect');
+    let select = document.getElementById('regionSelect');
     if (!select) return;
-    for (var i = 0; i < select.options.length; i++) {
+    for (let i = 0; i < select.options.length; i++) {
         if (select.options[i].value === region) {
             showTabStatus('tab-settings', '⚠️ 이미 존재하는 지역입니다.', 'warning');
             input.value = '';
@@ -4588,9 +4588,9 @@ function addRegionFromPopup() {
             return;
         }
     }
-    var key = getStorageKey(region);
+    let key = getStorageKey(region);
     localStorage.setItem(key, JSON.stringify([]));
-    var opt = document.createElement('option');
+    let opt = document.createElement('option');
     opt.value = region;
     opt.textContent = region;
     select.appendChild(opt);
@@ -4600,18 +4600,18 @@ function addRegionFromPopup() {
     input.value = '';
     input.focus();
     showTabStatus('tab-settings', '✅ "' + region + '" 지역 추가됨', 'ok');
-    var modal = document.getElementById('regionManagerModal');
+    let modal = document.getElementById('regionManagerModal');
     if (modal) modal.remove();
     openRegionManager();
 }
 
 function deleteRegionFromPopup() {
-    var currentRegion = localStorage.getItem(SELECTED_REGION_KEY);
+    let currentRegion = localStorage.getItem(SELECTED_REGION_KEY);
     if (!currentRegion) {
         showTabStatus('tab-settings', '⚠️ 삭제할 지역이 없습니다.', 'warning');
         return;
     }
-    var select = document.getElementById('regionSelect');
+    let select = document.getElementById('regionSelect');
     if (!select || select.options.length <= 1) {
         showTabStatus('tab-settings', '⚠️ 마지막 남은 지역은 삭제할 수 없습니다.', 'warning');
         return;
@@ -4620,21 +4620,21 @@ function deleteRegionFromPopup() {
         '🗑️ 지역 삭제',
         '"' + currentRegion + '" 지역을 삭제하시겠습니까?\n해당 지역의 모든 현장 데이터도 함께 삭제됩니다.',
         function() {
-            var key = getStorageKey(currentRegion);
+            let key = getStorageKey(currentRegion);
             localStorage.removeItem(key);
-            for (var i = 0; i < select.options.length; i++) {
+            for (let i = 0; i < select.options.length; i++) {
                 if (select.options[i].value === currentRegion) {
                     select.remove(i);
                     break;
                 }
             }
             if (select.options.length > 0) {
-                var newRegion = select.options[0].value;
+                let newRegion = select.options[0].value;
                 select.value = newRegion;
                 switchRegion(newRegion);
             } else {
                 select.innerHTML = '';
-                var defaultOpt = document.createElement('option');
+                let defaultOpt = document.createElement('option');
                 defaultOpt.value = '';
                 defaultOpt.textContent = '📍 지역 선택';
                 defaultOpt.selected = true;
@@ -4647,7 +4647,7 @@ function deleteRegionFromPopup() {
             }
             updateRegionDisplay();
             showTabStatus('tab-settings', '✅ "' + currentRegion + '" 지역 삭제됨', 'ok');
-            var modal = document.getElementById('regionManagerModal');
+            let modal = document.getElementById('regionManagerModal');
             if (modal) modal.remove();
             openRegionManager();
         },
@@ -4656,14 +4656,14 @@ function deleteRegionFromPopup() {
 }
 
 function openRegionManager() {
-    var existing = document.getElementById('regionManagerModal');
+    let existing = document.getElementById('regionManagerModal');
     if (existing) existing.remove();
     
-    var regions = [];
-    for (var i = 0; i < localStorage.length; i++) {
-        var key = localStorage.key(i);
+    let regions = [];
+    for (let i = 0; i < localStorage.length; i++) {
+        let key = localStorage.key(i);
         if (key && key.startsWith(STORAGE_KEY_PREFIX)) {
-            var region = key.replace(STORAGE_KEY_PREFIX, '');
+            let region = key.replace(STORAGE_KEY_PREFIX, '');
             if (region && !regions.includes(region)) {
                 regions.push(region);
             }
@@ -4671,14 +4671,14 @@ function openRegionManager() {
     }
     regions.sort();
     
-    var currentRegion = localStorage.getItem(SELECTED_REGION_KEY) || '';
-    var regionListHtml = '';
+    let currentRegion = localStorage.getItem(SELECTED_REGION_KEY) || '';
+    let regionListHtml = '';
     
     if (regions.length === 0) {
         regionListHtml = '<div style="text-align:center;color:#a0aec0;padding:10px;">저장된 지역이 없습니다</div>';
     } else {
         regions.forEach(function(region) {
-            var isActive = (region === currentRegion);
+            let isActive = (region === currentRegion);
             regionListHtml += `
                 <div class="region-item ${isActive ? 'active' : ''}" onclick="selectRegionFromPopup('${region}')" style="
                     display: flex;
@@ -4701,7 +4701,7 @@ function openRegionManager() {
         });
     }
     
-    var modalHtml = `
+    let modalHtml = `
         <div id="regionManagerModal" style="
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -4757,7 +4757,7 @@ function openRegionManager() {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     
     setTimeout(function() {
-        var input = document.getElementById('newRegionInput');
+        let input = document.getElementById('newRegionInput');
         if (input) input.focus();
     }, 100);
 }
@@ -4766,24 +4766,24 @@ function openRegionManager() {
 // 33. 검색 결과 팝업 외부 클릭 시 닫기
 // ============================================================
 document.addEventListener('click', function(event) {
-    var startContainer = document.getElementById('startSearchResults');
-    var startInput = document.getElementById('startPoint');
+    let startContainer = document.getElementById('startSearchResults');
+    let startInput = document.getElementById('startPoint');
     if (startContainer && startContainer.style.display === 'block') {
         if (!startContainer.contains(event.target) && event.target !== startInput) {
             startContainer.style.display = 'none';
         }
     }
     
-    var waypointContainer = document.getElementById('waypointSearchResults');
-    var waypointInput = document.getElementById('waypointInput');
+    let waypointContainer = document.getElementById('waypointSearchResults');
+    let waypointInput = document.getElementById('waypointInput');
     if (waypointContainer && waypointContainer.style.display === 'block') {
         if (!waypointContainer.contains(event.target) && event.target !== waypointInput) {
             waypointContainer.style.display = 'none';
         }
     }
     
-    var addrContainer = document.getElementById('addrSearchResults');
-    var addrInput = document.getElementById('newPlaceAddr');
+    let addrContainer = document.getElementById('addrSearchResults');
+    let addrInput = document.getElementById('newPlaceAddr');
     if (addrContainer && addrContainer.style.display === 'block') {
         if (!addrContainer.contains(event.target) && event.target !== addrInput) {
             addrContainer.style.display = 'none';
@@ -4796,15 +4796,15 @@ document.addEventListener('click', function(event) {
 // ============================================================
 async function searchKakaoPlaces(query, size) {
     size = size || 5;
-    var restKey = settings.kakaoRestKey;
+    let restKey = settings.kakaoRestKey;
     if (!query || query.length < 2 || !restKey) return [];
     try {
-        var res = await fetch(
+        let res = await fetch(
             'https://dapi.kakao.com/v2/local/search/keyword.json?query=' + encodeURIComponent(query) + '&size=' + size,
             { headers: { 'Authorization': 'KakaoAK ' + restKey } }
         );
         if (!res.ok) return [];
-        var data = await res.json();
+        let data = await res.json();
         return data.documents || [];
     } catch(e) {
         return [];
@@ -4815,9 +4815,9 @@ async function searchKakaoPlaces(query, size) {
 // 35. 키보드 네비게이션
 // ============================================================
 function handleStartKeydown(event) {
-    var results = document.querySelectorAll('#startSearchResults .result-item');
+    let results = document.querySelectorAll('#startSearchResults .result-item');
     if (results.length === 0) return;
-    var index = searchIndexState.selected || -1;
+    let index = searchIndexState.selected || -1;
     if (event.key === 'ArrowDown') {
         event.preventDefault();
         index = Math.min(index + 1, results.length - 1);
@@ -4833,15 +4833,15 @@ function handleStartKeydown(event) {
         index = -1;
     }
     searchIndexState.selected = index;
-    for (var i = 0; i < results.length; i++) {
+    for (let i = 0; i < results.length; i++) {
         results[i].style.background = i === index ? '#bee3f8' : '';
     }
 }
 
 function handleWaypointKeydown(event) {
-    var results = document.querySelectorAll('#waypointSearchResults .result-item');
+    let results = document.querySelectorAll('#waypointSearchResults .result-item');
     if (results.length === 0) return;
-    var index = searchIndexState.waypoint || -1;
+    let index = searchIndexState.waypoint || -1;
     if (event.key === 'ArrowDown') {
         event.preventDefault();
         index = Math.min(index + 1, results.length - 1);
@@ -4857,15 +4857,15 @@ function handleWaypointKeydown(event) {
         index = -1;
     }
     searchIndexState.waypoint = index;
-    for (var i = 0; i < results.length; i++) {
+    for (let i = 0; i < results.length; i++) {
         results[i].style.background = i === index ? '#bee3f8' : '';
     }
 }
 
 function handleAddrKeydown(event) {
-    var results = document.querySelectorAll('#addrSearchResults .result-item');
+    let results = document.querySelectorAll('#addrSearchResults .result-item');
     if (results.length === 0) return;
-    var index = searchIndexState.addr || -1;
+    let index = searchIndexState.addr || -1;
     if (event.key === 'ArrowDown') {
         event.preventDefault();
         index = Math.min(index + 1, results.length - 1);
@@ -4881,7 +4881,7 @@ function handleAddrKeydown(event) {
         index = -1;
     }
     searchIndexState.addr = index;
-    for (var i = 0; i < results.length; i++) {
+    for (let i = 0; i < results.length; i++) {
         results[i].style.background = i === index ? '#bee3f8' : '';
     }
 }
@@ -4890,10 +4890,10 @@ function handleAddrKeydown(event) {
 // 36. 탭 스와이프
 // ============================================================
 (function() {
-    var startX = 0, startY = 0, tracking = false;
-    var tabOrder = ['tab-places', 'tab-route', 'tab-list', 'tab-settings', 'tab-help'];
+    let startX = 0, startY = 0, tracking = false;
+    let tabOrder = ['tab-places', 'tab-route', 'tab-list', 'tab-settings', 'tab-help'];
     document.addEventListener('touchstart', function(e) {
-        var target = e.target;
+        let target = e.target;
         if (target.closest('input, textarea, select, button, .bottom-tabs, #map, .waypoint-list, .route-item') || !e.touches || e.touches.length !== 1) {
             tracking = false; return;
         }
@@ -4904,14 +4904,14 @@ function handleAddrKeydown(event) {
     document.addEventListener('touchend', function(e) {
         if (!tracking || !e.changedTouches || !e.changedTouches.length) return;
         tracking = false;
-        var dx = e.changedTouches[0].clientX - startX;
-        var dy = e.changedTouches[0].clientY - startY;
+        let dx = e.changedTouches[0].clientX - startX;
+        let dy = e.changedTouches[0].clientY - startY;
         if (Math.abs(dy) >= Math.abs(dx) || Math.abs(dx) < 70 || Math.abs(dy) > 60) return;
-        var activeTab = document.querySelector('.tab-content.active');
+        let activeTab = document.querySelector('.tab-content.active');
         if (!activeTab) return;
-        var currentIndex = tabOrder.indexOf(activeTab.id);
+        let currentIndex = tabOrder.indexOf(activeTab.id);
         if (currentIndex < 0) return;
-        var nextIndex = dx < 0 ? Math.min(currentIndex + 1, tabOrder.length - 1) : Math.max(currentIndex - 1, 0);
+        let nextIndex = dx < 0 ? Math.min(currentIndex + 1, tabOrder.length - 1) : Math.max(currentIndex - 1, 0);
         if (nextIndex !== currentIndex) switchTab(tabOrder[nextIndex]);
     }, {passive:true});
 })();
@@ -4920,15 +4920,15 @@ function handleAddrKeydown(event) {
 // 37. 하단 탭 이벤트 및 초기화
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
-    var tabs = document.querySelectorAll('.bottom-tab');
+    let tabs = document.querySelectorAll('.bottom-tab');
     tabs.forEach(function(tab) {
         tab.removeEventListener('click', tab._clickHandler);
-        var handler = function(e) {
-            var tabId = this.getAttribute('data-tab');
+        let handler = function(e) {
+            let tabId = this.getAttribute('data-tab');
             if (!tabId) {
-                var onclickAttr = this.getAttribute('onclick');
+                let onclickAttr = this.getAttribute('onclick');
                 if (onclickAttr) {
-                    var match = onclickAttr.match(/switchTab\(['"](.+)['"]\)/);
+                    let match = onclickAttr.match(/switchTab\(['"](.+)['"]\)/);
                     if (match) tabId = match[1];
                 }
             }
@@ -4949,7 +4949,7 @@ document.addEventListener('DOMContentLoaded', function() {
     routeApi = localStorage.getItem(ROUTE_API_KEY) || 'kakao';
     updateOptimizationLiveSummary();
 
-    var nav = document.querySelector('.bottom-tabs');
+    let nav = document.querySelector('.bottom-tabs');
     if (nav) {
         nav.style.display = 'flex';
         nav.style.visibility = 'visible';
@@ -4968,8 +4968,8 @@ document.addEventListener('DOMContentLoaded', function() {
     loadPresets();
     
     if (currentRegion) {
-        var key = getStorageKey(currentRegion);
-        var data = localStorage.getItem(key);
+        let key = getStorageKey(currentRegion);
+        let data = localStorage.getItem(key);
         places = data ? JSON.parse(data) : [];
     } else {
         places = [];
@@ -4977,7 +4977,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     updateRegionDisplay();
     
-    var sortSelect = document.getElementById('sortPlaces');
+    let sortSelect = document.getElementById('sortPlaces');
     if (sortSelect) currentSort = sortSelect.value;
     
     renderPlaces();
@@ -5003,9 +5003,9 @@ document.addEventListener('DOMContentLoaded', function() {
 // 39. 도우미 함수 (tab-status 표시)
 // ============================================================
 function showTabStatus(tabId, msg, type) {
-    var statusEl = document.getElementById(tabId + 'Status');
+    let statusEl = document.getElementById(tabId + 'Status');
     if (!statusEl) {
-        var tabContent = document.getElementById(tabId);
+        let tabContent = document.getElementById(tabId);
         if (tabContent) {
             statusEl = document.createElement('div');
             statusEl.id = tabId + 'Status';
