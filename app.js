@@ -900,6 +900,7 @@ function searchStartPoint(query) {
     }, 300);
 }
 
+// ===== 수정된 selectStartPoint =====
 function selectStartPoint(name, address, lat, lng) {
     document.getElementById('startPoint').value = name;
     document.getElementById('startSearchResults').style.display = 'none';
@@ -907,9 +908,11 @@ function selectStartPoint(name, address, lat, lng) {
         showTabStatus('tab-places', '⚠️ 유효하지 않은 좌표입니다.', 'warning');
         return;
     }
-    saveRecentStartPoint(name, address, lat, lng);
-    startPoint = { name: name, address: address, lat: lat, lng: lng };
-    document.getElementById('startInfo').textContent = '✅ ' + name + ' (' + address + ')';
+    // ★ 이모티콘 제거하고 저장
+    var cleanName = name.replace(/^[🎯🚩]\s*/, '');
+    saveRecentStartPoint(cleanName, address, lat, lng);
+    startPoint = { name: cleanName, address: address, lat: lat, lng: lng };
+    document.getElementById('startInfo').textContent = '✅ ' + cleanName + ' (' + address + ')';
     document.getElementById('startInfo').style.color = '#22543d';
     if (kakaoMap) {
         routeMarkers = [];
@@ -919,12 +922,12 @@ function selectStartPoint(name, address, lat, lng) {
         }
         clearSingleMarker();
         isShowingRouteMarkers = false;
-        addRouteMarker(startPoint.lat, startPoint.lng, '🚩 ' + name, true, -1);
+        addRouteMarker(startPoint.lat, startPoint.lng, cleanName, true, -1);
         kakaoMap.setCenter(new kakao.maps.LatLng(startPoint.lat, startPoint.lng));
         kakaoMap.setLevel(5);
         kakaoMap.relayout();
     }
-    showTabStatus('tab-places', '✅ 출발지 "' + name + '" 설정 완료', 'ok');
+    showTabStatus('tab-places', '✅ 출발지 "' + cleanName + '" 설정 완료', 'ok');
 }
 
 function setCurrentLocation() {
@@ -3189,6 +3192,7 @@ function createMap(container) {
     }
 }
 
+// ===== 수정된 addRouteMarker =====
 function addRouteMarker(lat, lng, title, isStart, colorIndex) {
     if (!kakaoMap) return;
     try {
@@ -3203,7 +3207,10 @@ function addRouteMarker(lat, lng, title, isStart, colorIndex) {
         let content;
         
         if (isStart) {
-            content = '<div style="background:white;padding:6px 14px;border-radius:20px;box-shadow:0 4px 16px rgba(0,0,0,0.15);font-size:13px;font-weight:700;color:#1a202c;white-space:nowrap;border:2px solid #2d3748;z-index:10;">🚩 ' + escapeHtml(title) + '</div>';
+            // ★ 출발지: 내 위치면 🎯, 아니면 🚩
+            let prefix = (title && title.includes('내 위치')) ? '🎯' : '🚩';
+            let displayName = title ? title.replace(/^[🎯🚩]\s*/, '') : '';
+            content = '<div style="background:white;padding:6px 14px;border-radius:20px;box-shadow:0 4px 16px rgba(0,0,0,0.15);font-size:13px;font-weight:700;color:#1a202c;white-space:nowrap;border:2px solid #2d3748;z-index:10;">' + prefix + ' ' + escapeHtml(displayName) + '</div>';
         } else {
             let idx = (colorIndex !== undefined && colorIndex !== null) ? colorIndex : 0;
             let color = COLORS[idx % COLORS.length];
@@ -5040,9 +5047,8 @@ let waypointsPanelVisible = false;
 function initRouteSummaryCard() {
     const toggleBtn = document.getElementById('toggle-waypoints-btn');
     const waypointsPanel = document.getElementById('waypoints-panel');
-    const tmapBtn = document.getElementById('nav-tmap-btn');
-    const kakaoBtn = document.getElementById('nav-kakao-btn');
-    
+    const navBtn = document.getElementById('nav-start-btn'); // 새 버튼 ID
+
     if (toggleBtn) {
         toggleBtn.addEventListener('click', function() {
             waypointsPanelVisible = !waypointsPanelVisible;
@@ -5054,26 +5060,21 @@ function initRouteSummaryCard() {
             }
         });
     }
-    
-    if (tmapBtn) {
-        tmapBtn.addEventListener('click', function() {
-            openTmapMultiStop();
-        });
-    }
-    
-    if (kakaoBtn) {
-        kakaoBtn.addEventListener('click', function() {
-            openKakaoMultiStop();
-        });
+
+    if (navBtn) {
+        navBtn.addEventListener('click', openMultiStopNavigation);
+        // 버튼 텍스트 업데이트는 renderOptimizedWaypoints에서 처리
     }
 }
 
+// ===== 수정된 renderOptimizedWaypoints =====
 function renderOptimizedWaypoints() {
     if (!routeResult) return;
     
     const container = document.getElementById('optimized-waypoints-list');
     const badge = document.getElementById('waypoint-count-badge');
     const limitMsg = document.getElementById('nav-limit-msg');
+    const navBtn = document.getElementById('nav-start-btn');
     
     if (!container || !badge) return;
     
@@ -5083,16 +5084,24 @@ function renderOptimizedWaypoints() {
     
     badge.textContent = totalPoints;
     
-    // TMap, Kakao 제한 안내
     const tmapLimit = 10;
     const kakaoLimit = 10;
     
     if (limitMsg) {
         if (totalPoints > tmapLimit) {
-            limitMsg.textContent = `⚠️ TMap: 최대 ${tmapLimit}개 지점 지원 (${totalPoints - tmapLimit}개 제외), 카카오: 최대 ${kakaoLimit}개`;
+            limitMsg.textContent = `⚠️ 최대 ${tmapLimit}개 지점 지원 (${totalPoints - tmapLimit}개 제외)`;
         } else {
             limitMsg.textContent = '';
         }
+    }
+    
+    // ★ 버튼 텍스트 및 스타일 동적 변경
+    if (navBtn) {
+        const apiLabel = routeApi === 'tmap' ? 'TMap' : '카카오내비';
+        const icon = routeApi === 'tmap' ? '🚗' : '🗺️';
+        navBtn.textContent = `${icon} ${apiLabel}으로 전체 경로 열기 (${Math.min(totalPoints, tmapLimit)}개 지점)`;
+        navBtn.style.background = routeApi === 'tmap' ? '#0064d8' : '#fee500';
+        navBtn.style.color = routeApi === 'tmap' ? 'white' : '#333';
     }
     
     container.innerHTML = '';
@@ -5149,83 +5158,55 @@ function renderOptimizedWaypoints() {
     }
 }
 
-function openTmapMultiStop() {
+// ===== 새로 추가: 통합 네비게이션 함수 =====
+function openMultiStopNavigation() {
     if (!routeResult) {
         showTabStatus('tab-route', '⚠️ 최적화된 경로가 없습니다.', 'warning');
         return;
     }
-    
-    let { places: sorted, startPoint } = routeResult;
-    const allPoints = [startPoint, ...sorted];
-    
-    // TMap 모바일 스킴: 최대 10 개 지점 (출발지 + 경유지 9 개)
-    const tmapLimit = 10;
-    const pointsToUse = allPoints.slice(0, tmapLimit);
-    
-    if (pointsToUse.length < 2) {
-        showTabStatus('tab-route', '⚠️ 최소 2 개 이상의 지점이 필요합니다.', 'warning');
-        return;
-    }
-    
-    const start = pointsToUse[0];
-    const waypoints = pointsToUse.slice(1);
-    
-    // TMap 스킴 구성
-    let scheme = `tmap://route?startName=${encodeURIComponent(start.name)}&startX=${start.lng}&startY=${start.lat}`;
-    
-    if (waypoints.length > 0) {
-        // 경유지는 comma 로 구분
-        const wpNames = waypoints.map(p => encodeURIComponent(p.name)).join(',');
-        const wpXs = waypoints.map(p => p.lng).join(',');
-        const wpYs = waypoints.map(p => p.lat).join(',');
-        
-        scheme += `&waypointNames=${wpNames}&waypointXs=${wpXs}&waypointYs=${wpYs}`;
-    }
-    
-    // 앱 실행 시도
-    window.location.href = scheme;
-    
-    showTabStatus('tab-route', `🗺️ TMap 실행 중... (${pointsToUse.length}개 지점)`, 'info');
-}
 
-function openKakaoMultiStop() {
-    if (!routeResult) {
-        showTabStatus('tab-route', '⚠️ 최적화된 경로가 없습니다.', 'warning');
-        return;
-    }
-    
-    let { places: sorted, startPoint } = routeResult;
+    const { places: sorted, startPoint } = routeResult;
     const allPoints = [startPoint, ...sorted];
-    
-    // 카카오내비 스킴: 최대 10 개 지점
-    const kakaoLimit = 10;
-    const pointsToUse = allPoints.slice(0, kakaoLimit);
-    
+    const limit = 10;
+    const pointsToUse = allPoints.slice(0, limit);
+
     if (pointsToUse.length < 2) {
-        showTabStatus('tab-route', '⚠️ 최소 2 개 이상의 지점이 필요합니다.', 'warning');
+        showTabStatus('tab-route', '⚠️ 최소 2개 이상의 지점이 필요합니다.', 'warning');
         return;
     }
-    
+
+    if (allPoints.length > limit) {
+        showTabStatus('tab-route', `⚠️ ${allPoints.length}개의 지점 중 처음 ${limit}개만 전달됩니다.`, 'warning');
+    }
+
     const start = pointsToUse[0];
     const waypoints = pointsToUse.slice(1);
-    const end = waypoints.length > 0 ? waypoints.pop() : null;
     
-    // 카카오내비 스킴 구성
-    let scheme = `kakaonavi://navigate?start=${encodeURIComponent(start.name)},${start.lng},${start.lat}`;
-    
-    if (end) {
-        scheme += `&goal=${encodeURIComponent(end.name)},${end.lng},${end.lat}`;
-    }
-    
-    if (waypoints.length > 0) {
-        // 경유지는 &via 파라미터로 추가 (여러 번 반복)
-        for (const wp of waypoints) {
+    let scheme;
+    if (routeApi === 'tmap') {
+        // TMap 스킴 (출발지 + 경유지)
+        let wpNames = waypoints.map(p => encodeURIComponent(p.name)).join(',');
+        let wpXs = waypoints.map(p => p.lng).join(',');
+        let wpYs = waypoints.map(p => p.lat).join(',');
+
+        scheme = `tmap://route?startName=${encodeURIComponent(start.name)}&startX=${start.lng}&startY=${start.lat}`;
+        if (waypoints.length > 0) {
+            scheme += `&waypointNames=${wpNames}&waypointXs=${wpXs}&waypointYs=${wpYs}`;
+        }
+    } else {
+        // 카카오내비 스킴
+        const end = waypoints.length > 0 ? waypoints[waypoints.length - 1] : null;
+        scheme = `kakaonavi://navigate?start=${encodeURIComponent(start.name)},${start.lng},${start.lat}`;
+        if (end) {
+            scheme += `&goal=${encodeURIComponent(end.name)},${end.lng},${end.lat}`;
+        }
+        // 경유지 추가 (마지막은 제외)
+        for (let i = 0; i < waypoints.length - 1; i++) {
+            const wp = waypoints[i];
             scheme += `&via=${encodeURIComponent(wp.name)},${wp.lng},${wp.lat}`;
         }
     }
-    
-    // 앱 실행 시도
+
     window.location.href = scheme;
-    
-    showTabStatus('tab-route', `🗺️ 카카오내비 실행 중... (${pointsToUse.length}개 지점)`, 'info');
+    showTabStatus('tab-route', `🗺️ ${routeApi === 'tmap' ? 'TMap' : '카카오내비'} 실행 중... (${pointsToUse.length}개 지점)`, 'info');
 }
