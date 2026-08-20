@@ -5280,6 +5280,7 @@ function openMultiStopNavigation() {
         return;
     }
 
+    // 최대 10개로 제한
     const limit = 10;
     const pointsToUse = allPoints.slice(0, limit);
 
@@ -5291,29 +5292,99 @@ function openMultiStopNavigation() {
     const waypoints = pointsToUse.slice(1);
     
     let scheme;
+    let isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    
     if (routeApi === 'tmap') {
-        let wpNames = waypoints.map(p => encodeURIComponent(p.name)).join(',');
-        let wpXs = waypoints.map(p => p.lng).join(',');
-        let wpYs = waypoints.map(p => p.lat).join(',');
-
-        scheme = `tmap://route?startName=${encodeURIComponent(start.name)}&startX=${start.lng}&startY=${start.lat}`;
+        // TMap 스킴 생성
+        let baseUrl = 'tmap://route?';
+        let params = [];
+        
+        // 출발지
+        params.push('startName=' + encodeURIComponent(start.name));
+        params.push('startX=' + start.lng);
+        params.push('startY=' + start.lat);
+        
+        // 경유지 (최대 9개, waypointNames/waypointXs/waypointYs)
         if (waypoints.length > 0) {
-            scheme += `&waypointNames=${wpNames}&waypointXs=${wpXs}&waypointYs=${wpYs}`;
+            let wpNames = waypoints.map(p => encodeURIComponent(p.name)).join(',');
+            let wpXs = waypoints.map(p => p.lng).join(',');
+            let wpYs = waypoints.map(p => p.lat).join(',');
+            params.push('waypointNames=' + wpNames);
+            params.push('waypointXs=' + wpXs);
+            params.push('waypointYs=' + wpYs);
         }
-    } else {
-        const end = waypoints.length > 0 ? waypoints[waypoints.length - 1] : null;
-        scheme = `kakaonavi://navigate?start=${encodeURIComponent(start.name)},${start.lng},${start.lat}`;
-        if (end) {
-            scheme += `&goal=${encodeURIComponent(end.name)},${end.lng},${end.lat}`;
+        
+        scheme = baseUrl + params.join('&');
+        
+        // ★ iOS에서는 window.location.href 대신 window.open 사용 (스킴 실행)
+        if (isIOS) {
+            // iOS: 직접 열기 시도
+            window.open(scheme, '_blank');
+            // 2초 후에도 실행 안 되면 웹으로 fallback (TMap 앱 설치 유도)
+            setTimeout(function() {
+                // 웹 URL (TMap 웹 길찾기)
+                let webUrl = 'https://apis-navi.tmap.co.kr/routes/'
+                    + start.lat + ',' + start.lng + '/' 
+                    + waypoints[waypoints.length-1].lat + ',' + waypoints[waypoints.length-1].lng
+                    + '?name=' + encodeURIComponent(start.name + '→' + waypoints[waypoints.length-1].name);
+                window.open(webUrl, '_blank');
+            }, 2000);
+        } else {
+            // Android: window.location.href로 실행
+            window.location.href = scheme;
+            // fallback
+            setTimeout(function() {
+                if (!window.location.href.startsWith('tmap://')) {
+                    let webUrl = 'https://apis-navi.tmap.co.kr/routes/'
+                        + start.lat + ',' + start.lng + '/' 
+                        + waypoints[waypoints.length-1].lat + ',' + waypoints[waypoints.length-1].lng
+                        + '?name=' + encodeURIComponent(start.name + '→' + waypoints[waypoints.length-1].name);
+                    window.open(webUrl, '_blank');
+                }
+            }, 2000);
         }
-        for (let i = 0; i < waypoints.length - 1; i++) {
-            const wp = waypoints[i];
-            scheme += `&via=${encodeURIComponent(wp.name)},${wp.lng},${wp.lat}`;
-        }
+        
+        showTabStatus('tab-route', `🗺️ TMap 실행 중... (${pointsToUse.length}개 지점)`, 'info');
+        return;
     }
 
-    window.location.href = scheme;
-    showTabStatus('tab-route', `🗺️ ${routeApi === 'tmap' ? 'TMap' : '카카오내비'} 실행 중... (${pointsToUse.length}개 지점)`, 'info');
+    // ===== 카카오내비 =====
+    if (routeApi === 'kakao') {
+        const end = waypoints.length > 0 ? waypoints[waypoints.length - 1] : null;
+        let scheme = 'kakaonavi://navigate?';
+        let params = [];
+        
+        params.push('start=' + encodeURIComponent(start.name) + ',' + start.lng + ',' + start.lat);
+        if (end) {
+            params.push('goal=' + encodeURIComponent(end.name) + ',' + end.lng + ',' + end.lat);
+        }
+        // 경유지
+        for (let i = 0; i < waypoints.length - 1; i++) {
+            const wp = waypoints[i];
+            params.push('via=' + encodeURIComponent(wp.name) + ',' + wp.lng + ',' + wp.lat);
+        }
+        
+        scheme = scheme + params.join('&');
+        
+        // iOS/Android 모두 window.location.href로 실행
+        window.location.href = scheme;
+        
+        // fallback (카카오맵 웹)
+        setTimeout(function() {
+            if (!window.location.href.startsWith('kakaonavi://')) {
+                let webUrl = 'https://map.kakao.com/link/from/'
+                    + encodeURIComponent(start.name) + ',' + start.lat + ',' + start.lng
+                    + '/to/'
+                    + encodeURIComponent(end ? end.name : waypoints[waypoints.length-1].name) + ',' 
+                    + (end ? end.lat : waypoints[waypoints.length-1].lat) + ',' 
+                    + (end ? end.lng : waypoints[waypoints.length-1].lng);
+                window.open(webUrl, '_blank');
+            }
+        }, 2000);
+        
+        showTabStatus('tab-route', `🗺️ 카카오내비 실행 중... (${pointsToUse.length}개 지점)`, 'info');
+        return;
+    }
 }
 
 function initFrameDragHandlers() {
