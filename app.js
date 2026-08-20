@@ -2528,7 +2528,7 @@ function showRouteList() {
         return;
     }
 
-    // ===== 1. 기존 routeList HTML 생성 (생략 없이 전체 코드) =====
+    // ===== 1. routeList HTML 생성 =====
     let html = '<div style="font-weight:600;font-size:14px;margin-bottom:8px;">📋 최적 경로</div>';
     html += '<div id="routeSortable">';
 
@@ -2548,7 +2548,6 @@ function showRouteList() {
         let color = colors[i % colors.length];
         let addrDisplay = p.address ? '<div class="addr">' + escapeHtml(shortenAddress(p.address)) + '</div>' : '';
         let remarkDisplay = p.remark ? '<span class="remark">' + escapeHtml(p.remark) + '</span>' : '';
-
         html += '<div class="route-item sortable-item" data-index="' + i + '" data-lat="' + p.lat + '" data-lng="' + p.lng + '" data-name="' + escapeHtml(p.name) + '" style="border-left-color:' + color + ';cursor:pointer;" onclick="if(!event.target.closest(\'.kakao-route-btn\') && !event.target.closest(\'.drag-handle\')) moveToRoutePoint(this)">';
         html += '<div class="idx" style="background:' + color + ';color:white;">' + (i + 1) + '</div>';
         html += '<div class="info">';
@@ -2557,7 +2556,6 @@ function showRouteList() {
         html += '</div>';
         html += '<div class="dist" style="text-align:right;font-size:12px;font-weight:600;flex-shrink:0;min-width:80px;color:' + color + ';">';
         html += segDist.toFixed(1) + 'km<br><span style="font-size:10px;color:#718096;">' + segTime + '분</span></div>';
-        
         html += '<button class="btn btn-outline kakao-route-btn" style="margin-left:4px;padding:4px 8px;font-size:12px;flex-shrink:0;min-height:32px;border-radius:4px;position:relative;z-index:10;" onclick="openKakaoMapFromRoute(this)" title="길찾기"';
         html += ' data-from-name="' + escapeHtml(prev.name) + '"';
         html += ' data-from-lat="' + prev.lat + '"';
@@ -2567,60 +2565,15 @@ function showRouteList() {
         html += ' data-to-lng="' + p.lng + '">';
         html += '🗺️';
         html += '</button>';
-        
         html += '<span class="drag-handle" style="color:#a0aec0;font-size:20px;cursor:grab;padding:4px 6px;user-select:none;margin-left:2px;" title="드래그하여 순서 변경">⠿</span>';
         html += '</div>';
     }
     html += '</div>';
-    container.innerHTML = html;
 
-    // ===== 2. SortableJS 초기화 (기존 코드) =====
-    let sortableEl = document.getElementById('routeSortable');
-    if (sortableEl && window.Sortable) {
-        if (window._routeSortable) window._routeSortable.destroy();
-        window._routeSortable = new Sortable(sortableEl, {
-            handle: '.drag-handle',
-            animation: 150,
-            onMove: function(evt) {
-                if (evt.toIndex === 0) {
-                    showTabStatus('tab-route', '⚠️ 출발지 위치로는 이동할 수 없습니다.', 'warning');
-                    return false;
-                }
-                return true;
-            },
-            onEnd: function(evt) {
-                let oldIndex = evt.oldIndex - 1;
-                let newIndex = evt.newIndex - 1;
-                if (oldIndex === newIndex || oldIndex < 0 || newIndex < 0) return;
-
-                let moved = routeResult.places.splice(oldIndex, 1)[0];
-                routeResult.places.splice(newIndex, 0, moved);
-                showRouteList();
-
-                let allPoints = [{ name: startPoint.name, lat: startPoint.lat, lng: startPoint.lng }].concat(routeResult.places);
-                clearRouteMarkers();
-                addRouteMarker(startPoint.lat, startPoint.lng, startPoint.name, true, -1);
-                for (let i = 0; i < routeResult.places.length; i++) {
-                    let p = routeResult.places[i];
-                    addRouteMarker(p.lat, p.lng, (i + 1) + '. ' + p.name, false, i);
-                }
-                let restKey = settings.kakaoRestKey;
-                if (restKey) {
-                    callKakaoMobilityRoute(allPoints, restKey).then(function(routeData) {
-                        if (routeData) drawRoadRoute(routeData);
-                        else drawRoute(allPoints);
-                    });
-                } else drawRoute(allPoints);
-                showTabStatus('tab-route', '🔄 경로 순서 변경됨', 'ok');
-            }
-        });
-    }
-
-    // ===== 3. ★ 새로 추가: 전체 경유지 연결 버튼 (routeList 아래) =====
+    // ===== 2. 전체 경유지 연결 버튼 HTML 추가 =====
     const totalPoints = sorted.length + 1;
     const isOverLimit = totalPoints > 10;
     const displayCount = Math.min(totalPoints, 10);
-    
     html += '<div style="margin-top:12px; padding-top:12px; border-top: 1px solid var(--border-color);">';
     html += '<button id="nav-all-waypoints-btn" class="btn" style="width:100%; padding:10px; font-size:14px; font-weight:600; background: ' + (routeApi === 'tmap' ? '#0064d8' : '#fee500') + '; color: ' + (routeApi === 'tmap' ? 'white' : '#333') + '; border: none; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">';
     html += (routeApi === 'tmap' ? '🚗' : '🗺️') + ' 전체 경유지 연결 (' + displayCount + '개 지점)';
@@ -2632,9 +2585,10 @@ function showRouteList() {
     }
     html += '</div>';
 
+    // ===== 3. HTML을 DOM에 한 번만 삽입 =====
     container.innerHTML = html;
 
-    // ===== 버튼 이벤트 연결 =====
+    // ===== 4. 전체 연결 버튼 이벤트 =====
     const navBtn = document.getElementById('nav-all-waypoints-btn');
     if (navBtn) {
         navBtn.addEventListener('click', function() {
@@ -2642,7 +2596,7 @@ function showRouteList() {
         });
     }
 
-    // SortableJS 초기화 (기존 코드 유지)
+    // ===== 5. SortableJS 초기화 (한 번만!) =====
     let sortableEl = document.getElementById('routeSortable');
     if (sortableEl && window.Sortable) {
         if (window._routeSortable) window._routeSortable.destroy();
@@ -2660,11 +2614,9 @@ function showRouteList() {
                 let oldIndex = evt.oldIndex - 1;
                 let newIndex = evt.newIndex - 1;
                 if (oldIndex === newIndex || oldIndex < 0 || newIndex < 0) return;
-
                 let moved = routeResult.places.splice(oldIndex, 1)[0];
                 routeResult.places.splice(newIndex, 0, moved);
                 showRouteList();
-
                 let allPoints = [{ name: startPoint.name, lat: startPoint.lat, lng: startPoint.lng }].concat(routeResult.places);
                 clearRouteMarkers();
                 addRouteMarker(startPoint.lat, startPoint.lng, startPoint.name, true, -1);
