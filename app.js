@@ -2528,14 +2528,17 @@ function showRouteList() {
         return;
     }
 
+    // ===== 1. 기존 routeList HTML 생성 (생략 없이 전체 코드) =====
     let html = '<div style="font-weight:600;font-size:14px;margin-bottom:8px;">📋 최적 경로</div>';
     html += '<div id="routeSortable">';
 
+    // 출발지
     html += '<div class="route-item route-start" data-no-drag="true" data-lat="' + startPoint.lat + '" data-lng="' + startPoint.lng + '" data-name="' + escapeHtml(startPoint.name) + '" style="cursor:pointer;" onclick="moveToRoutePoint(this)">';
     html += '<div class="idx" style="background:#4a5568;color:white;">🚩</div>';
     html += '<div class="info"><div class="name">' + escapeHtml(startPoint.name) + '</div><div class="addr">' + escapeHtml(startPoint.address || '') + '</div></div>';
     html += '</div>';
 
+    // 경유지
     let colors = ['#FF6B6B', '#FF9F43', '#FECA57', '#48DBFB', '#0ABDE3', '#10AC84', '#EE5A24', '#5F27CD', '#1DD1A1', '#F368E0', '#00D2D3', '#54A0FF', '#FF9FF3', '#F368E0'];
     for (let i = 0; i < sorted.length; i++) {
         let p = sorted[i];
@@ -2568,10 +2571,10 @@ function showRouteList() {
         html += '<span class="drag-handle" style="color:#a0aec0;font-size:20px;cursor:grab;padding:4px 6px;user-select:none;margin-left:2px;" title="드래그하여 순서 변경">⠿</span>';
         html += '</div>';
     }
-
     html += '</div>';
     container.innerHTML = html;
 
+    // ===== 2. SortableJS 초기화 (기존 코드) =====
     let sortableEl = document.getElementById('routeSortable');
     if (sortableEl && window.Sortable) {
         if (window._routeSortable) window._routeSortable.destroy();
@@ -2612,29 +2615,72 @@ function showRouteList() {
             }
         });
     }
-    
-    // ★ 경유지 요약 카드 표시
-   const summaryCard = document.getElementById('route-summary-card');
-    const summaryText = document.getElementById('summary-text');
-    const badge = document.getElementById('selected-count-badge'); // 틀 배지
-    
-    if (summaryCard) {
-        summaryCard.style.display = 'block';
-        summaryCard.style.visibility = 'visible';
-        summaryCard.style.opacity = '1';
+
+    // ===== 3. ★ 새로 추가: 전체 경유지 연결 버튼 (routeList 아래) =====
+    const totalPoints = sorted.length + 1; // 출발지 포함
+    const maxPoints = 10;
+    const displayCount = Math.min(totalPoints, maxPoints);
+    const isOverLimit = totalPoints > maxPoints;
+
+    // 기존에 추가된 버튼이 있다면 제거 (중복 방지)
+    const existingNav = document.getElementById('route-nav-container');
+    if (existingNav) existingNav.remove();
+
+    const navContainer = document.createElement('div');
+    navContainer.id = 'route-nav-container';
+    navContainer.style.marginTop = '12px';
+    navContainer.style.display = 'flex';
+    navContainer.style.flexDirection = 'column';
+    navContainer.style.gap = '6px';
+    navContainer.style.alignItems = 'center';
+
+    // 버튼 생성
+    const navBtn = document.createElement('button');
+    navBtn.className = 'btn btn-primary';
+    navBtn.style.width = '100%';
+    navBtn.style.padding = '10px 16px';
+    navBtn.style.fontSize = '14px';
+    navBtn.style.fontWeight = '600';
+    navBtn.style.borderRadius = '8px';
+    navBtn.style.display = 'flex';
+    navBtn.style.alignItems = 'center';
+    navBtn.style.justifyContent = 'center';
+    navBtn.style.gap = '6px';
+
+    const apiLabel = routeApi === 'tmap' ? 'TMap' : '카카오내비';
+    const icon = routeApi === 'tmap' ? '🚗' : '🗺️';
+    navBtn.textContent = `${icon} ${apiLabel}으로 전체 경로 열기 (${displayCount}개 지점)`;
+    navBtn.style.background = routeApi === 'tmap' ? '#0064d8' : '#fee500';
+    navBtn.style.color = routeApi === 'tmap' ? 'white' : '#333';
+    navBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        openMultiStopNavigation();
+    });
+
+    navContainer.appendChild(navBtn);
+
+    // 제한 초과 안내 메시지
+    if (isOverLimit) {
+        const limitMsg = document.createElement('div');
+        limitMsg.style.fontSize = '0.7rem';
+        limitMsg.style.color = '#e53e3e';
+        limitMsg.style.textAlign = 'center';
+        limitMsg.style.padding = '2px 0';
+        limitMsg.textContent = `⚠️ ${totalPoints}개의 지점 중 처음 ${maxPoints}개만 전달됩니다.`;
+        navContainer.appendChild(limitMsg);
+    } else {
+        // 선택 사항: 작은 안내 메시지
+        const infoMsg = document.createElement('div');
+        infoMsg.style.fontSize = '0.65rem';
+        infoMsg.style.color = 'var(--text-muted)';
+        infoMsg.style.textAlign = 'center';
+        infoMsg.style.padding = '2px 0';
+        infoMsg.textContent = `✅ ${totalPoints}개 지점 전체 전달`;
+        navContainer.appendChild(infoMsg);
     }
-    
-    if (summaryText) {
-        summaryText.textContent = `총 ${sorted.length + 1}개 지점, ${totalKm}km, ${totalMin}분 소요`;
-    }
-    
-    // ★ 틀 범위 초기화 (처음에는 모든 지점 표시)
-    frameStartIndex = 0;
-    frameEndIndex = sorted.length; // 모든 지점 표시
-    
-    // ★ 틀 렌더링
-    renderOptimizedWaypoints();
-    setTimeout(initFrameDragHandlers, 300);
+
+    // routeList 뒤에 추가
+    container.parentNode.insertBefore(navContainer, container.nextSibling);
 }
 
 function openKakaoMapFromRoute(btn) {
