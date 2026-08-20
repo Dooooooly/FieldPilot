@@ -5274,23 +5274,17 @@ function openMultiStopNavigation() {
     const { places: sorted, startPoint } = routeResult;
     const allPoints = [startPoint, ...sorted];
     const totalPoints = allPoints.length;
-    
-    // ★ 틀에 표시된 경유지들만 선택 (frameStartIndex ~ frameEndIndex)
-    const startIdx = Math.max(0, Math.min(frameStartIndex, totalPoints - 1));
-    const endIdx = Math.min(frameEndIndex + 1, totalPoints);
-    const selectedPoints = allPoints.slice(startIdx, endIdx);
 
-    if (selectedPoints.length < 2) {
-        showTabStatus('tab-route', '⚠️ 최소 2개 이상의 지점을 선택하세요.', 'warning');
+    if (totalPoints < 2) {
+        showTabStatus('tab-route', '⚠️ 최소 2개 이상의 지점이 필요합니다.', 'warning');
         return;
     }
 
-    // 최대 10개로 제한
     const limit = 10;
-    const pointsToUse = selectedPoints.slice(0, limit);
+    const pointsToUse = allPoints.slice(0, limit);
 
-    if (selectedPoints.length > limit) {
-        showTabStatus('tab-route', `⚠️ ${selectedPoints.length}개 중 처음 ${limit}개만 전달됩니다.`, 'warning');
+    if (totalPoints > limit) {
+        showTabStatus('tab-route', `⚠️ ${totalPoints}개의 지점 중 처음 ${limit}개만 전달됩니다.`, 'warning');
     }
 
     const start = pointsToUse[0];
