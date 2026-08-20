@@ -239,6 +239,11 @@ function loadSettings() {
 }
 
 function saveSettings() {
+    // settings가 undefined나 null이면 빈 객체로 초기화
+    if (!settings) {
+        settings = { githubToken: '', kakaoJsKey: '', kakaoRestKey: '' };
+    }
+    
     let encoded = {
         githubToken: encodeKey(settings.githubToken || ''),
         kakaoJsKey: encodeKey(settings.kakaoJsKey || ''),
