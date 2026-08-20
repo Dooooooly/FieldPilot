@@ -5286,104 +5286,79 @@ function openMultiStopNavigation() {
     }
 
     // ============================================================
-    // 2. 카카오맵 앱 처리 (경유지 최대 5개 제한)
+    // 2. 카카오맵 처리 (경유지 최대 5개 제한)
     // ============================================================
     if (routeApi === 'kakao') {
-        // 카카오맵 앱은 경유지를 최대 5개까지만 지원
-        const maxWaypoints = 5;
-        const intermediateWaypoints = allPoints.slice(1, -1); // 중간 경유지들
+        const maxWaypoints = 5; // 카카오맵 앱 공식 제한
+        const start = allPoints[0];
+        const end = allPoints[allPoints.length - 1];
+        const allWaypoints = allPoints.slice(1, -1); // 전체 중간 경유지
         
-        if (intermediateWaypoints.length > maxWaypoints) {
+        // ★ 경유지 5개 초과 시 모달 표시
+        if (allWaypoints.length > maxWaypoints) {
             showConfirmModal(
                 '카카오맵 경유지 제한',
-                '카카오맵 앱은 경유지를 최대 5개까지만 지원합니다.\n\n' +
-                '현재 경유지는 ' + intermediateWaypoints.length + '개입니다.\n\n' +
-                '• [확인]: 출발지 → 최종 도착지만 앱으로 연결합니다.\n' +
-                '• [취소]: 이 화면의 지도에서 전체 최적 경로를 확인합니다.',
+                '카카오맵 앱은 경유지를 최대 ' + maxWaypoints + '개까지만 지원합니다.\n\n' +
+                '현재 경유지는 ' + allWaypoints.length + '개입니다.\n\n' +
+                '• [확인]: 앞의 ' + maxWaypoints + '개 경유지만 잘라서 카카오맵으로 연결합니다.\n' +
+                '• [취소]: 연결을 취소합니다.',
                 function() {
-                    // 확인 클릭 시: 출발지 -> 도착지 만으로 앱 실행
-                    openKakaoMapStartToEndOnly(startPoint, allPoints[allPoints.length - 1], isMobile, isIOS);
+                    // ★ 확인: 앞의 5개 경유지만 잘라서 카카오맵 앱 실행
+                    const trimmedWaypoints = allWaypoints.slice(0, maxWaypoints);
+                    openKakaoMapApp(start, end, trimmedWaypoints, isMobile, isIOS);
+                    showTabStatus('tab-route', 
+                        `🗺️ 카카오맵 실행 (경유지 ${trimmedWaypoints.length}개만 전달)`, 
+                        'info');
                 },
                 function() {
-                    // 취소 클릭 시: 아무것도 안 함 (사용자가 현재 PWA 지도에서 경로를 보도록 유도)
-                    showTabStatus('tab-route', '💡 현재 지도에서 최적화된 전체 경유지 순서를 확인하세요.', 'info');
+                    // ★ 취소: 아무것도 안 함
+                    showTabStatus('tab-route', 'ℹ️ 카카오맵 연결이 취소되었습니다.', 'info');
                 }
             );
             return;
         }
 
-        // 경유지가 5개 이하일 경우 정상 스킴 실행
-        const start = allPoints[0];
-        const end = allPoints[allPoints.length - 1];
-        const validWaypoints = intermediateWaypoints.slice(0, maxWaypoints);
-
-        // kakaomap://route 스킴 형식
-        // sp=출발지위도,경도&ep=도착지위도,경도&waypoints=경유지1위도,경도|경유지2위도,경도
-        let scheme = 'kakaomap://route?' +
-            'sp=' + start.lat + ',' + start.lng +
-            '&ep=' + end.lat + ',' + end.lng +
-            '&sname=' + encodeURIComponent(start.name) +
-            '&dname=' + encodeURIComponent(end.name) +
-            '&by=CAR';
-
-        if (validWaypoints.length > 0) {
-            const waypointsStr = validWaypoints.map(wp => wp.lat + ',' + wp.lng).join('|');
-            scheme += '&waypoints=' + waypointsStr;
-        }
-
-        const webUrl = 'https://map.kakao.com/link/from/'
-            + encodeURIComponent(start.name) + ',' + start.lat + ',' + start.lng
-            + '/to/'
-            + encodeURIComponent(end.name) + ',' + end.lat + ',' + end.lng;
-
-        if (!isMobile) {
-            window.open(webUrl, '_blank');
-            showTabStatus('tab-route', '💻 PC 환경이므로 카카오맵 웹으로 연결합니다.', 'info');
-            return;
-        }
-
-        // 모바일: 스킴 실행 시도
-        window.location.href = scheme;
-        setTimeout(function() {
-            // 앱 실행 실패 시 웹으로 폴백
-            if (!window.location.href.startsWith('kakaomap://')) {
-                window.open(webUrl, '_blank');
-            }
-        }, 1500);
-        
+        // ★ 경유지 5개 이하: 정상 실행
+        openKakaoMapApp(start, end, allWaypoints, isMobile, isIOS);
         showTabStatus('tab-route', `🗺️ 카카오맵 실행 중... (총 ${allPoints.length}개 지점)`, 'info');
         return;
     }
 }
 
 // ============================================================
-// 헬퍼 함수: 카카오맵 출발지->도착지 전용 연결 (경유지 생략)
+// 헬퍼 함수: 카카오맵 앱 실행 (출발지 + 경유지 + 도착지)
 // ============================================================
-function openKakaoMapStartToEndOnly(start, end, isMobile, isIOS) {
-    const scheme = 'kakaomap://route?' +
+function openKakaoMapApp(start, end, waypoints, isMobile, isIOS) {
+    // kakaomap://route 스킴 형식
+    let scheme = 'kakaomap://route?' +
         'sp=' + start.lat + ',' + start.lng +
         '&ep=' + end.lat + ',' + end.lng +
         '&sname=' + encodeURIComponent(start.name) +
         '&dname=' + encodeURIComponent(end.name) +
         '&by=CAR';
-        
+
+    if (waypoints.length > 0) {
+        const waypointsStr = waypoints.map(wp => wp.lat + ',' + wp.lng).join('|');
+        scheme += '&waypoints=' + waypointsStr;
+    }
+
     const webUrl = 'https://map.kakao.com/link/from/'
         + encodeURIComponent(start.name) + ',' + start.lat + ',' + start.lng
         + '/to/'
         + encodeURIComponent(end.name) + ',' + end.lat + ',' + end.lng;
 
-    if (isMobile) {
-        window.location.href = scheme;
-        setTimeout(function() {
-            if (!window.location.href.startsWith('kakaomap://')) {
-                window.open(webUrl, '_blank');
-            }
-        }, 1500);
-        showTabStatus('tab-route', '🗺️ 카카오맵 실행 (출발지 → 도착지)', 'info');
-    } else {
+    if (!isMobile) {
+        // PC: 무조건 웹으로
         window.open(webUrl, '_blank');
         showTabStatus('tab-route', '💻 PC 환경이므로 카카오맵 웹으로 연결합니다.', 'info');
+        return;
     }
+
+    // 모바일: 스킴 실행 시도
+    window.location.href = scheme;
+    setTimeout(function() {
+        window.open(webUrl, '_blank');
+    }, 1500);
 }
 
 function initFrameDragHandlers() {
