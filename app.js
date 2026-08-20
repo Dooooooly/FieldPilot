@@ -2617,70 +2617,72 @@ function showRouteList() {
     }
 
     // ===== 3. ★ 새로 추가: 전체 경유지 연결 버튼 (routeList 아래) =====
-    const totalPoints = sorted.length + 1; // 출발지 포함
-    const maxPoints = 10;
-    const displayCount = Math.min(totalPoints, maxPoints);
-    const isOverLimit = totalPoints > maxPoints;
-
-    // 기존에 추가된 버튼이 있다면 제거 (중복 방지)
-    const existingNav = document.getElementById('route-nav-container');
-    if (existingNav) existingNav.remove();
-
-    const navContainer = document.createElement('div');
-    navContainer.id = 'route-nav-container';
-    navContainer.style.marginTop = '12px';
-    navContainer.style.display = 'flex';
-    navContainer.style.flexDirection = 'column';
-    navContainer.style.gap = '6px';
-    navContainer.style.alignItems = 'center';
-
-    // 버튼 생성
-    const navBtn = document.createElement('button');
-    navBtn.className = 'btn btn-primary';
-    navBtn.style.width = '100%';
-    navBtn.style.padding = '10px 16px';
-    navBtn.style.fontSize = '14px';
-    navBtn.style.fontWeight = '600';
-    navBtn.style.borderRadius = '8px';
-    navBtn.style.display = 'flex';
-    navBtn.style.alignItems = 'center';
-    navBtn.style.justifyContent = 'center';
-    navBtn.style.gap = '6px';
-
-    const apiLabel = routeApi === 'tmap' ? 'TMap' : '카카오내비';
-    const icon = routeApi === 'tmap' ? '🚗' : '🗺️';
-    navBtn.textContent = `${icon} ${apiLabel}으로 전체 경로 열기 (${displayCount}개 지점)`;
-    navBtn.style.background = routeApi === 'tmap' ? '#0064d8' : '#fee500';
-    navBtn.style.color = routeApi === 'tmap' ? 'white' : '#333';
-    navBtn.addEventListener('click', function(e) {
-        e.stopPropagation();
-        openMultiStopNavigation();
-    });
-
-    navContainer.appendChild(navBtn);
-
-    // 제한 초과 안내 메시지
+    const totalPoints = sorted.length + 1;
+    const isOverLimit = totalPoints > 10;
+    const displayCount = Math.min(totalPoints, 10);
+    
+    html += '<div style="margin-top:12px; padding-top:12px; border-top: 1px solid var(--border-color);">';
+    html += '<button id="nav-all-waypoints-btn" class="btn" style="width:100%; padding:10px; font-size:14px; font-weight:600; background: ' + (routeApi === 'tmap' ? '#0064d8' : '#fee500') + '; color: ' + (routeApi === 'tmap' ? 'white' : '#333') + '; border: none; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">';
+    html += (routeApi === 'tmap' ? '🚗' : '🗺️') + ' 전체 경유지 연결 (' + displayCount + '개 지점)';
+    html += '</button>';
     if (isOverLimit) {
-        const limitMsg = document.createElement('div');
-        limitMsg.style.fontSize = '0.7rem';
-        limitMsg.style.color = '#e53e3e';
-        limitMsg.style.textAlign = 'center';
-        limitMsg.style.padding = '2px 0';
-        limitMsg.textContent = `⚠️ ${totalPoints}개의 지점 중 처음 ${maxPoints}개만 전달됩니다.`;
-        navContainer.appendChild(limitMsg);
+        html += '<div style="font-size:0.7rem; color:#e53e3e; text-align:center; margin-top:4px;">⚠️ ' + totalPoints + '개의 지점 중 처음 10개만 전달됩니다</div>';
     } else {
-        // 선택 사항: 작은 안내 메시지
-        const infoMsg = document.createElement('div');
-        infoMsg.style.fontSize = '0.65rem';
-        infoMsg.style.color = 'var(--text-muted)';
-        infoMsg.style.textAlign = 'center';
-        infoMsg.style.padding = '2px 0';
-        infoMsg.textContent = `✅ ${totalPoints}개 지점 전체 전달`;
-        navContainer.appendChild(infoMsg);
+        html += '<div style="font-size:0.7rem; color:var(--text-muted); text-align:center; margin-top:4px;">' + totalPoints + '개 지점을 한 번에 연결합니다</div>';
+    }
+    html += '</div>';
+
+    container.innerHTML = html;
+
+    // ===== 버튼 이벤트 연결 =====
+    const navBtn = document.getElementById('nav-all-waypoints-btn');
+    if (navBtn) {
+        navBtn.addEventListener('click', function() {
+            openMultiStopNavigation();
+        });
     }
 
-    // routeList 뒤에 추가
-    container.parentNode.insertBefore(navContainer, container.nextSibling);
+    // SortableJS 초기화 (기존 코드 유지)
+    let sortableEl = document.getElementById('routeSortable');
+    if (sortableEl && window.Sortable) {
+        if (window._routeSortable) window._routeSortable.destroy();
+        window._routeSortable = new Sortable(sortableEl, {
+            handle: '.drag-handle',
+            animation: 150,
+            onMove: function(evt) {
+                if (evt.toIndex === 0) {
+                    showTabStatus('tab-route', '⚠️ 출발지 위치로는 이동할 수 없습니다.', 'warning');
+                    return false;
+                }
+                return true;
+            },
+            onEnd: function(evt) {
+                let oldIndex = evt.oldIndex - 1;
+                let newIndex = evt.newIndex - 1;
+                if (oldIndex === newIndex || oldIndex < 0 || newIndex < 0) return;
+
+                let moved = routeResult.places.splice(oldIndex, 1)[0];
+                routeResult.places.splice(newIndex, 0, moved);
+                showRouteList();
+
+                let allPoints = [{ name: startPoint.name, lat: startPoint.lat, lng: startPoint.lng }].concat(routeResult.places);
+                clearRouteMarkers();
+                addRouteMarker(startPoint.lat, startPoint.lng, startPoint.name, true, -1);
+                for (let i = 0; i < routeResult.places.length; i++) {
+                    let p = routeResult.places[i];
+                    addRouteMarker(p.lat, p.lng, (i + 1) + '. ' + p.name, false, i);
+                }
+                let restKey = settings.kakaoRestKey;
+                if (restKey) {
+                    callKakaoMobilityRoute(allPoints, restKey).then(function(routeData) {
+                        if (routeData) drawRoadRoute(routeData);
+                        else drawRoute(allPoints);
+                    });
+                } else drawRoute(allPoints);
+                showTabStatus('tab-route', '🔄 경로 순서 변경됨', 'ok');
+            }
+        });
+    }
 }
 
 function openKakaoMapFromRoute(btn) {
