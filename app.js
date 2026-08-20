@@ -5224,119 +5224,112 @@ function openMultiStopNavigation() {
         showTabStatus('tab-route', '⚠️ 최적화된 경로가 없습니다.', 'warning');
         return;
     }
-
+    
     const { places: sorted, startPoint } = routeResult;
     const allPoints = [startPoint, ...sorted];
     const totalPoints = allPoints.length;
-
+    
     if (totalPoints < 2) {
         showTabStatus('tab-route', '⚠️ 최소 2개 이상의 지점이 필요합니다.', 'warning');
         return;
     }
 
-    // 최대 10개로 제한
+    // 네비게이션 앱 스펙상 최대 10개로 제한
     const limit = 10;
     const pointsToUse = allPoints.slice(0, limit);
-
+    
     if (totalPoints > limit) {
         showTabStatus('tab-route', `⚠️ ${totalPoints}개의 지점 중 처음 ${limit}개만 전달됩니다.`, 'warning');
     }
 
+    // ★ 1. 출발지, 중간 경유지, 도착지를 명확히 분리
     const start = pointsToUse[0];
-    const waypoints = pointsToUse.slice(1);
-    
-    let scheme;
-    let isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-    
+    const end = pointsToUse[pointsToUse.length - 1]; // 명확한 최종 도착지
+    const intermediateWaypoints = pointsToUse.slice(1, pointsToUse.length - 1); // 중간 경유지들만 추출
+
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+    // ============================================================
+    // 2. TMap 처리 (도착지 rGo* 파라미터 명시 추가)
+    // ============================================================
     if (routeApi === 'tmap') {
-        // TMap 스킴 생성
-        let baseUrl = 'tmap://route?';
         let params = [];
-        
         // 출발지
         params.push('startName=' + encodeURIComponent(start.name));
         params.push('startX=' + start.lng);
         params.push('startY=' + start.lat);
         
-        // 경유지 (최대 9개, waypointNames/waypointXs/waypointYs)
-        if (waypoints.length > 0) {
-            let wpNames = waypoints.map(p => encodeURIComponent(p.name)).join(',');
-            let wpXs = waypoints.map(p => p.lng).join(',');
-            let wpYs = waypoints.map(p => p.lat).join(',');
+        // ★ 도착지 명시 (중요: 이 부분이 없으면 중간 경유지가 무시됨)
+        params.push('rGoName=' + encodeURIComponent(end.name));
+        params.push('rGoX=' + end.lng);
+        params.push('rGoY=' + end.lat);
+
+        // ★ 중간 경유지 추가
+        if (intermediateWaypoints.length > 0) {
+            let wpNames = intermediateWaypoints.map(p => encodeURIComponent(p.name)).join(',');
+            let wpXs = intermediateWaypoints.map(p => p.lng).join(',');
+            let wpYs = intermediateWaypoints.map(p => p.lat).join(',');
             params.push('waypointNames=' + wpNames);
             params.push('waypointXs=' + wpXs);
             params.push('waypointYs=' + wpYs);
         }
-        
-        scheme = baseUrl + params.join('&');
-        
-        // ★ iOS에서는 window.location.href 대신 window.open 사용 (스킴 실행)
-        if (isIOS) {
-            // iOS: 직접 열기 시도
-            window.open(scheme, '_blank');
-            // 2초 후에도 실행 안 되면 웹으로 fallback (TMap 앱 설치 유도)
-            setTimeout(function() {
-                // 웹 URL (TMap 웹 길찾기)
-                let webUrl = 'https://apis-navi.tmap.co.kr/routes/'
-                    + start.lat + ',' + start.lng + '/' 
-                    + waypoints[waypoints.length-1].lat + ',' + waypoints[waypoints.length-1].lng
-                    + '?name=' + encodeURIComponent(start.name + '→' + waypoints[waypoints.length-1].name);
-                window.open(webUrl, '_blank');
-            }, 2000);
-        } else {
-            // Android: window.location.href로 실행
-            window.location.href = scheme;
-            // fallback
-            setTimeout(function() {
-                if (!window.location.href.startsWith('tmap://')) {
-                    let webUrl = 'https://apis-navi.tmap.co.kr/routes/'
-                        + start.lat + ',' + start.lng + '/' 
-                        + waypoints[waypoints.length-1].lat + ',' + waypoints[waypoints.length-1].lng
-                        + '?name=' + encodeURIComponent(start.name + '→' + waypoints[waypoints.length-1].name);
-                    window.open(webUrl, '_blank');
-                }
-            }, 2000);
+
+        const schemeUrl = 'tmap://route?' + params.join('&');
+        const webUrl = 'https://apis-navi.tmap.co.kr/routes/' 
+            + start.lat + ',' + start.lng + '/' 
+            + end.lat + ',' + end.lng
+            + '?name=' + encodeURIComponent(start.name + '→' + end.name);
+
+        if (!isMobile) {
+            window.open(webUrl, '_blank');
+            showTabStatus('tab-route', '💻 PC 환경이므로 TMap 웹으로 연결합니다.', 'info');
+            return;
         }
+
+        window.location.href = schemeUrl;
+        setTimeout(function() {
+            window.open(webUrl, '_blank');
+        }, 1500);
         
-        showTabStatus('tab-route', `🗺️ TMap 실행 중... (${pointsToUse.length}개 지점)`, 'info');
+        showTabStatus('tab-route', `🗺️ TMap 실행 중... (총 ${pointsToUse.length}개 지점)`, 'info');
         return;
     }
 
-    // ===== 카카오내비 =====
+    // ============================================================
+    // 3. 카카오내비 처리 (start, via, goal 명확화)
+    // ============================================================
     if (routeApi === 'kakao') {
-        const end = waypoints.length > 0 ? waypoints[waypoints.length - 1] : null;
-        let scheme = 'kakaonavi://navigate?';
         let params = [];
-        
+        // 출발지
         params.push('start=' + encodeURIComponent(start.name) + ',' + start.lng + ',' + start.lat);
-        if (end) {
-            params.push('goal=' + encodeURIComponent(end.name) + ',' + end.lng + ',' + end.lat);
-        }
-        // 경유지
-        for (let i = 0; i < waypoints.length - 1; i++) {
-            const wp = waypoints[i];
+        // ★ 도착지 명시
+        params.push('goal=' + encodeURIComponent(end.name) + ',' + end.lng + ',' + end.lat);
+
+        // ★ 중간 경유지 추가
+        for (let i = 0; i < intermediateWaypoints.length; i++) {
+            const wp = intermediateWaypoints[i];
             params.push('via=' + encodeURIComponent(wp.name) + ',' + wp.lng + ',' + wp.lat);
         }
-        
-        scheme = scheme + params.join('&');
-        
-        // iOS/Android 모두 window.location.href로 실행
-        window.location.href = scheme;
-        
-        // fallback (카카오맵 웹)
+
+        const schemeUrl = 'kakaonavi://navigate?' + params.join('&');
+        const webUrl = 'https://map.kakao.com/link/from/'
+            + encodeURIComponent(start.name) + ',' + start.lat + ',' + start.lng
+            + '/to/'
+            + encodeURIComponent(end.name) + ',' + end.lat + ',' + end.lng;
+
+        if (!isMobile) {
+            window.open(webUrl, '_blank');
+            showTabStatus('tab-route', '💻 PC 환경이므로 카카오맵 웹으로 연결합니다.', 'info');
+            return;
+        }
+
+        window.location.href = schemeUrl;
         setTimeout(function() {
-            if (!window.location.href.startsWith('kakaonavi://')) {
-                let webUrl = 'https://map.kakao.com/link/from/'
-                    + encodeURIComponent(start.name) + ',' + start.lat + ',' + start.lng
-                    + '/to/'
-                    + encodeURIComponent(end ? end.name : waypoints[waypoints.length-1].name) + ',' 
-                    + (end ? end.lat : waypoints[waypoints.length-1].lat) + ',' 
-                    + (end ? end.lng : waypoints[waypoints.length-1].lng);
-                window.open(webUrl, '_blank');
-            }
-        }, 2000);
+            window.open(webUrl, '_blank');
+        }, 1500);
         
-        showTabStatus('tab-route', `🗺️ 카카오내비 실행 중... (${pointsToUse.length}개 지점)`, 'info');
+        showTabStatus('tab-route', `🗺️ 카카오내비 실행 중... (총 ${pointsToUse.length}개 지점)`, 'info');
         return;
     }
 }
