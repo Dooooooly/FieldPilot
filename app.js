@@ -2614,9 +2614,9 @@ function showRouteList() {
     }
     
     // ★ 경유지 요약 카드 표시
-    const summaryCard = document.getElementById('route-summary-card');
+   const summaryCard = document.getElementById('route-summary-card');
     const summaryText = document.getElementById('summary-text');
-    const badge = document.getElementById('waypoint-count-badge');
+    const badge = document.getElementById('selected-count-badge'); // 틀 배지
     
     if (summaryCard) {
         summaryCard.style.display = 'block';
@@ -2628,21 +2628,13 @@ function showRouteList() {
         summaryText.textContent = `총 ${sorted.length + 1}개 지점, ${totalKm}km, ${totalMin}분 소요`;
     }
     
-    if (badge) {
-        badge.textContent = sorted.length + 1;
-    }
+    // ★ 틀 범위 초기화 (처음에는 모든 지점 표시)
+    frameStartIndex = 0;
+    frameEndIndex = sorted.length; // 모든 지점 표시
     
-    const panel = document.getElementById('waypoints-panel');
-    if (panel) {
-        panel.style.display = 'none';
-    }
-    waypointsPanelVisible = false;
-    
-    if (sorted && startPoint) {
-        renderOptimizedWaypoints();
-    }
-    // 경유지 요약 카드 초기화
-    initRouteSummaryCard();
+    // ★ 틀 렌더링
+    renderOptimizedWaypoints();
+    setTimeout(initFrameDragHandlers, 300);
 }
 
 function openKakaoMapFromRoute(btn) {
@@ -3148,6 +3140,8 @@ function initMap() {
         return;
     }
     container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;color:#d69e2e;font-size:14px;background:#fffff0;border-radius:12px;">⏳ 카카오 지도 로딩 중...</div>';
+    
+    // ★ SDK 로드 상태 체크 강화
     if (typeof kakao === 'undefined' || !kakao.maps) {
         if (sdkLoading) return;
         sdkLoading = true;
@@ -3157,7 +3151,14 @@ function initMap() {
         script.defer = true;
         script.onload = function() {
             sdkLoading = false;
-            kakao.maps.load(function() { createMap(container); });
+            kakao.maps.load(function() { 
+                createMap(container);
+                // ★ 지도 생성 후 드래그 활성화 재확인
+                if (kakaoMap) {
+                    kakaoMap.setDraggable(true);
+                    kakaoMap.setZoomable(true);
+                }
+            });
         };
         script.onerror = function() {
             sdkLoading = false;
@@ -3166,9 +3167,14 @@ function initMap() {
         document.head.appendChild(script);
         return;
     }
-    kakao.maps.load(function() { createMap(container); });
+    kakao.maps.load(function() { 
+        createMap(container);
+        if (kakaoMap) {
+            kakaoMap.setDraggable(true);
+            kakaoMap.setZoomable(true);
+        }
+    });
 }
-
 function createMap(container) {
     try {
         let region = currentRegion || '서울';
@@ -3197,6 +3203,7 @@ function createMap(container) {
         kakaoMap.setZoomable(true);
         kakaoMap.setCenter(new kakao.maps.LatLng(centerLat, centerLng));
         kakaoMap.relayout();
+        container.style.touchAction = 'auto';
         applyPendingMapCenter();
         
         let zoomControl = new kakao.maps.ZoomControl();
@@ -4924,6 +4931,7 @@ function handleAddrKeydown(event) {
     let tabOrder = ['tab-places', 'tab-route', 'tab-list', 'tab-settings', 'tab-help'];
     document.addEventListener('touchstart', function(e) {
         let target = e.target;
+        // ★ 지도 영역과 입력 요소는 스와이프에서 제외
         if (target.closest('input, textarea, select, button, .bottom-tabs, #map, .waypoint-list, .route-item') || !e.touches || e.touches.length !== 1) {
             tracking = false; return;
         }
@@ -5285,8 +5293,6 @@ function initFrameDragHandlers() {
         isDragging = true;
         startY = e.clientY || e.touches[0].clientY;
         startHeight = container.offsetHeight;
-        document.body.style.userSelect = 'none';
-        document.body.style.cursor = 'ns-resize';
         container.style.borderStyle = 'solid';
         container.style.borderColor = '#3182ce';
     }
@@ -5298,26 +5304,21 @@ function initFrameDragHandlers() {
         const delta = currentY - startY;
         let newHeight = startHeight + delta;
         
-        const minHeight = 80;
-        const maxHeight = 380;
-        newHeight = Math.max(minHeight, Math.min(maxHeight, newHeight));
+        // 최소/최대 높이 제한
+        newHeight = Math.max(80, Math.min(380, newHeight));
         
         container.style.height = newHeight + 'px';
         list.style.maxHeight = (newHeight - 36) + 'px';
         
-        // ★ 드래그 중에도 표시되는 경유지 개수 실시간 업데이트
+        // 실시간 선택 업데이트
         updateFrameSelection();
     }
     
     function onDragEnd() {
         if (!isDragging) return;
         isDragging = false;
-        document.body.style.userSelect = '';
-        document.body.style.cursor = '';
         container.style.borderStyle = 'dashed';
         container.style.borderColor = 'var(--primary-color)';
-        
-        // ★ 드래그 종료 후 최종 선택 업데이트
         updateFrameSelection();
         renderOptimizedWaypoints();
     }
@@ -5328,7 +5329,7 @@ function initFrameDragHandlers() {
     document.addEventListener('mousemove', onDragMove);
     document.addEventListener('mouseup', onDragEnd);
     
-    // 터치 이벤트
+    // 터치 이벤트 (모바일)
     topHandle.addEventListener('touchstart', onDragStart, { passive: false });
     bottomHandle.addEventListener('touchstart', onDragStart, { passive: false });
     document.addEventListener('touchmove', onDragMove, { passive: false });
@@ -5338,24 +5339,24 @@ function initFrameDragHandlers() {
 function updateFrameSelection() {
     if (!routeResult) return;
     
+    const container = document.getElementById('waypoint-frame-container');
+    const list = document.getElementById('optimized-waypoints-list');
+    if (!container || !list) return;
+    
     const { places: sorted, startPoint } = routeResult;
     const allPoints = [startPoint, ...sorted];
     const totalPoints = allPoints.length;
     
     // 컨테이너 높이로 표시 가능한 항목 수 계산
-    const container = document.getElementById('waypoint-frame-container');
-    const list = document.getElementById('optimized-waypoints-list');
-    if (!container || !list) return;
-    
     const containerHeight = container.offsetHeight;
-    const itemHeight = 52;
+    const itemHeight = 48; // 각 항목 높이 (px)
     const padding = 36;
     const visibleHeight = containerHeight - padding;
     const visibleCount = Math.max(1, Math.floor(visibleHeight / itemHeight));
     
     // ★ 프레임 시작 인덱스는 고정, 끝 인덱스만 조정
-    const visibleItems = Math.min(visibleCount, totalPoints - frameStartIndex);
-    const newEndIdx = Math.min(frameStartIndex + visibleItems - 1, totalPoints - 1);
+    const startIdx = frameStartIndex;
+    const newEndIdx = Math.min(startIdx + visibleCount - 1, totalPoints - 1);
     
     if (newEndIdx !== frameEndIndex) {
         frameEndIndex = newEndIdx;
