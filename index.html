@@ -666,117 +666,33 @@
             <div id="placesStatus" class="tab-status"></div>
         </div>
 
-        <!-- ===== 탭: 지도 ===== -->
+       <!-- ===== 탭: 지도 ===== -->
 <div id="tab-route" class="tab-content">
     <div id="tab-route-uxheader" class="ux-tab-header">
         <div class="ux-tab-icon">🗺️</div>
-        <div>
-            <div class="ux-tab-title">최적 경로</div>
-            <div class="ux-tab-sub">전체 경로와 구간별 이동 정보를 확인하세요.</div>
-        </div>
+        <div><div class="ux-tab-title">최적 경로</div><div class="ux-tab-sub">전체 경로와 구간별 이동 정보를 확인하세요.</div></div>
     </div>
-    
-    <!-- 지도 -->
     <div id="map"></div>
-    
-    <!-- 요약 정보 -->
     <div class="summary">
-        <div class="summary-row">
-            <span class="label">📍 방문지</span>
-            <span class="value" id="placeCount">0개소</span>
-        </div>
-        <div class="summary-row">
-            <span class="label">📏 총 거리</span>
-            <span class="value" id="totalDistance">0.00 km</span>
-        </div>
-        <div class="summary-row">
-            <span class="label">⏱️ 총 시간</span>
-            <span class="value" id="totalTime">0 분</span>
-        </div>
-        <div class="summary-row">
-            <span class="label">📐 최적화</span>
-            <span class="value" id="optimizeMode">-</span>
-        </div>
-        <div class="summary-row" id="savedRow" style="display:none;">
-            <span class="label">💡 절약 효과</span>
-            <span class="saved" id="savedAmount">-</span>
-        </div>
+        <div class="summary-row"><span class="label">📍 방문지</span><span class="value" id="placeCount">0개소</span></div>
+        <div class="summary-row"><span class="label">📏 총 거리</span><span class="value" id="totalDistance">0.00 km</span></div>
+        <div class="summary-row"><span class="label">⏱️ 총 시간</span><span class="value" id="totalTime">0 분</span></div>
+        <div class="summary-row"><span class="label">📐 최적화</span><span class="value" id="optimizeMode">-</span></div>
+        <div class="summary-row" id="savedRow" style="display:none;"><span class="label">💡 절약 효과</span><span class="saved" id="savedAmount">-</span></div>
     </div>
-    
-    <!-- ===== 경로 요약 및 경유지 연결 틀 ===== -->
+
+    <!-- ===== 경로 요약 카드 (틀 제거, 버튼만 존재) ===== -->
     <div id="route-summary-card" class="card" style="display: none; margin-top: 8px;">
-        <!-- 상단: 제목 + 경유지 연결 버튼 -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <h3 style="margin: 0; font-size: 1rem; color: var(--text-primary);">✨ 최적 경로 계산 완료</h3>
-            <button id="nav-start-btn" class="btn btn-primary btn-sm" style="padding: 4px 12px; font-size: 0.8rem; display: flex; align-items: center; gap: 4px;">
-                🚗 경유지 연결 (<span id="selected-count-badge">0</span>)
+            <button id="nav-start-btn" class="btn btn-primary btn-sm" style="padding: 4px 12px; font-size: 0.8rem;">
+                🚗 전체 경로 연결 (<span id="waypoint-count-badge">0</span>)
             </button>
         </div>
-        
-        <!-- 요약 텍스트 -->
         <p id="summary-text" style="color: var(--text-secondary); font-size: 0.9rem; margin: 0 0 8px 0;"></p>
-        
-        <!-- ★★★ 경유지 틀 (프레임) - 드래그로 범위 조정 가능 ★★★ -->
-       <div id="waypoint-frame-container" style="
-        position: relative;
-        border: 3px dashed var(--primary-color);
-        border-radius: 12px;
-        padding: 8px;
-        background: var(--bg-tertiary);
-        margin-top: 4px;
-        min-height: 80px;
-        height: 200px;
-        touch-action: none; /* 드래그 충돌 방지 */
-    ">
-            <!-- 상단 핸들 (드래그로 틀 크기 조정) -->
-            <div id="frame-handle-top" style="
-                height: 10px;
-                background: var(--primary-color);
-                border-radius: 6px 6px 0 0;
-                cursor: ns-resize;
-                opacity: 0.4;
-                transition: opacity 0.2s;
-                margin: -4px -8px 0 -8px;
-                position: relative;
-                z-index: 10;
-            " onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.4'"></div>
-            
-            <!-- 경유지 목록 (스크롤 가능) -->
-            <div id="optimized-waypoints-list" style="
-                max-height: 160px;
-                overflow-y: auto;
-                padding: 6px 0;
-                display: flex;
-                flex-direction: column;
-                gap: 4px;
-            ">
-                <!-- JavaScript로 동적 생성 -->
-            </div>
-            
-            <!-- 하단 핸들 (드래그로 틀 크기 조정) -->
-            <div id="frame-handle-bottom" style="
-                height: 10px;
-                background: var(--primary-color);
-                border-radius: 0 0 6px 6px;
-                cursor: ns-resize;
-                opacity: 0.4;
-                transition: opacity 0.2s;
-                margin: 0 -8px -4px -8px;
-                position: relative;
-                z-index: 10;
-            " onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.4'"></div>
-        </div>
-        
-        <!-- 하단 정보 -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
-            <span id="frame-info" style="font-size: 0.7rem; color: var(--text-muted);">
-                ⬆⬇ 드래그로 범위 조정
-            </span>
-            <span id="nav-limit-msg" style="font-size: 0.7rem; color: var(--text-muted);"></span>
-        </div>
+        <div id="nav-limit-msg" style="font-size: 0.7rem; color: var(--text-muted); text-align: center; margin-top: 4px;"></div>
     </div>
-    
-    <!-- 기존 경로 목록 (하단) -->
+
     <div id="routeList" style="margin-top:8px;"></div>
     <div id="routeStatus" class="tab-status"></div>
 </div>
