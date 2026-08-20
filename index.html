@@ -597,9 +597,6 @@
     <header class="header">
         <div class="header-left"><h1>🚗 경로 최적화</h1></div>
         <div class="header-right">
-            <button id="tmapAllBtn" onclick="openTmapWithAllWaypoints()" style="background:#0064d9; border:1px solid rgba(255,255,255,0.2); border-radius:30px; padding:4px 12px; height:32px; display:flex; align-items:center; gap:4px; cursor:pointer; transition:all 0.25s ease; color:white; font-size:12px; font-weight:700;" title="경유지 전체를 TMap 으로 연결">
-                🚗 티맵연결
-            </button>
             <div class="weather" id="weatherDisplay" onclick="showWeekWeather()">
                 <span>⏳</span><span class="temp">--°C</span>
             </div>
@@ -706,15 +703,13 @@
                     <div id="optimized-waypoints-list" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; max-height: 300px; overflow-y: auto;">
                         <!-- 자바스크립트로 경유지 카드 생성 -->
                     </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                        <button id="nav-tmap-btn" class="btn" style="width: 100%; background: #0064d8; color: white; border: none; font-weight: 600;">
-                            🚗 티맵으로 시작
-                        </button>
-                        <button id="nav-kakao-btn" class="btn" style="width: 100%; background: #fee500; color: #333; border: none; font-weight: 600;">
-                            🚙 카카오로 시작
-                        </button>
-                    </div>
-                    <p id="nav-limit-msg" style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 8px;"></p>
+                   <!-- ===== 교체할 코드 ===== -->
+<div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
+    <button id="nav-start-btn" class="btn" style="width: 100%; background: #0064d8; color: white; border: none; font-weight: 600;">
+        🚗 전체 경로 열기
+    </button>
+</div>
+<p id="nav-limit-msg" style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 8px;"></p>
                 </div>
             </div>
             
