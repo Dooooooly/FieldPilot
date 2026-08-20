@@ -5234,52 +5234,41 @@ function openMultiStopNavigation() {
         return;
     }
 
-    // 네비게이션 앱 스펙상 최대 10개로 제한
-    const limit = 10;
-    const pointsToUse = allPoints.slice(0, limit);
-    
-    if (totalPoints > limit) {
-        showTabStatus('tab-route', `⚠️ ${totalPoints}개의 지점 중 처음 ${limit}개만 전달됩니다.`, 'warning');
-    }
-
-    // ★ 1. 출발지, 중간 경유지, 도착지를 명확히 분리
-    const start = pointsToUse[0];
-    const end = pointsToUse[pointsToUse.length - 1]; // 명확한 최종 도착지
-    const intermediateWaypoints = pointsToUse.slice(1, pointsToUse.length - 1); // 중간 경유지들만 추출
-
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
     // ============================================================
-    // 2. TMap 처리 (도착지 rGo* 파라미터 명시 추가)
+    // 1. TMap 처리 (경유지 최대 10개 지원)
     // ============================================================
     if (routeApi === 'tmap') {
-        let params = [];
-        // 출발지
-        params.push('startName=' + encodeURIComponent(start.name));
-        params.push('startX=' + start.lng);
-        params.push('startY=' + start.lat);
-        
-        // ★ 도착지 명시 (중요: 이 부분이 없으면 중간 경유지가 무시됨)
-        params.push('rGoName=' + encodeURIComponent(end.name));
-        params.push('rGoX=' + end.lng);
-        params.push('rGoY=' + end.lat);
+        const limit = 10;
+        const pointsToUse = allPoints.slice(0, limit);
+        const tStart = pointsToUse[0];
+        const tEnd = pointsToUse[pointsToUse.length - 1];
+        const tWaypoints = pointsToUse.slice(1, -1);
 
-        // ★ 중간 경유지 추가
-        if (intermediateWaypoints.length > 0) {
-            let wpNames = intermediateWaypoints.map(p => encodeURIComponent(p.name)).join(',');
-            let wpXs = intermediateWaypoints.map(p => p.lng).join(',');
-            let wpYs = intermediateWaypoints.map(p => p.lat).join(',');
-            params.push('waypointNames=' + wpNames);
-            params.push('waypointXs=' + wpXs);
-            params.push('waypointYs=' + wpYs);
+        if (totalPoints > limit) {
+            showTabStatus('tab-route', `⚠️ TMap은 최대 10개 지점까지만 지원합니다. 처음 10개만 전달됩니다.`, 'warning');
+        }
+
+        let params = [];
+        params.push('startName=' + encodeURIComponent(tStart.name));
+        params.push('startX=' + tStart.lng);
+        params.push('startY=' + tStart.lat);
+        params.push('rGoName=' + encodeURIComponent(tEnd.name));
+        params.push('rGoX=' + tEnd.lng);
+        params.push('rGoY=' + tEnd.lat);
+
+        if (tWaypoints.length > 0) {
+            params.push('waypointNames=' + tWaypoints.map(p => encodeURIComponent(p.name)).join(','));
+            params.push('waypointXs=' + tWaypoints.map(p => p.lng).join(','));
+            params.push('waypointYs=' + tWaypoints.map(p => p.lat).join(','));
         }
 
         const schemeUrl = 'tmap://route?' + params.join('&');
         const webUrl = 'https://apis-navi.tmap.co.kr/routes/' 
-            + start.lat + ',' + start.lng + '/' 
-            + end.lat + ',' + end.lng
-            + '?name=' + encodeURIComponent(start.name + '→' + end.name);
+            + tStart.lat + ',' + tStart.lng + '/' + tEnd.lat + ',' + tEnd.lng
+            + '?name=' + encodeURIComponent(tStart.name + '→' + tEnd.name);
 
         if (!isMobile) {
             window.open(webUrl, '_blank');
@@ -5297,22 +5286,51 @@ function openMultiStopNavigation() {
     }
 
     // ============================================================
-    // 3. 카카오내비 처리 (start, via, goal 명확화)
+    // 2. 카카오맵 앱 처리 (경유지 최대 5개 제한)
     // ============================================================
     if (routeApi === 'kakao') {
-        let params = [];
-        // 출발지
-        params.push('start=' + encodeURIComponent(start.name) + ',' + start.lng + ',' + start.lat);
-        // ★ 도착지 명시
-        params.push('goal=' + encodeURIComponent(end.name) + ',' + end.lng + ',' + end.lat);
-
-        // ★ 중간 경유지 추가
-        for (let i = 0; i < intermediateWaypoints.length; i++) {
-            const wp = intermediateWaypoints[i];
-            params.push('via=' + encodeURIComponent(wp.name) + ',' + wp.lng + ',' + wp.lat);
+        // 카카오맵 앱은 경유지를 최대 5개까지만 지원
+        const maxWaypoints = 5;
+        const intermediateWaypoints = allPoints.slice(1, -1); // 중간 경유지들
+        
+        if (intermediateWaypoints.length > maxWaypoints) {
+            showConfirmModal(
+                '카카오맵 경유지 제한',
+                '카카오맵 앱은 경유지를 최대 5개까지만 지원합니다.\n\n' +
+                '현재 경유지는 ' + intermediateWaypoints.length + '개입니다.\n\n' +
+                '• [확인]: 출발지 → 최종 도착지만 앱으로 연결합니다.\n' +
+                '• [취소]: 이 화면의 지도에서 전체 최적 경로를 확인합니다.',
+                function() {
+                    // 확인 클릭 시: 출발지 -> 도착지 만으로 앱 실행
+                    openKakaoMapStartToEndOnly(startPoint, allPoints[allPoints.length - 1], isMobile, isIOS);
+                },
+                function() {
+                    // 취소 클릭 시: 아무것도 안 함 (사용자가 현재 PWA 지도에서 경로를 보도록 유도)
+                    showTabStatus('tab-route', '💡 현재 지도에서 최적화된 전체 경유지 순서를 확인하세요.', 'info');
+                }
+            );
+            return;
         }
 
-        const schemeUrl = 'kakaonavi://navigate?' + params.join('&');
+        // 경유지가 5개 이하일 경우 정상 스킴 실행
+        const start = allPoints[0];
+        const end = allPoints[allPoints.length - 1];
+        const validWaypoints = intermediateWaypoints.slice(0, maxWaypoints);
+
+        // kakaomap://route 스킴 형식
+        // sp=출발지위도,경도&ep=도착지위도,경도&waypoints=경유지1위도,경도|경유지2위도,경도
+        let scheme = 'kakaomap://route?' +
+            'sp=' + start.lat + ',' + start.lng +
+            '&ep=' + end.lat + ',' + end.lng +
+            '&sname=' + encodeURIComponent(start.name) +
+            '&dname=' + encodeURIComponent(end.name) +
+            '&by=CAR';
+
+        if (validWaypoints.length > 0) {
+            const waypointsStr = validWaypoints.map(wp => wp.lat + ',' + wp.lng).join('|');
+            scheme += '&waypoints=' + waypointsStr;
+        }
+
         const webUrl = 'https://map.kakao.com/link/from/'
             + encodeURIComponent(start.name) + ',' + start.lat + ',' + start.lng
             + '/to/'
@@ -5324,13 +5342,47 @@ function openMultiStopNavigation() {
             return;
         }
 
-        window.location.href = schemeUrl;
+        // 모바일: 스킴 실행 시도
+        window.location.href = scheme;
         setTimeout(function() {
-            window.open(webUrl, '_blank');
+            // 앱 실행 실패 시 웹으로 폴백
+            if (!window.location.href.startsWith('kakaomap://')) {
+                window.open(webUrl, '_blank');
+            }
         }, 1500);
         
-        showTabStatus('tab-route', `🗺️ 카카오내비 실행 중... (총 ${pointsToUse.length}개 지점)`, 'info');
+        showTabStatus('tab-route', `🗺️ 카카오맵 실행 중... (총 ${allPoints.length}개 지점)`, 'info');
         return;
+    }
+}
+
+// ============================================================
+// 헬퍼 함수: 카카오맵 출발지->도착지 전용 연결 (경유지 생략)
+// ============================================================
+function openKakaoMapStartToEndOnly(start, end, isMobile, isIOS) {
+    const scheme = 'kakaomap://route?' +
+        'sp=' + start.lat + ',' + start.lng +
+        '&ep=' + end.lat + ',' + end.lng +
+        '&sname=' + encodeURIComponent(start.name) +
+        '&dname=' + encodeURIComponent(end.name) +
+        '&by=CAR';
+        
+    const webUrl = 'https://map.kakao.com/link/from/'
+        + encodeURIComponent(start.name) + ',' + start.lat + ',' + start.lng
+        + '/to/'
+        + encodeURIComponent(end.name) + ',' + end.lat + ',' + end.lng;
+
+    if (isMobile) {
+        window.location.href = scheme;
+        setTimeout(function() {
+            if (!window.location.href.startsWith('kakaomap://')) {
+                window.open(webUrl, '_blank');
+            }
+        }, 1500);
+        showTabStatus('tab-route', '🗺️ 카카오맵 실행 (출발지 → 도착지)', 'info');
+    } else {
+        window.open(webUrl, '_blank');
+        showTabStatus('tab-route', '💻 PC 환경이므로 카카오맵 웹으로 연결합니다.', 'info');
     }
 }
 
