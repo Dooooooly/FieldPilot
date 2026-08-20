@@ -77,6 +77,8 @@ let favFilterActive = false;
 let pendingUpload = null;
 let originalRouteCost = null;
 let routeApi = localStorage.getItem(ROUTE_API_KEY) || 'kakao';
+let weatherRetryCount = 0;
+const MAX_WEATHER_RETRY = 3;
 let tempSettings = {};
 let routeObjective = 'distance';
 let useRoadOptimization = true;
@@ -2545,21 +2547,9 @@ function showRouteList() {
         let remarkDisplay = p.remark ? '<span class="remark">' + escapeHtml(p.remark) + '</span>' : '';
         html += '<div class="route-item sortable-item" data-index="' + i + '" data-lat="' + p.lat + '" data-lng="' + p.lng + '" data-name="' + escapeHtml(p.name) + '" style="border-left-color:' + color + ';cursor:pointer;" onclick="if(!event.target.closest(\'.kakao-route-btn\') && !event.target.closest(\'.drag-handle\')) moveToRoutePoint(this)">';
         html += '<div class="idx" style="background:' + color + ';color:white;">' + (i + 1) + '</div>';
-        html += '<div class="info">';
-        html += '<div class="name">' + escapeHtml(p.name) + ' ' + remarkDisplay + '</div>';
-        html += addrDisplay;
-        html += '</div>';
-        html += '<div class="dist" style="text-align:right;font-size:12px;font-weight:600;flex-shrink:0;min-width:80px;color:' + color + ';">';
-        html += segDist.toFixed(1) + 'km<br><span style="font-size:10px;color:#718096;">' + segTime + '분</span></div>';
-        html += '<button class="btn btn-outline kakao-route-btn" style="margin-left:4px;padding:4px 8px;font-size:12px;flex-shrink:0;min-height:32px;border-radius:4px;position:relative;z-index:10;" onclick="openKakaoMapFromRoute(this)" title="길찾기"';
-        html += ' data-from-name="' + escapeHtml(prev.name) + '"';
-        html += ' data-from-lat="' + prev.lat + '"';
-        html += ' data-from-lng="' + prev.lng + '"';
-        html += ' data-to-name="' + escapeHtml(p.name) + '"';
-        html += ' data-to-lat="' + p.lat + '"';
-        html += ' data-to-lng="' + p.lng + '">';
-        html += '🗺️';
-        html += '</button>';
+        html += '<div class="info"><div class="name">' + escapeHtml(p.name) + ' ' + remarkDisplay + '</div>' + addrDisplay + '</div>';
+        html += '<div class="dist" style="text-align:right;font-size:12px;font-weight:600;flex-shrink:0;min-width:80px;color:' + color + ';">' + segDist.toFixed(1) + 'km<br><span style="font-size:10px;color:#718096;">' + segTime + '분</span></div>';
+        html += '<button class="btn btn-outline kakao-route-btn" style="margin-left:4px;padding:4px 8px;font-size:12px;flex-shrink:0;min-height:32px;border-radius:4px;position:relative;z-index:10;" onclick="openKakaoMapFromRoute(this)" title="길찾기" data-from-name="' + escapeHtml(prev.name) + '" data-from-lat="' + prev.lat + '" data-from-lng="' + prev.lng + '" data-to-name="' + escapeHtml(p.name) + '" data-to-lat="' + p.lat + '" data-to-lng="' + p.lng + '">🗺️</button>';
         html += '<span class="drag-handle" style="color:#a0aec0;font-size:20px;cursor:grab;padding:4px 6px;user-select:none;margin-left:2px;" title="드래그하여 순서 변경">⠿</span>';
         html += '</div>';
     }
@@ -2568,31 +2558,23 @@ function showRouteList() {
     // ===== 2. 전체 경유지 연결 버튼 + API별 제한 안내 =====
     const totalPoints = sorted.length + 1;
     const isKakao = routeApi === 'kakao';
-    const appLimit = isKakao ? 6 : 12;  // 카카오맵: 출발+경유5+도착=6 / TMap: 출발+경유10+도착=12
+    const appLimit = isKakao ? 6 : 12;
     const waypointLimit = isKakao ? 5 : 10;
     const appName = isKakao ? '카카오맵' : 'TMap';
     const isOverLimit = totalPoints > appLimit;
     const displayCount = Math.min(totalPoints, appLimit);
 
-    html += '<div style="margin-top:12px; padding-top:12px; border-top: 1px solid var(--border-color, #e2e8f0);">';
+    html += '<div style="margin-top:12px; padding-top:12px; border-top: 1px solid #e2e8f0;">';
     html += '<button id="nav-all-waypoints-btn" class="btn" style="width:100%; padding:10px; font-size:14px; font-weight:600; background: ' + (routeApi === 'tmap' ? '#0064d8' : '#fee500') + '; color: ' + (routeApi === 'tmap' ? 'white' : '#333') + '; border: none; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">';
     html += (routeApi === 'tmap' ? '🚗' : '🗺️') + ' ' + appName + '로 전체 연결 (' + displayCount + '개 지점)';
     html += '</button>';
-
-    // ★ API별 제한 안내 문구
     if (isOverLimit) {
-        html += '<div style="font-size:0.7rem; color:#e53e3e; text-align:center; margin-top:4px;">';
-        html += '⚠️ ' + appName + ' 제한: 총 ' + appLimit + '개 지점까지만 전달됩니다';
-        if (isKakao) {
-            html += '<br>(경유지 ' + waypointLimit + '개 초과 시 초과분은 잘려서 전달됩니다)';
-        }
+        html += '<div style="font-size:0.7rem; color:#e53e3e; text-align:center; margin-top:4px;">⚠️ ' + appName + ' 제한: 총 ' + appLimit + '개 지점까지만 전달됩니다';
+        if (isKakao) html += '<br>(경유지 ' + waypointLimit + '개 초과 시 초과분은 잘려서 전달됩니다)';
         html += '</div>';
     } else {
-        html += '<div style="font-size:0.7rem; color:var(--text-muted, #718096); text-align:center; margin-top:4px;">';
-        html += '✅ ' + totalPoints + '개 지점 모두 연결 (' + appName + ' 지원 범위 내)';
-        if (isKakao) {
-            html += '<br>💡 카카오맵 앱은 경유지 최대 ' + waypointLimit + '개까지 지원합니다';
-        }
+        html += '<div style="font-size:0.7rem; color:#718096; text-align:center; margin-top:4px;">✅ ' + totalPoints + '개 지점 모두 연결 (' + appName + ' 지원 범위 내)';
+        if (isKakao) html += '<br>💡 카카오맵 앱은 경유지 최대 ' + waypointLimit + '개까지 지원합니다';
         html += '</div>';
     }
     html += '</div>';
