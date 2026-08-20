@@ -5476,3 +5476,5 @@ function updateFrameSelection() {
         renderOptimizedWaypoints();
     }
 }
+
+window.switchTab = switchTab;
