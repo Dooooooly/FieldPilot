@@ -214,13 +214,28 @@ function loadSettings() {
     let saved = localStorage.getItem(SETTINGS_KEY);
     if (saved) {
         try {
-            settings = JSON.parse(saved);
-            document.getElementById('githubToken').value = decodeKey(settings.githubToken || '');
-            document.getElementById('kakaoJsKey').value = decodeKey(settings.kakaoJsKey || '');
-            document.getElementById('kakaoRestKey').value = decodeKey(settings.kakaoRestKey || '');
-            updateSettingsStatus();
-        } catch(e) {}
+            let parsed = JSON.parse(saved);
+            // 복호화하여 settings에 할당 (기존 객체 유지)
+            settings.githubToken = decodeKey(parsed.githubToken || '');
+            settings.kakaoJsKey = decodeKey(parsed.kakaoJsKey || '');
+            settings.kakaoRestKey = decodeKey(parsed.kakaoRestKey || '');
+        } catch (e) {
+            console.warn('⚠️ 설정 복원 오류, 기본값으로 초기화합니다.', e);
+            settings.githubToken = '';
+            settings.kakaoJsKey = '';
+            settings.kakaoRestKey = '';
+        }
+    } else {
+        // 저장된 데이터가 없으면 빈 값으로 초기화
+        settings.githubToken = '';
+        settings.kakaoJsKey = '';
+        settings.kakaoRestKey = '';
     }
+    // UI 동기화 (input 필드에 값 표시)
+    document.getElementById('githubToken').value = settings.githubToken || '';
+    document.getElementById('kakaoJsKey').value = settings.kakaoJsKey || '';
+    document.getElementById('kakaoRestKey').value = settings.kakaoRestKey || '';
+    updateSettingsStatus();
 }
 
 function saveSettings() {
