@@ -717,17 +717,17 @@
         <p id="summary-text" style="color: var(--text-secondary); font-size: 0.9rem; margin: 0 0 8px 0;"></p>
         
         <!-- ★★★ 경유지 틀 (프레임) - 드래그로 범위 조정 가능 ★★★ -->
-        <div id="waypoint-frame-container" style="
-            position: relative;
-            border: 3px dashed var(--primary-color);
-            border-radius: 12px;
-            padding: 8px;
-            background: var(--bg-tertiary);
-            margin-top: 4px;
-            transition: border-color 0.3s, border-style 0.3s;
-            min-height: 80px;
-            height: 200px;
-        ">
+       <div id="waypoint-frame-container" style="
+        position: relative;
+        border: 3px dashed var(--primary-color);
+        border-radius: 12px;
+        padding: 8px;
+        background: var(--bg-tertiary);
+        margin-top: 4px;
+        min-height: 80px;
+        height: 200px;
+        touch-action: none; /* 드래그 충돌 방지 */
+    ">
             <!-- 상단 핸들 (드래그로 틀 크기 조정) -->
             <div id="frame-handle-top" style="
                 height: 10px;
