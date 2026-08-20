@@ -2,7 +2,7 @@
 // Service Worker - PWA 오프라인 지원 (최적화)
 // ============================================================
 
-const CACHE_NAME = 'route-opt-v28';
+const CACHE_NAME = 'route-opt-v29;
 const BASE_PATH = '/route-optimizer-pwa/';
 
 // 캐시할 파일 목록 (서브 디렉터리 경로 포함)
