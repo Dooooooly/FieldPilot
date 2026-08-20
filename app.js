@@ -92,6 +92,9 @@ let autoSyncTimer = null;
 let sdkLoading = false;
 let isShowingRouteMarkers = false;
 let pendingMapCenter = null;
+let frameStartIndex = 0;
+let frameEndIndex = 9; // 기본 10개 (출발지 포함)
+let isFrameDragging = false;
 
 const searchIndexState = {
     selected: -1,
@@ -5050,40 +5053,20 @@ function showTabStatus(tabId, msg, type) {
     }
 }
 
-// ===== 경로 요약 카드 토글 및 네비게이션 기능 =====
-let waypointsPanelVisible = false;
-
+// ===== 경로 요약 카드 초기화 (틀 방식) =====
 function initRouteSummaryCard() {
-    const toggleBtn = document.getElementById('toggle-waypoints-btn');
-    const waypointsPanel = document.getElementById('waypoints-panel');
     const navBtn = document.getElementById('nav-start-btn');
     
-    if (toggleBtn) {
-        // 기존 이벤트 제거
-        const newToggleBtn = toggleBtn.cloneNode(true);
-        toggleBtn.parentNode.replaceChild(newToggleBtn, toggleBtn);
-        
-        newToggleBtn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            waypointsPanelVisible = !waypointsPanelVisible;
-            if (waypointsPanel) {
-                waypointsPanel.style.display = waypointsPanelVisible ? 'block' : 'none';
-            }
-            if (waypointsPanelVisible && routeResult) {
-                renderOptimizedWaypoints();
-            }
-            const badge = document.getElementById('waypoint-count-badge');
-            if (badge && routeResult) {
-                const total = routeResult.places.length + 1;
-                badge.textContent = total;
-            }
-        });
-    }
-    
     if (navBtn) {
+        // 기존 이벤트 제거 (중복 방지)
         const newNavBtn = navBtn.cloneNode(true);
         navBtn.parentNode.replaceChild(newNavBtn, navBtn);
-        newNavBtn.addEventListener('click', openMultiStopNavigation);
+        
+        // ★ 경유지 연결 버튼 클릭 시 바로 스킴 실행 (드롭다운/패널 없음)
+        newNavBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            openMultiStopNavigation();
+        });
     }
 }
 
@@ -5091,9 +5074,10 @@ function renderOptimizedWaypoints() {
     if (!routeResult) return;
     
     const container = document.getElementById('optimized-waypoints-list');
-    const badge = document.getElementById('waypoint-count-badge');
+    const badge = document.getElementById('selected-count-badge');
     const limitMsg = document.getElementById('nav-limit-msg');
     const navBtn = document.getElementById('nav-start-btn');
+    const frameContainer = document.getElementById('waypoint-frame-container');
     
     if (!container) return;
     
@@ -5101,31 +5085,58 @@ function renderOptimizedWaypoints() {
     const allPoints = [startPoint, ...sorted];
     const totalPoints = allPoints.length;
     
+    // ★ 틀에 표시될 경유지 (frameStartIndex ~ frameEndIndex)
+    const startIdx = Math.max(0, Math.min(frameStartIndex, totalPoints - 1));
+    const endIdx = Math.min(frameEndIndex + 1, totalPoints);
+    const displayPoints = allPoints.slice(startIdx, endIdx);
+    const selectedCount = displayPoints.length;
+    
+    // 선택 개수 배지 업데이트
     if (badge) {
-        badge.textContent = totalPoints;
+        badge.textContent = selectedCount;
     }
     
+    // 버튼 텍스트 업데이트
     if (navBtn) {
         const apiLabel = routeApi === 'tmap' ? 'TMap' : '카카오내비';
         const icon = routeApi === 'tmap' ? '🚗' : '🗺️';
-        navBtn.textContent = `${icon} ${apiLabel}으로 전체 경로 열기 (${totalPoints}개 지점)`;
+        navBtn.innerHTML = `${icon} 경유지 연결 (<span id="selected-count-badge">${selectedCount}</span>)`;
         navBtn.style.background = routeApi === 'tmap' ? '#0064d8' : '#fee500';
         navBtn.style.color = routeApi === 'tmap' ? 'white' : '#333';
+        // 배지 재설정
+        const newBadge = navBtn.querySelector('#selected-count-badge');
+        if (newBadge) newBadge.textContent = selectedCount;
     }
     
+    // 제한 메시지
     if (limitMsg) {
-        if (totalPoints > 10) {
-            limitMsg.textContent = `⚠️ 최대 10개 지점까지 전달됩니다 (${totalPoints - 10}개 제외)`;
+        if (selectedCount > 10) {
+            limitMsg.textContent = `⚠️ 최대 10개까지 전달됩니다 (${selectedCount - 10}개 제외)`;
+            limitMsg.style.color = '#e53e3e';
         } else {
-            limitMsg.textContent = '';
+            limitMsg.textContent = `✅ ${selectedCount}개 지점 선택됨`;
+            limitMsg.style.color = 'var(--text-muted)';
         }
     }
     
+    // ★ 틀 테두리 색상 (10개 초과 시 경고)
+    if (frameContainer) {
+        if (selectedCount > 10) {
+            frameContainer.style.borderColor = '#e53e3e';
+            frameContainer.style.borderStyle = 'solid';
+        } else {
+            frameContainer.style.borderColor = 'var(--primary-color)';
+            frameContainer.style.borderStyle = 'dashed';
+        }
+    }
+    
+    // 경유지 목록 렌더링
     container.innerHTML = '';
     
-    for (let i = 0; i < totalPoints; i++) {
-        const p = allPoints[i];
-        const isStart = i === 0;
+    for (let i = 0; i < displayPoints.length; i++) {
+        const p = displayPoints[i];
+        const globalIndex = startIdx + i;
+        const isStart = globalIndex === 0;
         
         const card = document.createElement('div');
         card.className = 'route-item';
@@ -5134,7 +5145,11 @@ function renderOptimizedWaypoints() {
         card.style.cursor = 'pointer';
         card.style.borderLeft = isStart ? '3px solid #4a5568' : '3px solid #4f7eb3';
         card.style.background = isStart ? 'rgba(74,85,104,0.08)' : 'var(--bg-secondary)';
+        card.style.display = 'flex';
+        card.style.alignItems = 'center';
+        card.style.gap = '8px';
         
+        // 번호 배지
         const numBadge = document.createElement('span');
         numBadge.style.background = isStart ? '#4a5568' : '#4f7eb3';
         numBadge.style.color = 'white';
@@ -5147,12 +5162,12 @@ function renderOptimizedWaypoints() {
         numBadge.style.fontSize = '0.7rem';
         numBadge.style.fontWeight = 'bold';
         numBadge.style.flexShrink = '0';
-        numBadge.innerHTML = isStart ? '🚩' : String(i);
+        numBadge.innerHTML = isStart ? '🚩' : String(globalIndex);
         
+        // 정보 영역
         const info = document.createElement('div');
         info.style.flex = '1';
         info.style.minWidth = '0';
-        info.style.marginLeft = '8px';
         
         const name = document.createElement('div');
         name.style.fontWeight = '600';
@@ -5173,6 +5188,7 @@ function renderOptimizedWaypoints() {
         info.appendChild(name);
         info.appendChild(addr);
         
+        // 클릭하면 지도로 이동
         card.addEventListener('click', function() {
             focusMapOnPoint(p.lat, p.lng, 4);
         });
@@ -5181,6 +5197,17 @@ function renderOptimizedWaypoints() {
         card.appendChild(info);
         
         container.appendChild(card);
+    }
+    
+    // ★ 틀 높이 자동 조절
+    if (frameContainer) {
+        const itemHeight = 52;
+        const padding = 32;
+        const maxHeight = Math.min(displayPoints.length * itemHeight + padding + 20, 350);
+        const minHeight = 80;
+        const newHeight = Math.max(minHeight, Math.min(maxHeight, 350));
+        frameContainer.style.height = newHeight + 'px';
+        container.style.maxHeight = (newHeight - padding) + 'px';
     }
 }
 
@@ -5193,17 +5220,23 @@ function openMultiStopNavigation() {
     const { places: sorted, startPoint } = routeResult;
     const allPoints = [startPoint, ...sorted];
     const totalPoints = allPoints.length;
+    
+    // ★ 틀에 표시된 경유지들만 선택 (frameStartIndex ~ frameEndIndex)
+    const startIdx = Math.max(0, Math.min(frameStartIndex, totalPoints - 1));
+    const endIdx = Math.min(frameEndIndex + 1, totalPoints);
+    const selectedPoints = allPoints.slice(startIdx, endIdx);
 
-    if (totalPoints < 2) {
-        showTabStatus('tab-route', '⚠️ 최소 2개 이상의 지점이 필요합니다.', 'warning');
+    if (selectedPoints.length < 2) {
+        showTabStatus('tab-route', '⚠️ 최소 2개 이상의 지점을 선택하세요.', 'warning');
         return;
     }
 
+    // 최대 10개로 제한
     const limit = 10;
-    const pointsToUse = allPoints.slice(0, limit);
+    const pointsToUse = selectedPoints.slice(0, limit);
 
-    if (totalPoints > limit) {
-        showTabStatus('tab-route', `⚠️ ${totalPoints}개의 지점 중 처음 ${limit}개만 전달됩니다.`, 'warning');
+    if (selectedPoints.length > limit) {
+        showTabStatus('tab-route', `⚠️ ${selectedPoints.length}개 중 처음 ${limit}개만 전달됩니다.`, 'warning');
     }
 
     const start = pointsToUse[0];
@@ -5233,4 +5266,99 @@ function openMultiStopNavigation() {
 
     window.location.href = scheme;
     showTabStatus('tab-route', `🗺️ ${routeApi === 'tmap' ? 'TMap' : '카카오내비'} 실행 중... (${pointsToUse.length}개 지점)`, 'info');
+}
+
+function initFrameDragHandlers() {
+    const topHandle = document.getElementById('frame-handle-top');
+    const bottomHandle = document.getElementById('frame-handle-bottom');
+    const container = document.getElementById('waypoint-frame-container');
+    const list = document.getElementById('optimized-waypoints-list');
+    
+    if (!topHandle || !bottomHandle || !container || !list) return;
+    
+    let startY = 0;
+    let startHeight = 0;
+    let isDragging = false;
+    
+    function onDragStart(e) {
+        e.preventDefault();
+        isDragging = true;
+        startY = e.clientY || e.touches[0].clientY;
+        startHeight = container.offsetHeight;
+        document.body.style.userSelect = 'none';
+        document.body.style.cursor = 'ns-resize';
+        container.style.borderStyle = 'solid';
+        container.style.borderColor = '#3182ce';
+    }
+    
+    function onDragMove(e) {
+        if (!isDragging) return;
+        e.preventDefault();
+        const currentY = e.clientY || e.touches[0].clientY;
+        const delta = currentY - startY;
+        let newHeight = startHeight + delta;
+        
+        const minHeight = 80;
+        const maxHeight = 380;
+        newHeight = Math.max(minHeight, Math.min(maxHeight, newHeight));
+        
+        container.style.height = newHeight + 'px';
+        list.style.maxHeight = (newHeight - 36) + 'px';
+        
+        // ★ 드래그 중에도 표시되는 경유지 개수 실시간 업데이트
+        updateFrameSelection();
+    }
+    
+    function onDragEnd() {
+        if (!isDragging) return;
+        isDragging = false;
+        document.body.style.userSelect = '';
+        document.body.style.cursor = '';
+        container.style.borderStyle = 'dashed';
+        container.style.borderColor = 'var(--primary-color)';
+        
+        // ★ 드래그 종료 후 최종 선택 업데이트
+        updateFrameSelection();
+        renderOptimizedWaypoints();
+    }
+    
+    // 마우스 이벤트
+    topHandle.addEventListener('mousedown', onDragStart);
+    bottomHandle.addEventListener('mousedown', onDragStart);
+    document.addEventListener('mousemove', onDragMove);
+    document.addEventListener('mouseup', onDragEnd);
+    
+    // 터치 이벤트
+    topHandle.addEventListener('touchstart', onDragStart, { passive: false });
+    bottomHandle.addEventListener('touchstart', onDragStart, { passive: false });
+    document.addEventListener('touchmove', onDragMove, { passive: false });
+    document.addEventListener('touchend', onDragEnd, { passive: false });
+}
+
+function updateFrameSelection() {
+    if (!routeResult) return;
+    
+    const { places: sorted, startPoint } = routeResult;
+    const allPoints = [startPoint, ...sorted];
+    const totalPoints = allPoints.length;
+    
+    // 컨테이너 높이로 표시 가능한 항목 수 계산
+    const container = document.getElementById('waypoint-frame-container');
+    const list = document.getElementById('optimized-waypoints-list');
+    if (!container || !list) return;
+    
+    const containerHeight = container.offsetHeight;
+    const itemHeight = 52;
+    const padding = 36;
+    const visibleHeight = containerHeight - padding;
+    const visibleCount = Math.max(1, Math.floor(visibleHeight / itemHeight));
+    
+    // ★ 프레임 시작 인덱스는 고정, 끝 인덱스만 조정
+    const visibleItems = Math.min(visibleCount, totalPoints - frameStartIndex);
+    const newEndIdx = Math.min(frameStartIndex + visibleItems - 1, totalPoints - 1);
+    
+    if (newEndIdx !== frameEndIndex) {
+        frameEndIndex = newEndIdx;
+        renderOptimizedWaypoints();
+    }
 }
