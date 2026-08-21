@@ -5500,98 +5500,72 @@ function injectDarkModeCSS() {
     let style = document.createElement('style');
     style.id = 'dark-mode-css';
     style.textContent = `
-        /* ===== 다크 모드 전체 스타일 ===== */
         body.dark-mode { background: #1a202c !important; color: #e2e8f0 !important; }
-        
-        /* 텍스트 가시성 보장 (핵심) */
-        body.dark-mode h1, body.dark-mode h2, body.dark-mode h3, body.dark-mode h4 { color: #f7fafc !important; }
-        body.dark-mode p, body.dark-mode label, body.dark-mode span, body.dark-mode div, body.dark-mode li { color: #e2e8f0 !important; }
-        body.dark-mode .name, body.dark-mode .preset-name, body.dark-mode .commit-msg { color: #f7fafc !important; }
-        body.dark-mode .addr, body.dark-mode .preset-detail, body.dark-mode .commit-date, body.dark-mode .empty-msg { color: #a0aec0 !important; }
-        body.dark-mode .result-info, body.dark-mode .info, body.dark-mode .preset-info, body.dark-mode .commit-info { color: #e2e8f0 !important; }
-        
-        /* 배경 및 컨테이너 */
-        body.dark-mode .tab-content, body.dark-mode .tab-content > div { background: #1a202c !important; }
+        body.dark-mode .tab-content, body.dark-mode .tab-content > div { background: #1a202c !important; color: #e2e8f0 !important; }
         body.dark-mode .bottom-tabs { background: #2d3748 !important; border-top-color: #4a5568 !important; }
-        body.dark-mode .section-title, body.dark-mode .card { background: #2d3748 !important; border-color: #4a5568 !important; }
-        body.dark-mode .place-item, body.dark-mode .route-item, body.dark-mode .preset-item, body.dark-mode .commit-item, body.dark-mode .result-item { background: #2d3748 !important; border-color: #4a5568 !important; }
-        body.dark-mode .place-item:hover, body.dark-mode .route-item:hover, body.dark-mode .result-item:hover { background: #3a4556 !important; }
-        
-        /* 입력 요소 */
+        body.dark-mode .bottom-tab { color: #a0aec0 !important; }
+        body.dark-mode .bottom-tab.active { color: #63b3ed !important; background: rgba(99, 179, 237, 0.1) !important; }
         body.dark-mode input, body.dark-mode textarea, body.dark-mode select { background: #2d3748 !important; color: #e2e8f0 !important; border-color: #4a5568 !important; }
         body.dark-mode input::placeholder, body.dark-mode textarea::placeholder { color: #718096 !important; }
-        
-        /* 버튼 및 뱃지 */
         body.dark-mode .btn { background: #4a5568 !important; color: #e2e8f0 !important; border-color: #718096 !important; }
         body.dark-mode .btn-primary { background: #3182ce !important; color: white !important; border-color: #3182ce !important; }
         body.dark-mode .btn-outline { background: transparent !important; color: #cbd5e0 !important; border-color: #4a5568 !important; }
+        body.dark-mode .place-item, body.dark-mode .route-item, body.dark-mode .preset-item, body.dark-mode .commit-item { background: #2d3748 !important; color: #e2e8f0 !important; border-color: #4a5568 !important; }
+        body.dark-mode .place-item:hover, body.dark-mode .route-item:hover { background: #3a4556 !important; }
+        body.dark-mode .place-item .name, body.dark-mode .route-item .name { color: #f7fafc !important; }
+        body.dark-mode .place-item .addr, body.dark-mode .route-item .addr, body.dark-mode .addr { color: #a0aec0 !important; }
+        body.dark-mode .result-item { background: #2d3748 !important; color: #e2e8f0 !important; border-color: #4a5568 !important; }
+        body.dark-mode .result-item:hover { background: #3a4556 !important; }
+        body.dark-mode .waypoint-list li { background: #2d3748 !important; color: #e2e8f0 !important; }
+        body.dark-mode .empty-msg { color: #718096 !important; }
         body.dark-mode .badge { background: #4a5568 !important; color: #e2e8f0 !important; }
         body.dark-mode .badge-ok { background: #276749 !important; color: #c6f6d5 !important; }
         body.dark-mode .badge-wait { background: #744210 !important; color: #fefcbf !important; }
         body.dark-mode .badge-fail { background: #9b2c2c !important; color: #fed7d7 !important; }
-        
-        /* 기타 요소 */
+        body.dark-mode h1, body.dark-mode h2, body.dark-mode h3, body.dark-mode h4 { color: #f7fafc !important; }
+        body.dark-mode p, body.dark-mode label, body.dark-mode span { color: #e2e8f0 !important; }
+        body.dark-mode .section-title, body.dark-mode .card { background: #2d3748 !important; border-color: #4a5568 !important; }
         body.dark-mode .tab-status { background: #2d3748 !important; color: #e2e8f0 !important; }
         body.dark-mode #offlineBanner { background: #744210 !important; color: #fefcbf !important; }
-        body.dark-mode .remark, body.dark-mode .source { background: #4a5568 !important; color: #cbd5e0 !important; }
+        body.dark-mode .remark { background: #4a5568 !important; color: #cbd5e0 !important; }
+        body.dark-mode .source { background: #4a5568 !important; color: #cbd5e0 !important; }
         body.dark-mode .drag-handle { color: #a0aec0 !important; }
+        body.dark-mode .info .name { color: #f7fafc !important; }
+        body.dark-mode .info .addr { color: #a0aec0 !important; }
         body.dark-mode #weatherDisplay { background: transparent !important; color: #e2e8f0 !important; }
+        body.dark-mode .preset-item .preset-name { color: #f7fafc !important; }
+        body.dark-mode .preset-item .preset-detail { color: #a0aec0 !important; }
+        body.dark-mode .commit-msg { color: #f7fafc !important; }
+        body.dark-mode .commit-date { color: #a0aec0 !important; }
+        body.dark-mode .restore-btn { background: #3182ce !important; color: white !important; }
+        body.dark-mode #map { filter: brightness(0.85) contrast(1.1); }
+        body.dark-mode .route-start { background: rgba(74, 85, 104, 0.3) !important; }
+        body.dark-mode #regionSelect { background: #2d3748 !important; color: #e2e8f0 !important; }
+        body.dark-mode #sortPlaces { background: #2d3748 !important; color: #e2e8f0 !important; }
         body.dark-mode .fav.active { color: #ecc94b !important; }
         body.dark-mode .fav.inactive { color: #718096 !important; }
+        body.dark-mode #uploadResult { color: #1a202c !important; }
+        body.dark-mode #storageInfo { color: #a0aec0 !important; }
+        body.dark-mode #optimizationStatus { color: #a0aec0 !important; }
         body.dark-mode .idx { color: white !important; }
-        body.dark-mode .route-start { background: rgba(74, 85, 104, 0.3) !important; }
-        body.dark-mode #regionSelect, body.dark-mode #sortPlaces { background: #2d3748 !important; color: #e2e8f0 !important; }
+        body.dark-mode .dist { color: inherit !important; }
+        body.dark-mode #confirmModal > div, body.dark-mode #promptModal > div, body.dark-mode #customRegionModal > div, body.dark-mode #customPresetModal > div, body.dark-mode #regionManagerModal > div, body.dark-mode #weekWeatherModal > div, body.dark-mode #addPlaceModal > div, body.dark-mode #modal > div, body.dark-mode #optimizeSettingsModal > div { background: #2d3748 !important; color: #e2e8f0 !important; }
+        body.dark-mode #confirmModal h3, body.dark-mode #promptModal h3, body.dark-mode #customRegionModal h3, body.dark-mode #customPresetModal h3, body.dark-mode #regionManagerModal h3, body.dark-mode #weekWeatherModal h3, body.dark-mode #modal h3, body.dark-mode #optimizeSettingsModal h3 { color: #f7fafc !important; }
+        body.dark-mode #confirmModal p, body.dark-mode #promptModal p, body.dark-mode #customRegionModal p, body.dark-mode #customPresetModal p { color: #cbd5e0 !important; }
         body.dark-mode .region-item { background: #2d3748 !important; color: #e2e8f0 !important; }
         body.dark-mode .region-item.active { background: #2c5282 !important; color: #ebf8ff !important; }
-        body.dark-mode #map { filter: brightness(0.85) contrast(1.1); }
-        
-        /* 모달 */
-        body.dark-mode #confirmModal > div, body.dark-mode #promptModal > div, body.dark-mode #customRegionModal > div, 
-        body.dark-mode #customPresetModal > div, body.dark-mode #regionManagerModal > div, body.dark-mode #weekWeatherModal > div, 
-        body.dark-mode #addPlaceModal > div, body.dark-mode #modal > div, body.dark-mode #optimizeSettingsModal > div { 
-            background: #2d3748 !important; color: #e2e8f0 !important; 
-        }
-        body.dark-mode #confirmModal p, body.dark-mode #promptModal p, body.dark-mode #customRegionModal p, body.dark-mode #customPresetModal p { color: #cbd5e0 !important; }
-
-        /* ★ 헤더 다크모드 토글 버튼 스타일 (이모지 전용, 자연스럽게) */
-        #darkModeToggleBtn {
-            background: transparent !important;
-            border: none !important;
-            font-size: 1.1rem !important;
-            cursor: pointer !important;
-            padding: 2px 6px !important;
-            margin-left: 4px !important;
-            border-radius: 4px !important;
-            transition: background 0.2s !important;
-            vertical-align: middle !important;
-            line-height: 1 !important;
-        }
-        #darkModeToggleBtn:hover { background: rgba(0,0,0,0.05) !important; }
         body.dark-mode #darkModeToggleBtn:hover { background: rgba(255,255,255,0.1) !important; }
+        body.dark-mode #statsContent { color: #e2e8f0 !important; }
+        body.dark-mode #statsContent > div { background: transparent !important; }
+        body.dark-mode .stats-period-btn { background: #4a5568 !important; color: #e2e8f0 !important; border-color: #718096 !important; }
+        body.dark-mode .stats-period-btn.active { background: #3182ce !important; color: white !important; border-color: #3182ce !important; }
+        body.dark-mode #statsVisitData > div { background: #2d3748 !important; }
+        body.dark-mode #exitConfirmModal > div { background: #2d3748 !important; color: #e2e8f0 !important; }
+        body.dark-mode #exitConfirmModal h3 { color: #f7fafc !important; }
+        body.dark-mode #exitConfirmModal p { color: #cbd5e0 !important; }
+        body.dark-mode #exitCancelBtn { background: #4a5568 !important; color: #e2e8f0 !important; border-color: #718096 !important; }
+        body.dark-mode #exitConfirmBtn { background: #e53e3e !important; color: white !important; }
     `;
-    style.textContent += `
-    body.dark-mode #exitConfirmModal > div {
-        background: #2d3748 !important;
-        color: #e2e8f0 !important;
-    }
-    body.dark-mode #exitConfirmModal h3 {
-        color: #f7fafc !important;
-    }
-    body.dark-mode #exitConfirmModal p {
-        color: #cbd5e0 !important;
-    }
-    body.dark-mode #exitCancelBtn {
-        background: #4a5568 !important;
-        color: #e2e8f0 !important;
-        border-color: #718096 !important;
-    }
-    body.dark-mode #exitConfirmBtn {
-        background: #e53e3e !important;
-        color: white !important;
-    }
-
-    style.textContent += ` body.dark-mode #statsContent { color: #e2e8f0 !important; } body.dark-mode #statsContent > div { background: transparent !important; } body.dark-mode .stats-period-btn { background: #4a5568 !important; color: #e2e8f0 !important; border-color: #718096 !important; } body.dark-mode .stats-period-btn.active { background: #3182ce !important; color: white !important; border-color: #3182ce !important; }`;
-`;
     document.head.appendChild(style);
 }
 function addDarkModeToggleToHeader() {
