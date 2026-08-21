@@ -2570,34 +2570,47 @@ function showRouteList() {
     }
     html += '</div>';
 
-    // ===== 2. 전체 경유지 연결 버튼 + API별 제한 안내 =====
-    const totalPoints = sorted.length + 1;
-    const isKakao = routeApi === 'kakao';
-    const appLimit = isKakao ? 6 : 12;
-    const waypointLimit = isKakao ? 5 : 10;
-    const appName = isKakao ? '카카오맵' : 'TMap';
-    const isOverLimit = totalPoints > appLimit;
-    const displayCount = Math.min(totalPoints, appLimit);
+    // ===== 2. 전체 경유지 연결 버튼 + 통계 기록 버튼 (나란히 배치) =====
+const totalPoints = sorted.length + 1;
+const isKakao = routeApi === 'kakao';
+const appLimit = isKakao ? 6 : 12;
+const waypointLimit = isKakao ? 5 : 10;
+const appName = isKakao ? '카카오맵' : 'TMap';
+const isOverLimit = totalPoints > appLimit;
+const displayCount = Math.min(totalPoints, appLimit);
 
-    html += '<div style="margin-top:12px; padding-top:12px; border-top: 1px solid #e2e8f0;">';
-    html += '<button id="nav-all-waypoints-btn" class="btn" style="width:100%; padding:10px; font-size:14px; font-weight:600; background: ' + (routeApi === 'tmap' ? '#0064d8' : '#fee500') + '; color: ' + (routeApi === 'tmap' ? 'white' : '#333') + '; border: none; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">';
-    html += (routeApi === 'tmap' ? '🚗' : '🗺️') + ' ' + appName + '로 전체 연결 (' + displayCount + '개 지점)';
-    html += '</button>';
-    if (isOverLimit) {
-        html += '<div style="font-size:0.7rem; color:#e53e3e; text-align:center; margin-top:4px;">⚠️ ' + appName + ' 제한: 총 ' + appLimit + '개 지점까지만 전달됩니다';
-        if (isKakao) html += '<br>(경유지 ' + waypointLimit + '개 초과 시 초과분은 잘려서 전달됩니다)';
-        html += '</div>';
-    } else {
-        html += '<div style="font-size:0.7rem; color:#718096; text-align:center; margin-top:4px;">✅ ' + totalPoints + '개 지점 모두 연결 (' + appName + ' 지원 범위 내)';
-        if (isKakao) html += '<br>💡 카카오맵 앱은 경유지 최대 ' + waypointLimit + '개까지 지원합니다';
-        html += '</div>';
-    }
-    // ===== 통계 기록 버튼 (전체 연결 버튼 오른쪽) =====
-    html += '<div style="display:flex; gap:6px; margin-top:8px;">';
-    html += '<button id="stats-record-btn" class="btn btn-outline" style="flex:1; padding:8px; font-size:13px; font-weight:600; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px;" onclick="recordVisitStats()">';
-    html += '📊 통계 기록';
-    html += '</button>';
+html += '<div style="margin-top:12px; padding-top:12px; border-top: 1px solid #e2e8f0;">';
+
+// ★ 버튼 2개를 나란히 배치
+html += '<div style="display:flex; gap:8px; margin-bottom:8px;">';
+
+// 왼쪽: 전체 경유지 연결 버튼
+html += '<button id="nav-all-waypoints-btn" class="btn" style="flex:1; padding:10px; font-size:14px; font-weight:600; background: ' + (routeApi === 'tmap' ? '#0064d8' : '#fee500') + '; color: ' + (routeApi === 'tmap' ? 'white' : '#333') + '; border: none; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px;">';
+html += (routeApi === 'tmap' ? '🚗' : '🗺️') + ' 전체 연결';
+html += '</button>';
+
+// 오른쪽: 통계 기록 버튼 (배경색 있음)
+html += '<button id="stats-record-btn" class="btn" style="flex:1; padding:10px; font-size:14px; font-weight:600; background:#38a169; color:white; border:none; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px;" onclick="recordVisitStats()">';
+html += '📊 통계 기록';
+html += '</button>';
+
+html += '</div>';
+
+// API별 제한 안내
+if (isOverLimit) {
+    html += '<div style="font-size:0.7rem; color:#e53e3e; text-align:center; margin-top:4px;">⚠️ ' + appName + ' 제한: 총 ' + appLimit + '개 지점까지만 전달됩니다';
+    if (isKakao) html += '<br>(경유지 ' + waypointLimit + '개 초과 시 초과분은 잘려서 전달됩니다)';
     html += '</div>';
+} else {
+    html += '<div style="font-size:0.7rem; color:#718096; text-align:center; margin-top:4px;">✅ ' + totalPoints + '개 지점 모두 연결 (' + appName + ' 지원 범위 내)</div>';
+}
+
+// ★ 통계 기록 안내 문구
+html += '<div style="font-size:0.65rem; color:#a0aec0; text-align:center; margin-top:6px; padding:6px; background:#f7fafc; border-radius:4px; border:1px dashed #cbd5e0;">';
+html += '💡 <strong>통계 기록</strong> 버튼을 눌러야 방문 기록이 저장됩니다';
+html += '</div>';
+
+html += '</div>';
 
     // ===== 3. HTML을 DOM에 한 번만 삽입 =====
     container.innerHTML = html;
@@ -5626,6 +5639,20 @@ function initDarkMode() {
 }
 
 // ============================================================
+// 초기 로드 시 URL 해시에 맞춰 탭 설정
+// ============================================================
+function initHistoryHash() {
+    let validTabs = ['tab-places', 'tab-route', 'tab-list', 'tab-stats', 'tab-settings', 'tab-help'];
+    let initialHash = window.location.hash.replace('#', '');
+    
+    if (initialHash && validTabs.includes(initialHash) && document.getElementById(initialHash)) {
+        switchTab(initialHash, false);
+    } else {
+        history.replaceState({ tab: 'tab-places' }, '', '#tab-places');
+    }
+}
+
+// ============================================================
 // 41. 브라우저 뒤로가기/앞으로가기 지원 (History API)
 // ============================================================
 window.addEventListener('popstate', function(event) {
@@ -5836,7 +5863,7 @@ async function recordVisitStats() {
     let now = new Date();
     let visitRecord = {
         date: now.toISOString().slice(0, 10),
-        time: now.toHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0'),
+        time: now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0'),
         timestamp: now.getTime(),
         placeCount: sorted.length,
         places: placeRecords,
