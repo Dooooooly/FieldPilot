@@ -731,6 +731,20 @@
             </div>
         </div>
 
+        <div id="tab-stats" class="tab-content">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <h2 style="font-size:18px; font-weight:700;">📊 통계</h2>
+        <button class="btn btn-outline btn-sm" onclick="refreshStatsFromGitHub()" style="padding:6px 12px; font-size:12px;">
+            🔄 GitHub에서 새로고침
+        </button>
+    </div>
+    <div id="statsContent">
+        <div style="text-align:center; padding:40px 20px; color:#a0aec0;">
+            ⏳ 통계 데이터를 불러오려면<br>🔄 새로고침 버튼을 눌러주세요
+        </div>
+    </div>
+</div>
+
         <!-- ===== 탭: 설정 ===== -->
         <div id="tab-settings" class="tab-content">
             <div id="tab-settings-uxheader" class="ux-tab-header">
@@ -1087,6 +1101,9 @@
         </button>
         <button class="bottom-tab" data-tab="tab-list" onclick="switchTab('tab-list')">
             <span class="tab-icon">📋</span> 현장
+        </button>
+        <button class="bottom-tab" data-tab="tab-stats" onclick="switchTab('tab-stats')">
+            <span class="tab-icon">📊</span>  통계
         </button>
         <button class="bottom-tab" data-tab="tab-settings" onclick="switchTab('tab-settings')">
             <span class="tab-icon">⚙️</span> 설정
