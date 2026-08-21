@@ -5470,11 +5470,10 @@ function updateDarkModeButton() {
     let btn = document.getElementById('darkModeToggleBtn');
     if (!btn) return;
     let isDark = document.body.classList.contains('dark-mode');
-    // 이모지만 표시
+    // 이모지만 표시 (텍스트 없음)
     btn.textContent = isDark ? '☀️' : '🌙';
     btn.title = isDark ? '라이트 모드로 전환' : '다크 모드로 전환';
 }
-
 function injectDarkModeCSS() {
     if (document.getElementById('dark-mode-css')) return;
     let style = document.createElement('style');
@@ -5552,7 +5551,7 @@ function injectDarkModeCSS() {
     document.head.appendChild(style);
 }
 function addDarkModeToggleToHeader() {
-    // 날씨 표시 요소 옆에 배치
+    // 날씨 표시 요소(#weatherDisplay) 바로 옆에 배치
     let weatherEl = document.getElementById('weatherDisplay');
     if (!weatherEl) return;
     
@@ -5561,8 +5560,18 @@ function addDarkModeToggleToHeader() {
 
     let btn = document.createElement('button');
     btn.id = 'darkModeToggleBtn';
+    btn.type = 'button';
     btn.title = '다크 모드 전환';
+    btn.style.cssText = 'background:transparent; border:none; font-size:1.1rem; cursor:pointer; padding:2px 6px; margin-left:4px; border-radius:4px; transition:background 0.2s; vertical-align:middle; line-height:1;';
     btn.addEventListener('click', toggleDarkMode);
+    btn.addEventListener('mouseenter', function() {
+        this.style.background = document.body.classList.contains('dark-mode') 
+            ? 'rgba(255,255,255,0.1)' 
+            : 'rgba(0,0,0,0.05)';
+    });
+    btn.addEventListener('mouseleave', function() {
+        this.style.background = 'transparent';
+    });
     
     // 날씨 요소 바로 다음에 삽입
     weatherEl.parentNode.insertBefore(btn, weatherEl.nextSibling);
@@ -5586,7 +5595,7 @@ function initDarkMode() {
     applyDarkMode(isDark);
     
     // ★ 설정 탭이 아닌 헤더에 추가
-    addDarkModeToggleToHeader(); 
+    addDarkModeToggleToHeader();
     
     // 시스템 테마 변경 감지
     if (window.matchMedia) {
