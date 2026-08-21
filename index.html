@@ -944,7 +944,11 @@
                 <input type="number" id="modalPlaceLat" placeholder="위도 (선택)" step="any" style="flex:1; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px;">
                 <input type="number" id="modalPlaceLng" placeholder="경도 (선택)" step="any" style="flex:1; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px;">
             </div>
-            <input type="text" id="modalPlaceRemark" placeholder="비고 (선택)" style="width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px; margin-bottom:12px;">
+            <div style="margin-bottom:8px;">
+    <label for="modalDong" style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;color:#4a5568;">🏘️ 동 (행정동)</label>
+    <input id="modalDong" type="text" placeholder="동 (선택)" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;">
+</div>
+            <input type="text" id="modalPlaceRemark" placeholder="비고" style="width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px; margin-bottom:12px;">
             <div style="display:flex; gap:8px; justify-content:flex-end;">
                 <button class="btn btn-outline btn-sm" onclick="closeAddPlaceModal()" style="padding:6px 16px;">취소</button>
                 <button class="btn btn-primary btn-sm" onclick="saveAddPlaceModal()" style="padding:6px 16px;">저장</button>
@@ -966,7 +970,11 @@
                 <input type="number" id="modalLat" placeholder="위도 (선택)" step="any" style="flex:1; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px;">
                 <input type="number" id="modalLng" placeholder="경도 (선택)" step="any" style="flex:1; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px;">
             </div>
-            <input type="text" id="modalRemark" placeholder="비고 (선택)" style="width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px; margin-bottom:8px;">
+            <div style="margin-bottom:8px;">
+    <label for="modalDong" style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;color:#4a5568;">🏘️ 동 (행정동)</label>
+    <input id="modalDong" type="text" placeholder="동 (선택)" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;">
+</div>
+            <input type="text" id="modalRemark" placeholder="비고" style="width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px; margin-bottom:8px;">
             <input type="hidden" id="modalId">
             <div class="btn-row flex-row" style="justify-content:flex-end;">
                 <button class="btn btn-outline btn-sm" onclick="closeModal()" style="padding:6px 16px;">취소</button>
