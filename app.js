@@ -88,6 +88,13 @@ let useDirectionHint = true;
 const STATS_KEY_PREFIX = 'stats_';
 let currentStats = null;
 
+// --- 작업 기록 관련 ---
+const WORK_KEY_PREFIX = 'work_';
+let currentWork = null;
+let workerName = localStorage.getItem('workerName') || '';
+let workCalendarYear = new Date().getFullYear();
+let workCalendarMonth = new Date().getMonth();
+
 // --- 마커/검색 상태 ---
 let startMarker = null;
 let routeMarkers = [];
@@ -201,6 +208,10 @@ function switchTab(tabId, updateHistory = true) {
     if (tabId === 'tab-stats' && typeof renderStatsTab === 'function') {
     renderStatsTab();
     }
+
+    if (tabId === 'tab-work' && typeof renderWorkTab === 'function') {
+    renderWorkTab();
+    }    
     
     if (window.innerWidth < 700) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -245,7 +256,37 @@ function loadSettings() {
     document.getElementById('githubToken').value = settings.githubToken || '';
     document.getElementById('kakaoJsKey').value = settings.kakaoJsKey || '';
     document.getElementById('kakaoRestKey').value = settings.kakaoRestKey || '';
+    let wn = document.getElementById('workerName');
+if (wn) wn.value = workerName;
+updateWorkerNameStatus();
     updateSettingsStatus();
+}
+
+function saveWorkerName() {
+    let input = document.getElementById('workerName');
+    if (!input) return;
+    workerName = input.value.trim();
+    localStorage.setItem('workerName', workerName);
+    updateWorkerNameStatus();
+    updateWorkWorkerDisplay();
+    showTabStatus('tab-settings', workerName ? '✅ 작업자 이름 저장됨: ' + workerName : '⚠️ 이름이 비어있습니다', workerName ? 'ok' : 'warning');
+}
+
+function updateWorkerNameStatus() {
+    let el = document.getElementById('workerNameStatus');
+    if (!el) return;
+    if (workerName) {
+        el.textContent = '✅ ' + workerName;
+        el.className = 'badge badge-ok';
+    } else {
+        el.textContent = '⏳ 이름 미설정';
+        el.className = 'badge badge-wait';
+    }
+}
+
+function updateWorkWorkerDisplay() {
+    let el = document.getElementById('workWorkerDisplay');
+    if (el) el.textContent = workerName ? '👤 ' + workerName : '👤 미설정';
 }
 
 function saveSettings() {
@@ -4967,7 +5008,7 @@ function handleAddrKeydown(event) {
 // ============================================================
 (function() {
     let startX = 0, startY = 0, tracking = false;
-    let tabOrder = ['tab-places', 'tab-route', 'tab-list', 'tab-stats', 'tab-settings', 'tab-help'];
+    let validTabs = ['tab-places', 'tab-route', 'tab-list', 'tab-stats', 'tab-work', 'tab-settings', 'tab-help'];
     document.addEventListener('touchstart', function(e) {
         let target = e.target;
         // ★ 지도 영역과 입력 요소는 스와이프에서 제외
@@ -5536,6 +5577,15 @@ if (document.getElementById('dark-mode-css')) return;
 let style = document.createElement('style');
 style.id = 'dark-mode-css';
 let css = '';
+css += 'body.dark-mode #workCalendar { color: #e2e8f0 !important; } ';
+css += 'body.dark-mode #workDateDetail { color: #e2e8f0 !important; } ';
+css += 'body.dark-mode #workDateDetail > div { background: transparent !important; } ';
+css += 'body.dark-mode #workDateDetail [style*="f7fafc"] { background: #2d3748 !important; } ';
+css += 'body.dark-mode #workEditModal > div, body.dark-mode #workAddModal > div, body.dark-mode #categoryManagerModal > div { background: #2d3748 !important; color: #e2e8f0 !important; } ';
+css += 'body.dark-mode #workEditModal h3, body.dark-mode #workAddModal h3, body.dark-mode #categoryManagerModal h3 { color: #f7fafc !important; } ';
+css += 'body.dark-mode #workEditModal label, body.dark-mode #workAddModal label { color: #e2e8f0 !important; } ';
+css += 'body.dark-mode #workEditModal select, body.dark-mode #workEditModal textarea, body.dark-mode #workAddModal select, body.dark-mode #workAddModal textarea, body.dark-mode #workAddModal input, body.dark-mode #categoryManagerModal input { background: #4a5568 !important; color: #e2e8f0 !important; border-color: #718096 !important; } ';
+css += 'body.dark-mode #workCalendar [style*="e2e8f0"] { border-color: #4a5568 !important; } ';
 // ===== 기본 배경/텍스트 =====
 css += 'body.dark-mode { background: #1a202c !important; color: #e2e8f0 !important; } ';
 css += 'body.dark-mode * { border-color: #4a5568; } ';
@@ -5951,6 +6001,28 @@ async function recordVisitStats() {
 
     saveStatsToLocalStorage(stats);
 
+    // ===== 작업 기록에도 동시 기록 =====
+let work = loadWorkFromLocalStorage();
+let nowWork = new Date();
+for (let i = 0; i < placeRecords.length; i++) {
+    let pr = placeRecords[i];
+    work.workHistory.push({
+        id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5) + i,
+        date: nowWork.toISOString().slice(0, 10),
+        time: nowWork.getHours().toString().padStart(2, '0') + ':' + nowWork.getMinutes().toString().padStart(2, '0'),
+        timestamp: nowWork.getTime(),
+        placeName: pr.name,
+        dong: pr.dong || '',
+        worker: workerName || '미설정',
+        category: '',
+        content: '',
+        fromStats: true
+    });
+}
+work.lastUpdated = nowWork.toISOString();
+saveWorkToLocalStorage(work);
+uploadWorkToGitHub(work);
+
     let uploaded = await uploadStatsToGitHub(stats);
     if (uploaded) {
         showTabStatus('tab-route', '✅ 통계 기록 완료! (' + sorted.length + '개 현장, GitHub 동기화 완료)', 'ok');
@@ -6263,6 +6335,95 @@ function switchStatsPeriod(period) {
     let dataContainer = document.getElementById('statsVisitData');
     if (dataContainer) {
         dataContainer.innerHTML = renderVisitData(visits);
+    }
+}
+
+// ============================================================
+// 42. 작업 기록 기능
+// ============================================================
+function getWorkKey(region) {
+    return WORK_KEY_PREFIX + (region || currentRegion);
+}
+
+function loadWorkFromLocalStorage() {
+    let key = getWorkKey(currentRegion);
+    let data = localStorage.getItem(key);
+    if (data) {
+        try { return JSON.parse(data); } catch(e) {}
+    }
+    return { version: 1, categories: ['카메라', '비상벨', '전원설비', '네트워크', '기타'], workHistory: [], lastUpdated: null };
+}
+
+function saveWorkToLocalStorage(work) {
+    let key = getWorkKey(currentRegion);
+    localStorage.setItem(key, JSON.stringify(work));
+    currentWork = work;
+}
+
+async function uploadWorkToGitHub(work) {
+    let token = settings.githubToken;
+    if (!token || !currentRegion || !navigator.onLine) return false;
+    try {
+        let userRes = await fetch('https://api.github.com/user', { headers: { 'Authorization': 'token ' + token } });
+        if (!userRes.ok) return false;
+        let user = await userRes.json();
+        let fileName = currentRegion + '_work.json';
+        let content = JSON.stringify(work, null, 2);
+        let b64Content = utf8ToBase64(content);
+        let fileUrl = 'https://api.github.com/repos/' + user.login + '/route-data/contents/' + encodeURIComponent(fileName);
+        let fileRes = await fetch(fileUrl, { headers: { 'Authorization': 'token ' + token } });
+        let sha = null;
+        if (fileRes.ok) { sha = (await fileRes.json()).sha; }
+        let putData = { message: 'Work: ' + currentRegion + ' (' + new Date().toLocaleString() + ')', content: b64Content };
+        if (sha) putData.sha = sha;
+        let putRes = await fetch(fileUrl, {
+            method: 'PUT',
+            headers: { 'Authorization': 'token ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify(putData)
+        });
+        return putRes.ok;
+    } catch(e) { return false; }
+}
+
+async function refreshWorkFromGitHub() {
+    let container = document.getElementById('workCalendar');
+    if (!container) return;
+    if (!settings.githubToken) {
+        showTabStatus('tab-work', '⚠️ GitHub 토큰을 먼저 설정해주세요.', 'warning');
+        return;
+    }
+    if (!currentRegion) {
+        showTabStatus('tab-work', '⚠️ 지역이 선택되지 않았습니다.', 'warning');
+        return;
+    }
+    container.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#a0aec0;">⏳ GitHub에서 작업 기록 불러오는 중...</div>';
+    try {
+        let token = settings.githubToken;
+        let userRes = await fetch('https://api.github.com/user', { headers: { 'Authorization': 'token ' + token } });
+        if (!userRes.ok) throw new Error('토큰 인증 실패');
+        let user = await userRes.json();
+        let fileName = currentRegion + '_work.json';
+        let fileUrl = 'https://api.github.com/repos/' + user.login + '/route-data/contents/' + encodeURIComponent(fileName);
+        let fileRes = await fetch(fileUrl, { headers: { 'Authorization': 'token ' + token }, cache: 'no-store' });
+        if (fileRes.status === 404) {
+            currentWork = { version: 1, categories: ['카메라', '비상벨', '전원설비', '네트워크', '기타'], workHistory: [], lastUpdated: null };
+            saveWorkToLocalStorage(currentWork);
+            renderWorkTab();
+            showTabStatus('tab-work', '📭 아직 작업 기록이 없습니다.', 'info');
+            return;
+        }
+        if (!fileRes.ok) throw new Error('다운로드 실패: ' + fileRes.status);
+        let data = await fileRes.json();
+        let binaryString = atob(data.content);
+        let bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+        let work = JSON.parse(new TextDecoder('utf-8').decode(bytes));
+        currentWork = work;
+        saveWorkToLocalStorage(work);
+        renderWorkTab();
+        showTabStatus('tab-work', '✅ GitHub에서 작업 기록 동기화 완료', 'ok');
+    } catch(error) {
+        container.innerHTML = '<div style="text-align:center;padding:20px;color:#e53e3e;">❌ 로드 실패: ' + escapeHtml(error.message) + '</div>';
     }
 }
 
