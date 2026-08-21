@@ -5791,30 +5791,35 @@ function tryCloseApp() {
 // ===== 동 추출 (카카오 coord2address API) =====
 async function extractDongFromCoords(lat, lng) {
     let restKey = settings.kakaoRestKey;
-    if (!restKey) return '기타';
+    if (!restKey) return '';
     try {
         let res = await fetch(
             'https://dapi.kakao.com/v2/local/geo/coord2address.json?x=' + lng + '&y=' + lat,
             { headers: { 'Authorization': 'KakaoAK ' + restKey } }
         );
-        if (!res.ok) return '기타';
+        if (!res.ok) return '';
         let data = await res.json();
         if (data.documents && data.documents.length > 0) {
             let doc = data.documents[0];
-            // 지번 주소에서 동 추출
             if (doc.address && doc.address.region_3depth_name) {
                 return doc.address.region_3depth_name;
             }
-            // 도로명 주소에서 동 추출 시도
             if (doc.road_address && doc.road_address.address_name) {
                 let match = doc.road_address.address_name.match(/([가-힣]+\d?[가-힣]?\d?동)/);
                 if (match) return match[1];
             }
         }
-        return '기타';
+        return '';
     } catch(e) {
-        return '기타';
+        return '';
     }
+}
+
+// ===== 주소에서 동 추출 (API 실패 시 fallback) =====
+function extractDongFromAddress(address) {
+    if (!address) return '';
+    let match = address.match(/([가-힣]+\d?[가-힣]?\d?동)/);
+    return match ? match[1] : '';
 }
 
 // ===== 통계 기록 버튼 (showRouteList에서 호출) =====
@@ -5823,43 +5828,36 @@ async function recordVisitStats() {
         showTabStatus('tab-route', '⚠️ 최적화된 경로가 없습니다.', 'warning');
         return;
     }
-    
     if (!currentRegion) {
         showTabStatus('tab-route', '⚠️ 지역이 선택되지 않았습니다.', 'warning');
         return;
     }
-    
-    let { places: sorted, startPoint } = routeResult;
+    let sorted = routeResult.places;
+    let startPoint = routeResult.startPoint;
     if (!sorted || sorted.length === 0) {
         showTabStatus('tab-route', '⚠️ 기록할 경로가 없습니다.', 'warning');
         return;
     }
-    
     showTabStatus('tab-route', '⏳ 통계 기록 중... (동 정보 변환)', 'info');
-    
-    // 모든 경유지의 동 정보 추출 (API 호출)
+
     let placeRecords = [];
     for (let i = 0; i < sorted.length; i++) {
         let p = sorted[i];
-        let dong = '기타';
+        let dong = '';
         if (p.lat && p.lng) {
             dong = await extractDongFromCoords(p.lat, p.lng);
         }
-        placeRecords.push({
-            name: p.name,
-            dong: dong,
-            lat: p.lat,
-            lng: p.lng
-        });
+        if (!dong) {
+            dong = extractDongFromAddress(p.address || '');
+        }
+        placeRecords.push({ name: p.name, dong: dong || '미변환', lat: p.lat, lng: p.lng });
     }
-    
-    // 출발지도 포함
-    let startDong = '기타';
+
+    let startDong = '';
     if (startPoint && startPoint.lat && startPoint.lng) {
         startDong = await extractDongFromCoords(startPoint.lat, startPoint.lng);
     }
-    
-    // 방문 기록 생성
+
     let now = new Date();
     let visitRecord = {
         date: now.toISOString().slice(0, 10),
@@ -5867,31 +5865,23 @@ async function recordVisitStats() {
         timestamp: now.getTime(),
         placeCount: sorted.length,
         places: placeRecords,
-        startDong: startDong
+        startDong: startDong || '미변환'
     };
-    
-    // 기존 통계 불러오기
+
     let stats = loadStatsFromLocalStorage();
     stats.visitHistory.push(visitRecord);
-    
-    // 30일 이전 데이터 삭제
+
     let cutoff = now.getTime() - (30 * 24 * 60 * 60 * 1000);
-    stats.visitHistory = stats.visitHistory.filter(function(v) {
-        return v.timestamp >= cutoff;
-    });
-    
+    stats.visitHistory = stats.visitHistory.filter(function(v) { return v.timestamp >= cutoff; });
     stats.lastUpdated = now.toISOString();
-    
-    // localStorage 저장
+
     saveStatsToLocalStorage(stats);
-    
-    // GitHub 업로드
+
     let uploaded = await uploadStatsToGitHub(stats);
-    
     if (uploaded) {
         showTabStatus('tab-route', '✅ 통계 기록 완료! (' + sorted.length + '개 현장, GitHub 동기화 완료)', 'ok');
     } else {
-        showTabStatus('tab-route', '⚠️ 통계는 기록되었지만 GitHub 업로드에 실패했습니다.', 'warning');
+        showTabStatus('tab-route', '⚠️ 통계 기록됨. GitHub 업로드 실패 (오프라인 또는 토큰 미설정)', 'warning');
     }
 }
 
@@ -5904,9 +5894,7 @@ function loadStatsFromLocalStorage() {
     let key = getStatsKey(currentRegion);
     let data = localStorage.getItem(key);
     if (data) {
-        try {
-            return JSON.parse(data);
-        } catch(e) {}
+        try { return JSON.parse(data); } catch(e) {}
     }
     return { version: 1, visitHistory: [], lastUpdated: null };
 }
@@ -5917,212 +5905,164 @@ function saveStatsToLocalStorage(stats) {
     currentStats = stats;
 }
 
-// ===== GitHub 업로드 =====
+// ===== GitHub 업로드 (통계 기록 시 자동) =====
 async function uploadStatsToGitHub(stats) {
     let token = settings.githubToken;
-    if (!token) return false;
-    if (!currentRegion) return false;
-    if (!navigator.onLine) return false;
-    
+    if (!token || !currentRegion || !navigator.onLine) return false;
     try {
-        let userRes = await fetch('https://api.github.com/user', {
-            headers: { 'Authorization': 'token ' + token }
-        });
+        let userRes = await fetch('https://api.github.com/user', { headers: { 'Authorization': 'token ' + token } });
         if (!userRes.ok) return false;
         let user = await userRes.json();
-        let username = user.login;
-        let repoName = 'route-data';
         let fileName = currentRegion + '_stats.json';
-        
         let content = JSON.stringify(stats, null, 2);
         let b64Content = utf8ToBase64(content);
-        
-        let fileUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents/' + encodeURIComponent(fileName);
-        let fileRes = await fetch(fileUrl, {
-            headers: { 'Authorization': 'token ' + token }
-        });
+        let fileUrl = 'https://api.github.com/repos/' + user.login + '/route-data/contents/' + encodeURIComponent(fileName);
+        let fileRes = await fetch(fileUrl, { headers: { 'Authorization': 'token ' + token } });
         let sha = null;
-        if (fileRes.ok) {
-            let fileData = await fileRes.json();
-            sha = fileData.sha;
-        }
-        
-        let putData = {
-            message: 'Stats update: ' + currentRegion + ' (' + new Date().toLocaleString() + ')',
-            content: b64Content
-        };
+        if (fileRes.ok) { sha = (await fileRes.json()).sha; }
+        let putData = { message: 'Stats: ' + currentRegion + ' (' + new Date().toLocaleString() + ')', content: b64Content };
         if (sha) putData.sha = sha;
-        
         let putRes = await fetch(fileUrl, {
             method: 'PUT',
-            headers: {
-                'Authorization': 'token ' + token,
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Authorization': 'token ' + token, 'Content-Type': 'application/json' },
             body: JSON.stringify(putData)
         });
-        
         return putRes.ok;
-    } catch(e) {
-        return false;
-    }
+    } catch(e) { return false; }
 }
 
-// ===== GitHub에서 통계 다운로드 =====
+// ===== GitHub에서 통계 다운로드 (🔄 새로고침 버튼) =====
 async function refreshStatsFromGitHub() {
     let statsContent = document.getElementById('statsContent');
     if (!statsContent) return;
-    
     if (!settings.githubToken) {
         statsContent.innerHTML = '<div style="text-align:center;padding:20px;color:#e53e3e;">⚠️ 설정 탭에서 GitHub 토큰을 먼저 설정해주세요.</div>';
         return;
     }
-    
     if (!currentRegion) {
         statsContent.innerHTML = '<div style="text-align:center;padding:20px;color:#e53e3e;">⚠️ 지역이 선택되지 않았습니다.</div>';
         return;
     }
-    
     statsContent.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#a0aec0;">⏳ GitHub에서 통계 불러오는 중...</div>';
-    
     try {
         let token = settings.githubToken;
-        let userRes = await fetch('https://api.github.com/user', {
-            headers: { 'Authorization': 'token ' + token }
-        });
+        let userRes = await fetch('https://api.github.com/user', { headers: { 'Authorization': 'token ' + token } });
         if (!userRes.ok) throw new Error('토큰 인증 실패');
         let user = await userRes.json();
-        let username = user.login;
-        let repoName = 'route-data';
         let fileName = currentRegion + '_stats.json';
-        
-        let fileUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents/' + encodeURIComponent(fileName);
-        let fileRes = await fetch(fileUrl, {
-            headers: { 'Authorization': 'token ' + token },
-            cache: 'no-store'
-        });
-        
+        let fileUrl = 'https://api.github.com/repos/' + user.login + '/route-data/contents/' + encodeURIComponent(fileName);
+        let fileRes = await fetch(fileUrl, { headers: { 'Authorization': 'token ' + token }, cache: 'no-store' });
         if (fileRes.status === 404) {
-            // 파일이 없으면 기본 통계 표시
             currentStats = { version: 1, visitHistory: [], lastUpdated: null };
             saveStatsToLocalStorage(currentStats);
             renderStatsTab();
             return;
         }
-        
         if (!fileRes.ok) throw new Error('다운로드 실패: ' + fileRes.status);
-        
         let data = await fileRes.json();
         let binaryString = atob(data.content);
         let bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-        }
-        let content = new TextDecoder('utf-8').decode(bytes);
-        let stats = JSON.parse(content);
-        
-        // 30일 이전 데이터 삭제
+        for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+        let stats = JSON.parse(new TextDecoder('utf-8').decode(bytes));
         let cutoff = Date.now() - (30 * 24 * 60 * 60 * 1000);
         if (stats.visitHistory) {
-            stats.visitHistory = stats.visitHistory.filter(function(v) {
-                return v.timestamp >= cutoff;
-            });
+            stats.visitHistory = stats.visitHistory.filter(function(v) { return v.timestamp >= cutoff; });
         }
-        
         currentStats = stats;
         saveStatsToLocalStorage(stats);
         renderStatsTab();
-        
+        showTabStatus('tab-stats', '✅ GitHub에서 통계 동기화 완료', 'ok');
     } catch(error) {
         statsContent.innerHTML = '<div style="text-align:center;padding:20px;color:#e53e3e;">❌ 통계 로드 실패: ' + escapeHtml(error.message) + '</div>';
     }
 }
 
-// ===== 통계 탭 렌더링 =====
-function renderStatsTab() {
+// ===== 통계 탭 렌더링 (자동 동 변환 포함) =====
+async function renderStatsTab() {
     let container = document.getElementById('statsContent');
     if (!container) return;
-    
+
     if (!currentStats) {
         currentStats = loadStatsFromLocalStorage();
     }
-    
     let stats = currentStats;
     let history = stats.visitHistory || [];
-    
+
+    // ===== 자동 동 변환 (dong 없는 현장만, 통계 탭 진입 시 1회) =====
+    let needConvert = places.filter(function(p) { return !p.dong; });
+    if (needConvert.length > 0 && !dongConverting && settings.kakaoRestKey) {
+        dongConverting = true;
+        container.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#a0aec0;">🏘️ 동 정보 자동 변환 중... (0/' + needConvert.length + ')</div>';
+        let converted = 0;
+        for (let i = 0; i < needConvert.length; i++) {
+            let p = needConvert[i];
+            let dong = '';
+            if (p.lat && p.lng && p.lat !== 0 && p.lng !== 0) {
+                dong = await extractDongFromCoords(p.lat, p.lng);
+            }
+            if (!dong) {
+                dong = extractDongFromAddress(p.address || '');
+            }
+            p.dong = dong || '미변환';
+            converted++;
+            if (converted % 5 === 0 || converted === needConvert.length) {
+                container.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#a0aec0;">🏘️ 동 정보 자동 변환 중... (' + converted + '/' + needConvert.length + ')</div>';
+            }
+        }
+        savePlaces();
+        dongConverting = false;
+        showTabStatus('tab-stats', '✅ 동 정보 변환 완료 (' + converted + '개)', 'ok');
+    }
+
     // ===== 기간 필터링 =====
     let today = new Date().toISOString().slice(0, 10);
     let todayVisits = history.filter(function(v) { return v.date === today; });
-    
     let weekStart = new Date();
     weekStart.setDate(weekStart.getDate() - weekStart.getDay());
     let weekStartStr = weekStart.toISOString().slice(0, 10);
     let weekVisits = history.filter(function(v) { return v.date >= weekStartStr; });
-    
     let monthVisits = history;
-    
-    // ===== 기본 현황판: 동별 현장 개수 =====
+
+    // ===== 동별 현장 분포 =====
     let dongCount = {};
+    let noDongCount = 0;
     for (let i = 0; i < places.length; i++) {
         let p = places[i];
-        let dong = '기타';
-        if (p.address) {
-            let match = p.address.match(/([가-힣]+\d?[가-힣]?\d?동)/);
-            if (match) dong = match[1];
+        if (p.dong && p.dong !== '미변환') {
+            dongCount[p.dong] = (dongCount[p.dong] || 0) + 1;
+        } else {
+            noDongCount++;
         }
-        dongCount[dong] = (dongCount[dong] || 0) + 1;
     }
     let dongSorted = Object.entries(dongCount).sort(function(a, b) { return b[1] - a[1]; });
-    
+
     let visitCounts = { today: todayVisits, week: weekVisits, month: monthVisits };
-    
-    function getTopPlaces(visits) {
-        let placeCount = {};
-        visits.forEach(function(v) {
-            v.places.forEach(function(p) {
-                placeCount[p.name] = (placeCount[p.name] || 0) + 1;
-            });
-        });
-        return Object.entries(placeCount).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 5);
-    }
-    
-    function getTopDongs(visits) {
-        let dongVisitCount = {};
-        visits.forEach(function(v) {
-            v.places.forEach(function(p) {
-                if (p.dong && p.dong !== '기타') {
-                    dongVisitCount[p.dong] = (dongVisitCount[p.dong] || 0) + 1;
-                }
-            });
-        });
-        return Object.entries(dongVisitCount).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 3);
-    }
-    
+
+    // ===== HTML 생성 =====
     let html = '';
-    
-    // ===== GitHub 동기화 안내 =====
-    html += '<div style="background:#ebf8ff; border:1px solid #bee3f8; border-radius:8px; padding:12px; margin-bottom:16px;">';
-    html += '<div style="font-size:13px; color:#2b6cb0; font-weight:600; margin-bottom:4px;">☁️ GitHub 통계 동기화</div>';
-    html += '<div style="font-size:12px; color:#4a5568; line-height:1.5;">';
-    if (history.length === 0) {
-        html += '📭 아직 기록된 방문이 없습니다.<br>';
-        html += '<strong>지도 탭</strong>에서 경로를 계산한 후 <strong style="color:#38a169;">📊 통계 기록</strong> 버튼을 눌러야 여기에 표시됩니다.';
-    } else {
-        html += '✅ ' + history.length + '건의 방문 기록이 있습니다.';
-    }
+
+    // 새로고침 버튼
+    html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">';
+    html += '<div style="font-weight:700;font-size:16px;">📊 ' + escapeHtml(currentRegion || '통계') + '</div>';
+    html += '<button class="btn btn-outline btn-sm" onclick="refreshStatsFromGitHub()" style="padding:6px 12px; font-size:12px;">🔄 GitHub에서 새로고침</button>';
     html += '</div>';
-    html += '</div>';
-    
+
     // 기본 현황판
     html += '<div style="margin-bottom:20px;">';
     html += '<div style="font-weight:700;font-size:15px;margin-bottom:10px;">📍 기본 현황판</div>';
     html += '<div style="font-size:13px;color:#718096;margin-bottom:8px;">총 현장: <strong>' + places.length + '개</strong></div>';
     html += '<div style="font-weight:600;font-size:13px;margin-bottom:6px;">동별 현장 분포</div>';
-    
-    if (dongSorted.length === 0) {
+
+    if (dongSorted.length === 0 && noDongCount === 0) {
         html += '<div style="color:#a0aec0;font-size:13px;padding:8px;">현장 데이터가 없습니다</div>';
     } else {
-        let maxCount = dongSorted[0][1];
+        if (noDongCount > 0) {
+            html += '<div style="font-size:12px;color:#e53e3e;background:#fff5f5;border:1px solid #fed7d7;border-radius:6px;padding:8px;margin-bottom:8px;">';
+            html += '⚠️ 동 정보를 알 수 없는 현장 <strong>' + noDongCount + '개</strong>';
+            html += '<br><span style="font-size:11px;">현장 편집에서 좌표/주소를 확인하세요</span>';
+            html += '</div>';
+        }
+        let maxCount = dongSorted.length > 0 ? dongSorted[0][1] : 1;
         html += '<div style="display:flex;flex-direction:column;gap:4px;">';
         for (let i = 0; i < dongSorted.length; i++) {
             let dong = dongSorted[i][0];
@@ -6139,58 +6079,48 @@ function renderStatsTab() {
         html += '</div>';
     }
     html += '</div>';
-    
+
     // 방문 분석
     html += '<div style="border-top:1px solid #e2e8f0;padding-top:16px;">';
     html += '<div style="font-weight:700;font-size:15px;margin-bottom:12px;">📈 방문 분석</div>';
-    
     html += '<div id="statsPeriodBtns" style="display:flex;gap:6px;margin-bottom:12px;">';
     html += '<button class="btn btn-sm stats-period-btn active" data-period="today" onclick="switchStatsPeriod(\'today\')" style="padding:6px 12px;font-size:12px;border-radius:6px;">오늘</button>';
     html += '<button class="btn btn-sm stats-period-btn" data-period="week" onclick="switchStatsPeriod(\'week\')" style="padding:6px 12px;font-size:12px;border-radius:6px;">이번 주</button>';
     html += '<button class="btn btn-sm stats-period-btn" data-period="month" onclick="switchStatsPeriod(\'month\')" style="padding:6px 12px;font-size:12px;border-radius:6px;">이번 달</button>';
     html += '</div>';
-    
     html += '<div id="statsVisitData">';
-    html += renderVisitData(visitCounts.today, 'today');
+    html += renderVisitData(visitCounts.today);
     html += '</div>';
-    
     html += '</div>';
-    
+
     if (stats.lastUpdated) {
         let lastDate = new Date(stats.lastUpdated);
         html += '<div style="margin-top:16px;padding-top:12px;border-top:1px solid #e2e8f0;font-size:11px;color:#a0aec0;text-align:center;">';
         html += '⏳ 마지막 동기화: ' + lastDate.toLocaleString();
         html += '</div>';
     }
-    
+
     container.innerHTML = html;
 }
 
-// ===== 방문 데이터 렌더링 (기간별) =====
-function renderVisitData(visits, period) {
+// ===== 방문 데이터 렌더링 =====
+function renderVisitData(visits) {
     let html = '';
-    
-    // 방문 횟수 / 현장 수
     let totalPlaces = 0;
     visits.forEach(function(v) { totalPlaces += v.placeCount; });
-    
     html += '<div style="display:flex;gap:12px;margin-bottom:12px;">';
     html += '<div style="flex:1;background:#f7fafc;border-radius:8px;padding:10px;text-align:center;">';
     html += '<div style="font-size:20px;font-weight:700;color:#2b6cb0;">' + visits.length + '</div>';
-    html += '<div style="font-size:11px;color:#718096;">방문 횟수</div>';
-    html += '</div>';
+    html += '<div style="font-size:11px;color:#718096;">방문 횟수</div></div>';
     html += '<div style="flex:1;background:#f7fafc;border-radius:8px;padding:10px;text-align:center;">';
     html += '<div style="font-size:20px;font-weight:700;color:#38a169;">' + totalPlaces + '</div>';
-    html += '<div style="font-size:11px;color:#718096;">방문 현장</div>';
-    html += '</div>';
-    html += '</div>';
-    
+    html += '<div style="font-size:11px;color:#718096;">방문 현장</div></div></div>';
+
     if (visits.length === 0) {
         html += '<div style="text-align:center;padding:16px;color:#a0aec0;font-size:13px;">기록된 방문이 없습니다</div>';
         return html;
     }
-    
-    // 최다 방문 장소 TOP 5
+
     let topPlaces = getTopPlacesForPeriod(visits);
     if (topPlaces.length > 0) {
         html += '<div style="font-weight:600;font-size:13px;margin-bottom:6px;">🏆 최다 방문 장소 TOP 5</div>';
@@ -6198,36 +6128,30 @@ function renderVisitData(visits, period) {
         for (let i = 0; i < topPlaces.length; i++) {
             html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 8px;background:#f7fafc;border-radius:4px;font-size:12px;">';
             html += '<span>' + (i + 1) + '. ' + escapeHtml(topPlaces[i][0]) + '</span>';
-            html += '<span style="font-weight:600;">' + topPlaces[i][1] + '회</span>';
-            html += '</div>';
+            html += '<span style="font-weight:600;">' + topPlaces[i][1] + '회</span></div>';
         }
         html += '</div>';
     }
-    
-    // 동별 자주 방문 TOP 3
+
     let topDongs = getTopDongsForPeriod(visits);
     if (topDongs.length > 0) {
         html += '<div style="font-weight:600;font-size:13px;margin-bottom:6px;">📍 동별 자주 방문 TOP 3</div>';
         html += '<div style="display:flex;flex-direction:column;gap:3px;">';
+        let medals = ['🥇', '🥈', '🥉'];
         for (let i = 0; i < topDongs.length; i++) {
-            let medals = ['🥇', '🥈', '🥉'];
             html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 8px;background:#f7fafc;border-radius:4px;font-size:12px;">';
             html += '<span>' + medals[i] + ' ' + escapeHtml(topDongs[i][0]) + '</span>';
-            html += '<span style="font-weight:600;">' + topDongs[i][1] + '회</span>';
-            html += '</div>';
+            html += '<span style="font-weight:600;">' + topDongs[i][1] + '회</span></div>';
         }
         html += '</div>';
     }
-    
     return html;
 }
 
 function getTopPlacesForPeriod(visits) {
     let placeCount = {};
     visits.forEach(function(v) {
-        v.places.forEach(function(p) {
-            placeCount[p.name] = (placeCount[p.name] || 0) + 1;
-        });
+        v.places.forEach(function(p) { placeCount[p.name] = (placeCount[p.name] || 0) + 1; });
     });
     return Object.entries(placeCount).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 5);
 }
@@ -6236,7 +6160,7 @@ function getTopDongsForPeriod(visits) {
     let dongVisitCount = {};
     visits.forEach(function(v) {
         v.places.forEach(function(p) {
-            if (p.dong && p.dong !== '기타') {
+            if (p.dong && p.dong !== '미변환') {
                 dongVisitCount[p.dong] = (dongVisitCount[p.dong] || 0) + 1;
             }
         });
@@ -6246,7 +6170,6 @@ function getTopDongsForPeriod(visits) {
 
 // ===== 기간 전환 =====
 function switchStatsPeriod(period) {
-    // 버튼 스타일 변경
     document.querySelectorAll('.stats-period-btn').forEach(function(btn) {
         btn.classList.remove('active');
         btn.style.background = '';
@@ -6260,28 +6183,23 @@ function switchStatsPeriod(period) {
         activeBtn.style.color = 'white';
         activeBtn.style.borderColor = '#4f7eb3';
     }
-    
-    // 데이터 필터링
     if (!currentStats) return;
     let history = currentStats.visitHistory || [];
-    
     let today = new Date().toISOString().slice(0, 10);
     let weekStart = new Date();
     weekStart.setDate(weekStart.getDate() - weekStart.getDay());
     let weekStartStr = weekStart.toISOString().slice(0, 10);
-    
     let visits;
     if (period === 'today') {
         visits = history.filter(function(v) { return v.date === today; });
     } else if (period === 'week') {
         visits = history.filter(function(v) { return v.date >= weekStartStr; });
     } else {
-        visits = history; // 30일 이내 전부
+        visits = history;
     }
-    
     let dataContainer = document.getElementById('statsVisitData');
     if (dataContainer) {
-        dataContainer.innerHTML = renderVisitData(visits, period);
+        dataContainer.innerHTML = renderVisitData(visits);
     }
 }
 
