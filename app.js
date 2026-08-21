@@ -94,6 +94,7 @@ let currentWork = null;
 let workerName = localStorage.getItem('workerName') || '';
 let workCalendarYear = new Date().getFullYear();
 let workCalendarMonth = new Date().getMonth();
+let pendingWorkUpload = false;
 
 // --- 마커/검색 상태 ---
 let startMarker = null;
@@ -262,6 +263,9 @@ updateWorkerNameStatus();
     updateSettingsStatus();
 }
 
+// ============================================================
+// 42. 작업자 이름
+// ============================================================
 function saveWorkerName() {
     let input = document.getElementById('workerName');
     if (!input) return;
@@ -4062,6 +4066,13 @@ function updateOnlineStatus() {
                 uploadToGitHub(true);
             }, 2000);
         }
+        if (pendingWorkUpload && settings.githubToken) {
+        setTimeout(function() {
+            let work = loadWorkFromLocalStorage();
+            uploadWorkToGitHub(work).then(function(ok) {
+                if (ok) showTabStatus('tab-work', '✅ 오프라인 중 저장된 작업 기록이 업로드되었습니다.', 'ok');
+            });
+        }, 3000);
     }
 }
 
@@ -6001,27 +6012,27 @@ async function recordVisitStats() {
 
     saveStatsToLocalStorage(stats);
 
-    // ===== 작업 기록에도 동시 기록 =====
-let work = loadWorkFromLocalStorage();
-let nowWork = new Date();
-for (let i = 0; i < placeRecords.length; i++) {
-    let pr = placeRecords[i];
-    work.workHistory.push({
-        id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5) + i,
-        date: nowWork.toISOString().slice(0, 10),
-        time: nowWork.getHours().toString().padStart(2, '0') + ':' + nowWork.getMinutes().toString().padStart(2, '0'),
-        timestamp: nowWork.getTime(),
-        placeName: pr.name,
-        dong: pr.dong || '',
-        worker: workerName || '미설정',
-        category: '',
-        content: '',
-        fromStats: true
-    });
-}
-work.lastUpdated = nowWork.toISOString();
-saveWorkToLocalStorage(work);
-uploadWorkToGitHub(work);
+        // ===== 작업 기록에도 동시 기록 =====
+    let work = loadWorkFromLocalStorage();
+    let nowWork = new Date();
+    for (let i = 0; i < placeRecords.length; i++) {
+        let pr = placeRecords[i];
+        work.workHistory.push({
+            id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5) + i,
+            date: nowWork.toISOString().slice(0, 10),
+            time: nowWork.getHours().toString().padStart(2, '0') + ':' + nowWork.getMinutes().toString().padStart(2, '0'),
+            timestamp: nowWork.getTime(),
+            placeName: pr.name,
+            dong: pr.dong || '',
+            worker: workerName || '미설정',
+            category: '',
+            content: '',
+            fromStats: true
+        });
+    }
+    work.lastUpdated = nowWork.toISOString();
+    saveWorkToLocalStorage(work);
+    uploadWorkToGitHub(work);
 
     let uploaded = await uploadStatsToGitHub(stats);
     if (uploaded) {
@@ -6339,7 +6350,7 @@ function switchStatsPeriod(period) {
 }
 
 // ============================================================
-// 42. 작업 기록 기능
+// 43. 작업 기록 데이터
 // ============================================================
 function getWorkKey(region) {
     return WORK_KEY_PREFIX + (region || currentRegion);
@@ -6362,7 +6373,10 @@ function saveWorkToLocalStorage(work) {
 
 async function uploadWorkToGitHub(work) {
     let token = settings.githubToken;
-    if (!token || !currentRegion || !navigator.onLine) return false;
+    if (!token || !currentRegion || !navigator.onLine) {
+        if (!navigator.onLine) pendingWorkUpload = true;
+        return false;
+    }
     try {
         let userRes = await fetch('https://api.github.com/user', { headers: { 'Authorization': 'token ' + token } });
         if (!userRes.ok) return false;
@@ -6381,6 +6395,7 @@ async function uploadWorkToGitHub(work) {
             headers: { 'Authorization': 'token ' + token, 'Content-Type': 'application/json' },
             body: JSON.stringify(putData)
         });
+        if (putRes.ok) pendingWorkUpload = false;
         return putRes.ok;
     } catch(e) { return false; }
 }
@@ -6427,4 +6442,340 @@ async function refreshWorkFromGitHub() {
     }
 }
 
+// ============================================================
+// 44. 캘린더 렌더링
+// ============================================================
+function renderWorkTab() {
+    updateWorkWorkerDisplay();
+    let container = document.getElementById('workCalendar');
+    if (!container) return;
+    let work = currentWork || loadWorkFromLocalStorage();
+    currentWork = work;
+    let history = work.workHistory || [];
+
+    let dateCounts = {};
+    history.forEach(function(w) {
+        dateCounts[w.date] = (dateCounts[w.date] || 0) + 1;
+    });
+
+    let year = workCalendarYear;
+    let month = workCalendarMonth;
+    let firstDay = new Date(year, month, 1).getDay();
+    let daysInMonth = new Date(year, month + 1, 0).getDate();
+    let monthNames = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+    let dayNames = ['일','월','화','수','목','금','토'];
+    let today = new Date().toISOString().slice(0, 10);
+
+    let html = '';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">';
+    html += '<button class="btn btn-outline btn-sm" onclick="changeWorkMonth(-1)" style="padding:4px 12px;">◀</button>';
+    html += '<div style="font-weight:700;font-size:16px;">' + year + '년 ' + monthNames[month] + '</div>';
+    html += '<button class="btn btn-outline btn-sm" onclick="changeWorkMonth(1)" style="padding:4px 12px;">▶</button>';
+    html += '</div>';
+
+    html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;">';
+    for (let i = 0; i < 7; i++) {
+        let color = i === 0 ? '#e53e3e' : i === 6 ? '#3182ce' : '#4a5568';
+        html += '<div style="text-align:center;font-size:12px;font-weight:600;color:' + color + ';padding:4px;">' + dayNames[i] + '</div>';
+    }
+    html += '</div>';
+
+    html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;">';
+    for (let i = 0; i < firstDay; i++) {
+        html += '<div></div>';
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+        let dateStr = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+        let count = dateCounts[dateStr] || 0;
+        let isToday = dateStr === today;
+        let dayOfWeek = new Date(year, month, d).getDay();
+        let bgColor = isToday ? '#ebf8ff' : 'transparent';
+        let border = isToday ? '2px solid #3182ce' : '1px solid #e2e8f0';
+        let textColor = dayOfWeek === 0 ? '#e53e3e' : dayOfWeek === 6 ? '#3182ce' : '#2d3748';
+        html += '<div onclick="showWorkDateDetail(\'' + dateStr + '\')" style="text-align:center;padding:6px 2px;min-height:48px;border-radius:6px;cursor:pointer;background:' + bgColor + ';border:' + border + ';">';
+        html += '<div style="font-size:13px;font-weight:' + (isToday ? '700' : '400') + ';color:' + textColor + ';">' + d + '</div>';
+        if (count > 0) {
+            html += '<div style="font-size:10px;color:white;background:#38a169;border-radius:8px;padding:1px 4px;margin-top:2px;">' + count + '건</div>';
+        }
+        html += '</div>';
+    }
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function changeWorkMonth(delta) {
+    workCalendarMonth += delta;
+    if (workCalendarMonth < 0) { workCalendarMonth = 11; workCalendarYear--; }
+    if (workCalendarMonth > 11) { workCalendarMonth = 0; workCalendarYear++; }
+    renderWorkTab();
+}
+
+// ============================================================
+// 45. 날짜별 상세 + 처리내역 모달
+// ============================================================
+function showWorkDateDetail(dateStr) {
+    let work = currentWork || loadWorkFromLocalStorage();
+    let history = work.workHistory || [];
+    let dayRecords = history.filter(function(w) { return w.date === dateStr; });
+    let container = document.getElementById('workDateDetail');
+    if (!container) return;
+
+    let dateObj = new Date(dateStr + 'T00:00:00');
+    let weekdays = ['일','월','화','수','목','금','토'];
+    let dayLabel = (dateObj.getMonth() + 1) + '월 ' + dateObj.getDate() + '일 (' + weekdays[dateObj.getDay()] + ')';
+
+    let html = '';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">';
+    html += '<div style="font-weight:700;font-size:15px;">📅 ' + dayLabel + '</div>';
+    html += '<button class="btn btn-outline btn-sm" onclick="hideWorkDateDetail()" style="padding:4px 12px;">✕ 닫기</button>';
+    html += '</div>';
+
+    if (dayRecords.length === 0) {
+        html += '<div style="text-align:center;padding:16px;color:#a0aec0;">이 날짜에 기록이 없습니다</div>';
+    } else {
+        for (let i = 0; i < dayRecords.length; i++) {
+            let r = dayRecords[i];
+            let hasContent = r.category && r.content;
+            html += '<div onclick="openWorkEditModal(\'' + r.id + '\')" style="background:#f7fafc;border-radius:8px;padding:10px;margin-bottom:6px;cursor:pointer;border-left:3px solid ' + (hasContent ? '#38a169' : '#e53e3e') + ';">';
+            html += '<div style="font-weight:600;font-size:13px;">' + r.time + ' ' + escapeHtml(r.placeName) + '</div>';
+            html += '<div style="font-size:12px;color:#718096;">👤 ' + escapeHtml(r.worker || '미설정');
+            if (r.category) html += ' · ' + escapeHtml(r.category);
+            html += '</div>';
+            if (r.content) {
+                html += '<div style="font-size:12px;color:#4a5568;margin-top:4px;">' + escapeHtml(r.content) + '</div>';
+            } else {
+                html += '<div style="font-size:12px;color:#e53e3e;margin-top:4px;">⚠️ 미작성 - 터치하여 작성</div>';
+            }
+            html += '</div>';
+        }
+    }
+    html += '<button class="btn btn-primary btn-sm" onclick="openWorkAddModal(\'' + dateStr + '\')" style="width:100%;margin-top:8px;padding:8px;">+ 처리내역 추가</button>';
+    container.innerHTML = html;
+    container.style.display = 'block';
+}
+
+function hideWorkDateDetail() {
+    let container = document.getElementById('workDateDetail');
+    if (container) { container.style.display = 'none'; container.innerHTML = ''; }
+}
+
+function openWorkEditModal(workId) {
+    let work = currentWork || loadWorkFromLocalStorage();
+    let record = work.workHistory.find(function(w) { return w.id === workId; });
+    if (!record) return;
+    let categories = work.categories || ['카메라', '비상벨', '전원설비', '네트워크', '기타'];
+    let existing = document.getElementById('workEditModal');
+    if (existing) existing.remove();
+
+    let categoryOptions = '<option value="">-- 선택 --</option>';
+    for (let i = 0; i < categories.length; i++) {
+        let selected = record.category === categories[i] ? ' selected' : '';
+        categoryOptions += '<option value="' + escapeHtml(categories[i]) + '"' + selected + '>' + escapeHtml(categories[i]) + '</option>';
+    }
+
+    let modalHtml = '<div id="workEditModal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);z-index:999999;display:flex;justify-content:center;align-items:center;padding:20px;" onclick="if(event.target===this)this.remove()">';
+    modalHtml += '<div style="background:white;border-radius:16px;padding:24px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.2);max-height:80vh;overflow-y:auto;" onclick="event.stopPropagation()">';
+    modalHtml += '<h3 style="font-size:17px;font-weight:700;color:#1a202c;margin-bottom:12px;">✏️ 처리내역 작성</h3>';
+    modalHtml += '<div style="font-size:13px;color:#4a5568;margin-bottom:12px;">';
+    modalHtml += '<div>현장: <strong>' + escapeHtml(record.placeName) + '</strong></div>';
+    modalHtml += '<div>일시: ' + record.date + ' ' + record.time + '</div>';
+    modalHtml += '<div>작업자: ' + escapeHtml(record.worker || '미설정') + '</div>';
+    modalHtml += '</div>';
+    modalHtml += '<div style="margin-bottom:12px;">';
+    modalHtml += '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">처리구분</label>';
+    modalHtml += '<select id="workEditCategory" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;">' + categoryOptions + '</select>';
+    modalHtml += '</div>';
+    modalHtml += '<div style="margin-bottom:12px;">';
+    modalHtml += '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">처리내용</label>';
+    modalHtml += '<textarea id="workEditContent" rows="3" placeholder="처리 내용을 입력하세요" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;resize:vertical;">' + escapeHtml(record.content || '') + '</textarea>';
+    modalHtml += '</div>';
+    modalHtml += '<div style="display:flex;gap:8px;justify-content:flex-end;">';
+    modalHtml += '<button class="btn btn-outline btn-sm" onclick="document.getElementById(\'workEditModal\').remove()" style="padding:6px 16px;">취소</button>';
+    modalHtml += '<button class="btn btn-danger btn-sm" onclick="deleteWorkRecord(\'' + record.id + '\')" style="padding:6px 16px;">삭제</button>';
+    modalHtml += '<button class="btn btn-primary btn-sm" onclick="saveWorkEdit(\'' + record.id + '\')" style="padding:6px 16px;">저장</button>';
+    modalHtml += '</div></div></div>';
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+async function saveWorkEdit(workId) {
+    let work = currentWork || loadWorkFromLocalStorage();
+    let record = work.workHistory.find(function(w) { return w.id === workId; });
+    if (!record) return;
+    let category = document.getElementById('workEditCategory').value;
+    let content = document.getElementById('workEditContent').value.trim();
+    if (!category) {
+        showTabStatus('tab-work', '⚠️ 처리구분을 선택하세요.', 'warning');
+        return;
+    }
+    record.category = category;
+    record.content = content;
+    record.updatedAt = new Date().toISOString();
+    saveWorkToLocalStorage(work);
+    document.getElementById('workEditModal').remove();
+    let uploaded = await uploadWorkToGitHub(work);
+    renderWorkTab();
+    showWorkDateDetail(record.date);
+    showTabStatus('tab-work', uploaded ? '✅ 처리내역 저장 완료 (GitHub 동기화)' : '⚠️ 저장됨. GitHub 업로드 실패', uploaded ? 'ok' : 'warning');
+}
+
+function deleteWorkRecord(workId) {
+    showConfirmModal('🗑️ 기록 삭제', '이 작업 기록을 삭제하시겠습니까?', async function() {
+        let work = currentWork || loadWorkFromLocalStorage();
+        let idx = work.workHistory.findIndex(function(w) { return w.id === workId; });
+        if (idx >= 0) {
+            let dateStr = work.workHistory[idx].date;
+            work.workHistory.splice(idx, 1);
+            saveWorkToLocalStorage(work);
+            let modal = document.getElementById('workEditModal');
+            if (modal) modal.remove();
+            await uploadWorkToGitHub(work);
+            renderWorkTab();
+            showWorkDateDetail(dateStr);
+            showTabStatus('tab-work', '✅ 기록 삭제됨', 'ok');
+        }
+    });
+}
+
+function openWorkAddModal(dateStr) {
+    let work = currentWork || loadWorkFromLocalStorage();
+    let categories = work.categories || [];
+    let existing = document.getElementById('workAddModal');
+    if (existing) existing.remove();
+
+    let categoryOptions = '<option value="">-- 선택 --</option>';
+    for (let i = 0; i < categories.length; i++) {
+        categoryOptions += '<option value="' + escapeHtml(categories[i]) + '">' + escapeHtml(categories[i]) + '</option>';
+    }
+    let placeOptions = '<option value="">-- 현장 선택 --</option>';
+    for (let i = 0; i < places.length; i++) {
+        placeOptions += '<option value="' + escapeHtml(places[i].name) + '">' + escapeHtml(places[i].name) + '</option>';
+    }
+    let now = new Date();
+    let defaultTime = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+
+    let modalHtml = '<div id="workAddModal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);z-index:999999;display:flex;justify-content:center;align-items:center;padding:20px;" onclick="if(event.target===this)this.remove()">';
+    modalHtml += '<div style="background:white;border-radius:16px;padding:24px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.2);max-height:80vh;overflow-y:auto;" onclick="event.stopPropagation()">';
+    modalHtml += '<h3 style="font-size:17px;font-weight:700;color:#1a202c;margin-bottom:12px;">➕ 처리내역 추가</h3>';
+    modalHtml += '<div style="margin-bottom:12px;"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">현장</label>';
+    modalHtml += '<select id="workAddPlace" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;">' + placeOptions + '</select></div>';
+    modalHtml += '<div style="margin-bottom:12px;"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">시간</label>';
+    modalHtml += '<input type="time" id="workAddTime" value="' + defaultTime + '" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;"></div>';
+    modalHtml += '<div style="margin-bottom:12px;"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">처리구분</label>';
+    modalHtml += '<select id="workAddCategory" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;">' + categoryOptions + '</select></div>';
+    modalHtml += '<div style="margin-bottom:12px;"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">처리내용</label>';
+    modalHtml += '<textarea id="workAddContent" rows="3" placeholder="처리 내용을 입력하세요" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;resize:vertical;"></textarea></div>';
+    modalHtml += '<div style="display:flex;gap:8px;justify-content:flex-end;">';
+    modalHtml += '<button class="btn btn-outline btn-sm" onclick="document.getElementById(\'workAddModal\').remove()" style="padding:6px 16px;">취소</button>';
+    modalHtml += '<button class="btn btn-primary btn-sm" onclick="saveWorkAdd(\'' + dateStr + '\')" style="padding:6px 16px;">저장</button>';
+    modalHtml += '</div></div></div>';
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+async function saveWorkAdd(dateStr) {
+    let placeName = document.getElementById('workAddPlace').value;
+    let time = document.getElementById('workAddTime').value;
+    let category = document.getElementById('workAddCategory').value;
+    let content = document.getElementById('workAddContent').value.trim();
+    if (!placeName) { showTabStatus('tab-work', '⚠️ 현장을 선택하세요.', 'warning'); return; }
+    if (!category) { showTabStatus('tab-work', '⚠️ 처리구분을 선택하세요.', 'warning'); return; }
+    let work = currentWork || loadWorkFromLocalStorage();
+    let now = new Date();
+    work.workHistory.push({
+        id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+        date: dateStr,
+        time: time || now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0'),
+        timestamp: now.getTime(),
+        placeName: placeName,
+        dong: '',
+        worker: workerName || '미설정',
+        category: category,
+        content: content,
+        fromStats: false
+    });
+    work.lastUpdated = now.toISOString();
+    saveWorkToLocalStorage(work);
+    document.getElementById('workAddModal').remove();
+    let uploaded = await uploadWorkToGitHub(work);
+    renderWorkTab();
+    showWorkDateDetail(dateStr);
+    showTabStatus('tab-work', uploaded ? '✅ 처리내역 추가 완료 (GitHub 동기화)' : '⚠️ 추가됨. GitHub 업로드 실패', uploaded ? 'ok' : 'warning');
+}
+
+function openCategoryManager() {
+    let work = currentWork || loadWorkFromLocalStorage();
+    let categories = work.categories || [];
+    let existing = document.getElementById('categoryManagerModal');
+    if (existing) existing.remove();
+
+    let listHtml = '';
+    for (let i = 0; i < categories.length; i++) {
+        listHtml += '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:#f7fafc;border-radius:6px;margin-bottom:4px;">';
+        listHtml += '<span style="font-size:13px;">' + escapeHtml(categories[i]) + '</span>';
+        listHtml += '<div style="display:flex;gap:4px;">';
+        listHtml += '<button class="btn btn-outline btn-sm" onclick="renameCategory(' + i + ')" style="padding:2px 8px;font-size:11px;">수정</button>';
+        listHtml += '<button class="btn btn-danger btn-sm" onclick="deleteCategory(' + i + ')" style="padding:2px 8px;font-size:11px;">삭제</button>';
+        listHtml += '</div></div>';
+    }
+
+    let modalHtml = '<div id="categoryManagerModal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);z-index:999999;display:flex;justify-content:center;align-items:center;padding:20px;" onclick="if(event.target===this)this.remove()">';
+    modalHtml += '<div style="background:white;border-radius:16px;padding:24px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.2);max-height:80vh;overflow-y:auto;" onclick="event.stopPropagation()">';
+    modalHtml += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">';
+    modalHtml += '<h3 style="font-size:17px;font-weight:700;color:#1a202c;margin:0;">⚙️ 처리구분 관리</h3>';
+    modalHtml += '<button onclick="document.getElementById(\'categoryManagerModal\').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#a0aec0;">×</button>';
+    modalHtml += '</div>';
+    modalHtml += '<div style="margin-bottom:12px;">' + listHtml + '</div>';
+    modalHtml += '<div style="display:flex;gap:8px;">';
+    modalHtml += '<input type="text" id="newCategoryInput" placeholder="새 구분명" style="flex:1;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;" onkeydown="if(event.key===\'Enter\')addCategory()">';
+    modalHtml += '<button class="btn btn-primary btn-sm" onclick="addCategory()" style="padding:6px 14px;">추가</button>';
+    modalHtml += '</div></div></div>';
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function addCategory() {
+    let input = document.getElementById('newCategoryInput');
+    if (!input) return;
+    let name = input.value.trim();
+    if (!name) return;
+    let work = currentWork || loadWorkFromLocalStorage();
+    if (work.categories.includes(name)) {
+        showTabStatus('tab-work', '⚠️ 이미 존재하는 구분입니다.', 'warning');
+        return;
+    }
+    work.categories.push(name);
+    saveWorkToLocalStorage(work);
+    uploadWorkToGitHub(work);
+    document.getElementById('categoryManagerModal').remove();
+    openCategoryManager();
+    showTabStatus('tab-work', '✅ "' + name + '" 구분 추가됨', 'ok');
+}
+
+function deleteCategory(index) {
+    let work = currentWork || loadWorkFromLocalStorage();
+    let name = work.categories[index];
+    showConfirmModal('🗑️ 구분 삭제', '"' + name + '" 구분을 삭제하시겠습니까?', function() {
+        work.categories.splice(index, 1);
+        saveWorkToLocalStorage(work);
+        uploadWorkToGitHub(work);
+        document.getElementById('categoryManagerModal').remove();
+        openCategoryManager();
+        showTabStatus('tab-work', '✅ "' + name + '" 구분 삭제됨', 'ok');
+    });
+}
+
+function renameCategory(index) {
+    let work = currentWork || loadWorkFromLocalStorage();
+    let oldName = work.categories[index];
+    showPromptModal('✏️ 구분 수정', '새 이름을 입력하세요:', oldName, function(newName) {
+        if (!newName || newName === oldName) return;
+        work.workHistory.forEach(function(w) {
+            if (w.category === oldName) w.category = newName;
+        });
+        work.categories[index] = newName;
+        saveWorkToLocalStorage(work);
+        uploadWorkToGitHub(work);
+        document.getElementById('categoryManagerModal').remove();
+        openCategoryManager();
+        showTabStatus('tab-work', '✅ "' + oldName + '" → "' + newName + '" 수정됨', 'ok');
+    });
+}
 window.switchTab = switchTab;
