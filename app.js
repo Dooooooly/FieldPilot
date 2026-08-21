@@ -5499,73 +5499,72 @@ function injectDarkModeCSS() {
     if (document.getElementById('dark-mode-css')) return;
     let style = document.createElement('style');
     style.id = 'dark-mode-css';
-    style.textContent = `
-        body.dark-mode { background: #1a202c !important; color: #e2e8f0 !important; }
-        body.dark-mode .tab-content, body.dark-mode .tab-content > div { background: #1a202c !important; color: #e2e8f0 !important; }
-        body.dark-mode .bottom-tabs { background: #2d3748 !important; border-top-color: #4a5568 !important; }
-        body.dark-mode .bottom-tab { color: #a0aec0 !important; }
-        body.dark-mode .bottom-tab.active { color: #63b3ed !important; background: rgba(99, 179, 237, 0.1) !important; }
-        body.dark-mode input, body.dark-mode textarea, body.dark-mode select { background: #2d3748 !important; color: #e2e8f0 !important; border-color: #4a5568 !important; }
-        body.dark-mode input::placeholder, body.dark-mode textarea::placeholder { color: #718096 !important; }
-        body.dark-mode .btn { background: #4a5568 !important; color: #e2e8f0 !important; border-color: #718096 !important; }
-        body.dark-mode .btn-primary { background: #3182ce !important; color: white !important; border-color: #3182ce !important; }
-        body.dark-mode .btn-outline { background: transparent !important; color: #cbd5e0 !important; border-color: #4a5568 !important; }
-        body.dark-mode .place-item, body.dark-mode .route-item, body.dark-mode .preset-item, body.dark-mode .commit-item { background: #2d3748 !important; color: #e2e8f0 !important; border-color: #4a5568 !important; }
-        body.dark-mode .place-item:hover, body.dark-mode .route-item:hover { background: #3a4556 !important; }
-        body.dark-mode .place-item .name, body.dark-mode .route-item .name { color: #f7fafc !important; }
-        body.dark-mode .place-item .addr, body.dark-mode .route-item .addr, body.dark-mode .addr { color: #a0aec0 !important; }
-        body.dark-mode .result-item { background: #2d3748 !important; color: #e2e8f0 !important; border-color: #4a5568 !important; }
-        body.dark-mode .result-item:hover { background: #3a4556 !important; }
-        body.dark-mode .waypoint-list li { background: #2d3748 !important; color: #e2e8f0 !important; }
-        body.dark-mode .empty-msg { color: #718096 !important; }
-        body.dark-mode .badge { background: #4a5568 !important; color: #e2e8f0 !important; }
-        body.dark-mode .badge-ok { background: #276749 !important; color: #c6f6d5 !important; }
-        body.dark-mode .badge-wait { background: #744210 !important; color: #fefcbf !important; }
-        body.dark-mode .badge-fail { background: #9b2c2c !important; color: #fed7d7 !important; }
-        body.dark-mode h1, body.dark-mode h2, body.dark-mode h3, body.dark-mode h4 { color: #f7fafc !important; }
-        body.dark-mode p, body.dark-mode label, body.dark-mode span { color: #e2e8f0 !important; }
-        body.dark-mode .section-title, body.dark-mode .card { background: #2d3748 !important; border-color: #4a5568 !important; }
-        body.dark-mode .tab-status { background: #2d3748 !important; color: #e2e8f0 !important; }
-        body.dark-mode #offlineBanner { background: #744210 !important; color: #fefcbf !important; }
-        body.dark-mode .remark { background: #4a5568 !important; color: #cbd5e0 !important; }
-        body.dark-mode .source { background: #4a5568 !important; color: #cbd5e0 !important; }
-        body.dark-mode .drag-handle { color: #a0aec0 !important; }
-        body.dark-mode .info .name { color: #f7fafc !important; }
-        body.dark-mode .info .addr { color: #a0aec0 !important; }
-        body.dark-mode #weatherDisplay { background: transparent !important; color: #e2e8f0 !important; }
-        body.dark-mode .preset-item .preset-name { color: #f7fafc !important; }
-        body.dark-mode .preset-item .preset-detail { color: #a0aec0 !important; }
-        body.dark-mode .commit-msg { color: #f7fafc !important; }
-        body.dark-mode .commit-date { color: #a0aec0 !important; }
-        body.dark-mode .restore-btn { background: #3182ce !important; color: white !important; }
-        body.dark-mode #map { filter: brightness(0.85) contrast(1.1); }
-        body.dark-mode .route-start { background: rgba(74, 85, 104, 0.3) !important; }
-        body.dark-mode #regionSelect { background: #2d3748 !important; color: #e2e8f0 !important; }
-        body.dark-mode #sortPlaces { background: #2d3748 !important; color: #e2e8f0 !important; }
-        body.dark-mode .fav.active { color: #ecc94b !important; }
-        body.dark-mode .fav.inactive { color: #718096 !important; }
-        body.dark-mode #uploadResult { color: #1a202c !important; }
-        body.dark-mode #storageInfo { color: #a0aec0 !important; }
-        body.dark-mode #optimizationStatus { color: #a0aec0 !important; }
-        body.dark-mode .idx { color: white !important; }
-        body.dark-mode .dist { color: inherit !important; }
-        body.dark-mode #confirmModal > div, body.dark-mode #promptModal > div, body.dark-mode #customRegionModal > div, body.dark-mode #customPresetModal > div, body.dark-mode #regionManagerModal > div, body.dark-mode #weekWeatherModal > div, body.dark-mode #addPlaceModal > div, body.dark-mode #modal > div, body.dark-mode #optimizeSettingsModal > div { background: #2d3748 !important; color: #e2e8f0 !important; }
-        body.dark-mode #confirmModal h3, body.dark-mode #promptModal h3, body.dark-mode #customRegionModal h3, body.dark-mode #customPresetModal h3, body.dark-mode #regionManagerModal h3, body.dark-mode #weekWeatherModal h3, body.dark-mode #modal h3, body.dark-mode #optimizeSettingsModal h3 { color: #f7fafc !important; }
-        body.dark-mode #confirmModal p, body.dark-mode #promptModal p, body.dark-mode #customRegionModal p, body.dark-mode #customPresetModal p { color: #cbd5e0 !important; }
-        body.dark-mode .region-item { background: #2d3748 !important; color: #e2e8f0 !important; }
-        body.dark-mode .region-item.active { background: #2c5282 !important; color: #ebf8ff !important; }
-        body.dark-mode #darkModeToggleBtn:hover { background: rgba(255,255,255,0.1) !important; }
-        body.dark-mode #statsContent { color: #e2e8f0 !important; }
-        body.dark-mode #statsContent > div { background: transparent !important; }
-        body.dark-mode .stats-period-btn { background: #4a5568 !important; color: #e2e8f0 !important; border-color: #718096 !important; }
-        body.dark-mode .stats-period-btn.active { background: #3182ce !important; color: white !important; border-color: #3182ce !important; }
-        body.dark-mode #statsVisitData > div { background: #2d3748 !important; }
-        body.dark-mode #exitConfirmModal > div { background: #2d3748 !important; color: #e2e8f0 !important; }
-        body.dark-mode #exitConfirmModal h3 { color: #f7fafc !important; }
-        body.dark-mode #exitConfirmModal p { color: #cbd5e0 !important; }
-        body.dark-mode #exitCancelBtn { background: #4a5568 !important; color: #e2e8f0 !important; border-color: #718096 !important; }
-        body.dark-mode #exitConfirmBtn { background: #e53e3e !important; color: white !important; }
-    `;
+    let css = '';
+    css += 'body.dark-mode { background: #1a202c !important; color: #e2e8f0 !important; } ';
+    css += 'body.dark-mode .tab-content, body.dark-mode .tab-content > div { background: #1a202c !important; color: #e2e8f0 !important; } ';
+    css += 'body.dark-mode .bottom-tabs { background: #2d3748 !important; border-top-color: #4a5568 !important; } ';
+    css += 'body.dark-mode .bottom-tab { color: #a0aec0 !important; } ';
+    css += 'body.dark-mode .bottom-tab.active { color: #63b3ed !important; background: rgba(99, 179, 237, 0.1) !important; } ';
+    css += 'body.dark-mode input, body.dark-mode textarea, body.dark-mode select { background: #2d3748 !important; color: #e2e8f0 !important; border-color: #4a5568 !important; } ';
+    css += 'body.dark-mode input::placeholder, body.dark-mode textarea::placeholder { color: #718096 !important; } ';
+    css += 'body.dark-mode .btn { background: #4a5568 !important; color: #e2e8f0 !important; border-color: #718096 !important; } ';
+    css += 'body.dark-mode .btn-primary { background: #3182ce !important; color: white !important; border-color: #3182ce !important; } ';
+    css += 'body.dark-mode .btn-outline { background: transparent !important; color: #cbd5e0 !important; border-color: #4a5568 !important; } ';
+    css += 'body.dark-mode .place-item, body.dark-mode .route-item, body.dark-mode .preset-item, body.dark-mode .commit-item { background: #2d3748 !important; color: #e2e8f0 !important; border-color: #4a5568 !important; } ';
+    css += 'body.dark-mode .place-item:hover, body.dark-mode .route-item:hover { background: #3a4556 !important; } ';
+    css += 'body.dark-mode .place-item .name, body.dark-mode .route-item .name { color: #f7fafc !important; } ';
+    css += 'body.dark-mode .place-item .addr, body.dark-mode .route-item .addr, body.dark-mode .addr { color: #a0aec0 !important; } ';
+    css += 'body.dark-mode .result-item { background: #2d3748 !important; color: #e2e8f0 !important; border-color: #4a5568 !important; } ';
+    css += 'body.dark-mode .result-item:hover { background: #3a4556 !important; } ';
+    css += 'body.dark-mode .waypoint-list li { background: #2d3748 !important; color: #e2e8f0 !important; } ';
+    css += 'body.dark-mode .empty-msg { color: #718096 !important; } ';
+    css += 'body.dark-mode .badge { background: #4a5568 !important; color: #e2e8f0 !important; } ';
+    css += 'body.dark-mode .badge-ok { background: #276749 !important; color: #c6f6d5 !important; } ';
+    css += 'body.dark-mode .badge-wait { background: #744210 !important; color: #fefcbf !important; } ';
+    css += 'body.dark-mode .badge-fail { background: #9b2c2c !important; color: #fed7d7 !important; } ';
+    css += 'body.dark-mode h1, body.dark-mode h2, body.dark-mode h3, body.dark-mode h4 { color: #f7fafc !important; } ';
+    css += 'body.dark-mode p, body.dark-mode label, body.dark-mode span { color: #e2e8f0 !important; } ';
+    css += 'body.dark-mode .section-title, body.dark-mode .card { background: #2d3748 !important; border-color: #4a5568 !important; } ';
+    css += 'body.dark-mode .tab-status { background: #2d3748 !important; color: #e2e8f0 !important; } ';
+    css += 'body.dark-mode #offlineBanner { background: #744210 !important; color: #fefcbf !important; } ';
+    css += 'body.dark-mode .remark { background: #4a5568 !important; color: #cbd5e0 !important; } ';
+    css += 'body.dark-mode .source { background: #4a5568 !important; color: #cbd5e0 !important; } ';
+    css += 'body.dark-mode .drag-handle { color: #a0aec0 !important; } ';
+    css += 'body.dark-mode .info .name { color: #f7fafc !important; } ';
+    css += 'body.dark-mode .info .addr { color: #a0aec0 !important; } ';
+    css += 'body.dark-mode #weatherDisplay { background: transparent !important; color: #e2e8f0 !important; } ';
+    css += 'body.dark-mode .preset-item .preset-name { color: #f7fafc !important; } ';
+    css += 'body.dark-mode .preset-item .preset-detail { color: #a0aec0 !important; } ';
+    css += 'body.dark-mode .commit-msg { color: #f7fafc !important; } ';
+    css += 'body.dark-mode .commit-date { color: #a0aec0 !important; } ';
+    css += 'body.dark-mode .restore-btn { background: #3182ce !important; color: white !important; } ';
+    css += 'body.dark-mode #map { filter: brightness(0.85) contrast(1.1); } ';
+    css += 'body.dark-mode .route-start { background: rgba(74, 85, 104, 0.3) !important; } ';
+    css += 'body.dark-mode #regionSelect { background: #2d3748 !important; color: #e2e8f0 !important; } ';
+    css += 'body.dark-mode #sortPlaces { background: #2d3748 !important; color: #e2e8f0 !important; } ';
+    css += 'body.dark-mode .fav.active { color: #ecc94b !important; } ';
+    css += 'body.dark-mode .fav.inactive { color: #718096 !important; } ';
+    css += 'body.dark-mode #uploadResult { color: #1a202c !important; } ';
+    css += 'body.dark-mode #storageInfo { color: #a0aec0 !important; } ';
+    css += 'body.dark-mode #optimizationStatus { color: #a0aec0 !important; } ';
+    css += 'body.dark-mode .idx { color: white !important; } ';
+    css += 'body.dark-mode .dist { color: inherit !important; } ';
+    css += 'body.dark-mode #confirmModal > div, body.dark-mode #promptModal > div, body.dark-mode #customRegionModal > div, body.dark-mode #customPresetModal > div, body.dark-mode #regionManagerModal > div, body.dark-mode #weekWeatherModal > div, body.dark-mode #addPlaceModal > div, body.dark-mode #modal > div, body.dark-mode #optimizeSettingsModal > div { background: #2d3748 !important; color: #e2e8f0 !important; } ';
+    css += 'body.dark-mode #confirmModal h3, body.dark-mode #promptModal h3, body.dark-mode #customRegionModal h3, body.dark-mode #customPresetModal h3, body.dark-mode #regionManagerModal h3, body.dark-mode #weekWeatherModal h3, body.dark-mode #modal h3, body.dark-mode #optimizeSettingsModal h3 { color: #f7fafc !important; } ';
+    css += 'body.dark-mode #confirmModal p, body.dark-mode #promptModal p, body.dark-mode #customRegionModal p, body.dark-mode #customPresetModal p { color: #cbd5e0 !important; } ';
+    css += 'body.dark-mode .region-item { background: #2d3748 !important; color: #e2e8f0 !important; } ';
+    css += 'body.dark-mode .region-item.active { background: #2c5282 !important; color: #ebf8ff !important; } ';
+    css += 'body.dark-mode #statsContent { color: #e2e8f0 !important; } ';
+    css += 'body.dark-mode #statsContent > div { background: transparent !important; } ';
+    css += 'body.dark-mode .stats-period-btn { background: #4a5568 !important; color: #e2e8f0 !important; border-color: #718096 !important; } ';
+    css += 'body.dark-mode .stats-period-btn.active { background: #3182ce !important; color: white !important; border-color: #3182ce !important; } ';
+    css += 'body.dark-mode #statsVisitData > div { background: #2d3748 !important; } ';
+    css += 'body.dark-mode #exitConfirmModal > div { background: #2d3748 !important; color: #e2e8f0 !important; } ';
+    css += 'body.dark-mode #exitConfirmModal h3 { color: #f7fafc !important; } ';
+    css += 'body.dark-mode #exitConfirmModal p { color: #cbd5e0 !important; } ';
+    css += 'body.dark-mode #exitCancelBtn { background: #4a5568 !important; color: #e2e8f0 !important; border-color: #718096 !important; } ';
+    css += 'body.dark-mode #exitConfirmBtn { background: #e53e3e !important; color: white !important; }';
+    style.textContent = css;
     document.head.appendChild(style);
 }
 function addDarkModeToggleToHeader() {
