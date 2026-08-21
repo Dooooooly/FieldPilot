@@ -4067,12 +4067,13 @@ function updateOnlineStatus() {
             }, 2000);
         }
         if (pendingWorkUpload && settings.githubToken) {
-        setTimeout(function() {
-            let work = loadWorkFromLocalStorage();
-            uploadWorkToGitHub(work).then(function(ok) {
-                if (ok) showTabStatus('tab-work', '✅ 오프라인 중 저장된 작업 기록이 업로드되었습니다.', 'ok');
-            });
-        }, 3000);
+            setTimeout(function() {
+                let work = loadWorkFromLocalStorage();
+                uploadWorkToGitHub(work).then(function(ok) {
+                    if (ok) showTabStatus('tab-work', '✅ 오프라인 중 저장된 작업 기록이 업로드되었습니다.', 'ok');
+                });
+            }, 3000);
+        }
     }
 }
 
@@ -5777,7 +5778,7 @@ function initDarkMode() {
 // 초기 로드 시 URL 해시에 맞춰 탭 설정
 // ============================================================
 function initHistoryHash() {
-    let validTabs = ['tab-places', 'tab-route', 'tab-list', 'tab-stats', 'tab-settings', 'tab-help'];
+    let validTabs = ['tab-places', 'tab-route', 'tab-list', 'tab-stats', 'tab-work', 'tab-settings', 'tab-help'];
     let initialHash = window.location.hash.replace('#', '');
     
     if (initialHash && validTabs.includes(initialHash) && document.getElementById(initialHash)) {
