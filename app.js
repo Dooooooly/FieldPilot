@@ -6069,8 +6069,7 @@ for (let i = 0; i < places.length; i++) {
     html += '</div>';
 
     // 기본 현황판
-    html += '<div style="margin-bottom:20px;">';
-    html += '<div style="font-weight:700;font-size:15px;margin-bottom:10px;">📍 기본 현황판</div>';
+    html += '<div style="margin
     html += '<div style="font-size:13px;color:#718096;margin-bottom:8px;">총 현장: <strong>' + places.length + '개</strong></div>';
     html += '<div style="font-weight:600;font-size:13px;margin-bottom:6px;">동별 현장 분포</div>';
 
