@@ -160,7 +160,10 @@ function isMobile() {
 // ============================================================
 // 2. 탭 전환
 // ============================================================
-function switchTab(tabId) {
+// popstate에 의한 호출인지 구분하기 위한 플래그
+let isPopState = false;
+
+function switchTab(tabId, updateHistory = true) {
     if (!tabId) return;
     let target = document.getElementById(tabId);
     if (!target) return;
@@ -180,7 +183,7 @@ function switchTab(tabId) {
     if (tabId === 'tab-route') {
         setTimeout(function() {
             if (kakaoMap) {
-                kakaoMap.relayout();  // 1회만 호출
+                kakaoMap.relayout();
             } else if (typeof initMap === 'function') {
                 initMap();
             }
@@ -194,8 +197,12 @@ function switchTab(tabId) {
     if (window.innerWidth < 700) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+    
+    // ★ 브라우저 히스토리에 탭 상태 기록 (뒤로가기 지원)
+    if (updateHistory && !isPopState) {
+        history.pushState({ tab: tabId }, '', '#' + tabId);
+    }
 }
-
 // ============================================================
 // 3. 설정 관리 (API 키 인코딩)
 // ============================================================
@@ -5031,6 +5038,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     setTimeout(initWeather, 3000); // 날씨 초기화 호출
+    initHistoryHash();
 }); // ★★ 이 닫는 괄호가 반드시 필요합니다! ★★
 // ============================================================
 // 39. 도우미 함수 (tab-status 표시)
@@ -5607,5 +5615,38 @@ function initDarkMode() {
         });
     }
 }
+
+// ============================================================
+// 41. 브라우저 뒤로가기/앞으로가기 지원 (History API)
+// ============================================================
+window.addEventListener('popstate', function(event) {
+    isPopState = true;
+    if (event.state && event.state.tab) {
+        switchTab(event.state.tab, false);
+    } else {
+        // state가 없으면 URL 해시에서 탭 ID 추출
+        let hash = window.location.hash.replace('#', '');
+        if (hash && document.getElementById(hash)) {
+            switchTab(hash, false);
+        } else {
+            // 해시도 없으면 기본 탭으로 이동
+            switchTab('tab-places', false);
+        }
+    }
+    isPopState = false;
+});
+
+// 초기 로드 시 URL 해시에 맞춰 탭 설정
+function initHistoryHash() {
+    let validTabs = ['tab-places', 'tab-route', 'tab-list', 'tab-settings', 'tab-help'];
+    let initialHash = window.location.hash.replace('#', '');
     
+    if (initialHash && validTabs.includes(initialHash) && document.getElementById(initialHash)) {
+        switchTab(initialHash, false);
+    } else {
+        // 기본 탭(tab-places)으로 히스토리 스택 정리
+        history.replaceState({ tab: 'tab-places' }, '', '#tab-places');
+    }
+}
+
 window.switchTab = switchTab;
