@@ -5014,21 +5014,24 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(displayAppVersion, 1000);
     
     function initWeather() {
-    if (weatherRetryCount >= MAX_WEATHER_RETRY) {
-        console.log('날씨 API 재시도 한도 도달. 10분 후 재시도.');
-        setTimeout(function() {
-            weatherRetryCount = 0;
-            initWeather();
-        }, 600000); // 10분 후 재시도
-        return;
-    }
-    fetchWeather().then(function(success) {
-        if (!success) {
-            weatherRetryCount++;
-            setTimeout(initWeather, 10000); // 5초 → 10초
+        if (weatherRetryCount >= MAX_WEATHER_RETRY) {
+            console.log('날씨 API 재시도 한도 도달. 10분 후 재시도.');
+            setTimeout(function() {
+                weatherRetryCount = 0;
+                initWeather();
+            }, 600000); // 10분 후 재시도
+            return;
         }
-    });
-}
+        fetchWeather().then(function(success) {
+            if (!success) {
+                weatherRetryCount++;
+                setTimeout(initWeather, 10000); // 5초 → 10초
+            }
+        });
+    }
+    
+    setTimeout(initWeather, 3000); // 날씨 초기화 호출
+}); // ★★ 이 닫는 괄호가 반드시 필요합니다! ★★
 // ============================================================
 // 39. 도우미 함수 (tab-status 표시)
 // ============================================================
