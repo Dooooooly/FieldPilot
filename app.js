@@ -5556,6 +5556,27 @@ function injectDarkModeCSS() {
         #darkModeToggleBtn:hover { background: rgba(0,0,0,0.05) !important; }
         body.dark-mode #darkModeToggleBtn:hover { background: rgba(255,255,255,0.1) !important; }
     `;
+    style.textContent += `
+    body.dark-mode #exitConfirmModal > div {
+        background: #2d3748 !important;
+        color: #e2e8f0 !important;
+    }
+    body.dark-mode #exitConfirmModal h3 {
+        color: #f7fafc !important;
+    }
+    body.dark-mode #exitConfirmModal p {
+        color: #cbd5e0 !important;
+    }
+    body.dark-mode #exitCancelBtn {
+        background: #4a5568 !important;
+        color: #e2e8f0 !important;
+        border-color: #718096 !important;
+    }
+    body.dark-mode #exitConfirmBtn {
+        background: #e53e3e !important;
+        color: white !important;
+    }
+`;
     document.head.appendChild(style);
 }
 function addDarkModeToggleToHeader() {
@@ -5729,49 +5750,22 @@ function showExitConfirmModal(onConfirm, onCancel) {
 // 앱 종료 시도
 // ============================================================
 function tryCloseApp() {
-    // PWA/모바일 환경에서는 window.close()가 대부분 작동하지 않음
-    // 대안: 빈 페이지로 이동하거나 사용자에게 안내
-    
     // 1차 시도: window.close()
     try {
         window.close();
     } catch(e) {}
     
-    // 2차 시도: 약간의 시간 후에도 닫히지 않으면 안내 페이지로 이동
+    // 2차 시도: 약간의 시간 후에도 닫히지 않으면 빈 페이지로 이동
     setTimeout(function() {
-        // 브라우저 탭을 닫을 수 없는 경우를 대비해 간단한 종료 페이지 표시
-        document.body.innerHTML = `
-            <div style="
-                position: fixed;
-                top: 0; left: 0; right: 0; bottom: 0;
-                background: #1a202c;
-                color: white;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
-                text-align: center;
-                padding: 20px;
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            ">
-                <div style="font-size:64px; margin-bottom:20px;">✅</div>
-                <h2 style="font-size:20px; margin-bottom:12px;">앱이 종료되었습니다</h2>
-                <p style="font-size:14px; color:#a0aec0; margin-bottom:24px; line-height:1.6;">
-                    홈 버튼이나 최근 앱 목록에서<br>
-                    앱을 완전히 종료하실 수 있습니다.
-                </p>
-                <button onclick="location.reload()" style="
-                    padding:12px 32px;
-                    background:#3182ce;
-                    color:white;
-                    border:none;
-                    border-radius:8px;
-                    font-size:14px;
-                    font-weight:600;
-                    cursor:pointer;
-                ">다시 실행</button>
-            </div>
-        `;
-    }, 500);
+        // 여전히 열려있으면 빈 페이지로 강제 이동
+        window.location.href = 'about:blank';
+    }, 100);
+    
+    // 3차 시도: 200ms 후에도 열려있으면 history.back() 시도
+    setTimeout(function() {
+        if (window.history.length > 1) {
+            window.history.back();
+        }
+    }, 200);
 }
 window.switchTab = switchTab;
