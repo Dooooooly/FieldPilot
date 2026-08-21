@@ -6004,38 +6004,38 @@ async function refreshStatsFromGitHub() {
 async function renderStatsTab() {
     let container = document.getElementById('statsContent');
     if (!container) return;
-
+    
     if (!currentStats) {
         currentStats = loadStatsFromLocalStorage();
     }
     let stats = currentStats;
     let history = stats.visitHistory || [];
-
-    // ===== 자동 동 변환 (dong 없는 현장만) =====
-let needConvert = places.filter(function(p) { return !p.dong; });
-if (needConvert.length > 0 && settings.kakaoRestKey) {
-    container.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#a0aec0;">🏘️ 동 정보 자동 변환 중... (0/' + needConvert.length + ')</div>';
-    let converted = 0;
-    for (let i = 0; i < needConvert.length; i++) {
-        let p = needConvert[i];
-        let dong = '';
-        if (p.lat && p.lng && p.lat !== 0 && p.lng !== 0) {
-            dong = await extractDongFromCoords(p.lat, p.lng);
+    
+    // 자동 동 변환
+    let needConvert = places.filter(function(p) { return !p.dong; });
+    if (needConvert.length > 0 && settings.kakaoRestKey) {
+        container.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#a0aec0;">🏘️ 동 정보 자동 변환 중... (0/' + needConvert.length + ')</div>';
+        let converted = 0;
+        for (let i = 0; i < needConvert.length; i++) {
+            let p = needConvert[i];
+            let dong = '';
+            if (p.lat && p.lng && p.lat !== 0 && p.lng !== 0) {
+                dong = await extractDongFromCoords(p.lat, p.lng);
+            }
+            if (!dong || dong === '기타') {
+                dong = extractDongFromAddress(p.address || '');
+            }
+            p.dong = dong || '미변환';
+            converted++;
+            if (converted % 5 === 0 || converted === needConvert.length) {
+                container.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#a0aec0;">🏘️ 동 정보 자동 변환 중... (' + converted + '/' + needConvert.length + ')</div>';
+            }
         }
-        if (!dong || dong === '기타') {
-            dong = extractDongFromAddress(p.address || '');
-        }
-        p.dong = dong || '미변환';
-        converted++;
-        if (converted % 5 === 0 || converted === needConvert.length) {
-            container.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#a0aec0;">🏘️ 동 정보 자동 변환 중... (' + converted + '/' + needConvert.length + ')</div>';
-        }
+        savePlaces();
+        showTabStatus('tab-stats', '✅ 동 정보 변환 완료 (' + converted + '개)', 'ok');
     }
-    savePlaces();
-    showTabStatus('tab-stats', '✅ 동 정보 변환 완료 (' + converted + '개)', 'ok');
-}
-
-    // ===== 기간 필터링 =====
+    
+    // 기간 필터링
     let today = new Date().toISOString().slice(0, 10);
     let todayVisits = history.filter(function(v) { return v.date === today; });
     let weekStart = new Date();
@@ -6043,63 +6043,56 @@ if (needConvert.length > 0 && settings.kakaoRestKey) {
     let weekStartStr = weekStart.toISOString().slice(0, 10);
     let weekVisits = history.filter(function(v) { return v.date >= weekStartStr; });
     let monthVisits = history;
-
-    // ===== 동별 현장 분포 =====
+    
+    // 동별 현장 분포
     let dongCount = {};
-let noDongCount = 0;
-for (let i = 0; i < places.length; i++) {
-    let p = places[i];
-    if (p.dong && p.dong !== '미변환') {
-        dongCount[p.dong] = (dongCount[p.dong] || 0) + 1;
-    } else {
-        noDongCount++;
+    let noDongCount = 0;
+    for (let i = 0; i < places.length; i++) {
+        let p = places[i];
+        if (p.dong && p.dong !== '미변환') {
+            dongCount[p.dong] = (dongCount[p.dong] || 0) + 1;
+        } else {
+            noDongCount++;
+        }
     }
-}
     let dongSorted = Object.entries(dongCount).sort(function(a, b) { return b[1] - a[1]; });
-
     let visitCounts = { today: todayVisits, week: weekVisits, month: monthVisits };
-
-    // ===== HTML 생성 =====
+    
+    // HTML 생성
     let html = '';
-
-    // 새로고침 버튼
-    html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">';
-    html += '<div style="font-weight:700;font-size:16px;">📊 ' + escapeHtml(currentRegion || '통계') + '</div>';
-    html += '<button class="btn btn-outline btn-sm" onclick="refreshStatsFromGitHub()" style="padding:6px 12px; font-size:12px;">🔄 GitHub에서 새로고침</button>';
-    html += '</div>';
-
+    
     // 기본 현황판
     html += '<div style="margin-bottom:20px;">';
     html += '<div style="font-size:13px;color:#718096;margin-bottom:8px;">총 현장: <strong>' + places.length + '개</strong></div>';
     html += '<div style="font-weight:600;font-size:13px;margin-bottom:6px;">동별 현장 분포</div>';
-
+    
     if (dongSorted.length === 0 && noDongCount === 0) {
-    html += '<div style="color:#a0aec0;font-size:13px;padding:8px;">현장 데이터가 없습니다</div>';
-} else {
-    if (noDongCount > 0) {
-        html += '<div style="font-size:12px;color:#e53e3e;background:#fff5f5;border:1px solid #fed7d7;border-radius:6px;padding:8px;margin-bottom:8px;">';
-        html += '⚠️ 동 정보를 알 수 없는 현장 <strong>' + noDongCount + '개</strong>';
-        html += '<br><span style="font-size:11px;">통계 탭 진입 시 자동 변환됩니다</span>';
-        html += '</div>';
-    }
-    let maxCount = dongSorted.length > 0 ? dongSorted[0][1] : 1;
-    html += '<div style="display:flex;flex-direction:column;gap:4px;">';
-    for (let i = 0; i < dongSorted.length; i++) {
-        let dong = dongSorted[i][0];
-        let count = dongSorted[i][1];
-        let barWidth = Math.round((count / maxCount) * 100);
-        html += '<div style="display:flex;align-items:center;gap:8px;">';
-        html += '<span style="min-width:70px;font-size:12px;text-align:right;">' + escapeHtml(dong) + '</span>';
-        html += '<div style="flex:1;background:#e2e8f0;border-radius:4px;height:16px;overflow:hidden;">';
-        html += '<div style="width:' + barWidth + '%;background:#4f7eb3;height:100%;border-radius:4px;min-width:2px;"></div>';
-        html += '</div>';
-        html += '<span style="min-width:35px;font-size:12px;font-weight:600;">' + count + '개</span>';
+        html += '<div style="color:#a0aec0;font-size:13px;padding:8px;">현장 데이터가 없습니다</div>';
+    } else {
+        if (noDongCount > 0) {
+            html += '<div style="font-size:12px;color:#e53e3e;background:#fff5f5;border:1px solid #fed7d7;border-radius:6px;padding:8px;margin-bottom:8px;">';
+            html += '⚠️ 동 정보를 알 수 없는 현장 <strong>' + noDongCount + '개</strong>';
+            html += '<br><span style="font-size:11px;">통계 탭 진입 시 자동 변환됩니다</span>';
+            html += '</div>';
+        }
+        let maxCount = dongSorted.length > 0 ? dongSorted[0][1] : 1;
+        html += '<div style="display:flex;flex-direction:column;gap:4px;">';
+        for (let i = 0; i < dongSorted.length; i++) {
+            let dong = dongSorted[i][0];
+            let count = dongSorted[i][1];
+            let barWidth = Math.round((count / maxCount) * 100);
+            html += '<div style="display:flex;align-items:center;gap:8px;">';
+            html += '<span style="min-width:70px;font-size:12px;text-align:right;">' + escapeHtml(dong) + '</span>';
+            html += '<div style="flex:1;background:#e2e8f0;border-radius:4px;height:16px;overflow:hidden;">';
+            html += '<div style="width:' + barWidth + '%;background:#4f7eb3;height:100%;border-radius:4px;min-width:2px;"></div>';
+            html += '</div>';
+            html += '<span style="min-width:35px;font-size:12px;font-weight:600;">' + count + '개</span>';
+            html += '</div>';
+        }
         html += '</div>';
     }
     html += '</div>';
-}
-    html += '</div>';
-
+    
     // 방문 분석
     html += '<div style="border-top:1px solid #e2e8f0;padding-top:16px;">';
     html += '<div style="font-weight:700;font-size:15px;margin-bottom:12px;">📈 방문 분석</div>';
@@ -6112,17 +6105,16 @@ for (let i = 0; i < places.length; i++) {
     html += renderVisitData(visitCounts.today);
     html += '</div>';
     html += '</div>';
-
+    
     if (stats.lastUpdated) {
         let lastDate = new Date(stats.lastUpdated);
         html += '<div style="margin-top:16px;padding-top:12px;border-top:1px solid #e2e8f0;font-size:11px;color:#a0aec0;text-align:center;">';
         html += '⏳ 마지막 동기화: ' + lastDate.toLocaleString();
         html += '</div>';
     }
-
+    
     container.innerHTML = html;
 }
-
 // ===== 방문 데이터 렌더링 =====
 function renderVisitData(visits) {
     let html = '';
