@@ -1425,6 +1425,7 @@ function openAddPlaceModal() {
 function closeAddPlaceModal() {
     document.getElementById('addPlaceModal').classList.remove('active');
     document.getElementById('modalAddrSearchResults').style.display = 'none';
+    if (document.getElementById('modalPlaceDong')) document.getElementById('modalPlaceDong').value = '';
 }
 
 function saveAddPlaceModal() {
@@ -1433,6 +1434,7 @@ function saveAddPlaceModal() {
     let lat = parseFloat(document.getElementById('modalPlaceLat').value);
     let lng = parseFloat(document.getElementById('modalPlaceLng').value);
     let remark = document.getElementById('modalPlaceRemark').value.trim();
+    let dong = document.getElementById('modalPlaceDong') ? document.getElementById('modalPlaceDong').value.trim() : '';
 
     if (!name) {
         showTabStatus('tab-list', '⚠️ 현장명을 입력하세요.', 'warning');
@@ -1475,7 +1477,7 @@ function saveAddPlaceModal() {
                     showTabStatus('tab-list', '⚠️ 주소 변환 실패. 위도/경도를 직접 입력하세요.', 'warning');
                     return;
                 }
-                savePlaceFromModal(name, fullAddress, finalLat, finalLng, remark);
+                savePlaceFromModal(name, fullAddress, finalLat, finalLng, remark, dong);
             });
             return;
         } else {
@@ -1484,23 +1486,31 @@ function saveAddPlaceModal() {
         }
     }
 
-    savePlaceFromModal(name, fullAddress, finalLat, finalLng, remark);
+    savePlaceFromModal(name, fullAddress, finalLat, finalLng, remark, dong);
 }
 
-function savePlaceFromModal(name, address, lat, lng, remark) {
+async function savePlaceFromModal(name, address, lat, lng, remark, dong) {
+    // 동이 비어있고 좌표가 있으면 API로 자동 변환
+    if (!dong && lat && lng) {
+        dong = await extractDongFromCoords(lat, lng);
+        if (dong === '기타') dong = '';
+    }
     places.push({
         id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
         name: name,
         address: address,
         lat: lat,
         lng: lng,
+        dong: dong || '',
         remark: remark || '',
         favorite: false
     });
     savePlaces();
-    scheduleAutoSync();  // ★ 추가
+    scheduleAutoSync();
     closeAddPlaceModal();
-    showTabStatus('tab-list', '✅ "' + name + '" 추가됨', 'ok');
+    let msg = '✅ "' + name + '" 추가됨';
+    if (dong) msg += ' (' + dong + ')';
+    showTabStatus('tab-list', msg, 'ok');
 }
 
 function searchAddressForModal(query) {
@@ -1761,6 +1771,7 @@ function openEditModal(id) {
     document.getElementById('modalName').value = place.name;
     document.getElementById('modalAddress').value = place.address || '';
     document.getElementById('modalRemark').value = place.remark || '';
+    if (document.getElementById('modalDong')) document.getElementById('modalDong').value = place.dong || '';
     document.getElementById('modalId').value = id;
     showModalEditError(null);
     document.getElementById('modal').classList.add('active');
@@ -1838,16 +1849,27 @@ async function saveModal() {
         }
     }
 
-    place.name = name;
-    place.address = fullAddress;
-    place.lat = finalLat;
-    place.lng = finalLng;
-    place.remark = remark;
+   place.name = name;
+   place.address = fullAddress;
+   place.lat = finalLat;
+   place.lng = finalLng;
+   place.remark = remark;
 
-    savePlaces();
-    closeModal();
-    renderPlaces();
-    showTabStatus('tab-list', '✅ "' + name + '" 수정 완료', 'ok');
+// 동 처리: 사용자 입력 우선, 비어있으면 자동 변환
+let manualDong = document.getElementById('modalDong') ? document.getElementById('modalDong').value.trim() : '';
+if (manualDong) {
+    place.dong = manualDong;
+} else if (finalLat && finalLng) {
+    let autoDong = await extractDongFromCoords(finalLat, finalLng);
+    place.dong = (autoDong && autoDong !== '기타') ? autoDong : (place.dong || '');
+}
+
+savePlaces();
+scheduleAutoSync();
+closeModal();
+renderPlaces();
+let dongMsg = place.dong ? ' (' + place.dong + ')' : '';
+showTabStatus('tab-list', '✅ "' + name + '" 수정 완료' + dongMsg, 'ok');
 }
 
 function closeModal() {
@@ -1857,6 +1879,7 @@ function closeModal() {
     document.getElementById('modalLat').value = '';
     document.getElementById('modalLng').value = '';
     document.getElementById('modalRemark').value = '';
+    if (document.getElementById('modalDong')) document.getElementById('modalDong').value = '';
     document.getElementById('modalId').value = '';
     showModalEditError(null);
 }
@@ -5988,31 +6011,29 @@ async function renderStatsTab() {
     let stats = currentStats;
     let history = stats.visitHistory || [];
 
-    // ===== 자동 동 변환 (dong 없는 현장만, 통계 탭 진입 시 1회) =====
-    let needConvert = places.filter(function(p) { return !p.dong; });
-    if (needConvert.length > 0 && !dongConverting && settings.kakaoRestKey) {
-        dongConverting = true;
-        container.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#a0aec0;">🏘️ 동 정보 자동 변환 중... (0/' + needConvert.length + ')</div>';
-        let converted = 0;
-        for (let i = 0; i < needConvert.length; i++) {
-            let p = needConvert[i];
-            let dong = '';
-            if (p.lat && p.lng && p.lat !== 0 && p.lng !== 0) {
-                dong = await extractDongFromCoords(p.lat, p.lng);
-            }
-            if (!dong) {
-                dong = extractDongFromAddress(p.address || '');
-            }
-            p.dong = dong || '미변환';
-            converted++;
-            if (converted % 5 === 0 || converted === needConvert.length) {
-                container.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#a0aec0;">🏘️ 동 정보 자동 변환 중... (' + converted + '/' + needConvert.length + ')</div>';
-            }
+    // ===== 자동 동 변환 (dong 없는 현장만) =====
+let needConvert = places.filter(function(p) { return !p.dong; });
+if (needConvert.length > 0 && settings.kakaoRestKey) {
+    container.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#a0aec0;">🏘️ 동 정보 자동 변환 중... (0/' + needConvert.length + ')</div>';
+    let converted = 0;
+    for (let i = 0; i < needConvert.length; i++) {
+        let p = needConvert[i];
+        let dong = '';
+        if (p.lat && p.lng && p.lat !== 0 && p.lng !== 0) {
+            dong = await extractDongFromCoords(p.lat, p.lng);
         }
-        savePlaces();
-        dongConverting = false;
-        showTabStatus('tab-stats', '✅ 동 정보 변환 완료 (' + converted + '개)', 'ok');
+        if (!dong || dong === '기타') {
+            dong = extractDongFromAddress(p.address || '');
+        }
+        p.dong = dong || '미변환';
+        converted++;
+        if (converted % 5 === 0 || converted === needConvert.length) {
+            container.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#a0aec0;">🏘️ 동 정보 자동 변환 중... (' + converted + '/' + needConvert.length + ')</div>';
+        }
     }
+    savePlaces();
+    showTabStatus('tab-stats', '✅ 동 정보 변환 완료 (' + converted + '개)', 'ok');
+}
 
     // ===== 기간 필터링 =====
     let today = new Date().toISOString().slice(0, 10);
@@ -6025,15 +6046,15 @@ async function renderStatsTab() {
 
     // ===== 동별 현장 분포 =====
     let dongCount = {};
-    let noDongCount = 0;
-    for (let i = 0; i < places.length; i++) {
-        let p = places[i];
-        if (p.dong && p.dong !== '미변환') {
-            dongCount[p.dong] = (dongCount[p.dong] || 0) + 1;
-        } else {
-            noDongCount++;
-        }
+let noDongCount = 0;
+for (let i = 0; i < places.length; i++) {
+    let p = places[i];
+    if (p.dong && p.dong !== '미변환') {
+        dongCount[p.dong] = (dongCount[p.dong] || 0) + 1;
+    } else {
+        noDongCount++;
     }
+}
     let dongSorted = Object.entries(dongCount).sort(function(a, b) { return b[1] - a[1]; });
 
     let visitCounts = { today: todayVisits, week: weekVisits, month: monthVisits };
@@ -6054,30 +6075,30 @@ async function renderStatsTab() {
     html += '<div style="font-weight:600;font-size:13px;margin-bottom:6px;">동별 현장 분포</div>';
 
     if (dongSorted.length === 0 && noDongCount === 0) {
-        html += '<div style="color:#a0aec0;font-size:13px;padding:8px;">현장 데이터가 없습니다</div>';
-    } else {
-        if (noDongCount > 0) {
-            html += '<div style="font-size:12px;color:#e53e3e;background:#fff5f5;border:1px solid #fed7d7;border-radius:6px;padding:8px;margin-bottom:8px;">';
-            html += '⚠️ 동 정보를 알 수 없는 현장 <strong>' + noDongCount + '개</strong>';
-            html += '<br><span style="font-size:11px;">현장 편집에서 좌표/주소를 확인하세요</span>';
-            html += '</div>';
-        }
-        let maxCount = dongSorted.length > 0 ? dongSorted[0][1] : 1;
-        html += '<div style="display:flex;flex-direction:column;gap:4px;">';
-        for (let i = 0; i < dongSorted.length; i++) {
-            let dong = dongSorted[i][0];
-            let count = dongSorted[i][1];
-            let barWidth = Math.round((count / maxCount) * 100);
-            html += '<div style="display:flex;align-items:center;gap:8px;">';
-            html += '<span style="min-width:70px;font-size:12px;text-align:right;">' + escapeHtml(dong) + '</span>';
-            html += '<div style="flex:1;background:#e2e8f0;border-radius:4px;height:16px;overflow:hidden;">';
-            html += '<div style="width:' + barWidth + '%;background:#4f7eb3;height:100%;border-radius:4px;min-width:2px;"></div>';
-            html += '</div>';
-            html += '<span style="min-width:35px;font-size:12px;font-weight:600;">' + count + '개</span>';
-            html += '</div>';
-        }
+    html += '<div style="color:#a0aec0;font-size:13px;padding:8px;">현장 데이터가 없습니다</div>';
+} else {
+    if (noDongCount > 0) {
+        html += '<div style="font-size:12px;color:#e53e3e;background:#fff5f5;border:1px solid #fed7d7;border-radius:6px;padding:8px;margin-bottom:8px;">';
+        html += '⚠️ 동 정보를 알 수 없는 현장 <strong>' + noDongCount + '개</strong>';
+        html += '<br><span style="font-size:11px;">통계 탭 진입 시 자동 변환됩니다</span>';
         html += '</div>';
     }
+    let maxCount = dongSorted.length > 0 ? dongSorted[0][1] : 1;
+    html += '<div style="display:flex;flex-direction:column;gap:4px;">';
+    for (let i = 0; i < dongSorted.length; i++) {
+        let dong = dongSorted[i][0];
+        let count = dongSorted[i][1];
+        let barWidth = Math.round((count / maxCount) * 100);
+        html += '<div style="display:flex;align-items:center;gap:8px;">';
+        html += '<span style="min-width:70px;font-size:12px;text-align:right;">' + escapeHtml(dong) + '</span>';
+        html += '<div style="flex:1;background:#e2e8f0;border-radius:4px;height:16px;overflow:hidden;">';
+        html += '<div style="width:' + barWidth + '%;background:#4f7eb3;height:100%;border-radius:4px;min-width:2px;"></div>';
+        html += '</div>';
+        html += '<span style="min-width:35px;font-size:12px;font-weight:600;">' + count + '개</span>';
+        html += '</div>';
+    }
+    html += '</div>';
+}
     html += '</div>';
 
     // 방문 분석
