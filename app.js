@@ -6059,7 +6059,7 @@ function renderStatsTab() {
     let weekStartStr = weekStart.toISOString().slice(0, 10);
     let weekVisits = history.filter(function(v) { return v.date >= weekStartStr; });
     
-    let monthVisits = history; // 이미 30일 필터링됨
+    let monthVisits = history;
     
     // ===== 기본 현황판: 동별 현장 개수 =====
     let dongCount = {};
@@ -6074,8 +6074,97 @@ function renderStatsTab() {
     }
     let dongSorted = Object.entries(dongCount).sort(function(a, b) { return b[1] - a[1]; });
     
-    // ===== 방문 분석 데이터 =====
     let visitCounts = { today: todayVisits, week: weekVisits, month: monthVisits };
+    
+    function getTopPlaces(visits) {
+        let placeCount = {};
+        visits.forEach(function(v) {
+            v.places.forEach(function(p) {
+                placeCount[p.name] = (placeCount[p.name] || 0) + 1;
+            });
+        });
+        return Object.entries(placeCount).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 5);
+    }
+    
+    function getTopDongs(visits) {
+        let dongVisitCount = {};
+        visits.forEach(function(v) {
+            v.places.forEach(function(p) {
+                if (p.dong && p.dong !== '기타') {
+                    dongVisitCount[p.dong] = (dongVisitCount[p.dong] || 0) + 1;
+                }
+            });
+        });
+        return Object.entries(dongVisitCount).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 3);
+    }
+    
+    let html = '';
+    
+    // ===== GitHub 동기화 안내 =====
+    html += '<div style="background:#ebf8ff; border:1px solid #bee3f8; border-radius:8px; padding:12px; margin-bottom:16px;">';
+    html += '<div style="font-size:13px; color:#2b6cb0; font-weight:600; margin-bottom:4px;">☁️ GitHub 통계 동기화</div>';
+    html += '<div style="font-size:12px; color:#4a5568; line-height:1.5;">';
+    if (history.length === 0) {
+        html += '📭 아직 기록된 방문이 없습니다.<br>';
+        html += '<strong>지도 탭</strong>에서 경로를 계산한 후 <strong style="color:#38a169;">📊 통계 기록</strong> 버튼을 눌러야 여기에 표시됩니다.';
+    } else {
+        html += '✅ ' + history.length + '건의 방문 기록이 있습니다.';
+    }
+    html += '</div>';
+    html += '</div>';
+    
+    // 기본 현황판
+    html += '<div style="margin-bottom:20px;">';
+    html += '<div style="font-weight:700;font-size:15px;margin-bottom:10px;">📍 기본 현황판</div>';
+    html += '<div style="font-size:13px;color:#718096;margin-bottom:8px;">총 현장: <strong>' + places.length + '개</strong></div>';
+    html += '<div style="font-weight:600;font-size:13px;margin-bottom:6px;">동별 현장 분포</div>';
+    
+    if (dongSorted.length === 0) {
+        html += '<div style="color:#a0aec0;font-size:13px;padding:8px;">현장 데이터가 없습니다</div>';
+    } else {
+        let maxCount = dongSorted[0][1];
+        html += '<div style="display:flex;flex-direction:column;gap:4px;">';
+        for (let i = 0; i < dongSorted.length; i++) {
+            let dong = dongSorted[i][0];
+            let count = dongSorted[i][1];
+            let barWidth = Math.round((count / maxCount) * 100);
+            html += '<div style="display:flex;align-items:center;gap:8px;">';
+            html += '<span style="min-width:70px;font-size:12px;text-align:right;">' + escapeHtml(dong) + '</span>';
+            html += '<div style="flex:1;background:#e2e8f0;border-radius:4px;height:16px;overflow:hidden;">';
+            html += '<div style="width:' + barWidth + '%;background:#4f7eb3;height:100%;border-radius:4px;min-width:2px;"></div>';
+            html += '</div>';
+            html += '<span style="min-width:35px;font-size:12px;font-weight:600;">' + count + '개</span>';
+            html += '</div>';
+        }
+        html += '</div>';
+    }
+    html += '</div>';
+    
+    // 방문 분석
+    html += '<div style="border-top:1px solid #e2e8f0;padding-top:16px;">';
+    html += '<div style="font-weight:700;font-size:15px;margin-bottom:12px;">📈 방문 분석</div>';
+    
+    html += '<div id="statsPeriodBtns" style="display:flex;gap:6px;margin-bottom:12px;">';
+    html += '<button class="btn btn-sm stats-period-btn active" data-period="today" onclick="switchStatsPeriod(\'today\')" style="padding:6px 12px;font-size:12px;border-radius:6px;">오늘</button>';
+    html += '<button class="btn btn-sm stats-period-btn" data-period="week" onclick="switchStatsPeriod(\'week\')" style="padding:6px 12px;font-size:12px;border-radius:6px;">이번 주</button>';
+    html += '<button class="btn btn-sm stats-period-btn" data-period="month" onclick="switchStatsPeriod(\'month\')" style="padding:6px 12px;font-size:12px;border-radius:6px;">이번 달</button>';
+    html += '</div>';
+    
+    html += '<div id="statsVisitData">';
+    html += renderVisitData(visitCounts.today, 'today');
+    html += '</div>';
+    
+    html += '</div>';
+    
+    if (stats.lastUpdated) {
+        let lastDate = new Date(stats.lastUpdated);
+        html += '<div style="margin-top:16px;padding-top:12px;border-top:1px solid #e2e8f0;font-size:11px;color:#a0aec0;text-align:center;">';
+        html += '⏳ 마지막 동기화: ' + lastDate.toLocaleString();
+        html += '</div>';
+    }
+    
+    container.innerHTML = html;
+}
     
     // 최다 방문 장소 TOP 5
     function getTopPlaces(visits) {
