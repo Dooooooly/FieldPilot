@@ -5621,32 +5621,157 @@ function initDarkMode() {
 // ============================================================
 window.addEventListener('popstate', function(event) {
     isPopState = true;
+    
+    // ★ state가 있고 tab 정보가 있으면 해당 탭으로 이동
     if (event.state && event.state.tab) {
         switchTab(event.state.tab, false);
-    } else {
-        // state가 없으면 URL 해시에서 탭 ID 추출
-        let hash = window.location.hash.replace('#', '');
-        if (hash && document.getElementById(hash)) {
-            switchTab(hash, false);
-        } else {
-            // 해시도 없으면 기본 탭으로 이동
-            switchTab('tab-places', false);
-        }
+        isPopState = false;
+        return;
     }
+    
+    // ★ state가 없거나 tab 정보가 없으면 → 첫 화면에서 뒤로가기
+    // 현재 활성화된 탭 확인
+    let currentTab = document.querySelector('.tab-content.active');
+    let currentTabId = currentTab ? currentTab.id : 'tab-places';
+    
+    // ★ 종료 확인 모달 표시
+    showExitConfirmModal(function() {
+        // [확인] 클릭 → 앱 종료 시도
+        tryCloseApp();
+    }, function() {
+        // [취소] 클릭 → 현재 탭으로 다시 push (뒤로가기 스택 복구)
+        history.pushState({ tab: currentTabId }, '', '#' + currentTabId);
+    });
+    
     isPopState = false;
 });
 
-// 초기 로드 시 URL 해시에 맞춰 탭 설정
-function initHistoryHash() {
-    let validTabs = ['tab-places', 'tab-route', 'tab-list', 'tab-settings', 'tab-help'];
-    let initialHash = window.location.hash.replace('#', '');
+// ============================================================
+// 앱 종료 확인 모달
+// ============================================================
+function showExitConfirmModal(onConfirm, onCancel) {
+    let existing = document.getElementById('exitConfirmModal');
+    if (existing) existing.remove();
     
-    if (initialHash && validTabs.includes(initialHash) && document.getElementById(initialHash)) {
-        switchTab(initialHash, false);
-    } else {
-        // 기본 탭(tab-places)으로 히스토리 스택 정리
-        history.replaceState({ tab: 'tab-places' }, '', '#tab-places');
-    }
+    let modalHtml = `
+        <div id="exitConfirmModal" style="
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 999999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            animation: fadeIn 0.2s ease;
+        ">
+            <div style="
+                background: white;
+                border-radius: 16px;
+                padding: 24px;
+                max-width: 360px;
+                width: 100%;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                text-align: center;
+            ">
+                <div style="font-size:48px; margin-bottom:12px;">👋</div>
+                <h3 style="font-size:17px; font-weight:700; color:#1a202c; margin-bottom:8px;">
+                    앱을 종료하시겠습니까?
+                </h3>
+                <p style="font-size:14px; color:#4a5568; margin-bottom:20px; line-height:1.6;">
+                    확인을 누르면 앱이 종료됩니다.<br>
+                    취소을 누르면 계속 이용하실 수 있습니다.
+                </p>
+                <div style="display:flex; gap:8px; justify-content:center;">
+                    <button id="exitCancelBtn" style="
+                        padding:10px 24px; 
+                        border:1px solid #cbd5e0; 
+                        border-radius:8px; 
+                        background:white; 
+                        color:#4a5568;
+                        font-size:14px;
+                        font-weight:600;
+                        cursor:pointer;
+                        min-width:80px;
+                    ">취소</button>
+                    <button id="exitConfirmBtn" style="
+                        padding:10px 24px; 
+                        background:#e53e3e; 
+                        color:white; 
+                        border:none; 
+                        border-radius:8px; 
+                        font-size:14px;
+                        font-weight:600;
+                        cursor:pointer;
+                        min-width:80px;
+                    ">확인</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    document.getElementById('exitConfirmBtn').addEventListener('click', function() {
+        document.getElementById('exitConfirmModal').remove();
+        if (typeof onConfirm === 'function') onConfirm();
+    });
+    
+    document.getElementById('exitCancelBtn').addEventListener('click', function() {
+        document.getElementById('exitConfirmModal').remove();
+        if (typeof onCancel === 'function') onCancel();
+    });
 }
 
+// ============================================================
+// 앱 종료 시도
+// ============================================================
+function tryCloseApp() {
+    // PWA/모바일 환경에서는 window.close()가 대부분 작동하지 않음
+    // 대안: 빈 페이지로 이동하거나 사용자에게 안내
+    
+    // 1차 시도: window.close()
+    try {
+        window.close();
+    } catch(e) {}
+    
+    // 2차 시도: 약간의 시간 후에도 닫히지 않으면 안내 페이지로 이동
+    setTimeout(function() {
+        // 브라우저 탭을 닫을 수 없는 경우를 대비해 간단한 종료 페이지 표시
+        document.body.innerHTML = `
+            <div style="
+                position: fixed;
+                top: 0; left: 0; right: 0; bottom: 0;
+                background: #1a202c;
+                color: white;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                text-align: center;
+                padding: 20px;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            ">
+                <div style="font-size:64px; margin-bottom:20px;">✅</div>
+                <h2 style="font-size:20px; margin-bottom:12px;">앱이 종료되었습니다</h2>
+                <p style="font-size:14px; color:#a0aec0; margin-bottom:24px; line-height:1.6;">
+                    홈 버튼이나 최근 앱 목록에서<br>
+                    앱을 완전히 종료하실 수 있습니다.
+                </p>
+                <button onclick="location.reload()" style="
+                    padding:12px 32px;
+                    background:#3182ce;
+                    color:white;
+                    border:none;
+                    border-radius:8px;
+                    font-size:14px;
+                    font-weight:600;
+                    cursor:pointer;
+                ">다시 실행</button>
+            </div>
+        `;
+    }, 500);
+}
 window.switchTab = switchTab;
