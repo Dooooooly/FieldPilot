@@ -5975,7 +5975,6 @@ async function recordVisitStats() {
         return;
     }
     showTabStatus('tab-route', '⏳ 통계 기록 중... (동 정보 변환)', 'info');
-
     let placeRecords = [];
     for (let i = 0; i < sorted.length; i++) {
         let p = sorted[i];
@@ -5988,12 +5987,10 @@ async function recordVisitStats() {
         }
         placeRecords.push({ name: p.name, dong: dong || '미변환', lat: p.lat, lng: p.lng });
     }
-
     let startDong = '';
     if (startPoint && startPoint.lat && startPoint.lng) {
         startDong = await extractDongFromCoords(startPoint.lat, startPoint.lng);
     }
-
     let now = new Date();
     let visitRecord = {
         date: now.toISOString().slice(0, 10),
@@ -6003,56 +6000,46 @@ async function recordVisitStats() {
         places: placeRecords,
         startDong: startDong || '미변환'
     };
-
     let stats = loadStatsFromLocalStorage();
     stats.visitHistory.push(visitRecord);
-
     let cutoff = now.getTime() - (30 * 24 * 60 * 60 * 1000);
     stats.visitHistory = stats.visitHistory.filter(function(v) { return v.timestamp >= cutoff; });
     stats.lastUpdated = now.toISOString();
-
     saveStatsToLocalStorage(stats);
 
-        // ===== 작업 기록에도 동시 기록 =====
+    // ===== 작업 기록에도 동시 기록 =====
     let work = loadWorkFromLocalStorage();
-   let nowWork = new Date();
-for (let i = 0; i < placeRecords.length; i++) {
-    let pr = placeRecords[i];
-    work.workHistory.push({
-        id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5) + i,
-        date: nowWork.toISOString().slice(0, 10),
-        time: '',  // ★ 처리내용 작성 시 기록 (초기에는 비움)
-        timestamp: nowWork.getTime(),
-        placeName: pr.name,
-        dong: pr.dong || '',
-        worker: workerName || '미설정',
-        category: '',
-        content: '',
-        camera: '',  // ★ 카메라 번호 필드 (작성 시 입력)
-        fromStats: true
-    });
-}
-work.lastUpdated = nowWork.toISOString();
-saveWorkToLocalStorage(work);
+    let nowWork = new Date();
+    for (let i = 0; i < placeRecords.length; i++) {
+        let pr = placeRecords[i];
+        work.workHistory.push({
+            id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5) + i,
+            date: nowWork.toISOString().slice(0, 10),
+            time: '',
+            timestamp: nowWork.getTime(),
+            placeName: pr.name,
+            dong: pr.dong || '',
+            worker: workerName || '미설정',
+            category: '',
+            content: '',
+            camera: '',
+            fromStats: true
+        });
+    }
+    work.lastUpdated = nowWork.toISOString();
+    saveWorkToLocalStorage(work);
 
-// ★ 순차 업로드: work 먼저 완료 후 stats (409 방지)
-let workUploaded = await uploadWorkToGitHub(work);
-await new Promise(r => setTimeout(r, 1000));  // 1초 대기
-let uploaded = await uploadStatsToGitHub(stats);
-
-if (uploaded && workUploaded) {
-    showTabStatus('tab-route', '✅ 통계 기록 완료! (' + sorted.length + '개 현장, GitHub 동기화 완료)', 'ok');
-} else if (uploaded || workUploaded) {
-    showTabStatus('tab-route', '⚠️ 일부 GitHub 업로드 실패 (로컬 저장은 완료)', 'warning');
-} else {
-    showTabStatus('tab-route', '⚠️ GitHub 업로드 실패 (로컬 저장은 완료)', 'warning');
-}
-
+    // ★ 순차 업로드: work 먼저 완료 후 stats (409 방지)
+    let workUploaded = await uploadWorkToGitHub(work);
+    await new Promise(r => setTimeout(r, 1000));
     let uploaded = await uploadStatsToGitHub(stats);
-    if (uploaded) {
+
+    if (uploaded && workUploaded) {
         showTabStatus('tab-route', '✅ 통계 기록 완료! (' + sorted.length + '개 현장, GitHub 동기화 완료)', 'ok');
+    } else if (uploaded || workUploaded) {
+        showTabStatus('tab-route', '⚠️ 일부 GitHub 업로드 실패 (로컬 저장은 완료)', 'warning');
     } else {
-        showTabStatus('tab-route', '⚠️ 통계 기록됨. GitHub 업로드 실패 (오프라인 또는 토큰 미설정)', 'warning');
+        showTabStatus('tab-route', '⚠️ GitHub 업로드 실패 (로컬 저장은 완료)', 'warning');
     }
 }
 
@@ -6589,33 +6576,26 @@ function showWorkDateDetail(dateStr) {
     html += '<button class="btn btn-outline btn-sm" onclick="hideWorkDateDetail()" style="padding:4px 12px;">✕ 닫기</button>';
     html += '</div>';
 
-    if (dayRecords.length === 0) {
+        if (dayRecords.length === 0) {
         html += '<div style="text-align:center;padding:16px;color:#a0aec0;">이 날짜에 기록이 없습니다</div>';
     } else {
         for (let i = 0; i < dayRecords.length; i++) {
-    let r = dayRecords[i];
-    let hasContent = r.category && r.content;
-    let timeDisplay = r.time || '--:--';
-    html += '<div onclick="openWorkEditModal(\'' + r.id + '\')" style="background:#f7fafc;border-radius:8px;padding:10px;margin-bottom:6px;cursor:pointer;border-left:3px solid ' + (hasContent ? '#38a169' : '#e53e3e') + ';">';
-    html += '<div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">';
-    html += '<span style="color:#4a5568;">⏰ ' + timeDisplay + '</span>';
-    html += '<span>' + escapeHtml(r.placeName) + '</span>';
-    if (r.camera) {
-        html += '<span style="background:#ebf8ff;color:#3182ce;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600;">📷 ' + escapeHtml(r.camera) + '</span>';
-    }
-    html += '</div>';
-    html += '<div style="font-size:12px;color:#718096;margin-top:2px;">👤 ' + escapeHtml(r.worker || '미설정');
-    if (r.category) html += ' · <span style="color:#2b6cb0;font-weight:600;">' + escapeHtml(r.category) + '</span>';
-    html += '</div>';
-    if (r.content) {
-        html += '<div style="font-size:12px;color:#4a5568;margin-top:4px;padding:6px 8px;background:#fff;border-radius:4px;border-left:2px solid #2b6cb0;">' + escapeHtml(r.content) + '</div>';
-    } else {
-        html += '<div style="font-size:12px;color:#e53e3e;margin-top:4px;">⚠️ 미작성 - 터치하여 작성</div>';
-    }
-    html += '</div>';
-}
+            let r = dayRecords[i];
+            let hasContent = r.category && r.content;
+            let timeDisplay = r.time || '--:--';
+            html += '<div onclick="openWorkEditModal(\'' + r.id + '\')" style="background:#f7fafc;border-radius:8px;padding:10px;margin-bottom:6px;cursor:pointer;border-left:3px solid ' + (hasContent ? '#38a169' : '#e53e3e') + ';">';
+            html += '<div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">';
+            html += '<span style="color:#4a5568;">⏰ ' + timeDisplay + '</span>';
+            html += '<span>' + escapeHtml(r.placeName) + '</span>';
+            if (r.camera) {
+                html += '<span style="background:#ebf8ff;color:#3182ce;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600;">📷 ' + escapeHtml(r.camera) + '</span>';
+            }
+            html += '</div>';
+            html += '<div style="font-size:12px;color:#718096;margin-top:2px;">👤 ' + escapeHtml(r.worker || '미설정');
+            if (r.category) html += ' · <span style="color:#2b6cb0;font-weight:600;">' + escapeHtml(r.category) + '</span>';
+            html += '</div>';
             if (r.content) {
-                html += '<div style="font-size:12px;color:#4a5568;margin-top:4px;">' + escapeHtml(r.content) + '</div>';
+                html += '<div style="font-size:12px;color:#4a5568;margin-top:4px;padding:6px 8px;background:#fff;border-radius:4px;border-left:2px solid #2b6cb0;white-space:pre-wrap;">' + escapeHtml(r.content) + '</div>';
             } else {
                 html += '<div style="font-size:12px;color:#e53e3e;margin-top:4px;">⚠️ 미작성 - 터치하여 작성</div>';
             }
@@ -6653,10 +6633,6 @@ function openWorkEditModal(workId) {
     modalHtml += '<div>현장: <strong>' + escapeHtml(record.placeName) + '</strong></div>';
     modalHtml += '<div>일시: ' + record.date + ' ' + record.time + '</div>';
     modalHtml += '<div>작업자: ' + escapeHtml(record.worker || '미설정') + '</div>';
-    modalHtml += '</div>';
-    modalHtml += '<div style="margin-bottom:12px;">';
-    modalHtml += '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">📷 카메라 번호</label>';
-    modalHtml += '<input type="text" id="workEditCamera" value="' + escapeHtml(record.camera || '') + '" placeholder="예: 01, A3 (선택)" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;">';
     modalHtml += '</div>';
     // ★ 시간 자동 입력 (비어있으면 현재 시간)
 let currentTime = record.time || '';
