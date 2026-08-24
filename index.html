@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>경로 최적화</title>
 
     <link rel="manifest" href="manifest.json">
@@ -582,6 +582,51 @@
             .choice-grid.two { grid-template-columns: 1fr; }
             .choice-grid.three { grid-template-columns: 1fr; }
         }
+        /* ===== 아이폰 안전 영역 (Safe Area) ===== */
+body {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+}
+.header {
+    padding-top: calc(10px + env(safe-area-inset-top, 0px));
+}
+.bottom-tabs {
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+    height: calc(64px + env(safe-area-inset-bottom, 0px)) !important;
+    min-height: calc(64px + env(safe-area-inset-bottom, 0px)) !important;
+}
+.bottom-tab {
+    height: calc(64px + env(safe-area-inset-bottom, 0px)) !important;
+}
+.main {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+}
+
+/* ===== 통계/작업 기록 탭 아이콘 색상 ===== */
+#tab-stats .ux-tab-icon { background: #ebf8ff; color: #2b6cb0; }
+#tab-work .ux-tab-icon { background: #f0fff4; color: #38a169; }
+
+/* ===== 버튼 크기 통일 ===== */
+.btn-sm { padding: 6px 12px !important; font-size: 12px !important; min-height: 32px !important; }
+.btn { font-size: 13px; min-height: 36px; }
+.btn-lg { font-size: 15px; min-height: 48px; }
+
+/* ===== 헤더 통일 ===== */
+.ux-tab-header { padding: 8px 3px 12px; }
+.ux-tab-title { font-size: 16px; }
+.ux-tab-sub { font-size: 11px; }
+
+/* ===== 모달 안전 영역 ===== */
+.modal, .modal-overlay > div {
+    max-height: calc(90vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+}
+
+/* ===== 아이폰 가로 모드 대응 ===== */
+@supports (padding: max(0px)) {
+    body {
+        padding-left: max(0px, env(safe-area-inset-left));
+        padding-right: max(0px, env(safe-area-inset-right));
+    }
+}
     </style>
 </head>
 <body>
@@ -732,11 +777,13 @@
         </div>
 
         <div id="tab-stats" class="tab-content">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-        <h2 style="font-size:18px; font-weight:700;">📊 통계</h2>
-        <button class="btn btn-outline btn-sm" onclick="refreshStatsFromGitHub()" style="padding:6px 12px; font-size:12px;">
-            🔄 GitHub에서 새로고침
-        </button>
+    <div id="tab-stats-uxheader" class="ux-tab-header">
+        <div class="ux-tab-icon">📊</div>
+        <div style="flex:1;">
+            <div class="ux-tab-title">방문 통계</div>
+            <div class="ux-tab-sub">현장 방문 기록과 동별 분포를 확인합니다.</div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="refreshStatsFromGitHub()" style="padding:6px 12px;">🔄</button>
     </div>
     <div id="statsContent">
         <div style="text-align:center; padding:40px 20px; color:#a0aec0;">
@@ -745,10 +792,21 @@
     </div>
 </div>
 <div id="tab-work" class="tab-content">
-    <h2>📝 작업 기록</h2>
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-        <span id="workWorkerDisplay" style="font-size:13px; color:#718096;">👤 미설정</span>
+    <div id="tab-work-uxheader" class="ux-tab-header">
+        <div class="ux-tab-icon">📝</div>
+        <div style="flex:1;">
+            <div class="ux-tab-title">작업 기록</div>
+            <div class="ux-tab-sub">날짜별 처리내역을 관리합니다.</div>
+        </div>
         <div style="display:flex; gap:6px;">
+            <button class="btn btn-outline btn-sm" onclick="refreshWorkFromGitHub()" style="padding:6px 12px;">🔄</button>
+            <button class="btn btn-outline btn-sm" onclick="openCategoryManager()" style="padding:6px 12px;">⚙️</button>
+        </div>
+    </div>
+    <div id="workWorkerDisplay" style="font-size:12px; color:#718096; margin-bottom:8px;">👤 미설정</div>
+    <div id="workCalendar"></div>
+    <div id="workDateDetail" style="display:none; margin-top:12px; border-top:1px solid #e2e8f0; padding-top:12px;"></div>
+</div>
             <button class="btn btn-outline btn-sm" onclick="refreshWorkFromGitHub()" style="padding:6px 12px; font-size:12px;">🔄 새로고침</button>
             <button class="btn btn-outline btn-sm" onclick="openCategoryManager()" style="padding:6px 12px; font-size:12px;">⚙️ 구분 관리</button>
         </div>
