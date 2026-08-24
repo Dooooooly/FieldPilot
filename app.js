@@ -1195,23 +1195,20 @@ function renderWaypointList() {
     if (!list) return;
     if (countEl) countEl.textContent = '(' + waypoints.length + '개)';
     if (waypoints.length === 0) {
-        list.innerHTML = '<li class="empty-msg">경유지를 추가하세요 (드래그로 순서 변경 가능)</li>';
-        if (window._sortable) {
-            window._sortable.destroy();
-            window._sortable = null;
-        }
+        list.innerHTML = '<li class="empty-msg">경유지를 추가하세요</li>';
         return;
     }
     let html = '';
     for (let i = 0; i < waypoints.length; i++) {
         let wp = waypoints[i];
         html += '<li data-index="' + i + '" data-name="' + escapeHtml(wp.name) + '" data-lat="' + (wp.lat || 0) + '" data-lng="' + (wp.lng || 0) + '">';
-        html += '<div style="display:flex;align-items:center;flex:1;"><span class="drag-handle">⠿</span>';
+        html += '<div style="display:flex;align-items:center;flex:1;">';
         html += '<span class="idx">' + (i + 1) + '</span>';
         html += '<span>' + escapeHtml(wp.name) + '</span></div>';
         html += '<span class="remove" onclick="event.stopPropagation(); removeWaypoint(' + i + ')">✕</span></li>';
     }
     list.innerHTML = html;
+}
     
     if (window.Sortable) {
         if (window._sortable) window._sortable.destroy();
