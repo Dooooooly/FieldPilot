@@ -4351,25 +4351,37 @@ async function showWeekWeather() {
         return;
     }
     await fetchWeather();
+    // ★ GPS 좌표 우선, 없으면 지역 중심 좌표
     let center = getRegionCenter(currentRegion);
+    if (typeof userGpsCoords !== 'undefined' && userGpsCoords) {
+        center = userGpsCoords;
+    }
     let apiKey = 'b84c1b9a09d8316b679320cceb3a1097';
     try {
         let url = 'https://api.openweathermap.org/data/2.5/forecast?lat=' + center.lat + '&lon=' + center.lng + '&appid=' + apiKey + '&units=metric&lang=kr';
         let response = await fetch(url);
         if (!response.ok) throw new Error('예보 조회 실패');
         let data = await response.json();
+
+        // ★ 오전 9시 ~ 오후 6시(18시) 항목만 필터링
         let dailyMap = {};
         data.list.forEach(function(item) {
-            let date = item.dt_txt.split(' ')[0];
+            let parts = item.dt_txt.split(' ');
+            let date = parts[0];
+            let hour = parseInt(parts[1].split(':')[0], 10);
+            // ★ 09시~18시만 포함 (00, 03, 06, 21시 제외)
+            if (hour < 9 || hour > 18) return;
             if (!dailyMap[date]) {
-                dailyMap[date] = { temps: [], icons: [], descs: [], date: date };
+                dailyMap[date] = { temps: [], icons: [], descs: [], hours: [], date: date };
             }
             dailyMap[date].temps.push(item.main.temp);
             dailyMap[date].icons.push(item.weather[0].icon);
             dailyMap[date].descs.push(item.weather[0].description);
+            dailyMap[date].hours.push(hour);
         });
+
         let dailyList = Object.values(dailyMap).slice(0, 5);
-        let modalHtml = '<div id="weekWeatherModal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);z-index:9999;display:flex;justify-content:center;align-items:center;padding:20px;" onclick="this.remove()"><div style="background:white;border-radius:24px;padding:24px 20px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:80vh;overflow-y:auto;" onclick="event.stopPropagation()"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><h3 style="font-size:18px;font-weight:700;color:#2d3748;">📅 5일 예보 (' + currentRegion + ')</h3><button onclick="document.getElementById(\'weekWeatherModal\').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#a0aec0;">&times;</button></div><div style="display:flex;flex-direction:column;gap:10px;">';
+
         let iconMap = {
             '01d': '☀️', '01n': '🌙', '02d': '⛅', '02n': '☁️',
             '03d': '☁️', '03n': '☁️', '04d': '☁️', '04n': '☁️',
@@ -4377,19 +4389,44 @@ async function showWeekWeather() {
             '11d': '⛈️', '11n': '⛈️', '13d': '❄️', '13n': '❄️',
             '50d': '🌫️', '50n': '🌫️'
         };
+
+        let modalHtml = '<div id="weekWeatherModal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);z-index:9999;display:flex;justify-content:center;align-items:center;padding:20px;" onclick="this.remove()">';
+        modalHtml += '<div style="background:white;border-radius:24px;padding:24px 20px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:80vh;overflow-y:auto;" onclick="event.stopPropagation()">';
+        modalHtml += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><h3 style="font-size:18px;font-weight:700;color:#2d3748;">📅 5일 예보 (' + escapeHtml(currentRegion) + ')</h3><button onclick="document.getElementById(\'weekWeatherModal\').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#a0aec0;">×</button></div>';
+        modalHtml += '<div style="font-size:11px;color:#718096;background:#f7fafc;border-radius:8px;padding:6px 10px;margin-bottom:12px;text-align:center;">🕘 활동시간 기준 · 오전 9시 ~ 오후 6시</div>';
+        modalHtml += '<div style="display:flex;flex-direction:column;gap:10px;">';
+
         dailyList.forEach(function(day) {
+            if (day.temps.length === 0) return;
             let minTemp = Math.round(Math.min.apply(null, day.temps));
             let maxTemp = Math.round(Math.max.apply(null, day.temps));
+            // 가장 자주 나타나는 설명 선택
+            let descCount = {};
+            day.descs.forEach(function(d) { descCount[d] = (descCount[d] || 0) + 1; });
+            let mainDesc = Object.keys(descCount).sort(function(a, b) { return descCount[b] - descCount[a]; })[0] || '';
+            // 12시(정오) 아이콘 우선, 없으면 첫 번째
             let iconCode = day.icons[0] || '01d';
+            for (let i = 0; i < day.hours.length; i++) {
+                if (day.hours[i] === 12) { iconCode = day.icons[i]; break; }
+            }
             let iconEmoji = iconMap[iconCode] || '🌡️';
-            let desc = day.descs[0] || '';
             let dateObj = new Date(day.date + 'T00:00:00');
             let weekdays = ['일', '월', '화', '수', '목', '금', '토'];
             let dayLabel = weekdays[dateObj.getDay()] + '요일';
             let dateLabel = (dateObj.getMonth() + 1) + '/' + dateObj.getDate();
-            modalHtml += '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f7fafc;border-radius:14px;border-left:4px solid #2563eb;"><div style="display:flex;align-items:center;gap:12px;min-width:80px;"><span style="font-size:22px;">' + iconEmoji + '</span><div><div style="font-weight:600;font-size:14px;">' + dayLabel + '</div><div style="font-size:11px;color:#a0aec0;">' + dateLabel + '</div></div></div><div style="text-align:center;flex:1;"><span style="font-size:13px;color:#718096;">' + desc + '</span></div><div style="text-align:right;font-weight:700;font-size:15px;">' + maxTemp + '° <span style="color:#a0aec0;font-weight:400;">/</span> ' + minTemp + '°</div></div>';
+            modalHtml += '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f7fafc;border-radius:14px;border-left:4px solid #2563eb;">';
+            modalHtml += '<div style="display:flex;align-items:center;gap:12px;min-width:80px;">';
+            modalHtml += '<span style="font-size:22px;">' + iconEmoji + '</span>';
+            modalHtml += '<div><div style="font-weight:600;font-size:14px;">' + dayLabel + '</div><div style="font-size:11px;color:#a0aec0;">' + dateLabel + '</div></div>';
+            modalHtml += '</div>';
+            modalHtml += '<div style="text-align:center;flex:1;"><span style="font-size:13px;color:#718096;">' + escapeHtml(mainDesc) + '</span></div>';
+            modalHtml += '<div style="text-align:right;font-weight:700;font-size:15px;">' + maxTemp + '° <span style="color:#a0aec0;font-weight:400;">/</span> ' + minTemp + '°</div>';
+            modalHtml += '</div>';
         });
-        modalHtml += '</div><div style="margin-top:14px;font-size:11px;color:#a0aec0;text-align:center;">* 3시간 간격 예보를 평균/최고/최저로 표시했어요</div></div></div>';
+
+        modalHtml += '</div>';
+        modalHtml += '<div style="margin-top:14px;font-size:11px;color:#a0aec0;text-align:center;">* 오전 9시~오후 6시 기준 최저/최고 기온</div>';
+        modalHtml += '</div></div>';
         document.body.insertAdjacentHTML('beforeend', modalHtml);
     } catch(error) {
         showTabStatus('tab-settings', '❌ 날씨 예보를 불러오지 못했습니다.', 'error');
