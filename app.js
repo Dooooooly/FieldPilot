@@ -6015,25 +6015,38 @@ async function recordVisitStats() {
 
         // ===== 작업 기록에도 동시 기록 =====
     let work = loadWorkFromLocalStorage();
-    let nowWork = new Date();
-    for (let i = 0; i < placeRecords.length; i++) {
-        let pr = placeRecords[i];
-        work.workHistory.push({
-            id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5) + i,
-            date: nowWork.toISOString().slice(0, 10),
-            time: nowWork.getHours().toString().padStart(2, '0') + ':' + nowWork.getMinutes().toString().padStart(2, '0'),
-            timestamp: nowWork.getTime(),
-            placeName: pr.name,
-            dong: pr.dong || '',
-            worker: workerName || '미설정',
-            category: '',
-            content: '',
-            fromStats: true
-        });
-    }
-    work.lastUpdated = nowWork.toISOString();
-    saveWorkToLocalStorage(work);
-    uploadWorkToGitHub(work);
+   let nowWork = new Date();
+for (let i = 0; i < placeRecords.length; i++) {
+    let pr = placeRecords[i];
+    work.workHistory.push({
+        id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5) + i,
+        date: nowWork.toISOString().slice(0, 10),
+        time: '',  // ★ 처리내용 작성 시 기록 (초기에는 비움)
+        timestamp: nowWork.getTime(),
+        placeName: pr.name,
+        dong: pr.dong || '',
+        worker: workerName || '미설정',
+        category: '',
+        content: '',
+        camera: '',  // ★ 카메라 번호 필드 (작성 시 입력)
+        fromStats: true
+    });
+}
+work.lastUpdated = nowWork.toISOString();
+saveWorkToLocalStorage(work);
+
+// ★ 순차 업로드: work 먼저 완료 후 stats (409 방지)
+let workUploaded = await uploadWorkToGitHub(work);
+await new Promise(r => setTimeout(r, 1000));  // 1초 대기
+let uploaded = await uploadStatsToGitHub(stats);
+
+if (uploaded && workUploaded) {
+    showTabStatus('tab-route', '✅ 통계 기록 완료! (' + sorted.length + '개 현장, GitHub 동기화 완료)', 'ok');
+} else if (uploaded || workUploaded) {
+    showTabStatus('tab-route', '⚠️ 일부 GitHub 업로드 실패 (로컬 저장은 완료)', 'warning');
+} else {
+    showTabStatus('tab-route', '⚠️ GitHub 업로드 실패 (로컬 저장은 완료)', 'warning');
+}
 
     let uploaded = await uploadStatsToGitHub(stats);
     if (uploaded) {
@@ -6066,27 +6079,72 @@ function saveStatsToLocalStorage(stats) {
 // ===== GitHub 업로드 (통계 기록 시 자동) =====
 async function uploadStatsToGitHub(stats) {
     let token = settings.githubToken;
-    if (!token || !currentRegion || !navigator.onLine) return false;
+    if (!token) return false;
+    if (!currentRegion) return false;
+    if (!navigator.onLine) return false;
     try {
-        let userRes = await fetch('https://api.github.com/user', { headers: { 'Authorization': 'token ' + token } });
+        let userRes = await fetch('https://api.github.com/user', {
+            headers: { 'Authorization': 'token ' + token }
+        });
         if (!userRes.ok) return false;
         let user = await userRes.json();
+        let username = user.login;
+        let repoName = 'route-data';
         let fileName = currentRegion + '_stats.json';
         let content = JSON.stringify(stats, null, 2);
         let b64Content = utf8ToBase64(content);
-        let fileUrl = 'https://api.github.com/repos/' + user.login + '/route-data/contents/' + encodeURIComponent(fileName);
-        let fileRes = await fetch(fileUrl, { headers: { 'Authorization': 'token ' + token } });
+        let fileUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents/' + encodeURIComponent(fileName);
+        
+        // sha 가져오기
+        let fileRes = await fetch(fileUrl, {
+            headers: { 'Authorization': 'token ' + token }
+        });
         let sha = null;
-        if (fileRes.ok) { sha = (await fileRes.json()).sha; }
-        let putData = { message: 'Stats: ' + currentRegion + ' (' + new Date().toLocaleString() + ')', content: b64Content };
+        if (fileRes.ok) {
+            let fileData = await fileRes.json();
+            sha = fileData.sha;
+        }
+        
+        let putData = {
+            message: 'Stats update: ' + currentRegion + ' (' + new Date().toLocaleString() + ')',
+            content: b64Content
+        };
         if (sha) putData.sha = sha;
+        
         let putRes = await fetch(fileUrl, {
             method: 'PUT',
-            headers: { 'Authorization': 'token ' + token, 'Content-Type': 'application/json' },
+            headers: {
+                'Authorization': 'token ' + token,
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify(putData)
         });
+        
+        // ★ 409 Conflict 시 sha 재획득 후 1회 재시도
+        if (putRes.status === 409) {
+            console.log('⚠️ stats 409 충돌 감지, sha 재획득 후 재시도...');
+            await new Promise(r => setTimeout(r, 1500));
+            let retryRes = await fetch(fileUrl, {
+                headers: { 'Authorization': 'token ' + token }
+            });
+            if (retryRes.ok) {
+                let newSha = (await retryRes.json()).sha;
+                putData.sha = newSha;
+                putRes = await fetch(fileUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': 'token ' + token,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(putData)
+                });
+            }
+        }
+        
         return putRes.ok;
-    } catch(e) { return false; }
+    } catch(e) {
+        return false;
+    }
 }
 
 // ===== GitHub에서 통계 다운로드 (🔄 새로고침 버튼) =====
@@ -6535,14 +6593,27 @@ function showWorkDateDetail(dateStr) {
         html += '<div style="text-align:center;padding:16px;color:#a0aec0;">이 날짜에 기록이 없습니다</div>';
     } else {
         for (let i = 0; i < dayRecords.length; i++) {
-            let r = dayRecords[i];
-            let hasContent = r.category && r.content;
-            html += '<div onclick="openWorkEditModal(\'' + r.id + '\')" style="background:#f7fafc;border-radius:8px;padding:10px;margin-bottom:6px;cursor:pointer;border-left:3px solid ' + (hasContent ? '#38a169' : '#e53e3e') + ';">';
-            html += '<div style="font-weight:600;font-size:13px;">' + r.time + ' ' + escapeHtml(r.placeName) + '</div>';
-            html += '<div style="font-size:12px;color:#718096;">👤 ' + escapeHtml(r.worker || '미설정');
-if (r.category) html += ' · ' + escapeHtml(r.category);
-if (r.camera) html += ' · 📷 ' + escapeHtml(r.camera);
-html += '</div>';
+    let r = dayRecords[i];
+    let hasContent = r.category && r.content;
+    let timeDisplay = r.time || '--:--';
+    html += '<div onclick="openWorkEditModal(\'' + r.id + '\')" style="background:#f7fafc;border-radius:8px;padding:10px;margin-bottom:6px;cursor:pointer;border-left:3px solid ' + (hasContent ? '#38a169' : '#e53e3e') + ';">';
+    html += '<div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">';
+    html += '<span style="color:#4a5568;">⏰ ' + timeDisplay + '</span>';
+    html += '<span>' + escapeHtml(r.placeName) + '</span>';
+    if (r.camera) {
+        html += '<span style="background:#ebf8ff;color:#3182ce;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600;">📷 ' + escapeHtml(r.camera) + '</span>';
+    }
+    html += '</div>';
+    html += '<div style="font-size:12px;color:#718096;margin-top:2px;">👤 ' + escapeHtml(r.worker || '미설정');
+    if (r.category) html += ' · <span style="color:#2b6cb0;font-weight:600;">' + escapeHtml(r.category) + '</span>';
+    html += '</div>';
+    if (r.content) {
+        html += '<div style="font-size:12px;color:#4a5568;margin-top:4px;padding:6px 8px;background:#fff;border-radius:4px;border-left:2px solid #2b6cb0;">' + escapeHtml(r.content) + '</div>';
+    } else {
+        html += '<div style="font-size:12px;color:#e53e3e;margin-top:4px;">⚠️ 미작성 - 터치하여 작성</div>';
+    }
+    html += '</div>';
+}
             if (r.content) {
                 html += '<div style="font-size:12px;color:#4a5568;margin-top:4px;">' + escapeHtml(r.content) + '</div>';
             } else {
@@ -6587,6 +6658,22 @@ function openWorkEditModal(workId) {
     modalHtml += '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">📷 카메라 번호</label>';
     modalHtml += '<input type="text" id="workEditCamera" value="' + escapeHtml(record.camera || '') + '" placeholder="예: 01, A3 (선택)" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;">';
     modalHtml += '</div>';
+    // ★ 시간 자동 입력 (비어있으면 현재 시간)
+let currentTime = record.time || '';
+if (!currentTime) {
+    let now = new Date();
+    currentTime = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+}
+modalHtml += '<div style="margin-bottom:12px;">';
+modalHtml += '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">⏰ 작업 시간</label>';
+modalHtml += '<input type="time" id="workEditTime" value="' + currentTime + '" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;">';
+modalHtml += '</div>';
+
+// ★ 카메라 번호 입력 필드
+modalHtml += '<div style="margin-bottom:12px;">';
+modalHtml += '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">📷 카메라 번호</label>';
+modalHtml += '<input type="text" id="workEditCamera" value="' + escapeHtml(record.camera || '') + '" placeholder="예: 01, A3 (선택)" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;">';
+modalHtml += '</div>';
     modalHtml += '<div style="margin-bottom:12px;">';
     modalHtml += '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">처리구분</label>';
     modalHtml += '<select id="workEditCategory" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;">' + categoryOptions + '</select>';
@@ -6609,13 +6696,16 @@ async function saveWorkEdit(workId) {
     if (!record) return;
     let category = document.getElementById('workEditCategory').value;
     let content = document.getElementById('workEditContent').value.trim();
+    let time = document.getElementById('workEditTime') ? document.getElementById('workEditTime').value : '';
+    let camera = document.getElementById('workEditCamera') ? document.getElementById('workEditCamera').value.trim() : '';
     if (!category) {
         showTabStatus('tab-work', '⚠️ 처리구분을 선택하세요.', 'warning');
         return;
     }
     record.category = category;
     record.content = content;
-    record.camera = document.getElementById('workEditCamera') ? document.getElementById('workEditCamera').value.trim() : '';
+    record.time = time;
+    record.camera = camera;
     record.updatedAt = new Date().toISOString();
     saveWorkToLocalStorage(work);
     document.getElementById('workEditModal').remove();
@@ -6666,8 +6756,10 @@ function openWorkAddModal(dateStr) {
     modalHtml += '<div style="margin-bottom:12px;"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">현장</label>';
     modalHtml += '<select id="workAddPlace" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;">' + placeOptions + '</select></div>';
     modalHtml += '<div style="margin-bottom:12px;"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">시간</label>';
-    modalHtml += '<input type="time" id="workAddTime" value="' + defaultTime + '" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;"></div>';
-    modalHtml += '<div style="margin-bottom:12px;"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">📷 카메라 번호</label>';
+modalHtml += '<input type="time" id="workAddTime" value="' + defaultTime + '" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;"></div>';
+modalHtml += '<div style="margin-bottom:12px;"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">📷 카메라 번호</label>';
+modalHtml += '<input type="text" id="workAddCamera" placeholder="예: 01, A3 (선택)" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;"></div>';
+modalHtml += '<div style="margin-bottom:12px;"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">처리구분</label>';
     modalHtml += '<input type="text" id="workAddCamera" placeholder="예: 01, A3 (선택)" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;"></div>';
     modalHtml += '<div style="margin-bottom:12px;"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">처리구분</label>';
     modalHtml += '<select id="workAddCategory" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;">' + categoryOptions + '</select></div>';
@@ -6682,26 +6774,27 @@ function openWorkAddModal(dateStr) {
 
 async function saveWorkAdd(dateStr) {
     let placeName = document.getElementById('workAddPlace').value;
-    let time = document.getElementById('workAddTime').value;
+    let time = document.getElementById('workAddTime') ? document.getElementById('workAddTime').value : '';
     let category = document.getElementById('workAddCategory').value;
     let content = document.getElementById('workAddContent').value.trim();
+    let camera = document.getElementById('workAddCamera') ? document.getElementById('workAddCamera').value.trim() : '';
     if (!placeName) { showTabStatus('tab-work', '⚠️ 현장을 선택하세요.', 'warning'); return; }
     if (!category) { showTabStatus('tab-work', '⚠️ 처리구분을 선택하세요.', 'warning'); return; }
     let work = currentWork || loadWorkFromLocalStorage();
     let now = new Date();
     work.workHistory.push({
-id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-date: dateStr,
-time: time || now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0'),
-timestamp: now.getTime(),
-placeName: placeName,
-dong: '',
-worker: workerName || '미설정',
-category: category,
-content: content,
-camera: document.getElementById('workAddCamera') ? document.getElementById('workAddCamera').value.trim() : '',
-fromStats: false
-});
+        id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+        date: dateStr,
+        time: time,
+        timestamp: now.getTime(),
+        placeName: placeName,
+        dong: '',
+        worker: workerName || '미설정',
+        category: category,
+        content: content,
+        camera: camera,
+        fromStats: false
+    });
     work.lastUpdated = now.toISOString();
     saveWorkToLocalStorage(work);
     document.getElementById('workAddModal').remove();
