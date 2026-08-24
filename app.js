@@ -3754,11 +3754,11 @@ async function downloadFromGitHub() {
         let files = await repoRes.json();
         let regions = [];
         files.forEach(function(file) {
-            if (file.name.endsWith('.json') && file.name !== '.json') {
-                let region = file.name.replace('.json', '');
-                regions.push(region);
-            }
-        });
+if (file.name.endsWith('.json') && file.name.indexOf('_stats') === -1 && file.name.indexOf('_work') === -1 && file.name !== '.json') {
+let region = file.name.replace('.json', '');
+regions.push(region);
+}
+});
         
         if (regions.length === 0) {
             showTabStatus('tab-settings', '📭 GitHub에 저장된 지역 데이터가 없습니다.', 'warning');
