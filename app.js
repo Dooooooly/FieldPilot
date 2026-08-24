@@ -4315,7 +4315,6 @@ async function fetchWeather() {
     if (!weatherEl) return false;
     try {
         let apiKey = 'b84c1b9a09d8316b679320cceb3a1097';
-        // ★ GPS 좌표 우선, 없으면 지역 중심 좌표
         let center = (typeof userGpsCoords !== 'undefined' && userGpsCoords) ? userGpsCoords : getRegionCenter(currentRegion);
         let url = 'https://api.openweathermap.org/data/2.5/weather?lat=' + center.lat + '&lon=' + center.lng + '&appid=' + apiKey + '&units=metric&lang=kr';
         let response = await fetch(url);
@@ -4324,7 +4323,6 @@ async function fetchWeather() {
         let temp = Math.round(data.main.temp);
         let icon = data.weather[0].icon;
         let main = data.weather[0].main;
-        // ★ main 필드 기반 한글 매핑 (꺠진 텍스트 방지)
         let mainMap = {
             'Clear': '☀️ 맑음',
             'Clouds': '☁️ 구름',
@@ -4358,7 +4356,6 @@ async function showWeekWeather() {
         return;
     }
     await fetchWeather();
-    // ★ GPS 좌표 우선, 없으면 지역 중심 좌표
     let center = (typeof userGpsCoords !== 'undefined' && userGpsCoords) ? userGpsCoords : getRegionCenter(currentRegion);
     let apiKey = 'b84c1b9a09d8316b679320cceb3a1097';
     try {
@@ -4367,7 +4364,6 @@ async function showWeekWeather() {
         if (!response.ok) throw new Error('예보 조회 실패');
         let data = await response.json();
 
-        // ★ 오전 9시~오후 6시(18시) 항목만 필터링
         let dailyMap = {};
         data.list.forEach(function(item) {
             let parts = item.dt_txt.split(' ');
@@ -4405,11 +4401,9 @@ async function showWeekWeather() {
             if (day.temps.length === 0) return;
             let minTemp = Math.round(Math.min.apply(null, day.temps));
             let maxTemp = Math.round(Math.max.apply(null, day.temps));
-            // 가장 자주 나타나는 설명 선택
             let descCount = {};
             day.descs.forEach(function(d) { descCount[d] = (descCount[d] || 0) + 1; });
             let mainDesc = Object.keys(descCount).sort(function(a, b) { return descCount[b] - descCount[a]; })[0] || '';
-            // 12시(정오) 아이콘 우선, 없으면 첫 번째
             let iconCode = day.icons[0] || '01d';
             for (let i = 0; i < day.hours.length; i++) {
                 if (day.hours[i] === 12) { iconCode = day.icons[i]; break; }
@@ -4437,7 +4431,6 @@ async function showWeekWeather() {
         showTabStatus('tab-settings', '❌ 날씨 예보를 불러오지 못했습니다.', 'error');
     }
 }
-
 // ============================================================
 // 29. Service Worker
 // ============================================================
