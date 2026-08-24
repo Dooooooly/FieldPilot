@@ -4315,38 +4315,37 @@ async function fetchWeather() {
     if (!weatherEl) return false;
     try {
         let apiKey = 'b84c1b9a09d8316b679320cceb3a1097';
-        let center = userGpsCoords || getRegionCenter(currentRegion);
+        // ★ GPS 좌표 우선, 없으면 지역 중심 좌표
+        let center = (typeof userGpsCoords !== 'undefined' && userGpsCoords) ? userGpsCoords : getRegionCenter(currentRegion);
         let url = 'https://api.openweathermap.org/data/2.5/weather?lat=' + center.lat + '&lon=' + center.lng + '&appid=' + apiKey + '&units=metric&lang=kr';
         let response = await fetch(url);
         if (!response.ok) throw new Error('날씨 API 호출 실패');
         let data = await response.json();
         let temp = Math.round(data.main.temp);
         let icon = data.weather[0].icon;
-        
-        // ★ main 필드 기반 한글 매핑 (description 깨짐 방지)
-let mainMap = {
-    'Clear': '☀️ 맑음',
-    'Clouds': '☁️ 구름',
-    'Rain': '🌧️ 비',
-    'Drizzle': '🌦️ 이슬비',
-    'Thunderstorm': '⛈️ 천둥번개',
-    'Snow': '❄️ 눈',
-    'Mist': '🌫️ 안개',
-    'Fog': '🌫️ 안개',
-    'Haze': '🌫️ 연무',
-    'Smoke': '🌫️ 연기',
-    'Dust': '🌫️ 먼지',
-    'Sand': '🌫️ 모래'
-};
-let mainWeather = data.weather[0].main;
-let desc = mainMap[mainWeather] || '🌡️ ' + mainWeather;
-// 야간이면 맑음 아이콘만 달로 변경
-if (mainWeather === 'Clear' && icon === '01n') {
-    desc = '🌙 맑음';
-}
+        let main = data.weather[0].main;
+        // ★ main 필드 기반 한글 매핑 (꺠진 텍스트 방지)
+        let mainMap = {
+            'Clear': '☀️ 맑음',
+            'Clouds': '☁️ 구름',
+            'Rain': '🌧️ 비',
+            'Drizzle': '🌦️ 이슬비',
+            'Thunderstorm': '⛈️ 천둥번개',
+            'Snow': '❄️ 눈',
+            'Mist': '🌫️ 안개',
+            'Fog': '🌫️ 안개',
+            'Haze': '🌫️ 연무',
+            'Smoke': '🌫️ 연기',
+            'Dust': '🌫️ 먼지',
+            'Sand': '🌫️ 모래'
+        };
+        let desc = mainMap[main] || '🌡️ ' + main;
+        if (main === 'Clear' && icon === '01n') {
+            desc = '🌙 맑음';
+        }
         weatherEl.innerHTML = '<span style="font-size:13px;">' + desc + '</span><span class="temp" style="margin-left:4px;">' + temp + '°C</span>';
         return true;
-    } catch(error) {
+    } catch (error) {
         weatherEl.innerHTML = '<span>⏳</span><span class="temp">--°C</span><span>날씨</span>';
         return false;
     }
@@ -4360,10 +4359,7 @@ async function showWeekWeather() {
     }
     await fetchWeather();
     // ★ GPS 좌표 우선, 없으면 지역 중심 좌표
-    let center = getRegionCenter(currentRegion);
-    if (typeof userGpsCoords !== 'undefined' && userGpsCoords) {
-        center = userGpsCoords;
-    }
+    let center = (typeof userGpsCoords !== 'undefined' && userGpsCoords) ? userGpsCoords : getRegionCenter(currentRegion);
     let apiKey = 'b84c1b9a09d8316b679320cceb3a1097';
     try {
         let url = 'https://api.openweathermap.org/data/2.5/forecast?lat=' + center.lat + '&lon=' + center.lng + '&appid=' + apiKey + '&units=metric&lang=kr';
@@ -4371,33 +4367,37 @@ async function showWeekWeather() {
         if (!response.ok) throw new Error('예보 조회 실패');
         let data = await response.json();
 
-        // ★ 오전 9시 ~ 오후 6시(18시) 항목만 필터링
+        // ★ 오전 9시~오후 6시(18시) 항목만 필터링
         let dailyMap = {};
         data.list.forEach(function(item) {
             let parts = item.dt_txt.split(' ');
             let date = parts[0];
             let hour = parseInt(parts[1].split(':')[0], 10);
-            // ★ 09시~18시만 포함 (00, 03, 06, 21시 제외)
             if (hour < 9 || hour > 18) return;
             if (!dailyMap[date]) {
-    dailyMap[date] = { temps: [], icons: [], descs: [], mains: [], date: date };
-}
-dailyMap[date].temps.push(item.main.temp);
-dailyMap[date].icons.push(item.weather[0].icon);
-dailyMap[date].descs.push(item.weather[0].description);
-dailyMap[date].mains.push(item.weather[0].main);
+                dailyMap[date] = { temps: [], icons: [], descs: [], mains: [], hours: [], date: date };
+            }
+            dailyMap[date].temps.push(item.main.temp);
+            dailyMap[date].icons.push(item.weather[0].icon);
+            dailyMap[date].descs.push(item.weather[0].description);
+            dailyMap[date].mains.push(item.weather[0].main);
+            dailyMap[date].hours.push(hour);
+        });
 
         let dailyList = Object.values(dailyMap).slice(0, 5);
 
         let mainIconMap = {
-    'Clear': '☀️', 'Clouds': '☁️', 'Rain': '🌧️',
-    'Drizzle': '🌦️', 'Thunderstorm': '⛈️', 'Snow': '❄️',
-    'Mist': '🌫️', 'Fog': '🌫️', 'Haze': '🌫️'
-};
+            'Clear': '☀️', 'Clouds': '☁️', 'Rain': '🌧️',
+            'Drizzle': '🌦️', 'Thunderstorm': '⛈️', 'Snow': '❄️',
+            'Mist': '🌫️', 'Fog': '🌫️', 'Haze': '🌫️'
+        };
 
         let modalHtml = '<div id="weekWeatherModal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);z-index:9999;display:flex;justify-content:center;align-items:center;padding:20px;" onclick="this.remove()">';
         modalHtml += '<div style="background:white;border-radius:24px;padding:24px 20px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:80vh;overflow-y:auto;" onclick="event.stopPropagation()">';
-        modalHtml += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><h3 style="font-size:18px;font-weight:700;color:#2d3748;">📅 5일 예보 (' + escapeHtml(currentRegion) + ')</h3><button onclick="document.getElementById(\'weekWeatherModal\').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#a0aec0;">×</button></div>';
+        modalHtml += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">';
+        modalHtml += '<h3 style="font-size:18px;font-weight:700;color:#2d3748;">📅 5일 예보 (' + escapeHtml(currentRegion) + ')</h3>';
+        modalHtml += '<button onclick="document.getElementById(\'weekWeatherModal\').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#a0aec0;">×</button>';
+        modalHtml += '</div>';
         modalHtml += '<div style="font-size:11px;color:#718096;background:#f7fafc;border-radius:8px;padding:6px 10px;margin-bottom:12px;text-align:center;">🕘 활동시간 기준 · 오전 9시 ~ 오후 6시</div>';
         modalHtml += '<div style="display:flex;flex-direction:column;gap:10px;">';
 
@@ -4414,7 +4414,7 @@ dailyMap[date].mains.push(item.weather[0].main);
             for (let i = 0; i < day.hours.length; i++) {
                 if (day.hours[i] === 12) { iconCode = day.icons[i]; break; }
             }
-            let iconEmoji = iconMap[iconCode] || '🌡️';
+            let iconEmoji = mainIconMap[day.mains[0]] || '🌡️';
             let dateObj = new Date(day.date + 'T00:00:00');
             let weekdays = ['일', '월', '화', '수', '목', '금', '토'];
             let dayLabel = weekdays[dateObj.getDay()] + '요일';
@@ -4433,7 +4433,7 @@ dailyMap[date].mains.push(item.weather[0].main);
         modalHtml += '<div style="margin-top:14px;font-size:11px;color:#a0aec0;text-align:center;">* 오전 9시~오후 6시 기준 최저/최고 기온</div>';
         modalHtml += '</div></div>';
         document.body.insertAdjacentHTML('beforeend', modalHtml);
-    } catch(error) {
+    } catch (error) {
         showTabStatus('tab-settings', '❌ 날씨 예보를 불러오지 못했습니다.', 'error');
     }
 }
@@ -5198,32 +5198,30 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(displayAppVersion, 1000);
     
    function initWeather() {
-if (weatherRetryCount >= MAX_WEATHER_RETRY) {
-console.log('날씨 API 재시도 한도 도달. 10분 후 재시도.');
-setTimeout(function() {
-weatherRetryCount = 0;
-initWeather();
-}, 600000);
-return;
-}
-fetchWeather().then(function(success) {
-if (!success) {
-weatherRetryCount++;
-setTimeout(initWeather, 10000);
-} else {
-weatherRetryCount = 0;  // ★ 성공 시 재시도 카운트 리셋
-}
-});
+    if (weatherRetryCount >= MAX_WEATHER_RETRY) {
+        console.log('날씨 API 재시도 한도 도달. 10분 후 재시도.');
+        setTimeout(function() {
+            weatherRetryCount = 0;
+            initWeather();
+        }, 600000);
+        return;
+    }
+    fetchWeather().then(function(success) {
+        if (!success) {
+            weatherRetryCount++;
+            setTimeout(initWeather, 10000);
+        } else {
+            weatherRetryCount = 0;
+        }
+    });
 }
 setTimeout(initWeather, 3000);
 // ★ 1시간(3,600,000ms)마다 주기 갱신
 if (weatherInterval) clearInterval(weatherInterval);
 weatherInterval = setInterval(function() {
-weatherRetryCount = 0;
-fetchWeather();
+    weatherRetryCount = 0;
+    fetchWeather();
 }, 3600000);
-    initHistoryHash();
-}); // ★★ 이 닫는 괄호가 반드시 필요합니다! ★★
 // ============================================================
 // 탭 진입 시 자동 동기화
 // ============================================================
