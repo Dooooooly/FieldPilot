@@ -4201,15 +4201,17 @@ async function importPlaces(data) {
     for (let i = 0; i < data.length; i++) {
         let row = data[i];
         let name = String(row['현장명'] || row['개소명'] || row['name'] || row['Name'] || '').trim();
-        let address = String(row['도로명주소'] || row['address'] || row['Address'] || '').trim();
-        let remark = String(row['비고'] || row['remark'] || row['Remark'] || '').trim();
+let address = String(row['도로명주소'] || row['주소'] || row['address'] || row['Address'] || '').trim();
+let remark = String(row['비고'] || row['remark'] || row['Remark'] || '').trim();
+let dong = String(row['동정보'] || row['동'] || row['dong'] || '').trim();
         if (!name) continue;
         let normalized = normalizeName(name);
         let existing = places.find(function(p) { return normalizeName(p.name) === normalized; });
         if (existing) {
-            if (existing.address !== address || existing.remark !== remark) {
-                existing.address = address;
-                existing.remark = remark;
+if (existing.address !== address || existing.remark !== remark || existing.dong !== dong) {
+existing.address = address;
+existing.remark = remark;
+if (dong) existing.dong = dong;
                 if (address && restKey) {
                     rowsToGeocode.push({ name: name, address: address, existing: existing });
                 }
@@ -4219,14 +4221,15 @@ async function importPlaces(data) {
             }
         } else {
             let newPlace = {
-                id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-                name: name,
-                address: address,
-                lat: 0,
-                lng: 0,
-                remark: remark,
-                favorite: false
-            };
+id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+name: name,
+address: address,
+lat: 0,
+lng: 0,
+remark: remark,
+dong: dong || '',
+favorite: false
+};
             places.push(newPlace);
             if (address && restKey) {
                 rowsToGeocode.push({ name: name, address: address, existing: newPlace });
@@ -4269,34 +4272,34 @@ function showUploadResult(msg, type) {
 }
 
 function exportData() {
-    let data = [];
-    if (places.length === 0) {
-        data = [
-            { '현장명': '예시_현장명_1', '도로명주소': '서울시 강남구 테헤란로 123', '비고': '', '위도': 0, '경도': 0 },
-            { '현장명': '예시_현장명_2', '도로명주소': '서울시 서초구 서초대로 456', '비고': '', '위도': 0, '경도': 0 },
-            { '현장명': '예시_현장명_3', '도로명주소': '서울시 종로구 종로 789', '비고': '', '위도': 0, '경도': 0 }
-        ];
-        showTabStatus('tab-list', '📄 예시 양식이 다운로드됩니다.', 'info');
-    } else {
-        data = places.map(function(p) {
-            return {
-                '현장명': p.name,
-                '도로명주소': p.address || '',
-                '비고': p.remark || '',
-                '위도': p.lat || 0,
-                '경도': p.lng || 0,
-                '즐겨찾기': p.favorite ? 'Y' : 'N',
-                '주소변환상태': (p.lat && p.lng && p.lat !== 0 && p.lng !== 0) ? '완료' : '미변환'
-            };
-        });
-        showTabStatus('tab-list', '✅ 내보내기 완료 (' + data.length + '개)', 'ok');
-    }
-    let wb = XLSX.utils.book_new();
-    let ws = XLSX.utils.json_to_sheet(data);
-    XLSX.utils.book_append_sheet(wb, ws, '현장리스트');
-    let now = new Date();
-    let timestamp = now.toISOString().slice(0,10) + '_' + String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0') + String(now.getSeconds()).padStart(2,'0');
-    XLSX.writeFile(wb, '현장리스트_' + currentRegion + '_' + timestamp + '.xlsx');
+let data = [];
+if (places.length === 0) {
+data = [
+{ '현장명': '예시_현장명_1', '주소': '서울시 강남구 테헤란로 123', '위도': 0, '경도': 0, '비고': '', '동정보': '', '주소변환상태': '미변환' },
+{ '현장명': '예시_현장명_2', '주소': '서울시 서초구 서초대로 456', '위도': 0, '경도': 0, '비고': '', '동정보': '', '주소변환상태': '미변환' },
+{ '현장명': '예시_현장명_3', '주소': '서울시 종로구 종로 789', '위도': 0, '경도': 0, '비고': '', '동정보': '', '주소변환상태': '미변환' }
+];
+showTabStatus('tab-list', '📄 예시 양식이 다운로드됩니다.', 'info');
+} else {
+data = places.map(function(p) {
+return {
+'현장명': p.name,
+'주소': p.address || '',
+'위도': p.lat || 0,
+'경도': p.lng || 0,
+'비고': p.remark || '',
+'동정보': p.dong || '',
+'주소변환상태': (p.lat && p.lng && p.lat !== 0 && p.lng !== 0) ? '완료' : '미변환'
+};
+});
+showTabStatus('tab-list', '✅ 내보내기 완료 (' + data.length + '개)', 'ok');
+}
+let wb = XLSX.utils.book_new();
+let ws = XLSX.utils.json_to_sheet(data);
+XLSX.utils.book_append_sheet(wb, ws, '현장리스트');
+let now = new Date();
+let timestamp = now.toISOString().slice(0,10) + '_' + String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0') + String(now.getSeconds()).padStart(2,'0');
+XLSX.writeFile(wb, '현장리스트_' + currentRegion + '_' + timestamp + '.xlsx');
 }
 
 // ============================================================
