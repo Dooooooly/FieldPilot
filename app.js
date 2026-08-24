@@ -2666,9 +2666,17 @@ html += '<div style="margin-top:12px; padding-top:12px; border-top: 1px solid #e
 html += '<div style="display:flex; gap:8px; margin-bottom:8px;">';
 
 // 왼쪽: 전체 경유지 연결 버튼
-html += '<button id="nav-all-waypoints-btn" class="btn" style="flex:1; padding:10px; font-size:14px; font-weight:600; background: ' + (routeApi === 'tmap' ? '#0064d8' : '#fee500') + '; color: ' + (routeApi === 'tmap' ? 'white' : '#333') + '; border: none; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px;">';
-html += (routeApi === 'tmap' ? '🚗' : '🗺️') + ' 전체 연결';
+if (routeApi === 'tmap') {
+// ★ TMap: 전체 연결 버튼 숨김 + 안내 문구
+html += '<div style="flex:1; padding:10px; font-size:12px; color:#a0aec0; background:#f7fafc; border-radius:8px; text-align:center;">';
+html += 'ℹ️ TMap은 경유지 기능을 지원하지 않습니다<br><span style="font-size:11px;">각 구간별 🚗 버튼으로 이동하세요</span>';
+html += '</div>';
+} else {
+// 카카오맵: 기존 전체 연결 버튼
+html += '<button id="nav-all-waypoints-btn" class="btn" style="flex:1; padding:10px; font-size:14px; font-weight:600; background:#fee500; color:#333; border: none; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px;">';
+html += '🗺️ 전체 경로 연결';
 html += '</button>';
+}
 
 // 오른쪽: 통계 기록 버튼 (배경색 있음)
 html += '<button id="stats-record-btn" class="btn" style="flex:1; padding:10px; font-size:14px; font-weight:600; background:#38a169; color:white; border:none; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px;" onclick="recordVisitStats()">';
@@ -5364,49 +5372,29 @@ function openMultiStopNavigation() {
     // 1. TMap 처리 (경유지 최대 10개 지원)
     // ============================================================
     if (routeApi === 'tmap') {
-        const limit = 10;
-        const pointsToUse = allPoints.slice(0, limit);
-        const tStart = pointsToUse[0];
-        const tEnd = pointsToUse[pointsToUse.length - 1];
-        const tWaypoints = pointsToUse.slice(1, -1);
-
-        if (totalPoints > limit) {
-            showTabStatus('tab-route', `⚠️ TMap은 최대 10개 지점까지만 지원합니다. 처음 10개만 전달됩니다.`, 'warning');
-        }
-
-        let params = [];
-        params.push('startName=' + encodeURIComponent(tStart.name));
-        params.push('startX=' + tStart.lng);
-        params.push('startY=' + tStart.lat);
-        params.push('rGoName=' + encodeURIComponent(tEnd.name));
-        params.push('rGoX=' + tEnd.lng);
-        params.push('rGoY=' + tEnd.lat);
-
-        if (tWaypoints.length > 0) {
-            params.push('waypointNames=' + tWaypoints.map(p => encodeURIComponent(p.name)).join(','));
-            params.push('waypointXs=' + tWaypoints.map(p => p.lng).join(','));
-            params.push('waypointYs=' + tWaypoints.map(p => p.lat).join(','));
-        }
-
-        const schemeUrl = 'tmap://route?' + params.join('&');
-        const webUrl = 'https://apis-navi.tmap.co.kr/routes/' 
-            + tStart.lat + ',' + tStart.lng + '/' + tEnd.lat + ',' + tEnd.lng
-            + '?name=' + encodeURIComponent(tStart.name + '→' + tEnd.name);
-
-        if (!isMobile) {
-            window.open(webUrl, '_blank');
-            showTabStatus('tab-route', '💻 PC 환경이므로 TMap 웹으로 연결합니다.', 'info');
-            return;
-        }
-
-        window.location.href = schemeUrl;
-        setTimeout(function() {
-            window.open(webUrl, '_blank');
-        }, 1500);
-        
-        showTabStatus('tab-route', `🗺️ TMap 실행 중... (총 ${pointsToUse.length}개 지점)`, 'info');
-        return;
-    }
+// ★ TMap: 경유지 미지원 → 출발지~도착지만 연결
+const tStart = allPoints[0];
+const tEnd = allPoints[allPoints.length - 1];
+const schemeUrl = 'tmap://route?'
++ 'startX=' + tStart.lng
++ '&startY=' + tStart.lat
++ '&endX=' + tEnd.lng
++ '&endY=' + tEnd.lat;
+const webUrl = 'https://apis-navi.tmap.co.kr/routes/'
++ tStart.lat + ',' + tStart.lng + '/' + tEnd.lat + ',' + tEnd.lng
++ '?name=' + encodeURIComponent(tStart.name + '→' + tEnd.name);
+if (!isMobile) {
+window.open(webUrl, '_blank');
+showTabStatus('tab-route', '💻 PC 환경이므로 TMap 웹으로 연결합니다.', 'info');
+return;
+}
+window.location.href = schemeUrl;
+setTimeout(function() {
+window.open(webUrl, '_blank');
+}, 1500);
+showTabStatus('tab-route', '🗺️ TMap 실행 중... (경유지 미지원, 출발→도착만)', 'warning');
+return;
+}
 
     // ============================================================
     // 2. 카카오맵 처리 (경유지 최대 5개 제한)
