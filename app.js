@@ -205,9 +205,11 @@ function switchTab(tabId, updateHistory = true) {
 }
     
     if (tabId === 'tab-list' && typeof renderPlaces === 'function') {
-        renderPlaces();
+    renderPlaces();
+    if (typeof autoFillDong === 'function') {
+        autoFillDong();
     }
-
+}
     if (tabId === 'tab-stats' && typeof renderStatsTab === 'function') {
     renderStatsTab();
     }
@@ -4222,13 +4224,20 @@ async function importPlaces(data) {
             showUploadResult('📍 주소 변환 중... ' + done + '/' + total, 'info');
         });
         for (let i = 0; i < rowsToGeocode.length; i++) {
-            let item = rowsToGeocode[i];
-            if (item.existing && item.geo) {
-                item.existing.lat = item.geo.lat;
-                item.existing.lng = item.geo.lng;
-                item.existing.address = item.geo.address || item.existing.address;
+    let item = rowsToGeocode[i];
+    if (item.existing && item.geo) {
+        item.existing.lat = item.geo.lat;
+        item.existing.lng = item.geo.lng;
+        item.existing.address = item.geo.address || item.existing.address;
+        if (!item.existing.dong) {
+            let dong = await extractDongFromCoords(item.geo.lat, item.geo.lng);
+            if (!dong || dong === '기타') {
+                dong = extractDongFromAddress(item.geo.address || '');
             }
+            item.existing.dong = dong || '';
         }
+    }
+}
     }
     if (added > 0 || updated > 0) savePlaces(); scheduleAutoSync();
     showUploadResult('✅ 추가 ' + added + ', 업데이트 ' + updated + ', 건너뜀 ' + skipped, 'success');
@@ -5957,6 +5966,31 @@ function extractDongFromAddress(address) {
     let match = address.match(/([가-힣]+\d?[가-힣]?\d?동)/);
     return match ? match[1] : '';
 }
+// ===== 현장 탭 진입 시 동 자동 변환 =====
+async function autoFillDong() {
+    if (!settings.kakaoRestKey) return;
+    let needConvert = places.filter(function(p) {
+        return !p.dong && p.lat && p.lng && p.lat !== 0 && p.lng !== 0;
+    });
+    if (needConvert.length === 0) return;
+    showTabStatus('tab-list', '🏘️ 동 정보 자동 변환 중... (0/' + needConvert.length + ')', 'info');
+    let converted = 0;
+    for (let i = 0; i < needConvert.length; i++) {
+        let p = needConvert[i];
+        let dong = await extractDongFromCoords(p.lat, p.lng);
+        if (!dong || dong === '기타') {
+            dong = extractDongFromAddress(p.address || '');
+        }
+        p.dong = dong || '미변환';
+        converted++;
+        if (converted % 5 === 0 || converted === needConvert.length) {
+            showTabStatus('tab-list', '🏘️ 동 정보 자동 변환 중... (' + converted + '/' + needConvert.length + ')', 'info');
+        }
+    }
+    savePlaces();
+    renderPlaces();
+    showTabStatus('tab-list', '✅ 동 정보 변환 완료 (' + converted + '개 현장)', 'ok');
+}
 
 // ===== 통계 기록 버튼 (showRouteList에서 호출) =====
 async function recordVisitStats() {
@@ -6190,30 +6224,6 @@ async function renderStatsTab() {
     }
     let stats = currentStats;
     let history = stats.visitHistory || [];
-    
-    // 자동 동 변환
-    let needConvert = places.filter(function(p) { return !p.dong; });
-    if (needConvert.length > 0 && settings.kakaoRestKey) {
-        container.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#a0aec0;">🏘️ 동 정보 자동 변환 중... (0/' + needConvert.length + ')</div>';
-        let converted = 0;
-        for (let i = 0; i < needConvert.length; i++) {
-            let p = needConvert[i];
-            let dong = '';
-            if (p.lat && p.lng && p.lat !== 0 && p.lng !== 0) {
-                dong = await extractDongFromCoords(p.lat, p.lng);
-            }
-            if (!dong || dong === '기타') {
-                dong = extractDongFromAddress(p.address || '');
-            }
-            p.dong = dong || '미변환';
-            converted++;
-            if (converted % 5 === 0 || converted === needConvert.length) {
-                container.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#a0aec0;">🏘️ 동 정보 자동 변환 중... (' + converted + '/' + needConvert.length + ')</div>';
-            }
-        }
-        savePlaces();
-        showTabStatus('tab-stats', '✅ 동 정보 변환 완료 (' + converted + '개)', 'ok');
-    }
     
     // 기간 필터링
     let today = new Date().toISOString().slice(0, 10);
