@@ -6540,8 +6540,9 @@ function showWorkDateDetail(dateStr) {
             html += '<div onclick="openWorkEditModal(\'' + r.id + '\')" style="background:#f7fafc;border-radius:8px;padding:10px;margin-bottom:6px;cursor:pointer;border-left:3px solid ' + (hasContent ? '#38a169' : '#e53e3e') + ';">';
             html += '<div style="font-weight:600;font-size:13px;">' + r.time + ' ' + escapeHtml(r.placeName) + '</div>';
             html += '<div style="font-size:12px;color:#718096;">👤 ' + escapeHtml(r.worker || '미설정');
-            if (r.category) html += ' · ' + escapeHtml(r.category);
-            html += '</div>';
+if (r.category) html += ' · ' + escapeHtml(r.category);
+if (r.camera) html += ' · 📷 ' + escapeHtml(r.camera);
+html += '</div>';
             if (r.content) {
                 html += '<div style="font-size:12px;color:#4a5568;margin-top:4px;">' + escapeHtml(r.content) + '</div>';
             } else {
@@ -6583,6 +6584,10 @@ function openWorkEditModal(workId) {
     modalHtml += '<div>작업자: ' + escapeHtml(record.worker || '미설정') + '</div>';
     modalHtml += '</div>';
     modalHtml += '<div style="margin-bottom:12px;">';
+    modalHtml += '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">📷 카메라 번호</label>';
+    modalHtml += '<input type="text" id="workEditCamera" value="' + escapeHtml(record.camera || '') + '" placeholder="예: 01, A3 (선택)" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;">';
+    modalHtml += '</div>';
+    modalHtml += '<div style="margin-bottom:12px;">';
     modalHtml += '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">처리구분</label>';
     modalHtml += '<select id="workEditCategory" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;">' + categoryOptions + '</select>';
     modalHtml += '</div>';
@@ -6610,6 +6615,7 @@ async function saveWorkEdit(workId) {
     }
     record.category = category;
     record.content = content;
+    record.camera = document.getElementById('workEditCamera') ? document.getElementById('workEditCamera').value.trim() : '';
     record.updatedAt = new Date().toISOString();
     saveWorkToLocalStorage(work);
     document.getElementById('workEditModal').remove();
@@ -6661,6 +6667,8 @@ function openWorkAddModal(dateStr) {
     modalHtml += '<select id="workAddPlace" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;">' + placeOptions + '</select></div>';
     modalHtml += '<div style="margin-bottom:12px;"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">시간</label>';
     modalHtml += '<input type="time" id="workAddTime" value="' + defaultTime + '" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;"></div>';
+    modalHtml += '<div style="margin-bottom:12px;"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">📷 카메라 번호</label>';
+    modalHtml += '<input type="text" id="workAddCamera" placeholder="예: 01, A3 (선택)" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;"></div>';
     modalHtml += '<div style="margin-bottom:12px;"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">처리구분</label>';
     modalHtml += '<select id="workAddCategory" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;">' + categoryOptions + '</select></div>';
     modalHtml += '<div style="margin-bottom:12px;"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">처리내용</label>';
@@ -6682,17 +6690,18 @@ async function saveWorkAdd(dateStr) {
     let work = currentWork || loadWorkFromLocalStorage();
     let now = new Date();
     work.workHistory.push({
-        id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-        date: dateStr,
-        time: time || now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0'),
-        timestamp: now.getTime(),
-        placeName: placeName,
-        dong: '',
-        worker: workerName || '미설정',
-        category: category,
-        content: content,
-        fromStats: false
-    });
+id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+date: dateStr,
+time: time || now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0'),
+timestamp: now.getTime(),
+placeName: placeName,
+dong: '',
+worker: workerName || '미설정',
+category: category,
+content: content,
+camera: document.getElementById('workAddCamera') ? document.getElementById('workAddCamera').value.trim() : '',
+fromStats: false
+});
     work.lastUpdated = now.toISOString();
     saveWorkToLocalStorage(work);
     document.getElementById('workAddModal').remove();
