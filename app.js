@@ -4323,19 +4323,27 @@ async function fetchWeather() {
         let temp = Math.round(data.main.temp);
         let icon = data.weather[0].icon;
         
-        let iconMap = {
-            '01d': '☀️ 맑음', '01n': '🌙 맑음',
-            '02d': '⛅ 구름조금', '02n': '⛅ 구름조금',
-            '03d': '☁️ 구름많음', '03n': '☁️ 구름많음',
-            '04d': '☁️ 흐림', '04n': '☁️ 흐림',
-            '09d': '🌧️ 비', '09n': '🌧️ 비',
-            '10d': '🌦️ 비', '10n': '🌦️ 비',
-            '11d': '⛈️ 천둥번개', '11n': '⛈️ 천둥번개',
-            '13d': '❄️ 눈', '13n': '❄️ 눈',
-            '50d': '🌫️ 안개', '50n': '🌫️ 안개'
-        };
-        
-        let desc = iconMap[icon] || '🌡️ ' + data.weather[0].description;
+        // ★ main 필드 기반 한글 매핑 (description 깨짐 방지)
+let mainMap = {
+    'Clear': '☀️ 맑음',
+    'Clouds': '☁️ 구름',
+    'Rain': '🌧️ 비',
+    'Drizzle': '🌦️ 이슬비',
+    'Thunderstorm': '⛈️ 천둥번개',
+    'Snow': '❄️ 눈',
+    'Mist': '🌫️ 안개',
+    'Fog': '🌫️ 안개',
+    'Haze': '🌫️ 연무',
+    'Smoke': '🌫️ 연기',
+    'Dust': '🌫️ 먼지',
+    'Sand': '🌫️ 모래'
+};
+let mainWeather = data.weather[0].main;
+let desc = mainMap[mainWeather] || '🌡️ ' + mainWeather;
+// 야간이면 맑음 아이콘만 달로 변경
+if (mainWeather === 'Clear' && icon === '01n') {
+    desc = '🌙 맑음';
+}
         weatherEl.innerHTML = '<span style="font-size:13px;">' + desc + '</span><span class="temp" style="margin-left:4px;">' + temp + '°C</span>';
         return true;
     } catch(error) {
@@ -4372,23 +4380,20 @@ async function showWeekWeather() {
             // ★ 09시~18시만 포함 (00, 03, 06, 21시 제외)
             if (hour < 9 || hour > 18) return;
             if (!dailyMap[date]) {
-                dailyMap[date] = { temps: [], icons: [], descs: [], hours: [], date: date };
-            }
-            dailyMap[date].temps.push(item.main.temp);
-            dailyMap[date].icons.push(item.weather[0].icon);
-            dailyMap[date].descs.push(item.weather[0].description);
-            dailyMap[date].hours.push(hour);
-        });
+    dailyMap[date] = { temps: [], icons: [], descs: [], mains: [], date: date };
+}
+dailyMap[date].temps.push(item.main.temp);
+dailyMap[date].icons.push(item.weather[0].icon);
+dailyMap[date].descs.push(item.weather[0].description);
+dailyMap[date].mains.push(item.weather[0].main);
 
         let dailyList = Object.values(dailyMap).slice(0, 5);
 
-        let iconMap = {
-            '01d': '☀️', '01n': '🌙', '02d': '⛅', '02n': '☁️',
-            '03d': '☁️', '03n': '☁️', '04d': '☁️', '04n': '☁️',
-            '09d': '🌧️', '09n': '🌧️', '10d': '🌦️', '10n': '🌦️',
-            '11d': '⛈️', '11n': '⛈️', '13d': '❄️', '13n': '❄️',
-            '50d': '🌫️', '50n': '🌫️'
-        };
+        let mainIconMap = {
+    'Clear': '☀️', 'Clouds': '☁️', 'Rain': '🌧️',
+    'Drizzle': '🌦️', 'Thunderstorm': '⛈️', 'Snow': '❄️',
+    'Mist': '🌫️', 'Fog': '🌫️', 'Haze': '🌫️'
+};
 
         let modalHtml = '<div id="weekWeatherModal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);z-index:9999;display:flex;justify-content:center;align-items:center;padding:20px;" onclick="this.remove()">';
         modalHtml += '<div style="background:white;border-radius:24px;padding:24px 20px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:80vh;overflow-y:auto;" onclick="event.stopPropagation()">';
