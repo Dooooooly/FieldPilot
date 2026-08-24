@@ -210,13 +210,12 @@ setTimeout(function() {
         autoFillDong();
     }
 }
-    if (tabId === 'tab-stats' && typeof renderStatsTab === 'function') {
-    renderStatsTab();
-    }
-
-    if (tabId === 'tab-work' && typeof renderWorkTab === 'function') {
-    renderWorkTab();
-    }    
+    if (tabId === 'tab-stats' && typeof autoSyncStats === 'function') {
+    autoSyncStats();
+}
+if (tabId === 'tab-work' && typeof autoSyncWork === 'function') {
+    autoSyncWork();
+}
     
     if (window.innerWidth < 700) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -5168,6 +5167,37 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(initWeather, 3000); // 날씨 초기화 호출
     initHistoryHash();
 }); // ★★ 이 닫는 괄호가 반드시 필요합니다! ★★
+// ============================================================
+// 탭 진입 시 자동 동기화
+// ============================================================
+function autoSyncStats() {
+    let now = Date.now();
+    // 10초 이내 재진입 시 캐시 사용 (연속 클릭 방지)
+    if (window._lastStatsSync && now - window._lastStatsSync < 10000) {
+        renderStatsTab();
+        return;
+    }
+    window._lastStatsSync = now;
+    if (settings.githubToken && navigator.onLine) {
+        refreshStatsFromGitHub();
+    } else {
+        renderStatsTab();
+    }
+}
+
+function autoSyncWork() {
+    let now = Date.now();
+    if (window._lastWorkSync && now - window._lastWorkSync < 10000) {
+        renderWorkTab();
+        return;
+    }
+    window._lastWorkSync = now;
+    if (settings.githubToken && navigator.onLine) {
+        refreshWorkFromGitHub();
+    } else {
+        renderWorkTab();
+    }
+}
 // ============================================================
 // 39. 도우미 함수 (tab-status 표시)
 // ============================================================
