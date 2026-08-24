@@ -193,14 +193,16 @@ function switchTab(tabId, updateHistory = true) {
     
     // ★ 지도 탭으로 전환할 때만 1회 relayout
     if (tabId === 'tab-route') {
-        setTimeout(function() {
-            if (kakaoMap) {
-                kakaoMap.relayout();
-            } else if (typeof initMap === 'function') {
-                initMap();
-            }
-        }, 150);
-    }
+    setTimeout(function() {
+        if (kakaoMap) {
+            kakaoMap.relayout();
+            kakaoMap.setDraggable(true);
+            kakaoMap.setZoomable(true);
+        } else {
+            initMap();
+        }
+    }, 300);
+}
     
     if (tabId === 'tab-list' && typeof renderPlaces === 'function') {
         renderPlaces();
@@ -3280,14 +3282,12 @@ function createMap(container) {
         // ... (출발지 좌표 계산 로직 유지)
         
         let options = {
-            center: new kakao.maps.LatLng(centerLat, centerLng),
-            level: zoomLevel,
-            draggable: true,
-            zoomable: true,
-            zoomControl: false,      // ★ ZoomControl 제거 (배터리 절약)
-            scrollwheel: false,      // ★ 모바일에서 휠 불필요
-            disableKineticPan: true  // ★ 관성 스크롤 끄기 (CPU 절약)
-        };
+    center: new kakao.maps.LatLng(centerLat, centerLng),
+    level: zoomLevel,
+    draggable: true,
+    zoomable: true,
+    scrollwheel: true
+};
         
         kakaoMap = new kakao.maps.Map(container, options);
         // ★ 중복 호출 제거 - options에서 이미 설정됨
@@ -6591,9 +6591,7 @@ function showWorkDateDetail(dateStr) {
                 html += '<span style="background:#ebf8ff;color:#3182ce;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600;">📷 ' + escapeHtml(r.camera) + '</span>';
             }
             html += '</div>';
-            html += '<div style="font-size:12px;color:#718096;margin-top:2px;">👤 ' + escapeHtml(r.worker || '미설정');
-            if (r.category) html += ' · <span style="color:#2b6cb0;font-weight:600;">' + escapeHtml(r.category) + '</span>';
-            html += '</div>';
+            html += '<div style="font-size:12px;color:#718096;margin-top:2px;">👤 ' + escapeHtml(r.worker || '미설정') + '</div>';
             if (r.content) {
                 html += '<div style="font-size:12px;color:#4a5568;margin-top:4px;padding:6px 8px;background:#fff;border-radius:4px;border-left:2px solid #2b6cb0;white-space:pre-wrap;">' + escapeHtml(r.content) + '</div>';
             } else {
@@ -6613,82 +6611,54 @@ function hideWorkDateDetail() {
 }
 
 function openWorkEditModal(workId) {
-    let work = currentWork || loadWorkFromLocalStorage();
-    let record = work.workHistory.find(function(w) { return w.id === workId; });
-    if (!record) return;
-    let categories = work.categories || ['카메라', '비상벨', '전원설비', '네트워크', '기타'];
-    let existing = document.getElementById('workEditModal');
-    if (existing) existing.remove();
-
-    let categoryOptions = '<option value="">-- 선택 --</option>';
-    for (let i = 0; i < categories.length; i++) {
-        let selected = record.category === categories[i] ? ' selected' : '';
-        categoryOptions += '<option value="' + escapeHtml(categories[i]) + '"' + selected + '>' + escapeHtml(categories[i]) + '</option>';
-    }
-
-    let modalHtml = '<div id="workEditModal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);z-index:999999;display:flex;justify-content:center;align-items:center;padding:20px;" onclick="if(event.target===this)this.remove()">';
-    modalHtml += '<div style="background:white;border-radius:16px;padding:24px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.2);max-height:80vh;overflow-y:auto;" onclick="event.stopPropagation()">';
-    modalHtml += '<h3 style="font-size:17px;font-weight:700;color:#1a202c;margin-bottom:12px;">✏️ 처리내역 작성</h3>';
-    modalHtml += '<div style="font-size:13px;color:#4a5568;margin-bottom:12px;">';
-    modalHtml += '<div>현장: <strong>' + escapeHtml(record.placeName) + '</strong></div>';
-    modalHtml += '<div>일시: ' + record.date + ' ' + record.time + '</div>';
-    modalHtml += '<div>작업자: ' + escapeHtml(record.worker || '미설정') + '</div>';
-    modalHtml += '</div>';
-    // ★ 시간 자동 입력 (비어있으면 현재 시간)
-let currentTime = record.time || '';
-if (!currentTime) {
-    let now = new Date();
-    currentTime = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
-}
-modalHtml += '<div style="margin-bottom:12px;">';
-modalHtml += '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">⏰ 작업 시간</label>';
-modalHtml += '<input type="time" id="workEditTime" value="' + currentTime + '" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;">';
+let work = currentWork || loadWorkFromLocalStorage();
+let record = work.workHistory.find(function(w) { return w.id === workId; });
+if (!record) return;
+let existing = document.getElementById('workEditModal');
+if (existing) existing.remove();
+let modalHtml = '<div id="workEditModal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);z-index:999999;display:flex;justify-content:center;align-items:center;padding:20px;" onclick="if(event.target===this)this.remove()">';
+modalHtml += '<div style="background:white;border-radius:16px;padding:24px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.2);max-height:80vh;overflow-y:auto;" onclick="event.stopPropagation()">';
+modalHtml += '<h3 style="font-size:17px;font-weight:700;color:#1a202c;margin-bottom:12px;">✏️ 처리내역 작성</h3>';
+modalHtml += '<div style="font-size:13px;color:#4a5568;margin-bottom:12px;">';
+modalHtml += '<div>현장: <strong>' + escapeHtml(record.placeName) + '</strong></div>';
+modalHtml += '<div>일시: ' + record.date + (record.time ? ' ' + record.time : '') + '</div>';
+modalHtml += '<div>작업자: ' + escapeHtml(record.worker || '미설정') + '</div>';
 modalHtml += '</div>';
-
-// ★ 카메라 번호 입력 필드
 modalHtml += '<div style="margin-bottom:12px;">';
 modalHtml += '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">📷 카메라 번호</label>';
 modalHtml += '<input type="text" id="workEditCamera" value="' + escapeHtml(record.camera || '') + '" placeholder="예: 01, A3 (선택)" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;">';
 modalHtml += '</div>';
-    modalHtml += '<div style="margin-bottom:12px;">';
-    modalHtml += '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">처리구분</label>';
-    modalHtml += '<select id="workEditCategory" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;">' + categoryOptions + '</select>';
-    modalHtml += '</div>';
-    modalHtml += '<div style="margin-bottom:12px;">';
-    modalHtml += '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">처리내용</label>';
-    modalHtml += '<textarea id="workEditContent" rows="3" placeholder="처리 내용을 입력하세요" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;resize:vertical;">' + escapeHtml(record.content || '') + '</textarea>';
-    modalHtml += '</div>';
-    modalHtml += '<div style="display:flex;gap:8px;justify-content:flex-end;">';
-    modalHtml += '<button class="btn btn-outline btn-sm" onclick="document.getElementById(\'workEditModal\').remove()" style="padding:6px 16px;">취소</button>';
-    modalHtml += '<button class="btn btn-danger btn-sm" onclick="deleteWorkRecord(\'' + record.id + '\')" style="padding:6px 16px;">삭제</button>';
-    modalHtml += '<button class="btn btn-primary btn-sm" onclick="saveWorkEdit(\'' + record.id + '\')" style="padding:6px 16px;">저장</button>';
-    modalHtml += '</div></div></div>';
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
+modalHtml += '<div style="margin-bottom:12px;">';
+modalHtml += '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">처리내용</label>';
+modalHtml += '<textarea id="workEditContent" rows="3" placeholder="처리 내용을 입력하세요" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;resize:vertical;">' + escapeHtml(record.content || '') + '</textarea>';
+modalHtml += '</div>';
+modalHtml += '<div style="font-size:11px;color:#a0aec0;margin-bottom:12px;">💡 저장 시 현재 시간이 자동으로 기록됩니다</div>';
+modalHtml += '<div style="display:flex;gap:8px;justify-content:flex-end;">';
+modalHtml += '<button class="btn btn-outline btn-sm" onclick="document.getElementById(\'workEditModal\').remove()" style="padding:6px 16px;">취소</button>';
+modalHtml += '<button class="btn btn-danger btn-sm" onclick="deleteWorkRecord(\'' + record.id + '\')" style="padding:6px 16px;">삭제</button>';
+modalHtml += '<button class="btn btn-primary btn-sm" onclick="saveWorkEdit(\'' + record.id + '\')" style="padding:6px 16px;">저장</button>';
+modalHtml += '</div></div></div>';
+document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
 
 async function saveWorkEdit(workId) {
-    let work = currentWork || loadWorkFromLocalStorage();
-    let record = work.workHistory.find(function(w) { return w.id === workId; });
-    if (!record) return;
-    let category = document.getElementById('workEditCategory').value;
-    let content = document.getElementById('workEditContent').value.trim();
-    let time = document.getElementById('workEditTime') ? document.getElementById('workEditTime').value : '';
-    let camera = document.getElementById('workEditCamera') ? document.getElementById('workEditCamera').value.trim() : '';
-    if (!category) {
-        showTabStatus('tab-work', '⚠️ 처리구분을 선택하세요.', 'warning');
-        return;
-    }
-    record.category = category;
-    record.content = content;
-    record.time = time;
-    record.camera = camera;
-    record.updatedAt = new Date().toISOString();
-    saveWorkToLocalStorage(work);
-    document.getElementById('workEditModal').remove();
-    let uploaded = await uploadWorkToGitHub(work);
-    renderWorkTab();
-    showWorkDateDetail(record.date);
-    showTabStatus('tab-work', uploaded ? '✅ 처리내역 저장 완료 (GitHub 동기화)' : '⚠️ 저장됨. GitHub 업로드 실패', uploaded ? 'ok' : 'warning');
+let work = currentWork || loadWorkFromLocalStorage();
+let record = work.workHistory.find(function(w) { return w.id === workId; });
+if (!record) return;
+let content = document.getElementById('workEditContent').value.trim();
+let camera = document.getElementById('workEditCamera') ? document.getElementById('workEditCamera').value.trim() : '';
+// ★ 저장 시점의 시간 자동 기록
+let now = new Date();
+record.time = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+record.content = content;
+record.camera = camera;
+record.updatedAt = now.toISOString();
+saveWorkToLocalStorage(work);
+document.getElementById('workEditModal').remove();
+let uploaded = await uploadWorkToGitHub(work);
+renderWorkTab();
+showWorkDateDetail(record.date);
+showTabStatus('tab-work', uploaded ? '✅ 처리내역 저장 완료 (⏰ ' + record.time + ' 기록)' : '⚠️ 저장됨. GitHub 업로드 실패', uploaded ? 'ok' : 'warning');
 }
 
 function deleteWorkRecord(workId) {
@@ -6710,77 +6680,64 @@ function deleteWorkRecord(workId) {
 }
 
 function openWorkAddModal(dateStr) {
-    let work = currentWork || loadWorkFromLocalStorage();
-    let categories = work.categories || [];
-    let existing = document.getElementById('workAddModal');
-    if (existing) existing.remove();
-
-    let categoryOptions = '<option value="">-- 선택 --</option>';
-    for (let i = 0; i < categories.length; i++) {
-        categoryOptions += '<option value="' + escapeHtml(categories[i]) + '">' + escapeHtml(categories[i]) + '</option>';
-    }
-    let placeOptions = '<option value="">-- 현장 선택 --</option>';
-    for (let i = 0; i < places.length; i++) {
-        placeOptions += '<option value="' + escapeHtml(places[i].name) + '">' + escapeHtml(places[i].name) + '</option>';
-    }
-    let now = new Date();
-    let defaultTime = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
-
-    let modalHtml = '<div id="workAddModal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);z-index:999999;display:flex;justify-content:center;align-items:center;padding:20px;" onclick="if(event.target===this)this.remove()">';
-    modalHtml += '<div style="background:white;border-radius:16px;padding:24px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.2);max-height:80vh;overflow-y:auto;" onclick="event.stopPropagation()">';
-    modalHtml += '<h3 style="font-size:17px;font-weight:700;color:#1a202c;margin-bottom:12px;">➕ 처리내역 추가</h3>';
-    modalHtml += '<div style="margin-bottom:12px;"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">현장</label>';
-    modalHtml += '<select id="workAddPlace" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;">' + placeOptions + '</select></div>';
-    modalHtml += '<div style="margin-bottom:12px;"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">시간</label>';
-modalHtml += '<input type="time" id="workAddTime" value="' + defaultTime + '" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;"></div>';
+let work = currentWork || loadWorkFromLocalStorage();
+let existing = document.getElementById('workAddModal');
+if (existing) existing.remove();
+let placeOptions = '<option value="">-- 현장 선택 --</option>';
+for (let i = 0; i < places.length; i++) {
+    placeOptions += '<option value="' + escapeHtml(places[i].name) + '">' + escapeHtml(places[i].name) + '</option>';
+}
+let modalHtml = '<div id="workAddModal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);z-index:999999;display:flex;justify-content:center;align-items:center;padding:20px;" onclick="if(event.target===this)this.remove()">';
+modalHtml += '<div style="background:white;border-radius:16px;padding:24px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.2);max-height:80vh;overflow-y:auto;" onclick="event.stopPropagation()">';
+modalHtml += '<h3 style="font-size:17px;font-weight:700;color:#1a202c;margin-bottom:12px;">➕ 처리내역 추가</h3>';
+modalHtml += '<div style="margin-bottom:12px;"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">현장</label>';
+modalHtml += '<select id="workAddPlace" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;">' + placeOptions + '</select></div>';
 modalHtml += '<div style="margin-bottom:12px;"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">📷 카메라 번호</label>';
 modalHtml += '<input type="text" id="workAddCamera" placeholder="예: 01, A3 (선택)" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;"></div>';
-modalHtml += '<div style="margin-bottom:12px;"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">처리구분</label>';
-    modalHtml += '<input type="text" id="workAddCamera" placeholder="예: 01, A3 (선택)" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;"></div>';
-    modalHtml += '<div style="margin-bottom:12px;"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">처리구분</label>';
-    modalHtml += '<select id="workAddCategory" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;">' + categoryOptions + '</select></div>';
-    modalHtml += '<div style="margin-bottom:12px;"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">처리내용</label>';
-    modalHtml += '<textarea id="workAddContent" rows="3" placeholder="처리 내용을 입력하세요" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;resize:vertical;"></textarea></div>';
-    modalHtml += '<div style="display:flex;gap:8px;justify-content:flex-end;">';
-    modalHtml += '<button class="btn btn-outline btn-sm" onclick="document.getElementById(\'workAddModal\').remove()" style="padding:6px 16px;">취소</button>';
-    modalHtml += '<button class="btn btn-primary btn-sm" onclick="saveWorkAdd(\'' + dateStr + '\')" style="padding:6px 16px;">저장</button>';
-    modalHtml += '</div></div></div>';
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
+modalHtml += '<div style="margin-bottom:12px;"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">처리내용</label>';
+modalHtml += '<textarea id="workAddContent" rows="3" placeholder="처리 내용을 입력하세요" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;resize:vertical;"></textarea></div>';
+modalHtml += '<div style="font-size:11px;color:#a0aec0;margin-bottom:12px;">💡 저장 시 현재 시간이 자동으로 기록됩니다</div>';
+modalHtml += '<div style="display:flex;gap:8px;justify-content:flex-end;">';
+modalHtml += '<button class="btn btn-outline btn-sm" onclick="document.getElementById(\'workAddModal\').remove()" style="padding:6px 16px;">취소</button>';
+modalHtml += '<button class="btn btn-primary btn-sm" onclick="saveWorkAdd(\'' + dateStr + '\')" style="padding:6px 16px;">저장</button>';
+modalHtml += '</div></div></div>';
+document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
 
 async function saveWorkAdd(dateStr) {
-    let placeName = document.getElementById('workAddPlace').value;
-    let time = document.getElementById('workAddTime') ? document.getElementById('workAddTime').value : '';
-    let category = document.getElementById('workAddCategory').value;
-    let content = document.getElementById('workAddContent').value.trim();
-    let camera = document.getElementById('workAddCamera') ? document.getElementById('workAddCamera').value.trim() : '';
-    if (!placeName) { showTabStatus('tab-work', '⚠️ 현장을 선택하세요.', 'warning'); return; }
-    if (!category) { showTabStatus('tab-work', '⚠️ 처리구분을 선택하세요.', 'warning'); return; }
-    let work = currentWork || loadWorkFromLocalStorage();
-    let now = new Date();
-    work.workHistory.push({
-        id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-        date: dateStr,
-        time: time,
-        timestamp: now.getTime(),
-        placeName: placeName,
-        dong: '',
-        worker: workerName || '미설정',
-        category: category,
-        content: content,
-        camera: camera,
-        fromStats: false
-    });
-    work.lastUpdated = now.toISOString();
-    saveWorkToLocalStorage(work);
-    document.getElementById('workAddModal').remove();
-    let uploaded = await uploadWorkToGitHub(work);
-    renderWorkTab();
-    showWorkDateDetail(dateStr);
-    showTabStatus('tab-work', uploaded ? '✅ 처리내역 추가 완료 (GitHub 동기화)' : '⚠️ 추가됨. GitHub 업로드 실패', uploaded ? 'ok' : 'warning');
+let placeName = document.getElementById('workAddPlace').value;
+let content = document.getElementById('workAddContent').value.trim();
+let camera = document.getElementById('workAddCamera') ? document.getElementById('workAddCamera').value.trim() : '';
+if (!placeName) { showTabStatus('tab-work', '⚠️ 현장을 선택하세요.', 'warning'); return; }
+let work = currentWork || loadWorkFromLocalStorage();
+let now = new Date();
+// ★ 저장 시점의 시간 자동 기록
+let timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+work.workHistory.push({
+id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+date: dateStr,
+time: timeStr,
+timestamp: now.getTime(),
+placeName: placeName,
+dong: '',
+worker: workerName || '미설정',
+category: '',
+content: content,
+camera: camera,
+fromStats: false
+});
+work.lastUpdated = now.toISOString();
+saveWorkToLocalStorage(work);
+document.getElementById('workAddModal').remove();
+let uploaded = await uploadWorkToGitHub(work);
+renderWorkTab();
+showWorkDateDetail(dateStr);
+showTabStatus('tab-work', uploaded ? '✅ 처리내역 추가 완료 (⏰ ' + timeStr + ' 기록)' : '⚠️ 추가됨. GitHub 업로드 실패', uploaded ? 'ok' : 'warning');
 }
 
 function openCategoryManager() {
+    showTabStatus('tab-work', 'ℹ️ 처리구분 기능이 제거되었습니다.', 'info');
+return;
     let work = currentWork || loadWorkFromLocalStorage();
     let categories = work.categories || [];
     let existing = document.getElementById('categoryManagerModal');
@@ -6799,7 +6756,6 @@ function openCategoryManager() {
     let modalHtml = '<div id="categoryManagerModal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);z-index:999999;display:flex;justify-content:center;align-items:center;padding:20px;" onclick="if(event.target===this)this.remove()">';
     modalHtml += '<div style="background:white;border-radius:16px;padding:24px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.2);max-height:80vh;overflow-y:auto;" onclick="event.stopPropagation()">';
     modalHtml += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">';
-    modalHtml += '<h3 style="font-size:17px;font-weight:700;color:#1a202c;margin:0;">⚙️ 처리구분 관리</h3>';
     modalHtml += '<button onclick="document.getElementById(\'categoryManagerModal\').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#a0aec0;">×</button>';
     modalHtml += '</div>';
     modalHtml += '<div style="margin-bottom:12px;">' + listHtml + '</div>';
