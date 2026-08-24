@@ -1194,48 +1194,54 @@ function renderWaypointList() {
     let countEl = document.getElementById('wpCount');
     if (!list) return;
     if (countEl) countEl.textContent = '(' + waypoints.length + '개)';
+    
+    // 경유지가 없을 때
     if (waypoints.length === 0) {
-        list.innerHTML = '<li class="empty-msg">경유지를 추가하세요</li>';
-        // Sortable 정리
+        list.innerHTML = '<li class="empty-msg">경유지를 추가하세요 (드래그로 순서 변경 가능)</li>';
+        // 기존 Sortable 인스턴스 제거
         if (window._sortable) {
             window._sortable.destroy();
             window._sortable = null;
         }
         return;
     }
+    
     let html = '';
     for (let i = 0; i < waypoints.length; i++) {
         let wp = waypoints[i];
         html += '<li data-index="' + i + '" data-name="' + escapeHtml(wp.name) + '" data-lat="' + (wp.lat || 0) + '" data-lng="' + (wp.lng || 0) + '">';
-        html += '<div style="display:flex;align-items:center;flex:1;gap:6px;">';
-        html += '<span class="drag-handle">⠿</span>';  // ★ 드래그 핸들 추가
+        html += '<div style="display:flex;align-items:center;flex:1;">';
+        html += '<span class="drag-handle">⠿</span>'; // ★ 드래그 핸들 추가
         html += '<span class="idx">' + (i + 1) + '</span>';
         html += '<span>' + escapeHtml(wp.name) + '</span></div>';
         html += '<span class="remove" onclick="event.stopPropagation(); removeWaypoint(' + i + ')">✕</span></li>';
     }
     list.innerHTML = html;
-
-    // ★ Sortable 초기화 (함수 내부에서)
+    
+    // ★ Sortable 초기화 (함수 내부에 위치해야 함)
     if (window.Sortable) {
         if (window._sortable) window._sortable.destroy();
         window._sortable = new Sortable(list, {
-            handle: '.drag-handle',
+            handle: '.drag-handle', // 위에서 추가한 드래그 핸들을 타겟으로 지정
             animation: 150,
             onEnd: function(evt) {
                 let oldIndex = evt.oldIndex;
                 let newIndex = evt.newIndex;
                 if (oldIndex === newIndex) return;
+                
                 let moved = waypoints.splice(oldIndex, 1)[0];
                 waypoints.splice(newIndex, 0, moved);
+                
                 renderWaypointList();
                 showTabStatus('tab-places', '🔄 경유지 순서 변경됨', 'info');
+                
                 if (startPoint && waypoints.length > 0) {
                     setTimeout(runOptimize, 300);
                 }
             }
         });
     }
-}
+} // 함수의 올바른 종료 위치
 
 // ============================================================
 // 11. 경유지 검색
