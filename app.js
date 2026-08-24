@@ -193,15 +193,15 @@ function switchTab(tabId, updateHistory = true) {
     
     // ★ 지도 탭으로 전환할 때만 1회 relayout
     if (tabId === 'tab-route') {
-    setTimeout(function() {
-        if (kakaoMap) {
-            kakaoMap.relayout();
-            kakaoMap.setDraggable(true);
-            kakaoMap.setZoomable(true);
-        } else {
-            initMap();
-        }
-    }, 300);
+setTimeout(function() {
+    if (kakaoMap) {
+        kakaoMap.relayout();
+        kakaoMap.setDraggable(true);
+        kakaoMap.setZoomable(true);
+    } else if (typeof initMap === 'function') {
+        initMap();
+    }
+}, 300);
 }
     
     if (tabId === 'tab-list' && typeof renderPlaces === 'function') {
@@ -3288,7 +3288,7 @@ function createMap(container) {
     level: zoomLevel,
     draggable: true,
     zoomable: true,
-    scrollwheel: true
+    scrollwheel: false
 };
         
         kakaoMap = new kakao.maps.Map(container, options);
