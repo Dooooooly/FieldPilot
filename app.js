@@ -1196,20 +1196,26 @@ function renderWaypointList() {
     if (countEl) countEl.textContent = '(' + waypoints.length + '개)';
     if (waypoints.length === 0) {
         list.innerHTML = '<li class="empty-msg">경유지를 추가하세요</li>';
+        // Sortable 정리
+        if (window._sortable) {
+            window._sortable.destroy();
+            window._sortable = null;
+        }
         return;
     }
     let html = '';
     for (let i = 0; i < waypoints.length; i++) {
         let wp = waypoints[i];
         html += '<li data-index="' + i + '" data-name="' + escapeHtml(wp.name) + '" data-lat="' + (wp.lat || 0) + '" data-lng="' + (wp.lng || 0) + '">';
-        html += '<div style="display:flex;align-items:center;flex:1;">';
+        html += '<div style="display:flex;align-items:center;flex:1;gap:6px;">';
+        html += '<span class="drag-handle">⠿</span>';  // ★ 드래그 핸들 추가
         html += '<span class="idx">' + (i + 1) + '</span>';
         html += '<span>' + escapeHtml(wp.name) + '</span></div>';
         html += '<span class="remove" onclick="event.stopPropagation(); removeWaypoint(' + i + ')">✕</span></li>';
     }
     list.innerHTML = html;
-}
-    
+
+    // ★ Sortable 초기화 (함수 내부에서)
     if (window.Sortable) {
         if (window._sortable) window._sortable.destroy();
         window._sortable = new Sortable(list, {
