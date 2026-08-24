@@ -812,14 +812,15 @@ body {
                 <div><div class="ux-tab-title">설정 및 데이터</div><div class="ux-tab-sub">API, 백업, 업데이트와 저장 데이터를 관리합니다.</div></div>
             </div>
 
-            <div class="card">
-    <h3>👤 작업자 설정</h3>
-    <div style="display:flex; gap:8px; align-items:center;">
-        <input type="text" id="workerName" placeholder="이름 입력 (예: 홍길동)" style="flex:1; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px;">
-        <button class="btn btn-primary btn-sm" onclick="saveWorkerName()" style="padding:6px 14px;">저장</button>
-    </div>
-    <div id="workerNameStatus" class="badge badge-wait" style="margin-top:6px;">⏳ 이름 미설정</div>
-</div>
+            <div class="setting-group">
+                <h4>👤 작업자 설정</h4>
+                <div class="row">
+                    <label for="workerName">이름</label>
+                    <input type="text" id="workerName" autocomplete="off" placeholder="이름 입력 (예: 홍길동)">
+                    <button class="btn btn-primary btn-sm" onclick="saveWorkerName()">저장</button>
+                </div>
+                <div id="workerNameStatus" class="badge badge-wait" style="margin-top:4px;">⏳ 이름 미설정</div>
+            </div>
             <div class="setting-group">
                 <h4>🔐 GitHub 연동</h4>
                 <div class="row">
