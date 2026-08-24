@@ -5440,36 +5440,41 @@ function openMultiStopNavigation() {
 // 헬퍼 함수: 카카오맵 앱 실행 (출발지 + 경유지 + 도착지)
 // ============================================================
 function openKakaoMapApp(start, end, waypoints, isMobile, isIOS) {
-    // kakaomap://route 스킴 형식
-    let scheme = 'kakaomap://route?' +
-        'sp=' + start.lat + ',' + start.lng +
-        '&ep=' + end.lat + ',' + end.lng +
-        '&sname=' + encodeURIComponent(start.name) +
-        '&dname=' + encodeURIComponent(end.name) +
-        '&by=CAR';
+// kakaomap://route 스킴: 경유지는 vp, vp2, vp3, vp4, vp5 (최대 5개)
+let scheme = 'kakaomap://route?'
++ 'sp=' + start.lat + ',' + start.lng
++ '&ep=' + end.lat + ',' + end.lng
++ '&sname=' + encodeURIComponent(start.name)
++ '&dname=' + encodeURIComponent(end.name)
++ '&by=CAR';
 
-    if (waypoints.length > 0) {
-        const waypointsStr = waypoints.map(wp => wp.lat + ',' + wp.lng).join('|');
-        scheme += '&waypoints=' + waypointsStr;
-    }
+// ★ 경유지: vp(1번째), vp2~vp5 (최대 5개) + 이름
+for (let i = 0; i < waypoints.length && i < 5; i++) {
+let prefix = (i === 0) ? 'vp' : ('vp' + (i + 1));
+scheme += '&' + prefix + '=' + waypoints[i].lat + ',' + waypoints[i].lng;
+scheme += '&' + prefix + 'n=' + encodeURIComponent(waypoints[i].name || '');
+}
 
-    const webUrl = 'https://map.kakao.com/link/from/'
-        + encodeURIComponent(start.name) + ',' + start.lat + ',' + start.lng
-        + '/to/'
-        + encodeURIComponent(end.name) + ',' + end.lat + ',' + end.lng;
+// ★ 웹 링크: 출발지 + 경유지 + 도착지 전부 포함
+let webUrl = 'https://map.kakao.com/link/from/'
++ encodeURIComponent(start.name) + ',' + start.lat + ',' + start.lng;
+for (let i = 0; i < waypoints.length && i < 5; i++) {
+webUrl += '/' + encodeURIComponent(waypoints[i].name || '') + ',' + waypoints[i].lat + ',' + waypoints[i].lng;
+}
+webUrl += '/to/'
++ encodeURIComponent(end.name) + ',' + end.lat + ',' + end.lng;
 
-    if (!isMobile) {
-        // PC: 무조건 웹으로
-        window.open(webUrl, '_blank');
-        showTabStatus('tab-route', '💻 PC 환경이므로 카카오맵 웹으로 연결합니다.', 'info');
-        return;
-    }
+if (!isMobile) {
+window.open(webUrl, '_blank');
+showTabStatus('tab-route', '💻 PC 환경이므로 카카오맵 웹으로 연결합니다.', 'info');
+return;
+}
 
-    // 모바일: 스킴 실행 시도
-    window.location.href = scheme;
-    setTimeout(function() {
-        window.open(webUrl, '_blank');
-    }, 1500);
+// 모바일: 스킴 실행 시도 → 실패 시 웹 링크
+window.location.href = scheme;
+setTimeout(function() {
+window.open(webUrl, '_blank');
+}, 1500);
 }
 
 function initFrameDragHandlers() {
