@@ -2680,7 +2680,7 @@ html += '</button>';
 
 // 오른쪽: 통계 기록 버튼 (배경색 있음)
 html += '<button id="stats-record-btn" class="btn" style="flex:1; padding:10px; font-size:14px; font-weight:600; background:#38a169; color:white; border:none; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px;" onclick="recordVisitStats()">';
-html += '📊 통계 기록';
+html += '📝방문 현장 기록';
 html += '</button>';
 
 html += '</div>';
