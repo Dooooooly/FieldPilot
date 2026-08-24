@@ -79,6 +79,8 @@ let originalRouteCost = null;
 let routeApi = localStorage.getItem(ROUTE_API_KEY) || 'kakao';
 let weatherRetryCount = 0;
 const MAX_WEATHER_RETRY = 3;
+let userGpsCoords = null;      // ★ GPS 좌표 저장 (날씨용)
+let weatherInterval = null;    // ★ 날씨 주기 갱신 타이머
 let tempSettings = {};
 let routeObjective = 'distance';
 let useRoadOptimization = true;
@@ -1019,14 +1021,17 @@ function setCurrentLocation() {
     showTabStatus('tab-places', '📍 GPS 위치 가져오는 중...', 'info');
     
     navigator.geolocation.getCurrentPosition(
-        function(position) {
-            let lat = position.coords.latitude;
-            let lng = position.coords.longitude;
-            
-            if (btn) {
-                btn.innerHTML = '<span style="font-size:14px;">🎯</span> 현재 위치';
-                btn.disabled = false;
-            }
+function(position) {
+let lat = position.coords.latitude;
+let lng = position.coords.longitude;
+// ★ GPS 좌표 저장 (날씨용)
+userGpsCoords = { lat: lat, lng: lng };
+// ★ 날씨 즉시 갱신 (실제 위치 기반)
+fetchWeather();
+if (btn) {
+btn.innerHTML = '<span style="font-size:14px;">🎯</span> 현재 위치';
+btn.disabled = false;
+}
             
             let restKey = settings.kakaoRestKey;
             if (restKey) {
@@ -4310,7 +4315,7 @@ async function fetchWeather() {
     if (!weatherEl) return false;
     try {
         let apiKey = 'b84c1b9a09d8316b679320cceb3a1097';
-        let center = getRegionCenter(currentRegion);
+        let center = userGpsCoords || getRegionCenter(currentRegion);
         let url = 'https://api.openweathermap.org/data/2.5/weather?lat=' + center.lat + '&lon=' + center.lng + '&appid=' + apiKey + '&units=metric&lang=kr';
         let response = await fetch(url);
         if (!response.ok) throw new Error('날씨 API 호출 실패');
@@ -5150,24 +5155,31 @@ document.addEventListener('DOMContentLoaded', function() {
     registerServiceWorker();
     setTimeout(displayAppVersion, 1000);
     
-    function initWeather() {
-        if (weatherRetryCount >= MAX_WEATHER_RETRY) {
-            console.log('날씨 API 재시도 한도 도달. 10분 후 재시도.');
-            setTimeout(function() {
-                weatherRetryCount = 0;
-                initWeather();
-            }, 600000); // 10분 후 재시도
-            return;
-        }
-        fetchWeather().then(function(success) {
-            if (!success) {
-                weatherRetryCount++;
-                setTimeout(initWeather, 10000); // 5초 → 10초
-            }
-        });
-    }
-    
-    setTimeout(initWeather, 3000); // 날씨 초기화 호출
+   function initWeather() {
+if (weatherRetryCount >= MAX_WEATHER_RETRY) {
+console.log('날씨 API 재시도 한도 도달. 10분 후 재시도.');
+setTimeout(function() {
+weatherRetryCount = 0;
+initWeather();
+}, 600000);
+return;
+}
+fetchWeather().then(function(success) {
+if (!success) {
+weatherRetryCount++;
+setTimeout(initWeather, 10000);
+} else {
+weatherRetryCount = 0;  // ★ 성공 시 재시도 카운트 리셋
+}
+});
+}
+setTimeout(initWeather, 3000);
+// ★ 1시간(3,600,000ms)마다 주기 갱신
+if (weatherInterval) clearInterval(weatherInterval);
+weatherInterval = setInterval(function() {
+weatherRetryCount = 0;
+fetchWeather();
+}, 3600000);
     initHistoryHash();
 }); // ★★ 이 닫는 괄호가 반드시 필요합니다! ★★
 // ============================================================
