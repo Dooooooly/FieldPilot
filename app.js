@@ -7138,22 +7138,28 @@ function renderRestaurantResults(documents, menu, isGps) {
     restaurantList.innerHTML = html;
 }
 
-function openLunchRestaurantInMap(name, lat, lng) {
-    let coords = (typeof userGpsCoords !== 'undefined' && userGpsCoords) ? userGpsCoords : null;
-    if (coords) {
-        let webUrl = 'https://map.kakao.com/link/from/' + encodeURIComponent('내 위치') + ',' + coords.lat + ',' + coords.lng + '/to/' + encodeURIComponent(name) + ',' + lat + ',' + lng;
-        if (isMobile()) {
-            let kakaoUrl = 'kakaomap://route?sp=' + coords.lat + ',' + coords.lng + '&ep=' + lat + ',' + lng + '&sname=' + encodeURIComponent('내 위치') + '&dname=' + encodeURIComponent(name) + '&by=CAR';
-            window.location.href = kakaoUrl;
-            setTimeout(function() { window.open(webUrl, '_blank'); }, 1500);
-        } else {
-            window.open(webUrl, '_blank');
-        }
+function openLunchRestaurantInMap(index) {
+    let place = window._lunchResults && window._lunchResults[index];
+    if (!place) return;
+    let name = place.place_name;
+    let lat = place.y;
+    let lng = place.x;
+    let isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    // ★ 지도에 식당 장소만 표시 (길찾기 모드 아님)
+    let webUrl = 'https://map.kakao.com/link/map/' + encodeURIComponent(name) + ',' + lat + ',' + lng;
+
+    if (isMobile) {
+        // ★ 앱에서 식당 이름으로 검색해서 마커 표시
+        let kakaoUrl = 'kakaomap://open?page=map&lat=' + lat + '&lng=' + lng + '&q=' + encodeURIComponent(name);
+        window.location.href = kakaoUrl;
+        setTimeout(function() {
+            if (!window.location.href.startsWith('kakaomap://')) {
+                window.open(webUrl, '_blank');
+            }
+        }, 1500);
     } else {
-        let webUrl = 'https://map.kakao.com/link/map/' + encodeURIComponent(name) + ',' + lat + ',' + lng;
         window.open(webUrl, '_blank');
     }
 }
-
-window.switchTab = switchTab;
 window.switchTab = switchTab;
