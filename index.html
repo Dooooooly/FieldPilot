@@ -879,124 +879,446 @@ body {
             <div id="settingsStatus" class="tab-status"></div>
         </div>
 
-        <!-- ===== 탭: 도움말 ===== -->
-        <div id="tab-help" class="tab-content">
-            <div id="tab-help-uxheader" class="ux-tab-header">
-                <div class="ux-tab-icon">❓</div>
-                <div><div class="ux-tab-title">도움말</div><div class="ux-tab-sub">주요 기능과 사용 순서를 빠르게 확인하세요.</div></div>
+       <!-- ============ 9. HELP TAB ============ -->
+<div id="tab-help" class="tab-content">
+    <div class="ux-tab-header">
+        <div class="ux-tab-icon">❓</div>
+        <div style="flex:1;">
+            <div class="ux-tab-title">도움말</div>
+            <div class="ux-tab-sub">처음이신가요? 실제 화면으로 안내해 드릴게요!</div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- 1. 🚀 빠른 시작 (3단계 흐름) -->
+    <!-- ═══════════════════════════════════════ -->
+    <div style="background:linear-gradient(135deg,#667eea,#764ba2);border-radius:12px;padding:16px;margin-bottom:16px;color:white;">
+        <div style="font-weight:700;font-size:15px;margin-bottom:12px;">🚀 빠른 시작 (3단계)</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.15);border-radius:8px;padding:10px;">
+                <span style="background:white;color:#667eea;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;">1</span>
+                <span style="font-size:13px;"><strong>현장 등록</strong> → 작업할 현장들을 등록하거나 엑셀에서 가져오세요</span>
             </div>
-            <div class="card">
-                <div class="card-title">📖 사용 가이드</div>
-                <div class="help-section">
-                    <div class="help-title">🗺️ 경로 탭</div>
-                    <div class="help-body">
-                        <div><strong>1. 출발지 설정</strong></div>
-                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                            - 검색창에 출발지를 입력하고 <strong>'설정'</strong> 버튼을 누르세요.<br>
-                            - <strong>'🎯 현재 위치'</strong> 버튼으로 GPS 위치를 바로 설정할 수 있어요.
+            <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.15);border-radius:8px;padding:10px;">
+                <span style="background:white;color:#667eea;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;">2</span>
+                <span style="font-size:13px;"><strong>경로 최적화</strong> → 출발지 + 경유지 설정 후 최적화 실행</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.15);border-radius:8px;padding:10px;">
+                <span style="background:white;color:#667eea;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;">3</span>
+                <span style="font-size:13px;"><strong>기록 & 통계</strong> → 방문 기록 저장하고 통계로 확인</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- 2. 🗺️ 경로 탭 가이드 -->
+    <!-- ═══════════════════════════════════════ -->
+    <div style="margin-bottom:20px;">
+        <div style="font-weight:700;font-size:15px;margin-bottom:10px;display:flex;align-items:center;gap:6px;">🗺️ 경로 탭 사용하기</div>
+        
+        <!-- 실제 화면 재현 -->
+        <div style="background:#f7fafc;border-radius:12px;padding:14px;border:1px solid #e2e8f0;margin-bottom:12px;">
+            <div style="font-size:11px;color:#a0aec0;margin-bottom:8px;">📱 실제 화면 미리보기</div>
+            <div style="background:white;border-radius:8px;padding:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+                <!-- 출발지 영역 -->
+                <div style="background:#ebf8ff;border-radius:8px;padding:10px;margin-bottom:8px;">
+                    <div style="font-size:12px;font-weight:600;color:#2b6cb0;margin-bottom:6px;">🚩 출발지</div>
+                    <div style="display:flex;gap:6px;">
+                        <div style="flex:1;background:#f7fafc;border:1px solid #e2e8f0;border-radius:6px;padding:6px 8px;font-size:11px;color:#718096;">출발지 검색...</div>
+                        <div style="background:#3182ce;color:white;border-radius:6px;padding:6px 10px;font-size:11px;white-space:nowrap;">🎯 현재 위치</div>
+                    </div>
+                    <div style="font-size:11px;color:#22543d;margin-top:6px;">✅ 이태원동 주민센터 (서울시 용산구)</div>
+                </div>
+                <!-- 경유지 영역 -->
+                <div style="background:#f0fff4;border-radius:8px;padding:10px;margin-bottom:8px;">
+                    <div style="font-size:12px;font-weight:600;color:#38a169;margin-bottom:6px;">📍 경유지 <span style="font-size:10px;color:#718096;">(3개)</span></div>
+                    <div style="display:flex;gap:6px;margin-bottom:6px;">
+                        <div style="flex:1;background:#f7fafc;border:1px solid #e2e8f0;border-radius:6px;padding:6px 8px;font-size:11px;color:#718096;">경유지 검색...</div>
+                        <div style="background:#38a169;color:white;border-radius:6px;padding:6px 10px;font-size:11px;">➕ 추가</div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:4px;">
+                        <div style="display:flex;align-items:center;gap:6px;padding:4px 6px;background:#f7fafc;border-radius:4px;font-size:11px;">
+                            <span style="color:#a0aec0;">⠿</span>
+                            <span style="background:#FF6B6B;color:white;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;">1</span>
+                            <span style="flex:1;">한남대교 북단</span>
                         </div>
-                        <div style="margin-top:6px;"><strong>2. 경유지 추가</strong></div>
-                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                            - 경유지명을 입력하고 <strong>'추가'</strong> 버튼을 누르세요.<br>
-                            - <strong>'📋 여러개 추가'</strong> 모드로 한 번에 여러 개를 추가할 수 있어요.<br>
-                            - 추가된 경유지는 <strong>드래그</strong>로 순서를 변경할 수 있습니다.
+                        <div style="display:flex;align-items:center;gap:6px;padding:4px 6px;background:#f7fafc;border-radius:4px;font-size:11px;">
+                            <span style="color:#a0aec0;">⠿</span>
+                            <span style="background:#FF9F43;color:white;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;">2</span>
+                            <span style="flex:1;">남산타워</span>
                         </div>
-                        <div style="margin-top:6px;"><strong>3. 경로 최적화</strong></div>
-                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                            - <strong>'⚡ 경로 최적화 실행'</strong> 버튼을 누르면 최적 경로가 계산됩니다.<br>
-                            - <strong>'⚙️ 설정'</strong> 버튼에서 최적화 모드와 API를 변경할 수 있어요.
-                        </div>
-                        <div style="margin-top:6px;"><strong>💾 프리셋 저장</strong></div>
-                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                            - 현재 설정된 출발지와 경유지를 <strong>프리셋</strong>으로 저장할 수 있어요.<br>
-                            - 저장된 프리셋은 클릭 한 번으로 불러올 수 있습니다.
+                        <div style="display:flex;align-items:center;gap:6px;padding:4px 6px;background:#f7fafc;border-radius:4px;font-size:11px;">
+                            <span style="color:#a0aec0;">⠿</span>
+                            <span style="background:#FECA57;color:white;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;">3</span>
+                            <span style="flex:1;">명동성당</span>
                         </div>
                     </div>
                 </div>
-                <div class="help-section">
-                    <div class="help-title">📍 지도 탭</div>
-                    <div class="help-body">
-                        <div>📍 최적화된 경로를 <strong>카카오맵 / TMap</strong>으로 확인하세요.</div>
-                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                            - 각 구간별로 <strong>다른 색상</strong>으로 표시되어 구분이 쉬워요.<br>
-                            - 경로 목록에서 <strong>클릭</strong>하면 해당 위치로 지도가 이동합니다.<br>
-                            - <strong>'🗺️'</strong> 버튼으로 선택한 API의 길찾기를 실행할 수 있어요.
+                <!-- 최적화 버튼 -->
+                <div style="background:#3182ce;color:white;border-radius:8px;padding:10px;text-align:center;font-size:12px;font-weight:600;">⚡ 경로 최적화 실행</div>
+            </div>
+        </div>
+
+        <!-- 사용 순서 설명 -->
+        <div style="background:white;border-radius:10px;padding:14px;border:1px solid #e2e8f0;">
+            <div style="font-weight:600;font-size:13px;margin-bottom:8px;">📋 사용 순서</div>
+            <div style="display:flex;flex-direction:column;gap:8px;font-size:12px;color:#4a5568;">
+                <div style="display:flex;gap:8px;">
+                    <span style="background:#ebf8ff;color:#2b6cb0;border-radius:6px;padding:2px 8px;font-weight:600;white-space:nowrap;">Step 1</span>
+                    <span><strong>출발지 설정</strong> - 검색창에 장소를 입력하거나 <strong>🎯 현재 위치</strong> 버튼으로 내 위치를 출발지로 설정</span>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <span style="background:#ebf8ff;color:#2b6cb0;border-radius:6px;padding:2px 8px;font-weight:600;white-space:nowrap;">Step 2</span>
+                    <span><strong>경유지 추가</strong> - 방문할 현장들을 검색해서 추가 (최대 15개)</span>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <span style="background:#ebf8ff;color:#2b6cb0;border-radius:6px;padding:2px 8px;font-weight:600;white-space:nowrap;">Step 3</span>
+                    <span><strong>최적화 실행</strong> - 버튼을 누르면 카카오맵 도로 데이터를 기반으로 가장 효율적인 순서 계산</span>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <span style="background:#ebf8ff;color:#2b6cb0;border-radius:6px;padding:2px 8px;font-weight:600;white-space:nowrap;">Step 4</span>
+                    <span><strong>결과 확인</strong> - 지도에 최적 경로 표시, 하단에 거리/시간/절약량 확인</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 동작 원리 -->
+        <details style="background:#f7fafc;border-radius:8px;padding:12px;margin-top:8px;cursor:pointer;">
+            <summary style="font-weight:600;font-size:13px;">💡 동작 원리: 어떻게 최적 경로를 계산하나요?</summary>
+            <div style="font-size:12px;color:#4a5568;margin-top:8px;line-height:1.6;">
+                <div style="margin-bottom:6px;"><strong>1. 후보 경로 생성</strong> - 3가지 방식으로 초기 경로를 만듭니다</div>
+                <div style="margin-left:12px;margin-bottom:4px;">• <strong>방향 기반</strong>: 출발지 기준 시계방향/반시계방향으로 묶어서 순서 결정</div>
+                <div style="margin-left:12px;margin-bottom:4px;">• <strong>도로 기반</strong>: 카카오맵 API로 실제 도로 거리 측정 후 가장 가까운 곳부터 방문</div>
+                <div style="margin-left:12px;margin-bottom:6px;">• <strong>직선 거리 기반</strong>: 직선거리 기준으로 가까운 곳부터 방문</div>
+                <div style="margin-bottom:6px;"><strong>2. 경로 개선 (2-opt)</strong> - 각 후보 경로를 최대 3번 반복하면서 교차 구간을 찾아 더 짧은 경로로 교체</div>
+                <div><strong>3. 최종 선택</strong> - 3가지 후보 중 총 거리(또는 시간)가 가장 짧은 경로를 최종 결과로 선택</div>
+            </div>
+        </details>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- 3. 📋 현장 탭 가이드 -->
+    <!-- ═══════════════════════════════════════ -->
+    <div style="margin-bottom:20px;">
+        <div style="font-weight:700;font-size:15px;margin-bottom:10px;display:flex;align-items:center;gap:6px;">📋 현장 탭 사용하기</div>
+        
+        <!-- 실제 화면 재현 -->
+        <div style="background:#f7fafc;border-radius:12px;padding:14px;border:1px solid #e2e8f0;margin-bottom:12px;">
+            <div style="font-size:11px;color:#a0aec0;margin-bottom:8px;">📱 실제 화면 미리보기</div>
+            <div style="background:white;border-radius:8px;padding:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+                <!-- 검색/필터 영역 -->
+                <div style="display:flex;gap:6px;margin-bottom:8px;">
+                    <div style="flex:1;background:#f7fafc;border:1px solid #e2e8f0;border-radius:6px;padding:6px 8px;font-size:11px;color:#718096;">현장 검색...</div>
+                    <div style="background:#4f7eb3;color:white;border-radius:6px;padding:6px 10px;font-size:11px;">➕ 현장 추가</div>
+                </div>
+                <!-- 현장 리스트 -->
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                    <div style="display:flex;align-items:center;gap:8px;padding:8px;background:#f7fafc;border-radius:6px;border-left:3px solid #4f7eb3;">
+                        <div style="flex:1;">
+                            <div style="font-size:12px;font-weight:600;">이태원파출소</div>
+                            <div style="font-size:10px;color:#718096;">이태원로 153</div>
                         </div>
-                        <div style="margin-top:6px;">📊 <strong>요약 정보</strong></div>
-                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                            - 총 방문지 개수, 총 거리, 총 소요 시간, 그리고 <strong>절약 효과</strong>를 한눈에 확인하세요.
+                        <div style="display:flex;gap:4px;font-size:10px;">
+                            <span>📍</span><span>➕</span><span>🗑️</span><span>★</span>
                         </div>
                     </div>
-                </div>
-                <div class="help-section">
-                    <div class="help-title">📋 현장 탭</div>
-                    <div class="help-body">
-                        <div><strong>현장 관리</strong></div>
-                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                            - <strong>'➕ 현장추가'</strong> 버튼으로 새 현장을 등록하세요.<br>
-                            - 현장을 <strong>클릭</strong>하면 이름, 주소, 비고를 편집할 수 있어요.<br>
-                            - <strong>'⭐ 즐겨찾기'</strong> 버튼으로 자주 가는 현장을 상단에 고정하세요.<br>
-                            - <strong>'⭐ 즐겨찾기'</strong> 필터 버튼으로 즐겨찾기한 현장만 모아볼 수 있어요.
+                    <div style="display:flex;align-items:center;gap:8px;padding:8px;background:#f7fafc;border-radius:6px;border-left:3px solid #e53e3e;">
+                        <div style="flex:1;">
+                            <div style="font-size:12px;font-weight:600;">한남동 주민센터 <span style="color:#e53e3e;">⚠️</span></div>
+                            <div style="font-size:10px;color:#718096;">주소 변환 실패</div>
                         </div>
-                        <div style="margin-top:6px;"><strong>📥 엑셀 가져오기/내보내기</strong></div>
-                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                            - 엑셀 파일로 현장을 <strong>일괄 등록</strong>하거나 <strong>백업</strong>할 수 있어요.<br>
-                            - 지원 형식: <code>.csv</code>, <code>.xlsx</code>, <code>.xls</code>
-                        </div>
-                        <div style="margin-top:6px;"><strong>🔍 검색 및 정렬</strong></div>
-                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                            - 현장명이나 주소로 <strong>검색</strong>할 수 있어요.<br>
-                            - <strong>이름순</strong> 또는 <strong>주소 변환 실패</strong> 순으로 정렬할 수 있습니다.
-                        </div>
-                    </div>
-                </div>
-                <div class="help-section">
-                    <div class="help-title">⚙️ 설정 탭</div>
-                    <div class="help-body">
-                        <div><strong>🔐 GitHub 연동</strong></div>
-                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                            - GitHub Personal Access Token을 입력하면 <strong>자동 백업</strong>이 가능해요.<br>
-                            - <strong>'📤 업로드'</strong>로 현재 데이터를 저장하고, <strong>'📥 다운로드'</strong>로 불러올 수 있어요.<br>
-                            - <strong>'📋 히스토리'</strong>에서 과거 버전을 확인하고 <strong>복원</strong>할 수 있어요.
-                        </div>
-                        <div style="margin-top:6px;"><strong>🗺️ 카카오 API</strong></div>
-                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                            - <strong>JavaScript 키</strong>와 <strong>REST API 키</strong>를 입력하세요.<br>
-                            - 지도 표시와 주소 검색에 필요합니다.
-                        </div>
-                        <div style="margin-top:6px;"><strong>🔄 업데이트 관리</strong></div>
-                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                            - <strong>'🔍 업데이트 확인'</strong> 버튼으로 새 버전을 확인하세요.<br>
-                            - <strong>'⚡ 캐시 초기화'</strong>로 오류를 해결할 수 있어요.
-                        </div>
-                        <div style="margin-top:6px;"><strong>💾 데이터 관리</strong></div>
-                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                            - <strong>'🗑️ 모든 데이터 초기화'</strong>로 모든 데이터를 삭제할 수 있어요.
-                        </div>
-                    </div>
-                </div>
-                <div class="help-section">
-                    <div class="help-title">💡 유용한 팁</div>
-                    <div class="help-body">
-                        <div style="margin-top:6px;">📱 <strong>모바일 최적화</strong></div>
-                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                            - 모든 화면이 모바일에 최적화되어 있어요.<br>
-                            - <strong>PWA</strong>로 설치하면 앱처럼 사용할 수 있습니다.
-                        </div>
-                        <div style="margin-top:6px;">☁️ <strong>데이터 백업</strong></div>
-                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                            - GitHub에 백업하면 <strong>다른 기기</strong>에서도 데이터를 불러올 수 있어요.
-                        </div>
-                        <div style="margin-top:6px;">📊 <strong>절약 효과</strong></div>
-                        <div style="padding-left:12px; font-size:12px; color:#4a5568;">
-                            - 최적화 후 <strong>절약된 거리와 시간</strong>을 확인하여 효과를 체감할 수 있어요.
+                        <div style="display:flex;gap:4px;font-size:10px;">
+                            <span>📍</span><span>➕</span><span>🗑️</span><span>☆</span>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- 버튼 설명 -->
+        <div style="background:white;border-radius:10px;padding:14px;border:1px solid #e2e8f0;">
+            <div style="font-weight:600;font-size:13px;margin-bottom:8px;">🔘 각 버튼의 역할</div>
+            <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#4a5568;">
+                <div><strong>📍</strong> 지도 보기 - 지도 탭으로 이동해서 해당 현장 위치 표시</div>
+                <div><strong>➕</strong> 경유지 추가 - 경로 탭의 경유지 목록에 바로 추가</div>
+                <div><strong>🗑️</strong> 삭제 - 현장 삭제 (확인 모달 표시)</div>
+                <div><strong>★/☆</strong> 즐겨찾기 - 자주 방문하는 현장 표시</div>
+                <div><strong>⚠️</strong> 경고 표시 - 주소 변환 실패로 좌표가 없는 현장 (편집으로 수정 필요)</div>
+            </div>
+        </div>
+
+        <!-- 동작 원리 -->
+        <details style="background:#f7fafc;border-radius:8px;padding:12px;margin-top:8px;cursor:pointer;">
+            <summary style="font-weight:600;font-size:13px;">💡 동작 원리: 주소는 어떻게 좌표로 변환되나요?</summary>
+            <div style="font-size:12px;color:#4a5568;margin-top:8px;line-height:1.6;">
+                <div style="margin-bottom:6px;">현장을 추가하거나 엑셀에서 가져올 때, 주소가 있으면 자동으로 <strong>카카오 지오코딩 API</strong>를 호출합니다.</div>
+                <div style="margin-bottom:6px;"><strong>변환 과정:</strong></div>
+                <div style="margin-left:12px;margin-bottom:4px;">1. 주소를 카카오 서버에 전송</div>
+                <div style="margin-left:12px;margin-bottom:4px;">2. 도로명주소 우선 → 지번주소 순서로 좌표 확인</div>
+                <div style="margin-left:12px;margin-bottom:4px;">3. 좌표 + 전체 주소 + 행정동(동 정보) 저장</div>
+                <div style="margin-bottom:6px;"><strong>⚠️ 변환 실패 시:</strong> 주소가 잘못되었거나 카카오가 인식하지 못하는 경우입니다. 편집 버튼을 눌러 주소를 수정하거나 위도/경도를 직접 입력하세요.</div>
+                <div><strong>💾 저장 위치:</strong> 모든 현장 데이터는 브라우저의 로컬 저장소(localStorage)에 저장되며, GitHub 토큰을 설정하면 자동으로 GitHub에도 백업됩니다.</div>
+            </div>
+        </details>
     </div>
 
+    <!-- ═══════════════════════════════════════ -->
+    <!-- 4. 📊 통계 탭 가이드 -->
+    <!-- ═══════════════════════════════════════ -->
+    <div style="margin-bottom:20px;">
+        <div style="font-weight:700;font-size:15px;margin-bottom:10px;display:flex;align-items:center;gap:6px;">📊 통계 탭 사용하기</div>
+        
+        <!-- 실제 화면 재현 -->
+        <div style="background:#f7fafc;border-radius:12px;padding:14px;border:1px solid #e2e8f0;margin-bottom:12px;">
+            <div style="font-size:11px;color:#a0aec0;margin-bottom:8px;">📱 실제 화면 미리보기</div>
+            <div style="background:white;border-radius:8px;padding:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+                <div style="font-size:12px;color:#718096;margin-bottom:8px;">총 현장: <strong>45개</strong></div>
+                <div style="font-weight:600;font-size:13px;margin-bottom:6px;">동별 현장 분포</div>
+                <!-- 막대 그래프 재현 -->
+                <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px;">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="min-width:60px;font-size:11px;text-align:right;">이태원동</span>
+                        <div style="flex:1;background:#e2e8f0;border-radius:4px;height:14px;overflow:hidden;">
+                            <div style="width:80%;background:#4f7eb3;height:100%;border-radius:4px;"></div>
+                        </div>
+                        <span style="min-width:30px;font-size:11px;font-weight:600;">12개</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="min-width:60px;font-size:11px;text-align:right;">한남동</span>
+                        <div style="flex:1;background:#e2e8f0;border-radius:4px;height:14px;overflow:hidden;">
+                            <div style="width:50%;background:#4f7eb3;height:100%;border-radius:4px;"></div>
+                        </div>
+                        <span style="min-width:30px;font-size:11px;font-weight:600;">8개</span>
+                    </div>
+                </div>
+                <!-- 방문 분석 -->
+                <div style="font-weight:700;font-size:13px;margin-bottom:8px;">📈 방문 분석</div>
+                <div style="display:flex;gap:6px;margin-bottom:8px;">
+                    <div style="background:#4f7eb3;color:white;border-radius:6px;padding:4px 10px;font-size:11px;">오늘</div>
+                    <div style="background:#f7fafc;border:1px solid #cbd5e0;border-radius:6px;padding:4px 10px;font-size:11px;">이번 주</div>
+                    <div style="background:#f7fafc;border:1px solid #cbd5e0;border-radius:6px;padding:4px 10px;font-size:11px;">이번 달</div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <div style="flex:1;background:#f7fafc;border-radius:8px;padding:8px;text-align:center;">
+                        <div style="font-size:16px;font-weight:700;color:#2b6cb0;">3</div>
+                        <div style="font-size:10px;color:#718096;">방문 횟수</div>
+                    </div>
+                    <div style="flex:1;background:#f7fafc;border-radius:8px;padding:8px;text-align:center;">
+                        <div style="font-size:16px;font-weight:700;color:#38a169;">15</div>
+                        <div style="font-size:10px;color:#718096;">방문 현장</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 사용 설명 -->
+        <div style="background:white;border-radius:10px;padding:14px;border:1px solid #e2e8f0;">
+            <div style="font-weight:600;font-size:13px;margin-bottom:8px;">📋 통계는 어떻게 쌓이나요?</div>
+            <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#4a5568;">
+                <div style="display:flex;gap:8px;">
+                    <span style="background:#ebf8ff;color:#2b6cb0;border-radius:6px;padding:2px 8px;font-weight:600;white-space:nowrap;">Step 1</span>
+                    <span>경로 탭에서 최적화 완료 후 <strong>📊 통계 기록</strong> 버튼 클릭</span>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <span style="background:#ebf8ff;color:#2b6cb0;border-radius:6px;padding:2px 8px;font-weight:600;white-space:nowrap;">Step 2</span>
+                    <span>방문한 모든 현장의 동 정보가 자동 변환되어 저장</span>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <span style="background:#ebf8ff;color:#2b6cb0;border-radius:6px;padding:2px 8px;font-weight:600;white-space:nowrap;">Step 3</span>
+                    <span>통계 탭에서 동별 분포, 방문 횟수, 최다 방문 장소 확인</span>
+                </div>
+            </div>
+            <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:8px;margin-top:8px;font-size:11px;color:#744210;">
+                ⚠️ <strong>중요:</strong> 통계 기록 버튼을 눌러야만 방문 기록이 저장됩니다. 최적화만 실행하고 버튼을 누르지 않으면 기록되지 않습니다.
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- 5. 📝 기록 탭 가이드 -->
+    <!-- ═══════════════════════════════════════ -->
+    <div style="margin-bottom:20px;">
+        <div style="font-weight:700;font-size:15px;margin-bottom:10px;display:flex;align-items:center;gap:6px;">📝 기록 탭 사용하기</div>
+        
+        <!-- 실제 화면 재현 -->
+        <div style="background:#f7fafc;border-radius:12px;padding:14px;border:1px solid #e2e8f0;margin-bottom:12px;">
+            <div style="font-size:11px;color:#a0aec0;margin-bottom:8px;">📱 실제 화면 미리보기</div>
+            <div style="background:white;border-radius:8px;padding:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+                <!-- 캘린더 헤더 -->
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                    <span style="font-size:11px;">◀</span>
+                    <span style="font-weight:700;font-size:13px;">2026년 4월</span>
+                    <span style="font-size:11px;">▶</span>
+                </div>
+                <!-- 캘린더 그리드 -->
+                <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:8px;">
+                    <div style="text-align:center;font-size:10px;color:#e53e3e;">일</div>
+                    <div style="text-align:center;font-size:10px;">월</div>
+                    <div style="text-align:center;font-size:10px;">화</div>
+                    <div style="text-align:center;font-size:10px;">수</div>
+                    <div style="text-align:center;font-size:10px;">목</div>
+                    <div style="text-align:center;font-size:10px;">금</div>
+                    <div style="text-align:center;font-size:10px;color:#3182ce;">토</div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;">
+                    <div style="text-align:center;padding:4px;font-size:11px;border-radius:4px;border:1px solid transparent;"></div>
+                    <div style="text-align:center;padding:4px;font-size:11px;border-radius:4px;border:1px solid transparent;"></div>
+                    <div style="text-align:center;padding:4px;font-size:11px;border-radius:4px;border:1px solid transparent;"></div>
+                    <div style="text-align:center;padding:4px;font-size:11px;border-radius:4px;border:2px solid #3182ce;background:#ebf8ff;">25<div style="font-size:8px;background:#38a169;color:white;border-radius:8px;padding:1px 3px;margin-top:2px;">3건</div></div>
+                    <div style="text-align:center;padding:4px;font-size:11px;border-radius:4px;border:1px solid #e2e8f0;">26</div>
+                    <div style="text-align:center;padding:4px;font-size:11px;border-radius:4px;border:1px solid #e2e8f0;">27</div>
+                    <div style="text-align:center;padding:4px;font-size:11px;border-radius:4px;border:1px solid #e2e8f0;">28</div>
+                </div>
+                <!-- 날짜별 상세 -->
+                <div style="border-top:1px solid #e2e8f0;margin-top:8px;padding-top:8px;">
+                    <div style="font-weight:700;font-size:12px;margin-bottom:6px;">📅 4월 25일 (금)</div>
+                    <div style="background:#f7fafc;border-radius:6px;padding:8px;border-left:3px solid #38a169;margin-bottom:4px;">
+                        <div style="display:flex;align-items:center;gap:6px;font-size:11px;">
+                            <span style="color:#4a5568;">⏰ 14:30</span>
+                            <span>이태원파출소</span>
+                            <span style="background:#ebf8ff;color:#3182ce;font-size:9px;padding:1px 6px;border-radius:8px;">📷 01</span>
+                        </div>
+                        <div style="font-size:10px;color:#718096;margin-top:2px;">👤 김철수</div>
+                        <div style="font-size:10px;color:#4a5568;margin-top:4px;padding:4px 6px;background:#fff;border-radius:4px;border-left:2px solid #2b6cb0;">카메라 점검 완료</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 사용 설명 -->
+        <div style="background:white;border-radius:10px;padding:14px;border:1px solid #e2e8f0;">
+            <div style="font-weight:600;font-size:13px;margin-bottom:8px;">📋 작업 기록 사용법</div>
+            <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#4a5568;">
+                <div><strong>1. 캘린더에서 날짜 선택</strong> - 초록색 배지가 있는 날짜는 작업 기록이 있는 날</div>
+                <div><strong>2. 기록 카드 클릭</strong> - 처리내역 작성 모달 열림 (카메라 번호, 처리내용 입력)</div>
+                <div><strong>3. 저장 버튼 클릭</strong> - 저장 시 현재 시간이 자동으로 기록됨</div>
+                <div><strong>4. 미작성 항목</strong> - 빨간색 "⚠️ 미작성" 표시가 있는 항목은 터치해서 작성</div>
+            </div>
+            <div style="background:#f0fff4;border:1px solid #c6f6d5;border-radius:6px;padding:8px;margin-top:8px;font-size:11px;color:#276749;">
+                💡 <strong>자동 기록:</strong> 경로 탭에서 📊 통계 기록 버튼을 누르면 방문한 현장들이 작업 기록 탭에도 자동으로 추가됩니다.
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- 6. ⚙️ 설정 탭 가이드 -->
+    <!-- ═══════════════════════════════════════ -->
+    <div style="margin-bottom:20px;">
+        <div style="font-weight:700;font-size:15px;margin-bottom:10px;display:flex;align-items:center;gap:6px;">⚙️ 설정 탭 사용하기</div>
+        
+        <!-- 설정 항목 설명 -->
+        <div style="background:white;border-radius:10px;padding:14px;border:1px solid #e2e8f0;">
+            <div style="font-weight:600;font-size:13px;margin-bottom:8px;">🔧 필수 설정 항목</div>
+            <div style="display:flex;flex-direction:column;gap:8px;font-size:12px;color:#4a5568;">
+                <div style="background:#f7fafc;border-radius:8px;padding:10px;">
+                    <div style="font-weight:600;margin-bottom:4px;">👤 작업자 이름</div>
+                    <div>작업 기록에 표시될 이름을 입력하세요. 저장하면 모든 기록에 자동으로 적용됩니다.</div>
+                </div>
+                <div style="background:#f7fafc;border-radius:8px;padding:10px;">
+                    <div style="font-weight:600;margin-bottom:4px;">🔐 GitHub 연동</div>
+                    <div>GitHub 토큰을 입력하면 현장 데이터가 자동으로 백업됩니다. 여러 기기에서 동일한 데이터를 사용할 수 있습니다.</div>
+                    <div style="font-size:11px;color:#718096;margin-top:4px;">생성 방법: GitHub → Settings → Developer settings → Personal access tokens</div>
+                </div>
+                <div style="background:#f7fafc;border-radius:8px;padding:10px;">
+                    <div style="font-weight:600;margin-bottom:4px;">🗺️ 카카오 API 키</div>
+                    <div>지도 표시와 주소 변환에 필요합니다. JavaScript 키와 REST API 키 모두 입력하세요.</div>
+                    <div style="font-size:11px;color:#718096;margin-top:4px;">생성 방법: developers.kakao.com → 앱 생성 → 키 발급</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- 7. 🔧 고급 기능 -->
+    <!-- ═══════════════════════════════════════ -->
+    <div style="margin-bottom:20px;">
+        <div style="font-weight:700;font-size:15px;margin-bottom:10px;display:flex;align-items:center;gap:6px;">🔧 고급 기능</div>
+        
+        <div style="display:flex;flex-direction:column;gap:8px;">
+            <details style="background:white;border-radius:10px;padding:12px;border:1px solid #e2e8f0;cursor:pointer;">
+                <summary style="font-weight:600;font-size:13px;">📍 드래그로 경유지 순서 변경</summary>
+                <div style="font-size:12px;color:#4a5568;margin-top:8px;line-height:1.6;">
+                    경로 탭의 최적화 결과에서 <strong>⠿ 핸들</strong>을 드래그하면 순서를 바꿀 수 있습니다.<br>
+                    순서를 변경하면 지도의 경로도 자동으로 다시 그려지며, 각 구간별 거리/시간도 재계산됩니다.<br>
+                    <span style="color:#718096;font-size:11px;">단, 출발지(🚩) 위치로는 이동할 수 없습니다.</span>
+                </div>
+            </details>
+
+            <details style="background:white;border-radius:10px;padding:12px;border:1px solid #e2e8f0;cursor:pointer;">
+                <summary style="font-weight:600;font-size:13px;">💾 프리셋 저장/불러오기</summary>
+                <div style="font-size:12px;color:#4a5568;margin-top:8px;line-height:1.6;">
+                    자주 사용하는 출발지 + 경유지 조합을 프리셋으로 저장할 수 있습니다.<br>
+                    저장한 프리셋은 한 번의 클릭으로 불러올 수 있어 반복 작업에 유용합니다.<br>
+                    <span style="color:#718096;font-size:11px;">저장 위치: 경로 탭 하단 "프리셋" 섹션</span>
+                </div>
+            </details>
+
+            <details style="background:white;border-radius:10px;padding:12px;border:1px solid #e2e8f0;cursor:pointer;">
+                <summary style="font-weight:600;font-size:13px;">📊 엑셀 가져오기/내보내기</summary>
+                <div style="font-size:12px;color:#4a5568;margin-top:8px;line-height:1.6;">
+                    현장 탭에서 엑셀 파일(.xlsx, .xls, .csv)로 현장 목록을 가져오거나 내보낼 수 있습니다.<br>
+                    <strong>가져오기:</strong> 현장명, 주소 컬럼이 있으면 자동으로 인식하고 주소 변환을 실행합니다.<br>
+                    <strong>내보내기:</strong> 현재 현장 목록을 엑셀 파일로 다운로드합니다.
+                </div>
+            </details>
+
+            <details style="background:white;border-radius:10px;padding:12px;border:1px solid #e2e8f0;cursor:pointer;">
+                <summary style="font-weight:600;font-size:13px;">🗺️ 전체 경로 연결 (카카오맵 연동)</summary>
+                <div style="font-size:12px;color:#4a5568;margin-top:8px;line-height:1.6;">
+                    최적화 완료 후 <strong>🗺️ 전체 연결</strong> 버튼을 누르면 카카오맵 앱에서 전체 경로를 한 번에 확인할 수 있습니다.<br>
+                    <span style="color:#718096;font-size:11px;">카카오맵 앱 제한: 경유지 최대 5개 (초과 시 앞 5개만 전달)</span>
+                </div>
+            </details>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- 8. ❓ 자주 묻는 질문 -->
+    <!-- ═══════════════════════════════════════ -->
+    <div style="margin-bottom:20px;">
+        <div style="font-weight:700;font-size:15px;margin-bottom:10px;display:flex;align-items:center;gap:6px;">❓ 자주 묻는 질문</div>
+        
+        <div style="display:flex;flex-direction:column;gap:6px;">
+            <details style="background:#f7fafc;border-radius:8px;padding:12px;cursor:pointer;">
+                <summary style="font-weight:600;font-size:13px;">주소 변환이 실패했다고 나와요 (⚠️ 표시)</summary>
+                <div style="font-size:12px;color:#4a5568;margin-top:8px;line-height:1.6;">
+                    주소가 잘못되었거나 카카오가 인식하지 못하는 주소입니다.<br>
+                    현장 탭에서 해당 현장을 클릭해서 주소를 수정하거나, 위도/경도를 직접 입력하세요.<br>
+                    <span style="color:#718096;font-size:11px;">예: "서울시 용산구 이태원동 123-4" → "서울특별시 용산구 이태원로 153"</span>
+                </div>
+            </details>
+
+            <details style="background:#f7fafc;border-radius:8px;padding:12px;cursor:pointer;">
+                <summary style="font-weight:600;font-size:13px;">지도가 안 나와요</summary>
+                <div style="font-size:12px;color:#4a5568;margin-top:8px;line-height:1.6;">
+                    설정 탭에서 카카오 JavaScript 키를 입력했는지 확인하세요.<br>
+                    키를 입력한 후에도 안 나오면 캐시 초기화 후 새로고침을 시도하세요.<br>
+                    <span style="color:#718096;font-size:11px;">설정 탭 → 업데이트 관리 → 캐시 초기화</span>
+                </div>
+            </details>
+
+            <details style="background:#f7fafc;border-radius:8px;padding:12px;cursor:pointer;">
+                <summary style="font-weight:600;font-size:13px;">데이터가 사라졌어요</summary>
+                <div style="font-size:12px;color:#4a5568;margin-top:8px;line-height:1.6;">
+                    데이터는 브라우저의 로컬 저장소에 저장됩니다. 브라우저 캐시를 삭제하면 데이터도 함께 삭제됩니다.<br>
+                    GitHub 토큰을 설정해두면 자동으로 백업되므로, 다운로드 버튼으로 복원할 수 있습니다.<br>
+                    <span style="color:#718096;font-size:11px;">설정 탭 → GitHub 연동 → 📥 다운로드</span>
+                </div>
+            </details>
+
+            <details style="background:#f7fafc;border-radius:8px;padding:12px;cursor:pointer;">
+                <summary style="font-weight:600;font-size:13px;">통계 기록을 눌렀는데 저장이 안 돼요</summary>
+                <div style="font-size:12px;color:#4a5568;margin-top:8px;line-height:1.6;">
+                    먼저 최적화를 실행한 상태인지 확인하세요. 최적화 결과 없이 통계 기록 버튼을 누르면 저장할 데이터가 없습니다.<br>
+                    GitHub 업로드 실패 시에도 로컬에는 저장되므로 걱정하지 마세요.
+                </div>
+            </details>
+        </div>
+    </div>
+
+    <!-- 하단 여백 -->
+    <div style="height:20px;"></div>
+</div>
     <!-- ===== 현장추가 모달 ===== -->
     <div class="modal-overlay" id="addPlaceModal">
         <div class="modal" style="max-width:400px;">
