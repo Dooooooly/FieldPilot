@@ -7116,8 +7116,8 @@ function renderRestaurantResults(documents, menu, isGps) {
     for (let i = 0; i < topList.length; i++) {
         let place = topList[i];
         let distance = place.distance ? (place.distance >= 1000 ? (place.distance / 1000).toFixed(1) + 'km' : place.distance + 'm') : '';
-        html += '<div onclick="openLunchRestaurantInMap(\'' + escapeHtml(place.place_name).replace(/'/g, "\\'") + '\',' + place.y + ',' + place.x + ')" style="display:flex;align-items:center;gap:10px;padding:10px;background:#f7fafc;border-radius:10px;margin-bottom:6px;cursor:pointer;border-left:3px solid #38a169;">';
-        html += '<div style="font-size:20px;font-weight:700;color:#38a169;min-width:28px;">' + (i + 1) + '</div>';
+        let safeName = escapeHtml(place.place_name).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        html += '<div onclick="openLunchRestaurantInMap(this)" data-name="' + safeName + '" data-lat="' + place.y + '" data-lng="' + place.x + '" style="display:flex;align-items:center;gap:10px;padding:10px;background:#f7fafc;border-radius:10px;margin-bottom:6px;cursor:pointer;border-left:3px solid #38a169;">';        html += '<div style="font-size:20px;font-weight:700;color:#38a169;min-width:28px;">' + (i + 1) + '</div>';
         html += '<div style="flex:1;min-width:0;">';
         html += '<div style="font-weight:600;font-size:13px;color:#1a202c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(place.place_name) + '</div>';
         html += '<div style="font-size:11px;color:#718096;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(place.address_name || '') + '</div>';
@@ -7138,25 +7138,23 @@ function renderRestaurantResults(documents, menu, isGps) {
     restaurantList.innerHTML = html;
 }
 
-function openLunchRestaurantInMap(index) {
-    let place = window._lunchResults && window._lunchResults[index];
-    if (!place) return;
-    let name = place.place_name;
-    let lat = place.y;
-    let lng = place.x;
+function openLunchRestaurantInMap(el) {
+    let name = el.getAttribute('data-name');
+    let lat = el.getAttribute('data-lat');
+    let lng = el.getAttribute('data-lng');
+    if (!name || !lat || !lng) {
+        showTabStatus('tab-help', '⚠️ 식당 정보가 없습니다.', 'warning');
+        return;
+    }
     let isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
-    // ★ 지도에 식당 장소만 표시 (길찾기 모드 아님)
     let webUrl = 'https://map.kakao.com/link/map/' + encodeURIComponent(name) + ',' + lat + ',' + lng;
-
     if (isMobile) {
-        // ★ 앱에서 식당 이름으로 검색해서 마커 표시
+        // ★ 앱에서 식당 검색해서 마커 표시
         let kakaoUrl = 'kakaomap://open?page=map&lat=' + lat + '&lng=' + lng + '&q=' + encodeURIComponent(name);
         window.location.href = kakaoUrl;
+        // 앱 미설치 시 웹으로 폴백
         setTimeout(function() {
-            if (!window.location.href.startsWith('kakaomap://')) {
-                window.open(webUrl, '_blank');
-            }
+            window.location.href = webUrl;
         }, 1500);
     } else {
         window.open(webUrl, '_blank');
