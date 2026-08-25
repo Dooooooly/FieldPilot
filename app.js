@@ -7117,7 +7117,8 @@ function renderRestaurantResults(documents, menu, isGps) {
         let place = topList[i];
         let distance = place.distance ? (place.distance >= 1000 ? (place.distance / 1000).toFixed(1) + 'km' : place.distance + 'm') : '';
         let safeName = escapeHtml(place.place_name).replace(/'/g, "\\'").replace(/"/g, '&quot;');
-        html += '<div onclick="openLunchRestaurantInMap(this)" data-name="' + safeName + '" data-lat="' + place.y + '" data-lng="' + place.x + '" style="display:flex;align-items:center;gap:10px;padding:10px;background:#f7fafc;border-radius:10px;margin-bottom:6px;cursor:pointer;border-left:3px solid #38a169;">';        html += '<div style="font-size:20px;font-weight:700;color:#38a169;min-width:28px;">' + (i + 1) + '</div>';
+        html += '<div onclick="openLunchRestaurantInMap(this)" data-id="' + escapeHtml(place.id || '') + '" data-name="' + safeName + '" data-lat="' + place.y + '" data-lng="' + place.x + '" style="display:flex;align-items:center;gap:10px;padding:10px;background:#f7fafc;border-radius:10px;margin-bottom:6px;cursor:pointer;border-left:3px solid #38a169;">';
+        html += '<div style="font-size:20px;font-weight:700;color:#38a169;min-width:28px;">' + (i + 1) + '</div>';
         html += '<div style="flex:1;min-width:0;">';
         html += '<div style="font-weight:600;font-size:13px;color:#1a202c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(place.place_name) + '</div>';
         html += '<div style="font-size:11px;color:#718096;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(place.address_name || '') + '</div>';
@@ -7139,16 +7140,15 @@ function renderRestaurantResults(documents, menu, isGps) {
 }
 
 // ★ 식당 클릭 → 카카오맵 앱에서 장소 표시
-function openLunchRestaurantInMap(index) {
-    let place = window._lunchResults && window._lunchResults[index];
-    if (!place) {
+function openLunchRestaurantInMap(el) {
+    if (!el || !el.dataset) {
         showTabStatus('tab-help', '⚠️ 식당 정보를 찾을 수 없습니다. 다시 돌려주세요.', 'warning');
         return;
     }
-    let name = place.place_name || '';
-    let id = place.id || '';
-    let lat = place.y;
-    let lng = place.x;
+    let name = el.dataset.name || '';
+    let id = el.dataset.id || '';
+    let lat = el.dataset.lat;
+    let lng = el.dataset.lng;
     let isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
     showTabStatus('tab-help', '🗺️ "' + name + '" 카카오맵 여는 중...', 'info');
