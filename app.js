@@ -2439,23 +2439,10 @@ async function runOptimize() {
             return;
         }
         
-        routeMarkers = [];
-        if (startMarker) {
-            try { startMarker.setMap(null); } catch(e) {}
-            startMarker = null;
-        }
-        if (window._sectionPolylines) {
-            for (let i = 0; i < window._sectionPolylines.length; i++) {
-                try { window._sectionPolylines[i].setMap(null); } catch(e) {}
-            }
-            window._sectionPolylines = [];
-        }
-        if (kakaoPolyline) {
-            try { kakaoPolyline.setMap(null); } catch(e) {}
-            kakaoPolyline = null;
-        }
-        clearSingleMarker();
-        isShowingRouteMarkers = true;
+        // ★ 기존 마커/폴리라인 완전 제거 (이전 경로 잔상 방지)
+clearRouteMarkers();
+clearSingleMarker();
+isShowingRouteMarkers = true;
         
         addRouteMarker(startPoint.lat, startPoint.lng, startPoint.name, true, -1);
         
