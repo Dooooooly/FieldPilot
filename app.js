@@ -5204,6 +5204,11 @@ weatherInterval = setInterval(function() {
 }, 3600000);
 
 initHistoryHash();
+let helpHeader = document.querySelector('#tab-help .ux-tab-header') || document.querySelector('#tab-help h3') || document.querySelector('#tab-help h2');
+    if (helpHeader) {
+        helpHeader.style.cursor = 'pointer';
+        helpHeader.addEventListener('click', handleHelpEasterEgg);
+    }
 }); // ★★ DOMContentLoaded(38. 초기화 실행) 콜백을 닫는 괄호 — 반드시 필요합니다! ★★
 
 // ============================================================
@@ -6921,4 +6926,234 @@ function renameCategory(index) {
         showTabStatus('tab-work', '✅ "' + oldName + '" → "' + newName + '" 수정됨', 'ok');
     });
 }
+let helpEasterEggCount = 0;
+let lastHelpClickTime = 0;
+let lunchGameSpinning = false;
+
+function handleHelpEasterEgg() {
+    let now = Date.now();
+    // 2초 이내 연속 클릭만 카운트
+    if (now - lastHelpClickTime > 2000) {
+        helpEasterEggCount = 0;
+    }
+    lastHelpClickTime = now;
+    helpEasterEggCount++;
+    if (helpEasterEggCount >= 5) {
+        helpEasterEggCount = 0;
+        openLunchGame();
+    }
+}
+
+function openLunchGame() {
+    let existing = document.getElementById('lunchGameModal');
+    if (existing) existing.remove();
+
+    let modalHtml = '<div id="lunchGameModal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);z-index:999999;display:flex;justify-content:center;align-items:center;padding:20px;" onclick="if(event.target===this)this.remove()">';
+    modalHtml += '<div style="background:white;border-radius:24px;padding:28px 24px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:85vh;overflow-y:auto;" onclick="event.stopPropagation()">';
+    modalHtml += '<div style="text-align:center;">';
+    modalHtml += '<div style="font-size:48px;margin-bottom:8px;">🍱</div>';
+    modalHtml += '<h3 style="font-size:20px;font-weight:700;color:#1a202c;margin-bottom:4px;">오늘 점심은 뭐 먹지?</h3>';
+    modalHtml += '<div style="font-size:12px;color:#a0aec0;margin-bottom:20px;">🎮 숨겨진 게임을 발견하셨네요!</div>';
+    modalHtml += '</div>';
+    modalHtml += '<div id="lunchDisplayBg" style="background:linear-gradient(135deg,#667eea,#764ba2);border-radius:16px;padding:24px 16px;margin-bottom:20px;min-height:90px;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:all 0.3s;">';
+    modalHtml += '<div id="lunchMenuDisplay" style="font-size:26px;font-weight:800;color:white;">❓</div>';
+    modalHtml += '<div id="lunchResultMsg" style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:4px;">버튼을 눌러 메뉴를 골라보세요!</div>';
+    modalHtml += '</div>';
+    modalHtml += '<div id="lunchRestaurantList" style="display:none;margin-bottom:16px;"></div>';
+    modalHtml += '<button id="lunchSpinBtn" onclick="spinLunchMenu()" style="width:100%;padding:14px;background:#38a169;color:white;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;margin-bottom:8px;">🎰 메뉴 돌리기!</button>';
+    modalHtml += '<button onclick="document.getElementById(\'lunchGameModal\').remove()" style="width:100%;padding:10px;background:#f7fafc;color:#718096;border:1px solid #e2e8f0;border-radius:12px;font-size:13px;cursor:pointer;">닫기</button>';
+    modalHtml += '</div></div>';
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    if (navigator.vibrate) navigator.vibrate(50);
+}
+
+function getLunchMenus() {
+    return [
+        '🍲 김치찌개', '🥘 된장찌개', '🍖 제육볶음', '🍚 순두부찌개',
+        '🍜 칼국수', '🥟 짜장면', '🌶️ 짬뽕', '🍱 돈까스',
+        '🍔 햄버거', '🥪 샌드위치', '🥗 샐러드', '🍗 치킨',
+        '🍕 피자', '🍙 김밥', '🍚 비빔밥', '🍧 냉면',
+        '🐔 삼계탕', '🍖 설렁탕', '🍲 해장국', '🥘 부대찌개',
+        '🍖 갈비탕', '🌶️ 육개장', '🍜 콩국수', '🍜 잔치국수',
+        '🍛 덮밥', '🍣 초밥', '🍛 카레', '🍳 오므라이스',
+        '🍝 파스타', '🍜 라면', '🍜 우동', '🍚 볶음밥',
+        '🌶️ 마라탕', '🍜 쌀국수', '🥟 만두', '🍢 어묵탕'
+    ];
+}
+
+function spinLunchMenu() {
+    if (lunchGameSpinning) return;
+    lunchGameSpinning = true;
+
+    let menus = getLunchMenus();
+    let display = document.getElementById('lunchMenuDisplay');
+    let resultMsg = document.getElementById('lunchResultMsg');
+    let btn = document.getElementById('lunchSpinBtn');
+    let bg = document.getElementById('lunchDisplayBg');
+    let restaurantList = document.getElementById('lunchRestaurantList');
+    if (!display || !btn) { lunchGameSpinning = false; return; }
+
+    if (restaurantList) { restaurantList.style.display = 'none'; restaurantList.innerHTML = ''; }
+    btn.textContent = '🎰 고르는 중...';
+    btn.style.background = '#a0aec0';
+    btn.disabled = true;
+    display.style.fontSize = '26px';
+    if (resultMsg) resultMsg.textContent = '두근두근...';
+    if (bg) bg.style.background = 'linear-gradient(135deg,#667eea,#764ba2)';
+
+    let totalSpins = 30 + Math.floor(Math.random() * 10);
+    let currentSpin = 0;
+    let finalMenu = menus[Math.floor(Math.random() * menus.length)];
+
+    function doSpin() {
+        currentSpin++;
+        let randomMenu = menus[Math.floor(Math.random() * menus.length)];
+        display.textContent = randomMenu;
+        if (navigator.vibrate) navigator.vibrate(20);
+
+        if (currentSpin >= totalSpins) {
+            display.textContent = finalMenu;
+            display.style.fontSize = '30px';
+            if (resultMsg) resultMsg.textContent = '🎉 결정 완료! 근처 식당을 찾아볼게요~';
+            if (bg) bg.style.background = 'linear-gradient(135deg,#f6ad55,#ed8936)';
+            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+
+            // ★ 이모지 제거 후 식당 검색
+            let menuText = finalMenu.replace(/^[^\s]+\s/, '');
+            searchLunchRestaurants(menuText);
+
+            setTimeout(function() {
+                btn.textContent = '🔄 다시 돌리기';
+                btn.style.background = '#38a169';
+                btn.disabled = false;
+                lunchGameSpinning = false;
+            }, 800);
+            return;
+        }
+
+        let progress = currentSpin / totalSpins;
+        let delay = 50 + Math.floor(progress * progress * 300);
+        setTimeout(doSpin, delay);
+    }
+
+    doSpin();
+}
+
+function searchLunchRestaurants(menu) {
+    let restaurantList = document.getElementById('lunchRestaurantList');
+    if (!restaurantList) return;
+
+    restaurantList.style.display = 'block';
+    restaurantList.innerHTML = '<div style="text-align:center;padding:12px;color:#a0aec0;font-size:13px;">📍 "' + escapeHtml(menu) + '" 식당 검색 중...</div>';
+
+    let coords = (typeof userGpsCoords !== 'undefined' && userGpsCoords) ? userGpsCoords : null;
+
+    function doSearch(lat, lng, isGps) {
+        let restKey = settings.kakaoRestKey;
+        if (!restKey) {
+            restaurantList.innerHTML = '<div style="text-align:center;padding:12px;color:#e53e3e;font-size:13px;">⚠️ 카카오 REST API 키가 필요합니다.</div>';
+            return;
+        }
+        let query = menu + ' 맛집';
+        let url = 'https://dapi.kakao.com/v2/local/search/keyword.json?query=' + encodeURIComponent(query) + '&x=' + lng + '&y=' + lat + '&radius=3000&sort=distance';
+        fetch(url, { headers: { 'Authorization': 'KakaoAK ' + restKey } })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (!data.documents || data.documents.length === 0) {
+                    let url2 = 'https://dapi.kakao.com/v2/local/search/keyword.json?query=' + encodeURIComponent(menu) + '&x=' + lng + '&y=' + lat + '&radius=3000&sort=distance';
+                    fetch(url2, { headers: { 'Authorization': 'KakaoAK ' + restKey } })
+                        .then(function(res2) { return res2.json(); })
+                        .then(function(data2) {
+                            renderRestaurantResults(data2.documents || [], menu, isGps);
+                        })
+                        .catch(function() {
+                            restaurantList.innerHTML = '<div style="text-align:center;padding:12px;color:#e53e3e;font-size:13px;">❌ 검색 실패</div>';
+                        });
+                    return;
+                }
+                renderRestaurantResults(data.documents, menu, isGps);
+            })
+            .catch(function() {
+                restaurantList.innerHTML = '<div style="text-align:center;padding:12px;color:#e53e3e;font-size:13px;">❌ 검색 실패</div>';
+            });
+    }
+
+    if (coords) {
+        doSearch(coords.lat, coords.lng, true);
+    } else if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                doSearch(position.coords.latitude, position.coords.longitude, true);
+            },
+            function() {
+                let center = getRegionCenter(currentRegion);
+                doSearch(center.lat, center.lng, false);
+            },
+            { timeout: 8000 }
+        );
+    } else {
+        let center = getRegionCenter(currentRegion);
+        doSearch(center.lat, center.lng, false);
+    }
+}
+
+function renderRestaurantResults(documents, menu, isGps) {
+    let restaurantList = document.getElementById('lunchRestaurantList');
+    if (!restaurantList) return;
+
+    let locationMsg = isGps ? '📍 내 위치 기준' : '🗺️ 지역 중심 기준';
+    let html = '<div style="font-weight:700;font-size:14px;margin-bottom:8px;color:#1a202c;">🍽️ "' + escapeHtml(menu) + '" 추천 식당</div>';
+    html += '<div style="font-size:11px;color:#718096;margin-bottom:8px;">' + locationMsg + ' · 반경 3km · 거리순</div>';
+
+    if (documents.length === 0) {
+        html += '<div style="text-align:center;padding:12px;color:#a0aec0;font-size:13px;">근처에 "' + escapeHtml(menu) + '" 식당이 없어요 😢</div>';
+        restaurantList.innerHTML = html;
+        return;
+    }
+
+    let topList = documents.slice(0, 5);
+    for (let i = 0; i < topList.length; i++) {
+        let place = topList[i];
+        let distance = place.distance ? (place.distance >= 1000 ? (place.distance / 1000).toFixed(1) + 'km' : place.distance + 'm') : '';
+        html += '<div onclick="openLunchRestaurantInMap(\'' + escapeHtml(place.place_name).replace(/'/g, "\\'") + '\',' + place.y + ',' + place.x + ')" style="display:flex;align-items:center;gap:10px;padding:10px;background:#f7fafc;border-radius:10px;margin-bottom:6px;cursor:pointer;border-left:3px solid #38a169;">';
+        html += '<div style="font-size:20px;font-weight:700;color:#38a169;min-width:28px;">' + (i + 1) + '</div>';
+        html += '<div style="flex:1;min-width:0;">';
+        html += '<div style="font-weight:600;font-size:13px;color:#1a202c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(place.place_name) + '</div>';
+        html += '<div style="font-size:11px;color:#718096;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(place.address_name || '') + '</div>';
+        if (place.phone) {
+            html += '<div style="font-size:11px;color:#4a5568;margin-top:1px;">📞 ' + escapeHtml(place.phone) + '</div>';
+        }
+        html += '</div>';
+        if (distance) {
+            html += '<div style="font-size:11px;font-weight:600;color:#38a169;flex-shrink:0;">' + distance + '</div>';
+        }
+        html += '</div>';
+    }
+
+    if (documents.length > 5) {
+        html += '<div style="text-align:center;font-size:11px;color:#a0aec0;margin-top:4px;">그 외 ' + (documents.length - 5) + '개 식당이 더 있어요</div>';
+    }
+
+    restaurantList.innerHTML = html;
+}
+
+function openLunchRestaurantInMap(name, lat, lng) {
+    let coords = (typeof userGpsCoords !== 'undefined' && userGpsCoords) ? userGpsCoords : null;
+    if (coords) {
+        let webUrl = 'https://map.kakao.com/link/from/' + encodeURIComponent('내 위치') + ',' + coords.lat + ',' + coords.lng + '/to/' + encodeURIComponent(name) + ',' + lat + ',' + lng;
+        if (isMobile()) {
+            let kakaoUrl = 'kakaomap://route?sp=' + coords.lat + ',' + coords.lng + '&ep=' + lat + ',' + lng + '&sname=' + encodeURIComponent('내 위치') + '&dname=' + encodeURIComponent(name) + '&by=CAR';
+            window.location.href = kakaoUrl;
+            setTimeout(function() { window.open(webUrl, '_blank'); }, 1500);
+        } else {
+            window.open(webUrl, '_blank');
+        }
+    } else {
+        let webUrl = 'https://map.kakao.com/link/map/' + encodeURIComponent(name) + ',' + lat + ',' + lng;
+        window.open(webUrl, '_blank');
+    }
+}
+
+window.switchTab = switchTab;
 window.switchTab = switchTab;
