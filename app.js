@@ -7138,48 +7138,45 @@ function renderRestaurantResults(documents, menu, isGps) {
     restaurantList.innerHTML = html;
 }
 
+// ★ 식당 클릭 → 카카오맵 앱에서 장소 표시
 function openLunchRestaurantInMap(index) {
     let place = window._lunchResults && window._lunchResults[index];
-    if (!place) return;
-    
-    let name = place.place_name;
+    if (!place) {
+        showTabStatus('tab-help', '⚠️ 식당 정보를 찾을 수 없습니다. 다시 돌려주세요.', 'warning');
+        return;
+    }
+    let name = place.place_name || '';
+    let id = place.id || '';
     let lat = place.y;
     let lng = place.x;
     let isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    
-    // 웹 URL (카카오맵 장소 상세 페이지 = 별점/리뷰/사진 모두 포함)
-    let webUrl = place.place_url || ('https://map.kakao.com/link/map/' + encodeURIComponent(name) + ',' + lat + ',' + lng);
-    
-    // PC: 바로 웹으로 열기
+
+    showTabStatus('tab-help', '🗺️ "' + name + '" 카카오맵 여는 중...', 'info');
+
+    // ★ 1순위: 장소 상세 보기 (식당 마커 + 상세정보 + 별점)
+    // ★ 2순위: 키워드 + 좌표 검색
+    let appScheme = id
+        ? 'kakaomap://place?id=' + id
+        : 'kakaomap://search?q=' + encodeURIComponent(name) + '&p=' + lat + ',' + lng;
+
+    // 웹 폴백: 카카오맵 장소 상세 페이지
+    let webUrl = id
+        ? 'https://place.map.kakao.com/' + id
+        : 'https://map.kakao.com/?q=' + encodeURIComponent(name);
+
     if (!isMobile) {
+        // PC: 웹 장소 페이지
         window.open(webUrl, '_blank');
         return;
     }
-    
-    // ★ 카카오맵 공식 스킴: 장소만 표시 (look)
-    // 공식 문서: kakaomap://look?p=위도,경도&q=장소명
-    let kakaoUrl = 'kakaomap://look?p=' + lat + ',' + lng + '&q=' + encodeURIComponent(name);
-    
-    // ★ iOS/Android 앱 전환 감지용 이벤트
-    let appOpened = false;
-    let handleHide = function() { appOpened = true; };
-    window.addEventListener('pagehide', handleHide);
-    window.addEventListener('blur', handleHide);
-    
-    // 스킴 실행
-    window.location.href = kakaoUrl;
-    
-    // 1.5초 후 앱이 열리지 않았으면 웹으로 폴백
+
+    // 모바일: 앱 스킴 실행
+    window.location.href = appScheme;
+    // ★ 앱이 안 열렸으면(미설치) 웹으로 폴백
     setTimeout(function() {
-        window.removeEventListener('pagehide', handleHide);
-        window.removeEventListener('blur', handleHide);
-        
-        // ★ 앱이 열렸거나, 페이지가 포커스를 잃었으면 아무것도 안 함
-        if (appOpened || !document.hasFocus()) {
-            return;
+        if (!document.hidden) {
+            window.location.href = webUrl;
         }
-        // 앱 미설치 상태 → 웹으로 폴백 (location.href 사용으로 팝업 차단 회피)
-        window.location.href = webUrl;
     }, 1500);
 }
 window.switchTab = switchTab;
