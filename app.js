@@ -7486,24 +7486,24 @@ async function sendToKakaoChatbot(record) {
     }
 
     try {
-        let message = '📋 작업 기록
+            let message = '📋 작업 기록
 ';
-        message += '━━━━━━━━━━━━━━
+    message += '━━━━━━━━━━━━━━
 ';
-        message += '📍 현장: ' + record.placeName + '
+    message += '📍 현장: ' + record.placeName + '
 ';
-        if (record.camera) message += '📷 카메라: ' + record.camera + '
+    if (record.camera) message += '📷 카메라: ' + record.camera + '
 ';
-        message += '👤 작업자: ' + (record.worker || '미설정') + '
+    message += '👤 작업자: ' + (record.worker || '미설정') + '
 ';
-        message += '📅 일시: ' + record.date + ' ' + (record.time || '') + '
+    message += '📅 일시: ' + record.date + ' ' + (record.time || '') + '
 ';
-        if (record.content) {
-            message += '📝 처리내용:
+    if (record.content) {
+        message += '📝 처리내용:
 ' + record.content + '
 ';
-        }
-        message += '━━━━━━━━━━━━━━';
+    }
+    message += '━━━━━━━━━━━━━━';
 
         let response = await fetch('https://api.kakaocorp.com/v1/chatbot/message/send', {
             method: 'POST',
