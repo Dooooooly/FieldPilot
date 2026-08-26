@@ -7486,22 +7486,14 @@ async function sendToKakaoChatbot(record) {
     }
 
     try {
-            let message = '📋 작업 기록
-';
-    message += '━━━━━━━━━━━━━━
-';
-    message += '📍 현장: ' + record.placeName + '
-';
-    if (record.camera) message += '📷 카메라: ' + record.camera + '
-';
-    message += '👤 작업자: ' + (record.worker || '미설정') + '
-';
-    message += '📅 일시: ' + record.date + ' ' + (record.time || '') + '
-';
+    let message = '📋 작업 기록';
+    message += '━━━━━━━━━━━━━━';
+    message += '📍 현장: ' + record.placeName + '';
+    if (record.camera) message += '📷 카메라: ' + record.camera + '';
+    message += '👤 작업자: ' + (record.worker || '미설정') + '';
+    message += '📅 일시: ' + record.date + ' ' + (record.time || '') + '';
     if (record.content) {
-        message += '📝 처리내용:
-' + record.content + '
-';
+        message += '📝 처리내용:' + record.content + '';
     }
     message += '━━━━━━━━━━━━━━';
 
