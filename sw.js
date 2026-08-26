@@ -3,7 +3,7 @@
 // ============================================================
 
 const CACHE_NAME = 'FieldPilot-v1.0';
-const BASE_PATH = '/FieldPilot/';
+const BASE_PATH = new URL('.', self.location.href).pathname;
 
 // 캐시할 파일 목록 (서브 디렉터리 경로 포함)
 const ASSETS = [

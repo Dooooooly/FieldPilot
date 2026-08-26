@@ -2355,7 +2355,7 @@ async function optimizeRouteAlgorithm(places, startLat, startLng, mode, restKey)
     return bestRoute;
 }
 
-async function runOptimize() {
+async function runOptimizeClientLegacy() {
     let btn = document.getElementById('runOptimizeBtn');
     if (btn && btn.disabled) return;
     if (btn) btn.disabled = true;
@@ -7752,3 +7752,167 @@ async function testKakaoChatbot() {
     }
 }
 window.switchTab = switchTab;
+
+
+// ============================================================
+// FieldPilot server-managed security layer
+// ============================================================
+(function installFieldPilotServerLayer(){
+    const originalFetch = window.fetch.bind(window);
+    const originalInitMap = typeof initMap === 'function' ? initMap : null;
+    const originalLoadSettings = typeof loadSettings === 'function' ? loadSettings : null;
+    const originalSaveSettings = typeof saveSettings === 'function' ? saveSettings : null;
+    const originalSwitchTab = typeof switchTab === 'function' ? switchTab : null;
+    const SERVER_KEY = 'fieldpilot_server_session';
+    let authenticated = false;
+
+    function serverUrl(){
+        return String(window.FIELD_SERVER_URL || '').trim().replace(/\\$/,'');
+    }
+    window.getFieldServerUrl = serverUrl;
+    window.fieldPilotAuthToken = function(){ return sessionStorage.getItem(SERVER_KEY) || ''; };
+    window.fieldPilotIsAuthenticated = function(){ return authenticated || !!window.fieldPilotAuthToken(); };
+
+    async function rawFetch(url, options){ return originalFetch(url, options || {}); }
+    window.fetch = async function(input, options){
+        let url = typeof input === 'string' ? input : input.url;
+        const opts = {...(options || {})};
+        if (url.startsWith('https://api.github.com/')) {
+            if (!fieldPilotIsAuthenticated()) return new Response(JSON.stringify({message:'Unauthorized'}), {status:401,headers:{'Content-Type':'application/json'}});
+            const parsed = new URL(url);
+            url = serverUrl() + '/api/proxy/github' + parsed.pathname + parsed.search;
+            opts.headers = {...(opts.headers || {}), Authorization:'Bearer '+window.fieldPilotAuthToken()};
+            return rawFetch(url, opts);
+        }
+        if (url.startsWith('https://dapi.kakao.com/')) {
+            if (!fieldPilotIsAuthenticated()) return new Response(JSON.stringify({message:'Unauthorized'}), {status:401,headers:{'Content-Type':'application/json'}});
+            const parsed = new URL(url);
+            url = serverUrl() + '/api/proxy/kakao' + parsed.pathname + parsed.search;
+            opts.headers = {...(opts.headers || {}), Authorization:'Bearer '+window.fieldPilotAuthToken()};
+            return rawFetch(url, opts);
+        }
+        if (url.startsWith('https://apis-navi.kakaomobility.com/')) {
+            if (!fieldPilotIsAuthenticated()) return new Response(JSON.stringify({message:'Unauthorized'}), {status:401,headers:{'Content-Type':'application/json'}});
+            const parsed = new URL(url);
+            url = serverUrl() + '/api/proxy/kakao-mobility' + parsed.pathname + parsed.search;
+            opts.headers = {...(opts.headers || {}), Authorization:'Bearer '+window.fieldPilotAuthToken()};
+            return rawFetch(url, opts);
+        }
+        if (url.startsWith('https://api.kakaocorp.com/')) {
+            if (!fieldPilotIsAuthenticated()) return new Response(JSON.stringify({message:'Unauthorized'}), {status:401,headers:{'Content-Type':'application/json'}});
+            const parsed = new URL(url);
+            url = serverUrl() + '/api/proxy/kakaocorp' + parsed.pathname + parsed.search;
+            opts.headers = {...(opts.headers || {}), Authorization:'Bearer '+window.fieldPilotAuthToken()};
+            return rawFetch(url, opts);
+        }
+        return rawFetch(url, opts);
+    };
+
+    function ensureAuthUi(){
+        if (document.getElementById('fieldPilotAuthGate')) return;
+        const style=document.createElement('style');
+        style.textContent=`
+        #fieldPilotAuthGate{position:fixed;inset:0;background:rgba(15,23,42,.82);backdrop-filter:blur(8px);z-index:2147483640;display:flex;align-items:center;justify-content:center;padding:20px}
+        #fieldPilotAuthCard{max-width:420px;width:100%;background:var(--card-bg,#fff);color:var(--text-color,#1a202c);border-radius:18px;padding:24px;box-shadow:0 24px 80px rgba(0,0,0,.35)}
+        #fieldPilotAuthCard input{width:100%;box-sizing:border-box;padding:12px;border:1px solid #cbd5e0;border-radius:10px;margin:10px 0}
+        `;
+        document.head.appendChild(style);
+        const gate=document.createElement('div'); gate.id='fieldPilotAuthGate';
+        gate.innerHTML=`<div id="fieldPilotAuthCard"><div style="font-size:24px;font-weight:800;margin-bottom:4px">FIELD PILOT</div><div style="font-size:13px;opacity:.75;margin-bottom:16px">현장 업무 통합 관리 시스템</div><div style="font-weight:700">🔐 인가코드</div><input id="fieldPilotAuthCode" type="password" autocomplete="off" placeholder="인가코드 입력"><div style="display:flex;gap:8px"><button id="fieldPilotLogin" class="btn btn-primary" style="flex:1">인증</button><button id="fieldPilotServerTest" class="btn btn-outline" style="flex:1">서버 연결 테스트</button></div><div id="fieldPilotAuthStatus" style="font-size:12px;margin-top:10px;min-height:18px"></div><div id="fieldPilotServerUrl" style="font-size:11px;word-break:break-all;margin-top:8px;opacity:.7"></div></div>`;
+        document.body.appendChild(gate);
+        document.getElementById('fieldPilotServerUrl').textContent=serverUrl()||'서버 주소 확인 중...';
+        document.getElementById('fieldPilotLogin').onclick=async function(){
+            const status=document.getElementById('fieldPilotAuthStatus'); status.textContent='인증 중...';
+            try{
+                const r=await originalFetch(serverUrl()+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:document.getElementById('fieldPilotAuthCode').value.trim()})});
+                const d=await r.json(); if(!r.ok||!d.ok) throw new Error('인가코드가 올바르지 않습니다.');
+                sessionStorage.setItem(SERVER_KEY,d.token); authenticated=true; await bootstrapAfterAuth(); gate.remove();
+            }catch(e){status.textContent='❌ '+e.message;}
+        };
+        document.getElementById('fieldPilotServerTest').onclick=async function(){
+            const status=document.getElementById('fieldPilotAuthStatus'); status.textContent='서버 확인 중...';
+            try{const r=await originalFetch(serverUrl()+'/api/health',{cache:'no-store'});const d=await r.json();if(!r.ok||!d.ok)throw new Error('서버 응답 오류');status.textContent='🟢 서버 연결됨 · '+(d.dataRepo||'route-data');}catch(e){status.textContent='🔴 서버 연결 실패: '+e.message;}
+        };
+    }
+
+    async function bootstrapAfterAuth(){
+        try{
+            const token=window.fieldPilotAuthToken();
+            const r=await originalFetch(serverUrl()+'/api/config/public',{headers:{Authorization:'Bearer '+token},cache:'no-store'});
+            const d=await r.json();
+            if(r.ok&&d.ok){
+                settings.githubToken='SERVER_MANAGED';
+                settings.kakaoRestKey='SERVER_MANAGED';
+                settings.kakaoJsKey=d.kakaoJsKey||'';
+                settings.kakaoChatbotKey='SERVER_MANAGED';
+                settings.kakaoChatbotUserId='SERVER_MANAGED';
+                window.FIELD_SERVER_APP_BASE=location.pathname.substring(0,location.pathname.lastIndexOf('/')+1);
+                if(originalInitMap) originalInitMap();
+                updateFieldServerDisplay?.();
+                if(typeof updatePhotoServerStatus==='function') updatePhotoServerStatus();
+            }
+        }catch(e){console.warn('bootstrap failed',e);}
+        localStorage.removeItem(SETTINGS_KEY);
+    }
+
+    if(originalLoadSettings){
+        loadSettings=function(){
+            originalLoadSettings();
+            settings.githubToken='SERVER_MANAGED';
+            settings.kakaoRestKey='SERVER_MANAGED';
+            settings.kakaoJsKey='';
+            settings.kakaoChatbotKey='SERVER_MANAGED';
+            settings.kakaoChatbotUserId='SERVER_MANAGED';
+            ['githubToken','kakaoJsKey','kakaoRestKey','kakaoChatbotKey','kakaoChatbotUserId'].forEach(id=>{const el=document.getElementById(id);if(el){el.value='';const row=el.closest('.row');if(row)row.style.display='none';}});
+            const status=document.getElementById('githubStatus'); if(status){status.textContent='🔒 서버에서 관리';status.className='badge badge-ok';}
+            const ks=document.getElementById('kakaoStatus'); if(ks){ks.textContent='🔒 서버에서 관리';ks.className='badge badge-ok';}
+        };
+    }
+    if(originalSaveSettings){ saveSettings=function(){ return true; }; }
+    window.saveGitHubToken=function(){showTabStatus('tab-settings','🔒 GitHub 인증은 서버에서 관리됩니다.','info');};
+    window.saveKakaoKeys=function(){showTabStatus('tab-settings','🔒 Kakao API 키는 서버에서 관리됩니다.','info');};
+    window.testGitHubToken=function(){showTabStatus('tab-settings','🔒 GitHub 인증은 서버에서 관리됩니다.','info');};
+
+    if(originalInitMap){
+        initMap=function(){ if(fieldPilotIsAuthenticated()) return originalInitMap(); };
+    }
+    if(originalSwitchTab){
+        switchTab=function(tabId, updateHistory=true){ if(!fieldPilotIsAuthenticated() && tabId!=='tab-settings') return; return originalSwitchTab(tabId,updateHistory); };
+    }
+
+    // Server-backed route optimization. The UI rendering remains the original FieldPilot renderer.
+    window.runOptimize = async function(){
+        const btn=document.getElementById('runOptimizeBtn'); if(btn)btn.disabled=true;
+        try{
+            if(!fieldPilotIsAuthenticated()) return;
+            if(!startPoint||!startPoint.lat){showTabStatus('tab-places','🚩 출발지를 설정하세요!','warning');return;}
+            if(!waypoints.length){showTabStatus('tab-places','📍 경유지를 추가하세요!','warning');return;}
+            showTabStatus('tab-places','🖥️ 서버에서 경로 최적화 계산 중...','info');
+            const r=await originalFetch(serverUrl()+'/api/route/optimize',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+window.fieldPilotAuthToken()},body:JSON.stringify({startPoint,places:waypoints,mode:optimizeMode,objective:routeObjective})});
+            const d=await r.json(); if(!r.ok||!d.places)throw new Error(d.error||'서버 최적화 실패');
+            const sorted=d.places; routeResult={places:sorted,startPoint:startPoint,totalKm:Number(d.totalKm||0),totalMin:Number(d.totalMin||0),mode:optimizeMode};
+            clearRouteMarkers(); clearSingleMarker(); isShowingRouteMarkers=true;
+            addRouteMarker(startPoint.lat,startPoint.lng,startPoint.name,true,-1);
+            sorted.forEach((p,i)=>addRouteMarker(p.lat,p.lng,(i+1)+'. '+p.name,false,i));
+            const allPoints=[startPoint].concat(sorted); if(d.routeData) drawRoadRoute(d.routeData); else drawRoute(allPoints);
+            document.getElementById('placeCount').textContent=sorted.length+'개소';
+            document.getElementById('totalDistance').textContent=Number(d.totalKm||0).toFixed(2)+' km';
+            document.getElementById('totalTime').textContent=Math.round(d.totalMin||0)+' 분';
+            document.getElementById('optimizeMode').textContent=optimizeMode==='Nearest'?'가까운순':'먼순';
+            sorted.forEach((p,i)=>{p._segDist=d.sections?.[i]?.distanceKm||0;p._segTime=d.sections?.[i]?.durationMin||0;});
+            showRouteList(); updateOptimizationLiveSummary(); switchTab('tab-route');
+            showTabStatus('tab-route','✅ 서버 최적화 완료! '+sorted.length+'개소 · '+Number(d.totalKm||0).toFixed(2)+'km · '+Math.round(d.totalMin||0)+'분','ok');
+        }catch(e){showTabStatus('tab-places','❌ 서버 최적화 실패: '+e.message,'error');}
+        finally{if(btn)btn.disabled=false;}
+    };
+
+    window.testPhotoServer=async function(){
+        const badge=document.getElementById('photoServerStatus'); try{const r=await originalFetch(serverUrl()+'/api/health',{cache:'no-store'});const d=await r.json();if(!r.ok||!d.ok)throw new Error('HTTP '+r.status);if(badge){badge.textContent='🟢 서버 연결됨';badge.className='badge badge-ok';}showTabStatus('tab-settings','✅ 현장처리 서버 연결됨','ok');return true;}catch(e){if(badge){badge.textContent='🔴 서버 연결 실패';badge.className='badge badge-fail';}showTabStatus('tab-settings','❌ 서버 연결 실패: '+e.message,'error');return false;}};
+
+    document.addEventListener('DOMContentLoaded',function(){
+        ensureAuthUi();
+        const authCard=document.getElementById('fieldPilotAuthCard');
+        if(authCard){ const settingsBox=document.createElement('div'); settingsBox.style.marginTop='12px'; settingsBox.innerHTML='<div style="font-weight:700;margin-bottom:6px">🔐 서버 인증</div><div style="font-size:12px;opacity:.75">GitHub/Kakao 키는 서버에서 관리됩니다. 직원은 인가코드만 입력합니다.</div>'; const target=document.querySelector('#tab-settings .setting-group'); if(target) target.parentNode.insertBefore(settingsBox,target); }
+        const token=window.fieldPilotAuthToken(); if(token){ originalFetch(serverUrl()+'/api/auth/status',{headers:{Authorization:'Bearer '+token},cache:'no-store'}).then(r=>r.json()).then(d=>{if(d.ok){authenticated=true;document.getElementById('fieldPilotAuthGate')?.remove();bootstrapAfterAuth();}}).catch(()=>{}); }
+    });
+})();
