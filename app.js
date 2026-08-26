@@ -248,8 +248,7 @@ function loadSettings() {
             settings.githubToken = decodeKey(parsed.githubToken || '');
             settings.kakaoJsKey = decodeKey(parsed.kakaoJsKey || '');
             settings.kakaoRestKey = decodeKey(parsed.kakaoRestKey || '');
-settings.kakaoChatbotKey = decodeKey(parsed.kakaoChatbotKey || '');
-settings.kakaoChatbotRoomId = decodeKey(parsed.kakaoChatbotRoomId || '');
+            settings.photoServerUrl = parsed.photoServerUrl || 'http://localhost:3000';
         } catch(e) {
             console.warn('⚠️ 설정 복원 오류, 기본값으로 초기화합니다.', e);
             settings.githubToken = '';
@@ -264,12 +263,9 @@ settings.kakaoChatbotRoomId = decodeKey(parsed.kakaoChatbotRoomId || '');
     document.getElementById('githubToken').value = settings.githubToken || '';
     document.getElementById('kakaoJsKey').value = settings.kakaoJsKey || '';
     document.getElementById('kakaoRestKey').value = settings.kakaoRestKey || '';
-    let chatbotKeyEl = document.getElementById('kakaoChatbotKey');
-    let chatbotRoomEl = document.getElementById('kakaoChatbotRoomId');
-    if (chatbotKeyEl) chatbotKeyEl.value = settings.kakaoChatbotKey || '';
-    if (chatbotRoomEl) chatbotRoomEl.value = settings.kakaoChatbotRoomId || '';
-    if (typeof updateKakaoChatbotStatus === 'function') updateKakaoChatbotStatus();
-    let wn = document.getElementById('workerName');
+    let ps = document.getElementById('photoServerUrlSetting');
+    if (ps) ps.value = settings.photoServerUrl || 'http://localhost:3000';
+        let wn = document.getElementById('workerName');
 if (wn) wn.value = workerName;
 updateWorkerNameStatus();
     updateSettingsStatus();
@@ -307,18 +303,16 @@ function updateWorkWorkerDisplay() {
 
 function saveSettings() {
     if (!settings) {
-        settings = { githubToken: '', kakaoJsKey: '', kakaoRestKey: '', kakaoChatbotKey: '', kakaoChatbotRoomId: '' };
+        settings = { githubToken: '', kakaoJsKey: '', kakaoRestKey: '' };
     }
     let encoded = {
         githubToken: encodeKey(settings.githubToken || ''),
         kakaoJsKey: encodeKey(settings.kakaoJsKey || ''),
         kakaoRestKey: encodeKey(settings.kakaoRestKey || ''),
-        kakaoChatbotKey: encodeKey(settings.kakaoChatbotKey || ''),
-        kakaoChatbotRoomId: encodeKey(settings.kakaoChatbotRoomId || '')
+        photoServerUrl: settings.photoServerUrl || 'http://localhost:3000'
     };
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(encoded));
     updateSettingsStatus();
-    if (typeof updateKakaoChatbotStatus === 'function') updateKakaoChatbotStatus();
 }
 
 function updateSettingsStatus() {
@@ -6793,10 +6787,8 @@ let uploaded = await uploadWorkToGitHub(work);
 renderWorkTab();
 showWorkDateDetail(record.date);
 showTabStatus('tab-work', uploaded ? '✅ 처리내역 저장 완료 (⏰ ' + record.time + ' 기록)' : '⚠️ 저장됨. GitHub 업로드 실패', uploaded ? 'ok' : 'warning');
-// ★ 카카오 챗봇 자동 전송
-if (settings.kakaoChatbotKey && settings.kakaoChatbotRoomId) {
-    await sendToKakaoChatbot(record);
-}
+// ★ 카카오워크 그룹방 자동 전송은 서버를 통해 처리
+sendWorkRecordToServer(record);
 }
 
 function deleteWorkRecord(workId) {
@@ -6871,6 +6863,7 @@ let uploaded = await uploadWorkToGitHub(work);
 renderWorkTab();
 showWorkDateDetail(dateStr);
 showTabStatus('tab-work', uploaded ? '✅ 처리내역 추가 완료 (⏰ ' + timeStr + ' 기록)' : '⚠️ 추가됨. GitHub 업로드 실패', uploaded ? 'ok' : 'warning');
+sendWorkRecordToServer(work.workHistory[work.workHistory.length - 1]);
 }
 
 function openCategoryManager() {
@@ -7274,32 +7267,83 @@ async function handleWorkPhotoUpload(event) {
     if (!files || files.length === 0) return;
     let workId = event.target.getAttribute('data-work-id');
     let statusEl = document.getElementById('workPhotoStatus');
-    if (statusEl) statusEl.textContent = '📷 사진 업로드 중...';
+    if (statusEl) statusEl.textContent = '📷 사진 저장 중...';
+
+    let work = currentWork || loadWorkFromLocalStorage();
+    let record = work.workHistory.find(function(w) { return w.id === workId; });
+    if (!record) {
+        if (statusEl) statusEl.textContent = '❌ 작업 기록을 찾을 수 없습니다.';
+        return;
+    }
+
+    let serverSaved = 0;
+    let localSaved = 0;
 
     for (let i = 0; i < files.length; i++) {
         let file = files[i];
-        if (file.size > 5 * 1024 * 1024) {
-            showTabStatus('tab-work', '⚠️ "' + file.name + '" 5MB 초과', 'warning');
+        if (file.size > 15 * 1024 * 1024) {
+            showTabStatus('tab-work', '⚠️ "' + file.name + '" 15MB 초과', 'warning');
             continue;
         }
-        await new Promise(function(resolve) {
-            let reader = new FileReader();
-            reader.onload = async function(e) {
-                await savePhotoToDB({
-                    id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5) + '_' + i,
-                    workId: workId,
-                    dataUrl: e.target.result,
-                    fileName: file.name,
-                    fileSize: file.size,
-                    uploadedAt: new Date().toISOString()
-                });
-                resolve();
+
+        try {
+            // 브라우저 IndexedDB에도 보관하여 기존 화면/백업 기능 유지
+            let dataUrl = await new Promise(function(resolve, reject) {
+                let reader = new FileReader();
+                reader.onload = function(e) { resolve(e.target.result); };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+
+            let photo = {
+                id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5) + '_' + i,
+                workId: workId,
+                dataUrl: dataUrl,
+                fileName: file.name,
+                fileSize: file.size,
+                uploadedAt: new Date().toISOString()
             };
-            reader.readAsDataURL(file);
-        });
+            await savePhotoToDB(photo);
+            localSaved++;
+
+            // 노트북 서버에도 즉시 저장: photos/<현장명>/<파일명>
+            let serverUrl = (settings.photoServerUrl || 'http://localhost:3000').replace(/\/$/, '');
+            try {
+                let response = await fetch(serverUrl + '/api/photos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        region: currentRegion || '미지정지역',
+                        siteName: record.placeName || '미지정현장',
+                        workId: workId,
+                        date: record.date || '',
+                        time: record.time || '',
+                        worker: record.worker || workerName || '미설정',
+                        camera: record.camera || '',
+                        content: record.content || '',
+                        fileName: file.name,
+                        dataUrl: dataUrl
+                    })
+                });
+                if (response.ok) serverSaved++;
+            } catch (serverError) {
+                console.warn('현장 사진 서버 저장 실패:', serverError);
+            }
+        } catch (error) {
+            console.error('사진 저장 실패:', error);
+        }
     }
 
-    if (statusEl) statusEl.textContent = '✅ 사진 업로드 완료';
+    if (statusEl) {
+        if (serverSaved === files.length) {
+            statusEl.textContent = '✅ 노트북 저장 완료 (' + serverSaved + '장)';
+        } else if (localSaved > 0) {
+            statusEl.textContent = '⚠️ 로컬 ' + localSaved + '장 저장 / 노트북 서버 ' + serverSaved + '장 저장';
+        } else {
+            statusEl.textContent = '❌ 사진 저장 실패';
+        }
+    }
+
     event.target.value = '';
     renderWorkPhotoList(workId);
 }
@@ -7480,339 +7524,169 @@ async function showPlaceHistory(placeName) {
 }
 
 // ============================================================
-// 51. 카카오워크 Bot 전송 (테스트용 브라우저 직접 호출)
+// 51. 카카오워크/현장처리 서버 연동
 // ============================================================
-function getKakaoWorkHeaders(key, contentType) {
-    let headers = { 'Authorization': 'Bearer ' + key };
-    if (contentType) headers['Content-Type'] = contentType;
-    return headers;
-}
-
-async function kakaoWorkJsonRequest(url, key, body) {
-    let response = await fetch(url, {
-        method: 'POST',
-        headers: getKakaoWorkHeaders(key, 'application/json'),
-        body: JSON.stringify(body)
-    });
-    let text = await response.text();
-    let data = null;
-    try { data = text ? JSON.parse(text) : null; } catch (e) {}
-    if (!response.ok) {
-        let detail = data && data.error ? (data.error.code || data.error.message || '') : text;
-        throw new Error('HTTP ' + response.status + (detail ? ' - ' + detail : ''));
-    }
-    if (data && data.success === false) {
-        let detail = data.error ? (data.error.code || data.error.message || '알 수 없는 오류') : '알 수 없는 오류';
-        throw new Error(detail);
-    }
-    return data;
-}
-
-async function kakaoWorkGetRequest(url, key) {
-    let response = await fetch(url, {
-        method: 'GET',
-        headers: getKakaoWorkHeaders(key)
-    });
-    let text = await response.text();
-    let data = null;
-    try { data = text ? JSON.parse(text) : null; } catch (e) {}
-    if (!response.ok) {
-        let detail = data && data.error ? (data.error.code || data.error.message || '') : text;
-        throw new Error('HTTP ' + response.status + (detail ? ' - ' + detail : ''));
-    }
-    if (data && data.success === false) {
-        let detail = data.error ? (data.error.code || data.error.message || '알 수 없는 오류') : '알 수 없는 오류';
-        throw new Error(detail);
-    }
-    return data;
-}
-
-async function getKakaoWorkConversations(key) {
-    let all = [];
-    let cursor = '';
-    let guard = 0;
-    do {
-        let url = 'https://api.kakaowork.com/v1/conversations.list?type=all&limit=100';
-        if (cursor) url += '&cursor=' + encodeURIComponent(cursor);
-        let data = await kakaoWorkGetRequest(url, key);
-        if (Array.isArray(data.conversations)) all = all.concat(data.conversations);
-        cursor = data.cursor || '';
-        guard++;
-    } while (cursor && guard < 20);
-    return all;
-}
-
-function renderKakaoWorkRoomList(rooms) {
-    let select = document.getElementById('kakaoChatbotRoomSelect');
-    if (!select) return;
-    select.innerHTML = '<option value="">📂 그룹방을 선택하세요</option>';
-    let groups = (rooms || []).filter(function(room) { return room && room.type === 'group'; });
-    groups.sort(function(a, b) { return String(a.name || '').localeCompare(String(b.name || ''), 'ko'); });
-    groups.forEach(function(room) {
-        let option = document.createElement('option');
-        option.value = String(room.id);
-        option.textContent = (room.name || '(이름 없음)') + ' · ' + (room.users_count || 0) + '명 · ID ' + room.id;
-        option.dataset.roomName = room.name || '';
-        select.appendChild(option);
-    });
-    let saved = settings.kakaoChatbotRoomId || '';
-    if (saved && groups.some(function(r) { return String(r.id) === String(saved); })) select.value = String(saved);
-    updateKakaoRoomSelectionStatus();
-    return groups;
-}
-
-async function loadKakaoWorkRooms() {
-    let keyEl = document.getElementById('kakaoChatbotKey');
-    let key = keyEl ? keyEl.value.trim() : (settings.kakaoChatbotKey || '');
-    if (!key) {
-        showTabStatus('tab-settings', '⚠️ 먼저 Bot App Key를 입력하세요.', 'warning');
-        return;
-    }
-    let btn = document.getElementById('kakaoChatbotLoadRoomsBtn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ 방 불러오는 중...'; }
+async function sendWorkRecordToServer(record) {
+    let serverUrl = (settings.photoServerUrl || 'http://localhost:3000').replace(/\/$/, '');
     try {
-        let rooms = await getKakaoWorkConversations(key);
-        renderKakaoWorkRoomList(rooms);
-        let groups = rooms.filter(function(room) { return room && room.type === 'group'; });
-        let status = document.getElementById('kakaoChatbotRoomStatus');
-        if (status) status.textContent = '✅ 그룹방 ' + groups.length + '개 불러옴';
-        showTabStatus('tab-settings', '✅ 카카오워크 방 목록 불러오기 완료 (' + groups.length + '개 그룹방)', 'ok');
-    } catch (error) {
-        console.error('Kakao Work room list error:', error);
-        showTabStatus('tab-settings', '❌ 방 목록 조회 실패: ' + error.message, 'error');
-    } finally {
-        if (btn) { btn.disabled = false; btn.textContent = '🔄 방 목록 불러오기'; }
-    }
-}
-
-function updateKakaoRoomSelectionStatus() {
-    let select = document.getElementById('kakaoChatbotRoomSelect');
-    let hidden = document.getElementById('kakaoChatbotRoomId');
-    let label = document.getElementById('kakaoChatbotSelectedRoom');
-    if (!select) return;
-    let id = select.value || '';
-    if (hidden) hidden.value = id;
-    if (id) {
-        settings.kakaoChatbotRoomId = id;
-        let opt = select.options[select.selectedIndex];
-        if (label) label.textContent = '📌 선택된 방: ' + (opt ? opt.textContent : id);
-    } else {
-        if (label) label.textContent = '📌 선택된 방 없음';
-    }
-}
-
-function selectKakaoWorkRoom() {
-    updateKakaoRoomSelectionStatus();
-}
-
-async function sendKakaoWorkText(conversationId, key, text) {
-    return kakaoWorkJsonRequest('https://api.kakaowork.com/v1/messages.send', key, {
-        conversation_id: String(conversationId),
-        text: text
-    });
-}
-
-async function sendKakaoWorkImages(conversationId, key, photos) {
-    if (!photos || photos.length === 0) return null;
-
-    let formData = new FormData();
-    let metas = [];
-    let totalSize = 0;
-
-    for (let i = 0; i < photos.length; i++) {
-        let photo = photos[i];
-        let blob = await (await fetch(photo.dataUrl)).blob();
-        let filename = photo.fileName || ('field_' + (i + 1) + '.jpg');
-        let ext = filename.split('.').pop().toLowerCase();
-        let normalizedExt = ext === 'jpeg' ? 'jpg' : ext;
-        if (!['png', 'jpg', 'gif', 'bmp'].includes(normalizedExt)) normalizedExt = 'jpg';
-        if (blob.size > 15 * 1024 * 1024) {
-            throw new Error('사진 ' + filename + '이 15MB를 초과합니다.');
-        }
-        totalSize += blob.size;
-        metas.push({
-            file_name: filename,
-            file_type: 'image',
-            file_size: blob.size
+        let response = await fetch(serverUrl + '/api/records/send-group', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                region: currentRegion || '',
+                record: record
+            })
         });
-        formData.append('attachments[]', blob, filename);
-    }
-
-    formData.append('metas', JSON.stringify(metas));
-
-    let uploadResponse = await fetch('https://api.kakaowork.com/v1/conversations/' + encodeURIComponent(String(conversationId)) + '/upload', {
-        method: 'POST',
-        headers: getKakaoWorkHeaders(key),
-        body: formData
-    });
-
-    let uploadText = await uploadResponse.text();
-    let uploadData = null;
-    try { uploadData = uploadText ? JSON.parse(uploadText) : null; } catch (e) {}
-    if (!uploadResponse.ok || !uploadData || uploadData.success === false) {
-        let detail = uploadData && uploadData.error ? (uploadData.error.code || uploadData.error.message || '') : uploadText;
-        throw new Error('사진 업로드 실패' + (detail ? ': ' + detail : ''));
-    }
-
-    let ids = (uploadData.attachments || []).map(function(item) { return Number(item.attachment_id); }).filter(Number.isFinite);
-    if (ids.length !== photos.length) {
-        throw new Error('사진 업로드 결과에서 attachment_id를 모두 받지 못했습니다.');
-    }
-
-    return kakaoWorkJsonRequest('https://api.kakaowork.com/v1/messages.send_attachments', key, {
-        conversation_id: Number(conversationId),
-        type: 'image',
-        attachment: { attachment_ids: ids }
-    });
-}
-
-async function sendToKakaoChatbot(record) {
-    let chatbotKey = (settings && settings.kakaoChatbotKey) || '';
-    let roomId = (settings && settings.kakaoChatbotRoomId) || '';
-
-    if (!chatbotKey || !roomId) {
-        showTabStatus('tab-work', '⚠️ 카카오워크 App Key와 그룹방 Conversation ID를 설정해주세요.', 'warning');
+        let data = await response.json().catch(function() { return {}; });
+        if (!response.ok) throw new Error(data.error || ('HTTP ' + response.status));
+        if (data.sent) {
+            showTabStatus('tab-work', '✅ 카카오워크 그룹방 전송 완료', 'ok');
+        }
+        return data;
+    } catch (error) {
+        console.warn('카카오워크 그룹방 자동 전송 실패:', error);
+        // 서버 미실행 상태에서는 저장 자체를 실패 처리하지 않음
         return false;
     }
+}
 
+async function testPhotoServer() {
+    let serverUrl = (document.getElementById('photoServerUrlSetting')?.value || settings.photoServerUrl || 'http://localhost:3000').trim().replace(/\/$/, '');
+    settings.photoServerUrl = serverUrl;
+    saveSettings();
     try {
-        let message = '📋 현장 처리 완료\n';
-        message += '━━━━━━━━━━━━━━\n';
-        message += '📍 현장: ' + (record.placeName || '-') + '\n';
-        if (record.camera) message += '📷 카메라: ' + record.camera + '\n';
-        message += '👤 작업자: ' + (record.worker || workerName || '미설정') + '\n';
-        message += '📅 일시: ' + (record.date || '-') + ' ' + (record.time || '') + '\n';
-        if (record.content) message += '\n📝 처리내용\n' + record.content + '\n';
-        message += '━━━━━━━━━━━━━━';
-
-        await sendKakaoWorkText(roomId, chatbotKey, message);
-
-        let photos = await getPhotosByWorkId(record.id);
-        if (photos.length > 0) {
-            await sendKakaoWorkImages(roomId, chatbotKey, photos);
-        }
-
-        showTabStatus('tab-work', '✅ 카카오워크 그룹방 전송 완료 (내용' + (photos.length ? ' + 사진 ' + photos.length + '장' : '') + ')', 'ok');
+        let response = await fetch(serverUrl + '/api/health');
+        let data = await response.json();
+        if (!response.ok || !data.ok) throw new Error(data.error || '서버 응답 오류');
+        showTabStatus('tab-settings', '✅ 현장처리 서버 연결됨', 'ok');
         return true;
     } catch (error) {
-        console.error('Kakao Work send error:', error);
-        showTabStatus('tab-work', '❌ 카카오워크 전송 실패: ' + error.message, 'error');
+        showTabStatus('tab-settings', '❌ 서버 연결 실패: ' + error.message, 'error');
         return false;
     }
 }
 
-// ============================================================
-// 52. 사진 내보내기 (로컬 서버)
-// ============================================================
-async function exportPhotosToServer() {
-    let serverUrl = document.getElementById('photoServerUrl') ? document.getElementById('photoServerUrl').value.trim() : '';
-    if (!serverUrl) {
-        showTabStatus('tab-work', '⚠️ 서버 주소를 입력하세요 (예: http://192.168.1.100:3000)', 'warning');
-        return;
-    }
-
-    let allPhotos = await getAllPhotos();
-    if (allPhotos.length === 0) {
-        showTabStatus('tab-work', '📷 내보낼 사진이 없습니다', 'warning');
-        return;
-    }
-
-    let work = currentWork || loadWorkFromLocalStorage();
-    let total = allPhotos.length;
-    let success = 0;
-    let fail = 0;
-
-    showTabStatus('tab-work', '📤 사진 전송 중... (0/' + total + ')', 'info');
-
-    for (let i = 0; i < allPhotos.length; i++) {
-        let photo = allPhotos[i];
-        let record = work.workHistory.find(function(w) { return w.id === photo.workId; });
-        if (!record) { fail++; continue; }
-
-        let folderName = record.placeName + (record.camera ? '(' + record.camera + ')' : '');
-
-        try {
-            let blob = await (await fetch(photo.dataUrl)).blob();
-            let formData = new FormData();
-            formData.append('photo', blob, photo.fileName);
-            formData.append('folder', folderName);
-            formData.append('date', record.date);
-
-            let uploadResponse = await fetch(serverUrl + '/upload', {
-                method: 'POST',
-                body: formData
-            });
-            if (uploadResponse.ok) success++;
-            else fail++;
-        } catch (error) {
-            fail++;
-        }
-
-        if ((i + 1) % 5 === 0 || i === total - 1) {
-            showTabStatus('tab-work', '📤 사진 전송 중... (' + (i + 1) + '/' + total + ')', 'info');
-        }
-    }
-
-    if (fail === 0) {
-        showTabStatus('tab-work', '✅ 사진 ' + success + '개 전송 완료!', 'ok');
-    } else {
-        showTabStatus('tab-work', '⚠️ 완료: 성공 ' + success + '개, 실패 ' + fail + '개', 'warning');
-    }
-}
-
-// ============================================================
-// 카카오워크 Bot 설정 저장 및 테스트
-// ============================================================
-function saveKakaoChatbot() {
-    settings.kakaoChatbotKey = document.getElementById('kakaoChatbotKey').value.trim();
-    settings.kakaoChatbotRoomId = document.getElementById('kakaoChatbotRoomSelect') ? document.getElementById('kakaoChatbotRoomSelect').value.trim() : document.getElementById('kakaoChatbotRoomId').value.trim();
-    let hidden = document.getElementById('kakaoChatbotRoomId');
-    if (hidden) hidden.value = settings.kakaoChatbotRoomId;
+function savePhotoServerSettings() {
+    let url = document.getElementById('photoServerUrlSetting');
+    settings.photoServerUrl = (url ? url.value.trim() : '') || 'http://localhost:3000';
     saveSettings();
-    updateKakaoChatbotStatus();
-    updateKakaoRoomSelectionStatus();
-    showTabStatus('tab-settings', '✅ 카카오워크 Bot 설정 저장됨', 'ok');
+    showTabStatus('tab-settings', '✅ 현장처리 서버 설정 저장됨', 'ok');
 }
 
-function updateKakaoChatbotStatus() {
-    let el = document.getElementById('kakaoChatbotStatus');
-    if (!el) return;
-    if (settings.kakaoChatbotKey && settings.kakaoChatbotRoomId) {
-        el.textContent = '✅ Bot + 그룹방 설정됨';
-        el.className = 'badge badge-ok';
-    } else {
-        el.textContent = '⏳ 미설정';
-        el.className = 'badge badge-wait';
-    }
-}
+// ============================================================
+// 52. 사진 내보내기 → 카카오워크 1:1
+// ============================================================
+async function openKakaoWorkExportModal() {
+    let serverUrl = (settings.photoServerUrl || 'http://localhost:3000').replace(/\/$/, '');
+    let existing = document.getElementById('kakaoWorkExportModal');
+    if (existing) existing.remove();
 
-async function testKakaoChatbot() {
-    let key = document.getElementById('kakaoChatbotKey').value.trim();
-    let roomId = document.getElementById('kakaoChatbotRoomSelect') ? document.getElementById('kakaoChatbotRoomSelect').value.trim() : document.getElementById('kakaoChatbotRoomId').value.trim();
-    let photoInput = document.getElementById('kakaoChatbotTestPhoto');
-    if (!key || !roomId) {
-        showTabStatus('tab-settings', '⚠️ App Key와 그룹방을 선택하세요.', 'warning');
-        return;
-    }
+    let html = '<div id="kakaoWorkExportModal" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999999;display:flex;align-items:center;justify-content:center;padding:16px;" onclick="if(event.target===this)this.remove()">';
+    html += '<div style="background:#fff;border-radius:16px;width:100%;max-width:560px;max-height:88vh;overflow:auto;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.25)" onclick="event.stopPropagation()">';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px"><h3 style="margin:0;font-size:17px">📤 카카오워크 1:1 내보내기</h3><button onclick="document.getElementById(\'kakaoWorkExportModal\').remove()" style="border:0;background:none;font-size:24px;color:#718096;cursor:pointer">×</button></div>';
+    html += '<div id="kwExportBody" style="font-size:13px;color:#4a5568">⏳ 현장 목록을 불러오는 중...</div>';
+    html += '</div></div>';
+    document.body.insertAdjacentHTML('beforeend', html);
+
     try {
-        let testText = '✅ 경로 최적화 앱 카카오워크 테스트 메시지\n시간: ' + new Date().toLocaleString('ko-KR');
-        await sendKakaoWorkText(roomId, key, testText);
-        let files = photoInput && photoInput.files ? Array.from(photoInput.files) : [];
-        if (files.length > 0) {
-            let photos = [];
-            for (let i = 0; i < files.length; i++) {
-                if (files[i].size > 15 * 1024 * 1024) throw new Error('테스트 사진 ' + files[i].name + '이 15MB를 초과합니다.');
-                photos.push({ dataUrl: URL.createObjectURL(files[i]), fileName: files[i].name });
-            }
-            try { await sendKakaoWorkImages(roomId, key, photos); }
-            finally { photos.forEach(function(p) { try { URL.revokeObjectURL(p.dataUrl); } catch(e) {} }); }
-        }
-        showTabStatus('tab-settings', '✅ 테스트 전송 성공' + (files.length ? ' (메시지 + 사진 ' + files.length + '장)' : ' (메시지)'), 'ok');
-        let status = document.getElementById('kakaoChatbotStatus');
-        if (status) { status.textContent = '✅ 테스트 성공'; status.className = 'badge badge-ok'; }
-        if (photoInput) photoInput.value = '';
+        if (!currentRegion) throw new Error('현재 선택된 지역이 없습니다.');
+        let response = await fetch(serverUrl + '/api/sites?region=' + encodeURIComponent(currentRegion));
+        let data = await response.json();
+        if (!response.ok) throw new Error(data.error || ('HTTP ' + response.status));
+        renderKakaoWorkExportBody(data.sites || []);
     } catch (error) {
-        console.error('Kakao Work test error:', error);
-        showTabStatus('tab-settings', '❌ 테스트 실패: ' + error.message, 'error');
+        let body = document.getElementById('kwExportBody');
+        if (body) body.innerHTML = '<div style="padding:16px;background:#fff5f5;border-radius:8px;color:#c53030">❌ 서버 연결 실패<br><small>' + escapeHtml(error.message) + '</small><br><br>설정에서 서버 주소와 Node.js 서버 실행 여부를 확인하세요.</div>';
     }
 }
+
+function renderKakaoWorkExportBody(sites) {
+    let body = document.getElementById('kwExportBody');
+    if (!body) return;
+    let options = '<option value="">-- 현장 선택 --</option>';
+    sites.forEach(function(site) {
+        options += '<option value="' + escapeHtml(site.name) + '">' + escapeHtml(site.name) + ' (' + site.count + '장)</option>';
+    });
+    let html = '<div style="padding:8px 10px;background:#ebf8ff;border-radius:8px;margin-bottom:12px;color:#2b6cb0;font-weight:700">📍 현재 지역: ' + escapeHtml(currentRegion) + '</div>';
+    html += '<label style="font-weight:700;display:block;margin-bottom:5px">① 현장</label>';
+    html += '<select id="kwExportSite" onchange="loadKakaoWorkExportPhotos()" style="width:100%;padding:10px;border:2px solid #e2e8f0;border-radius:8px;margin-bottom:12px">' + options + '</select>';
+    html += '<div id="kwExportPhotos" style="margin-bottom:14px">현장을 선택하세요.</div>';
+    html += '<label style="font-weight:700;display:block;margin-bottom:5px">③ 작업자 검색</label>';
+    html += '<div style="display:flex;gap:6px;margin-bottom:8px"><input id="kwExportWorkerSearch" placeholder="작업자명 입력" style="flex:1;padding:10px;border:2px solid #e2e8f0;border-radius:8px"><button class="btn btn-outline btn-sm" onclick="searchKakaoWorkExportWorkers()">🔍 검색</button></div>';
+    html += '<div id="kwExportWorkers" style="margin-bottom:14px">작업자명을 검색하세요.</div>';
+    html += '<div style="font-size:11px;color:#718096;margin-bottom:12px">② 사진 선택 → ③ 작업자 선택 → 전송 순서입니다.</div>';
+    html += '<button class="btn btn-primary btn-sm" onclick="sendKakaoWorkExport()" style="width:100%;padding:10px">📨 선택 사진을 1:1로 전송</button>';
+    body.innerHTML = html;
+}
+async function loadKakaoWorkExportPhotos() {
+    let site = document.getElementById('kwExportSite')?.value || '';
+    let box = document.getElementById('kwExportPhotos');
+    if (!box) return;
+    if (!site) { box.innerHTML = '현장을 선택하세요.'; return; }
+    let serverUrl = (settings.photoServerUrl || 'http://localhost:3000').replace(/\/$/, '');
+    box.innerHTML = '⏳ 사진 불러오는 중...';
+    try {
+        let response = await fetch(serverUrl + '/api/photos?region=' + encodeURIComponent(currentRegion) + '&siteName=' + encodeURIComponent(site));
+        let data = await response.json();
+        if (!response.ok) throw new Error(data.error || ('HTTP ' + response.status));
+        if (!data.photos.length) { box.innerHTML = '📷 저장된 사진이 없습니다.'; return; }
+        let html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px"><strong>② 보낼 사진 선택 (' + data.photos.length + '장)</strong><span><button class="btn btn-outline btn-sm" onclick="document.querySelectorAll(\'.kw-photo-check\').forEach(x=>x.checked=true)">전체</button> <button class="btn btn-outline btn-sm" onclick="document.querySelectorAll(\'.kw-photo-check\').forEach(x=>x.checked=false)">해제</button></span></div>';
+        html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-height:330px;overflow:auto">';
+        data.photos.forEach(function(p, i) {
+            html += '<label style="border:1px solid #e2e8f0;border-radius:8px;padding:5px;cursor:pointer"><input class="kw-photo-check" type="checkbox" value="' + escapeHtml(p.fileName) + '" data-path="' + escapeHtml(p.fileName) + '" style="margin-right:4px" ' + (i < 5 ? 'checked' : '') + '><img src="' + escapeHtml(serverUrl + '/api/photo?region=' + encodeURIComponent(currentRegion) + '&siteName=' + encodeURIComponent(site) + '&fileName=' + encodeURIComponent(p.fileName)) + '" style="width:100%;height:90px;object-fit:cover;border-radius:5px"><div style="font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + escapeHtml(p.fileName) + '">' + escapeHtml(p.fileName) + '</div></label>';
+        });
+        html += '</div>';
+        box.innerHTML = html;
+    } catch (error) {
+        box.innerHTML = '<span style="color:#c53030">❌ ' + escapeHtml(error.message) + '</span>';
+    }
+}
+
+async function searchKakaoWorkExportWorkers() {
+    let keyword = document.getElementById('kwExportWorkerSearch')?.value.trim() || '';
+    let box = document.getElementById('kwExportWorkers');
+    if (!box) return;
+    let serverUrl = (settings.photoServerUrl || 'http://localhost:3000').replace(/\/$/, '');
+    box.innerHTML = '⏳ 검색 중...';
+    try {
+        let response = await fetch(serverUrl + '/api/users?q=' + encodeURIComponent(keyword));
+        let data = await response.json();
+        if (!response.ok) throw new Error(data.error || ('HTTP ' + response.status));
+        if (!data.users.length) { box.innerHTML = '검색 결과가 없습니다.'; return; }
+        let html = '<div style="display:flex;flex-direction:column;gap:5px">';
+        data.users.forEach(function(u) {
+            html += '<label style="display:flex;align-items:center;gap:8px;padding:9px;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer"><input type="radio" name="kwExportWorker" value="' + escapeHtml(String(u.id)) + '" data-name="' + escapeHtml(u.name || u.display_name || '') + '"><span><strong>' + escapeHtml(u.name || u.display_name || '-') + '</strong><small style="display:block;color:#a0aec0">' + escapeHtml(u.department || '') + '</small></span></label>';
+        });
+        html += '</div>';
+        box.innerHTML = html;
+    } catch (error) {
+        box.innerHTML = '<span style="color:#c53030">❌ ' + escapeHtml(error.message) + '</span>';
+    }
+}
+
+async function sendKakaoWorkExport() {
+    let site = document.getElementById('kwExportSite')?.value || '';
+    let selected = Array.from(document.querySelectorAll('.kw-photo-check:checked')).map(function(el) { return el.value; });
+    let worker = document.querySelector('input[name="kwExportWorker"]:checked');
+    if (!site) { showTabStatus('tab-work', '⚠️ 현장을 선택하세요.', 'warning'); return; }
+    if (!selected.length) { showTabStatus('tab-work', '⚠️ 보낼 사진을 선택하세요.', 'warning'); return; }
+    if (!worker) { showTabStatus('tab-work', '⚠️ 작업자를 선택하세요.', 'warning'); return; }
+    let serverUrl = (settings.photoServerUrl || 'http://localhost:3000').replace(/\/$/, '');
+    let button = document.querySelector('#kakaoWorkExportModal .btn-primary');
+    if (button) { button.disabled = true; button.textContent = '⏳ 전송 중...'; }
+    try {
+        let response = await fetch(serverUrl + '/api/export/one-to-one', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ region: currentRegion, siteName: site, fileNames: selected, userId: worker.value })
+        });
+        let data = await response.json();
+        if (!response.ok) throw new Error(data.error || ('HTTP ' + response.status));
+        showTabStatus('tab-work', '✅ ' + (worker.dataset.name || '작업자') + '님에게 ' + selected.length + '장 전송 완료', 'ok');
+        document.getElementById('kakaoWorkExportModal')?.remove();
+    } catch (error) {
+        showTabStatus('tab-work', '❌ 1:1 전송 실패: ' + error.message, 'error');
+        if (button) { button.disabled = false; button.textContent = '📨 선택 사진을 1:1로 전송'; }
+    }
+}
+
+window.switchTab = switchTab;

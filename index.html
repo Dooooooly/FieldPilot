@@ -808,12 +808,11 @@ body {
 <div id="workSearchResults" style="display:none;margin-bottom:12px;"></div>
     <div id="workCalendar"></div>
     <div id="workDateDetail" style="display:none; margin-top:12px; border-top:1px solid #e2e8f0; padding-top:12px;"></div>
-    <!-- ★ 사진 내보내기 -->
+    <!-- ★ 카카오워크 사진 내보내기 -->
 <div style="margin-top:16px;padding:14px;background:#f7fafc;border-radius:10px;border:1px solid #e2e8f0;">
-    <div style="font-weight:700;font-size:14px;margin-bottom:8px;">📤 사진 내보내기</div>
-    <div style="font-size:11px;color:#718096;margin-bottom:8px;">내 서버 주소 입력 후 전송 (폴더: 현장명(카메라번호))</div>
-    <input type="text" id="photoServerUrl" placeholder="http://192.168.1.100:3000" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:12px;margin-bottom:8px;">
-    <button class="btn btn-primary btn-sm" onclick="exportPhotosToServer()" style="width:100%;padding:8px;">📤 전체 사진 전송</button>
+    <div style="font-weight:700;font-size:14px;margin-bottom:6px;">📤 카카오워크 1:1 내보내기</div>
+    <div style="font-size:11px;color:#718096;margin-bottom:8px;">현재 선택 지역의 현장 → 사진 선택 → 작업자 검색 → Bot으로 1:1 전송</div>
+    <button class="btn btn-primary btn-sm" onclick="openKakaoWorkExportModal()" style="width:100%;padding:9px;">📨 내보낼 사진 선택</button>
 </div>
 </div>
 
@@ -864,36 +863,20 @@ body {
                 </div>
                 <div id="kakaoStatus" class="badge badge-wait" style="margin-top:4px;">⏳ API 키 미설정</div>
             </div>
-            <!-- ★ 카카오워크 Bot 설정 (브라우저 테스트용) -->
-<div class="setting-group">
-    <h4>🤖 카카오워크 Bot 테스트</h4>
-    <div style="font-size:11px;color:#718096;margin-bottom:8px;line-height:1.5;">
-        App Key와 전송할 그룹방의 Conversation ID를 입력합니다. 현재는 테스트 목적으로 브라우저에서 직접 호출합니다.
-    </div>
-    <div class="row">
-        <label>App Key</label>
-        <input type="password" id="kakaoChatbotKey" autocomplete="off" placeholder="카카오워크 Bot App Key">
-    </div>
-    <div class="row">
-        <label>그룹방</label>
-        <select id="kakaoChatbotRoomSelect" class="input-field" onchange="selectKakaoWorkRoom()">
-            <option value="">📂 먼저 방 목록을 불러오세요</option>
-        </select>
-    </div>
-    <input type="hidden" id="kakaoChatbotRoomId">
-    <div class="row" style="margin-top:4px;">
-        <button id="kakaoChatbotLoadRoomsBtn" class="btn btn-outline btn-sm" onclick="loadKakaoWorkRooms()">🔄 방 목록 불러오기</button>
-        <button class="btn btn-primary btn-sm" onclick="saveKakaoChatbot()">💾 저장</button>
-        <button class="btn btn-outline btn-sm" onclick="testKakaoChatbot()">📨 테스트 전송</button>
-    </div>
-    <div style="margin-top:6px;">
-        <label for="kakaoChatbotTestPhoto" style="font-size:11px;color:#718096;">📸 테스트 사진(선택)</label>
-        <input type="file" id="kakaoChatbotTestPhoto" accept="image/png,image/jpeg,image/gif,image/bmp" multiple style="width:100%;padding:6px 0;font-size:11px;">
-    </div>
-    <div id="kakaoChatbotSelectedRoom" style="font-size:11px;color:#718096;margin-top:4px;">📌 선택된 방 없음</div>
-    <div id="kakaoChatbotRoomStatus" style="font-size:11px;color:#718096;margin-top:2px;"></div>
-    <div id="kakaoChatbotStatus" class="badge badge-wait">⏳ 미설정</div>
-</div>
+            <!-- ★ 카카오워크 현장처리 서버 설정 -->
+            <div class="setting-group">
+                <h4>🤖 현장처리 서버</h4>
+                <div style="font-size:11px;color:#718096;margin-bottom:8px;">카카오워크 Bot App Key는 서버에만 보관합니다. 직원 PC에는 App Key를 저장하지 않습니다.</div>
+                <div class="row">
+                    <label for="photoServerUrlSetting">서버 주소</label>
+                    <input type="text" id="photoServerUrlSetting" placeholder="http://localhost:3000">
+                </div>
+<div class="row" style="margin-top:6px;">
+                    <button class="btn btn-primary btn-sm" onclick="savePhotoServerSettings()">저장</button>
+                    <button class="btn btn-outline btn-sm" onclick="testPhotoServer()">연결 테스트</button>
+                </div>
+                <div id="photoServerStatus" class="badge badge-wait" style="margin-top:4px;">⏳ 서버 미확인</div>
+            </div>
 
             <div class="setting-group">
                 <h4>⚙️ 설정 관리</h4>
