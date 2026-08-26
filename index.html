@@ -864,20 +864,23 @@ body {
                 </div>
                 <div id="kakaoStatus" class="badge badge-wait" style="margin-top:4px;">⏳ API 키 미설정</div>
             </div>
-            <!-- ★ 카카오 챗봇 설정 -->
+            <!-- ★ 카카오워크 Bot 설정 (브라우저 테스트용) -->
 <div class="setting-group">
-    <h4>🤖 카카오 챗봇</h4>
-    <div class="row">
-        <label>챗봇 키</label>
-        <input type="password" id="kakaoChatbotKey" placeholder="카카오 챗봇 REST API 키">
+    <h4>🤖 카카오워크 Bot 테스트</h4>
+    <div style="font-size:11px;color:#718096;margin-bottom:8px;line-height:1.5;">
+        App Key와 전송할 그룹방의 Conversation ID를 입력합니다. 현재는 테스트 목적으로 브라우저에서 직접 호출합니다.
     </div>
     <div class="row">
-        <label>사용자 ID</label>
-        <input type="text" id="kakaoChatbotUserId" placeholder="챗봇 사용자 ID">
+        <label>App Key</label>
+        <input type="password" id="kakaoChatbotKey" autocomplete="off" placeholder="카카오워크 Bot App Key">
+    </div>
+    <div class="row">
+        <label>방 ID</label>
+        <input type="text" id="kakaoChatbotRoomId" inputmode="numeric" placeholder="그룹방 Conversation ID">
     </div>
     <div class="row">
         <button class="btn btn-primary btn-sm" onclick="saveKakaoChatbot()">저장</button>
-        <button class="btn btn-outline btn-sm" onclick="testKakaoChatbot()">테스트</button>
+        <button class="btn btn-outline btn-sm" onclick="testKakaoChatbot()">테스트 전송</button>
     </div>
     <div id="kakaoChatbotStatus" class="badge badge-wait">⏳ 미설정</div>
 </div>

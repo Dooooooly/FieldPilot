@@ -264,6 +264,11 @@ settings.kakaoChatbotRoomId = decodeKey(parsed.kakaoChatbotRoomId || '');
     document.getElementById('githubToken').value = settings.githubToken || '';
     document.getElementById('kakaoJsKey').value = settings.kakaoJsKey || '';
     document.getElementById('kakaoRestKey').value = settings.kakaoRestKey || '';
+    let chatbotKeyEl = document.getElementById('kakaoChatbotKey');
+    let chatbotRoomEl = document.getElementById('kakaoChatbotRoomId');
+    if (chatbotKeyEl) chatbotKeyEl.value = settings.kakaoChatbotKey || '';
+    if (chatbotRoomEl) chatbotRoomEl.value = settings.kakaoChatbotRoomId || '';
+    if (typeof updateKakaoChatbotStatus === 'function') updateKakaoChatbotStatus();
     let wn = document.getElementById('workerName');
 if (wn) wn.value = workerName;
 updateWorkerNameStatus();
@@ -302,18 +307,18 @@ function updateWorkWorkerDisplay() {
 
 function saveSettings() {
     if (!settings) {
-        settings = { githubToken: '', kakaoJsKey: '', kakaoRestKey: '' };
+        settings = { githubToken: '', kakaoJsKey: '', kakaoRestKey: '', kakaoChatbotKey: '', kakaoChatbotRoomId: '' };
     }
     let encoded = {
         githubToken: encodeKey(settings.githubToken || ''),
         kakaoJsKey: encodeKey(settings.kakaoJsKey || ''),
         kakaoRestKey: encodeKey(settings.kakaoRestKey || ''),
         kakaoChatbotKey: encodeKey(settings.kakaoChatbotKey || ''),
-        kakaoChatbot
-
+        kakaoChatbotRoomId: encodeKey(settings.kakaoChatbotRoomId || '')
     };
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(encoded));
     updateSettingsStatus();
+    if (typeof updateKakaoChatbotStatus === 'function') updateKakaoChatbotStatus();
 }
 
 function updateSettingsStatus() {
@@ -6789,8 +6794,8 @@ renderWorkTab();
 showWorkDateDetail(record.date);
 showTabStatus('tab-work', uploaded ? '✅ 처리내역 저장 완료 (⏰ ' + record.time + ' 기록)' : '⚠️ 저장됨. GitHub 업로드 실패', uploaded ? 'ok' : 'warning');
 // ★ 카카오 챗봇 자동 전송
-if (settings.kakaoChatbotKey && settings.kakaoChatbotUserId) {
-    sendToKakaoChatbot(record);
+if (settings.kakaoChatbotKey && settings.kakaoChatbotRoomId) {
+    await sendToKakaoChatbot(record);
 }
 }
 
@@ -7475,65 +7480,126 @@ async function showPlaceHistory(placeName) {
 }
 
 // ============================================================
-// 51. 카카오 챗봇 전송 (그룹방 전송용으로 수정)
+// 51. 카카오워크 Bot 전송 (테스트용 브라우저 직접 호출)
 // ============================================================
+function getKakaoWorkHeaders(key, contentType) {
+    let headers = { 'Authorization': 'Bearer ' + key };
+    if (contentType) headers['Content-Type'] = contentType;
+    return headers;
+}
+
+async function kakaoWorkJsonRequest(url, key, body) {
+    let response = await fetch(url, {
+        method: 'POST',
+        headers: getKakaoWorkHeaders(key, 'application/json'),
+        body: JSON.stringify(body)
+    });
+    let text = await response.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch (e) {}
+    if (!response.ok) {
+        let detail = data && data.error ? (data.error.code || data.error.message || '') : text;
+        throw new Error('HTTP ' + response.status + (detail ? ' - ' + detail : ''));
+    }
+    if (data && data.success === false) {
+        let detail = data.error ? (data.error.code || data.error.message || '알 수 없는 오류') : '알 수 없는 오류';
+        throw new Error(detail);
+    }
+    return data;
+}
+
+async function sendKakaoWorkText(conversationId, key, text) {
+    return kakaoWorkJsonRequest('https://api.kakaowork.com/v1/messages.send', key, {
+        conversation_id: String(conversationId),
+        text: text
+    });
+}
+
+async function sendKakaoWorkImages(conversationId, key, photos) {
+    if (!photos || photos.length === 0) return null;
+
+    let formData = new FormData();
+    let metas = [];
+    let totalSize = 0;
+
+    for (let i = 0; i < photos.length; i++) {
+        let photo = photos[i];
+        let blob = await (await fetch(photo.dataUrl)).blob();
+        let filename = photo.fileName || ('field_' + (i + 1) + '.jpg');
+        let ext = filename.split('.').pop().toLowerCase();
+        let normalizedExt = ext === 'jpeg' ? 'jpg' : ext;
+        if (!['png', 'jpg', 'gif', 'bmp'].includes(normalizedExt)) normalizedExt = 'jpg';
+        if (blob.size > 15 * 1024 * 1024) {
+            throw new Error('사진 ' + filename + '이 15MB를 초과합니다.');
+        }
+        totalSize += blob.size;
+        metas.push({
+            file_name: filename,
+            file_type: 'image',
+            file_size: blob.size
+        });
+        formData.append('attachments[]', blob, filename);
+    }
+
+    formData.append('metas', JSON.stringify(metas));
+
+    let uploadResponse = await fetch('https://api.kakaowork.com/v1/conversations/' + encodeURIComponent(String(conversationId)) + '/upload', {
+        method: 'POST',
+        headers: getKakaoWorkHeaders(key),
+        body: formData
+    });
+
+    let uploadText = await uploadResponse.text();
+    let uploadData = null;
+    try { uploadData = uploadText ? JSON.parse(uploadText) : null; } catch (e) {}
+    if (!uploadResponse.ok || !uploadData || uploadData.success === false) {
+        let detail = uploadData && uploadData.error ? (uploadData.error.code || uploadData.error.message || '') : uploadText;
+        throw new Error('사진 업로드 실패' + (detail ? ': ' + detail : ''));
+    }
+
+    let ids = (uploadData.attachments || []).map(function(item) { return Number(item.attachment_id); }).filter(Number.isFinite);
+    if (ids.length !== photos.length) {
+        throw new Error('사진 업로드 결과에서 attachment_id를 모두 받지 못했습니다.');
+    }
+
+    return kakaoWorkJsonRequest('https://api.kakaowork.com/v1/messages.send_attachments', key, {
+        conversation_id: Number(conversationId),
+        type: 'image',
+        attachment: { attachment_ids: ids }
+    });
+}
+
 async function sendToKakaoChatbot(record) {
-    let chatbotKey = settings.kakaoChatbotKey;
-    let roomId = settings.kakaoChatbotRoomId; // 🚨 user_id 대신 room_id 사용
-    
+    let chatbotKey = (settings && settings.kakaoChatbotKey) || '';
+    let roomId = (settings && settings.kakaoChatbotRoomId) || '';
+
     if (!chatbotKey || !roomId) {
-        showTabStatus('tab-work', '⚠️ 챗봇 Key와 방 ID(Room ID)를 설정해주세요.', 'warning');
+        showTabStatus('tab-work', '⚠️ 카카오워크 App Key와 그룹방 Conversation ID를 설정해주세요.', 'warning');
         return false;
     }
-    
+
     try {
-        let message = '📋 작업 기록\n';
+        let message = '📋 현장 처리 완료\n';
         message += '━━━━━━━━━━━━━━\n';
-        message += '📍 현장: ' + record.placeName + '\n';
+        message += '📍 현장: ' + (record.placeName || '-') + '\n';
         if (record.camera) message += '📷 카메라: ' + record.camera + '\n';
-        message += '👤 작업자: ' + (record.worker || '미설정') + '\n';
-        message += '📅 일시: ' + record.date + ' ' + (record.time || '') + '\n';
-        if (record.content) {
-            message += '📝 처리내용:\n' + record.content + '\n';
-        }
+        message += '👤 작업자: ' + (record.worker || workerName || '미설정') + '\n';
+        message += '📅 일시: ' + (record.date || '-') + ' ' + (record.time || '') + '\n';
+        if (record.content) message += '\n📝 처리내용\n' + record.content + '\n';
         message += '━━━━━━━━━━━━━━';
 
-        let response = await fetch('https://api.kakao.work/v1/bots/send_message', { 
-            method: 'POST',
-            headers: {
-                'Authorization': 'KakaoAK ' + chatbotKey,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                room_id: roomId,
-                message: {
-                    text: message
-                }
-            })
-        });
-        
-        if (!response.ok) throw new Error('전송 실패: ' + response.status);
-        
-        // 📷 사진 전송 (사진이 있는 경우)
+        await sendKakaoWorkText(roomId, chatbotKey, message);
+
         let photos = await getPhotosByWorkId(record.id);
         if (photos.length > 0) {
-            for (let i = 0; i < photos.length; i++) {
-                let blob = await (await fetch(photos[i].dataUrl)).blob();
-                let formData = new FormData();
-                formData.append('image', blob, photos[i].fileName);
-                formData.append('room_id', roomId);
-                
-                await fetch('https://api.kakao.work/v1/bots/send_image', {
-                    method: 'POST',
-                    headers: { 'Authorization': 'KakaoAK ' + chatbotKey },
-                    body: formData
-                });
-            }
+            await sendKakaoWorkImages(roomId, chatbotKey, photos);
         }
-        showTabStatus('tab-work', '✅ 단톡방으로 전송 완료!', 'ok');
+
+        showTabStatus('tab-work', '✅ 카카오워크 그룹방 전송 완료 (내용' + (photos.length ? ' + 사진 ' + photos.length + '장' : '') + ')', 'ok');
         return true;
     } catch (error) {
-        showTabStatus('tab-work', '❌ 챗봇 전송 실패: ' + error.message, 'error');
+        console.error('Kakao Work send error:', error);
+        showTabStatus('tab-work', '❌ 카카오워크 전송 실패: ' + error.message, 'error');
         return false;
     }
 }
@@ -7598,21 +7664,21 @@ async function exportPhotosToServer() {
 }
 
 // ============================================================
-// 카카오 챗봇 설정 저장 및 테스트 (Room ID에 맞게 수정)
+// 카카오워크 Bot 설정 저장 및 테스트
 // ============================================================
 function saveKakaoChatbot() {
     settings.kakaoChatbotKey = document.getElementById('kakaoChatbotKey').value.trim();
-    settings.kakaoChatbotRoomId = document.getElementById('kakaoChatbotRoomId').value.trim(); // 🚨 RoomId로 변경
+    settings.kakaoChatbotRoomId = document.getElementById('kakaoChatbotRoomId').value.trim();
     saveSettings();
     updateKakaoChatbotStatus();
-    showTabStatus('tab-settings', '✅ 카카오 챗봇 설정 저장됨', 'ok');
+    showTabStatus('tab-settings', '✅ 카카오워크 Bot 설정 저장됨', 'ok');
 }
 
 function updateKakaoChatbotStatus() {
     let el = document.getElementById('kakaoChatbotStatus');
     if (!el) return;
     if (settings.kakaoChatbotKey && settings.kakaoChatbotRoomId) {
-        el.textContent = '✅ 챗봇 설정됨';
+        el.textContent = '✅ Bot + 그룹방 설정됨';
         el.className = 'badge badge-ok';
     } else {
         el.textContent = '⏳ 미설정';
@@ -7622,27 +7688,18 @@ function updateKakaoChatbotStatus() {
 
 async function testKakaoChatbot() {
     let key = document.getElementById('kakaoChatbotKey').value.trim();
-    let roomId = document.getElementById('kakaoChatbotRoomId').value.trim(); // 🚨 RoomId로 변경
+    let roomId = document.getElementById('kakaoChatbotRoomId').value.trim();
     if (!key || !roomId) {
-        showTabStatus('tab-settings', '⚠️ 챗봇 키와 방 ID(Room ID)를 입력하세요', 'warning');
+        showTabStatus('tab-settings', '⚠️ App Key와 그룹방 Conversation ID를 입력하세요.', 'warning');
         return;
     }
     try {
-        let response = await fetch('https://api.kakao.work/v1/bots/send_message', { // 🚨 테스트도 그룹방 API로
-            method: 'POST',
-            headers: {
-                'Authorization': 'KakaoAK ' + key,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ room_id: roomId, message: { text: '✅ 경로 최적화 앱 테스트 메시지입니다.' } })
-        });
-        if (response.ok) {
-            showTabStatus('tab-settings', '✅ 챗봇 테스트 성공! 단톡방 확인', 'ok');
-        } else {
-            showTabStatus('tab-settings', '❌ 챗봇 테스트 실패: ' + response.status, 'error');
-        }
+        await sendKakaoWorkText(roomId, key, '✅ 경로 최적화 앱 카카오워크 테스트 메시지입니다.\n시간: ' + new Date().toLocaleString('ko-KR'));
+        showTabStatus('tab-settings', '✅ 카카오워크 그룹방 테스트 전송 성공', 'ok');
+        document.getElementById('kakaoChatbotStatus').textContent = '✅ 테스트 성공';
+        document.getElementById('kakaoChatbotStatus').className = 'badge badge-ok';
     } catch (error) {
-        showTabStatus('tab-settings', '❌ 챗봇 연결 실패: ' + error.message, 'error');
+        console.error('Kakao Work test error:', error);
+        showTabStatus('tab-settings', '❌ 테스트 실패: ' + error.message, 'error');
     }
 }
-window.switchTab = switchTab;
