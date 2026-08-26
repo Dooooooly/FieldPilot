@@ -6724,34 +6724,45 @@ function hideWorkDateDetail() {
 }
 
 function openWorkEditModal(workId) {
-let work = currentWork || loadWorkFromLocalStorage();
-let record = work.workHistory.find(function(w) { return w.id === workId; });
-if (!record) return;
-let existing = document.getElementById('workEditModal');
-if (existing) existing.remove();
-let modalHtml = '<div id="workEditModal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);z-index:999999;display:flex;justify-content:center;align-items:center;padding:20px;" onclick="if(event.target===this)this.remove()">';
-modalHtml += '<div style="background:white;border-radius:16px;padding:24px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.2);max-height:80vh;overflow-y:auto;" onclick="event.stopPropagation()">';
-modalHtml += '<h3 style="font-size:17px;font-weight:700;color:#1a202c;margin-bottom:12px;">✏️ 처리내역 작성</h3>';
-modalHtml += '<div style="font-size:13px;color:#4a5568;margin-bottom:12px;">';
-modalHtml += '<div>현장: <strong>' + escapeHtml(record.placeName) + '</strong></div>';
-modalHtml += '<div>일시: ' + record.date + (record.time ? ' ' + record.time : '') + '</div>';
-modalHtml += '<div>작업자: ' + escapeHtml(record.worker || '미설정') + '</div>';
-modalHtml += '</div>';
-modalHtml += '<div style="margin-bottom:12px;">';
-modalHtml += '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">📷 카메라 번호</label>';
-modalHtml += '<input type="text" id="workEditCamera" value="' + escapeHtml(record.camera || '') + '" placeholder="예: 01, A3 (선택)" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;">';
-modalHtml += '</div>';
-modalHtml += '<div style="margin-bottom:12px;">';
-modalHtml += '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">처리내용</label>';
-modalHtml += '<textarea id="workEditContent" rows="3" placeholder="처리 내용을 입력하세요" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;resize:vertical;">' + escapeHtml(record.content || '') + '</textarea>';
-modalHtml += '</div>';
-modalHtml += '<div style="font-size:11px;color:#a0aec0;margin-bottom:12px;">💡 저장 시 현재 시간이 자동으로 기록됩니다</div>';
-modalHtml += '<div style="display:flex;gap:8px;justify-content:flex-end;">';
-modalHtml += '<button class="btn btn-outline btn-sm" onclick="document.getElementById(\'workEditModal\').remove()" style="padding:6px 16px;">취소</button>';
-modalHtml += '<button class="btn btn-danger btn-sm" onclick="deleteWorkRecord(\'' + record.id + '\')" style="padding:6px 16px;">삭제</button>';
-modalHtml += '<button class="btn btn-primary btn-sm" onclick="saveWorkEdit(\'' + record.id + '\')" style="padding:6px 16px;">저장</button>';
-modalHtml += '</div></div></div>';
-document.body.insertAdjacentHTML('beforeend', modalHtml);
+    let work = currentWork || loadWorkFromLocalStorage();
+    let record = work.workHistory.find(function(w) { return w.id === workId; });
+    if (!record) return;
+    let existing = document.getElementById('workEditModal');
+    if (existing) existing.remove();
+
+    let modalHtml = '<div id="workEditModal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);z-index:999999;display:flex;justify-content:center;align-items:center;padding:20px;" onclick="if(event.target===this)this.remove()">';
+    modalHtml += '<div style="background:white;border-radius:16px;padding:24px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.2);max-height:80vh;overflow-y:auto;" onclick="event.stopPropagation()">';
+    modalHtml += '<h3 style="font-size:17px;font-weight:700;color:#1a202c;margin-bottom:12px;">✏️ 처리내역 작성</h3>';
+    modalHtml += '<div style="font-size:13px;color:#4a5568;margin-bottom:12px;">';
+    modalHtml += '<div>현장: <strong>' + escapeHtml(record.placeName) + '</strong></div>';
+    modalHtml += '<div>일시: ' + record.date + (record.time ? ' ' + record.time : '') + '</div>';
+    modalHtml += '<div>작업자: ' + escapeHtml(record.worker || '미설정') + '</div>';
+    modalHtml += '</div>';
+    modalHtml += '<div style="margin-bottom:12px;">';
+    modalHtml += '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">📷 카메라 번호</label>';
+    modalHtml += '<input type="text" id="workEditCamera" value="' + escapeHtml(record.camera || '') + '" placeholder="예: 01, A3 (선택)" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;">';
+    modalHtml += '</div>';
+    modalHtml += '<div style="margin-bottom:12px;">';
+    modalHtml += '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">처리내용</label>';
+    modalHtml += '<textarea id="workEditContent" rows="3" placeholder="처리 내용을 입력하세요" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;resize:vertical;">' + escapeHtml(record.content || '') + '</textarea>';
+    modalHtml += '</div>';
+    // ★ 사진 업로드 영역
+    modalHtml += '<div style="margin-bottom:12px;">';
+    modalHtml += '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">📸 현장 사진</label>';
+    modalHtml += '<input type="file" accept="image/*" capture="environment" multiple data-work-id="' + record.id + '" onchange="handleWorkPhotoUpload(event)" style="width:100%;padding:8px;border:2px dashed #cbd5e0;border-radius:8px;font-size:12px;cursor:pointer;">';
+    modalHtml += '<div id="workPhotoStatus" style="font-size:11px;color:#a0aec0;margin-top:4px;"></div>';
+    modalHtml += '<div id="workPhotoList" style="margin-top:8px;"></div>';
+    modalHtml += '</div>';
+    modalHtml += '<div style="font-size:11px;color:#a0aec0;margin-bottom:12px;">💡 저장 시 현재 시간이 자동으로 기록됩니다</div>';
+    modalHtml += '<div style="display:flex;gap:8px;justify-content:flex-end;">';
+    modalHtml += '<button class="btn btn-outline btn-sm" onclick="document.getElementById(\'workEditModal\').remove()" style="padding:6px 16px;">취소</button>';
+    modalHtml += '<button class="btn btn-danger btn-sm" onclick="deleteWorkRecord(\'' + record.id + '\')" style="padding:6px 16px;">삭제</button>';
+    modalHtml += '<button class="btn btn-primary btn-sm" onclick="saveWorkEdit(\'' + record.id + '\')" style="padding:6px 16px;">저장</button>';
+    modalHtml += '</div></div></div>';
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    // ★ 기존 사진 목록 표시
+    renderWorkPhotoList(record.id);
 }
 
 async function saveWorkEdit(workId) {
@@ -6772,6 +6783,10 @@ let uploaded = await uploadWorkToGitHub(work);
 renderWorkTab();
 showWorkDateDetail(record.date);
 showTabStatus('tab-work', uploaded ? '✅ 처리내역 저장 완료 (⏰ ' + record.time + ' 기록)' : '⚠️ 저장됨. GitHub 업로드 실패', uploaded ? 'ok' : 'warning');
+// ★ 카카오 챗봇 자동 전송
+if (settings.kakaoChatbotKey && settings.kakaoChatbotUserId) {
+    sendToKakaoChatbot(record);
+}
 }
 
 function deleteWorkRecord(workId) {
@@ -7178,5 +7193,409 @@ function openLunchRestaurantInMap(el) {
             window.location.href = webUrl;
         }
     }, 1500);
+}
+// ============================================================
+// 47. 사진 저장소 (IndexedDB)
+// ============================================================
+let photoDB = null;
+
+function initPhotoDB() {
+    return new Promise(function(resolve, reject) {
+        let request = indexedDB.open('routeOptimizerPhotos', 1);
+        request.onupgradeneeded = function(e) {
+            let db = e.target.result;
+            if (!db.objectStoreNames.contains('photos')) {
+                let store = db.createObjectStore('photos', { keyPath: 'id' });
+                store.createIndex('workId', 'workId', { unique: false });
+            }
+        };
+        request.onsuccess = function(e) {
+            photoDB = e.target.result;
+            resolve(photoDB);
+        };
+        request.onerror = function(e) { reject(e); };
+    });
+}
+
+async function savePhotoToDB(photo) {
+    if (!photoDB) await initPhotoDB();
+    return new Promise(function(resolve, reject) {
+        let tx = photoDB.transaction('photos', 'readwrite');
+        tx.objectStore('photos').add(photo);
+        tx.oncomplete = resolve;
+        tx.onerror = reject;
+    });
+}
+
+async function getPhotosByWorkId(workId) {
+    if (!photoDB) await initPhotoDB();
+    return new Promise(function(resolve, reject) {
+        let tx = photoDB.transaction('photos', 'readonly');
+        let request = tx.objectStore('photos').index('workId').getAll(workId);
+        request.onsuccess = function() { resolve(request.result); };
+        request.onerror = reject;
+    });
+}
+
+async function deletePhotoFromDB(photoId) {
+    if (!photoDB) await initPhotoDB();
+    return new Promise(function(resolve, reject) {
+        let tx = photoDB.transaction('photos', 'readwrite');
+        tx.objectStore('photos').delete(photoId);
+        tx.oncomplete = resolve;
+        tx.onerror = reject;
+    });
+}
+
+async function getAllPhotos() {
+    if (!photoDB) await initPhotoDB();
+    return new Promise(function(resolve, reject) {
+        let request = photoDB.transaction('photos', 'readonly').objectStore('photos').getAll();
+        request.onsuccess = function() { resolve(request.result); };
+        request.onerror = reject;
+    });
+}
+
+// ============================================================
+// 48. 사진 업로드 / 표시 / 삭제
+// ============================================================
+async function handleWorkPhotoUpload(event) {
+    let files = event.target.files;
+    if (!files || files.length === 0) return;
+    let workId = event.target.getAttribute('data-work-id');
+    let statusEl = document.getElementById('workPhotoStatus');
+    if (statusEl) statusEl.textContent = '📷 사진 업로드 중...';
+
+    for (let i = 0; i < files.length; i++) {
+        let file = files[i];
+        if (file.size > 5 * 1024 * 1024) {
+            showTabStatus('tab-work', '⚠️ "' + file.name + '" 5MB 초과', 'warning');
+            continue;
+        }
+        await new Promise(function(resolve) {
+            let reader = new FileReader();
+            reader.onload = async function(e) {
+                await savePhotoToDB({
+                    id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5) + '_' + i,
+                    workId: workId,
+                    dataUrl: e.target.result,
+                    fileName: file.name,
+                    fileSize: file.size,
+                    uploadedAt: new Date().toISOString()
+                });
+                resolve();
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    if (statusEl) statusEl.textContent = '✅ 사진 업로드 완료';
+    event.target.value = '';
+    renderWorkPhotoList(workId);
+}
+
+async function renderWorkPhotoList(workId) {
+    let container = document.getElementById('workPhotoList');
+    if (!container) return;
+    let photos = await getPhotosByWorkId(workId);
+
+    if (photos.length === 0) {
+        container.innerHTML = '<div style="text-align:center;padding:8px;color:#a0aec0;font-size:12px;">📷 사진이 없습니다</div>';
+        return;
+    }
+
+    let html = '<div style="display:flex;gap:6px;flex-wrap:wrap;">';
+    for (let i = 0; i < photos.length; i++) {
+        let p = photos[i];
+        html += '<div style="position:relative;width:70px;height:70px;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0;">';
+        html += '<img src="' + p.dataUrl + '" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="viewPhoto(\'' + p.id + '\')">';
+        html += '<button onclick="event.stopPropagation();deleteWorkPhoto(\'' + p.id + '\',\'' + workId + '\')" style="position:absolute;top:2px;right:2px;background:rgba(229,62,62,0.9);color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>';
+        html += '</div>';
+    }
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+async function viewPhoto(photoId) {
+    let photos = await getAllPhotos();
+    let photo = photos.find(function(p) { return p.id === photoId; });
+    if (!photo) return;
+    let existing = document.getElementById('photoViewerModal');
+    if (existing) existing.remove();
+    let modalHtml = '<div id="photoViewerModal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:999999;display:flex;justify-content:center;align-items:center;padding:20px;" onclick="this.remove()">';
+    modalHtml += '<img src="' + photo.dataUrl + '" style="max-width:95%;max-height:90vh;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,0.5);">';
+    modalHtml += '<button onclick="event.stopPropagation();this.closest(\'#photoViewerModal\').remove()" style="position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.2);color:white;border:none;border-radius:50%;width:40px;height:40px;font-size:20px;cursor:pointer;">✕</button>';
+    modalHtml += '</div>';
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+async function deleteWorkPhoto(photoId, workId) {
+    await deletePhotoFromDB(photoId);
+    renderWorkPhotoList(workId);
+    showTabStatus('tab-work', '✅ 사진 삭제됨', 'ok');
+}
+
+// ============================================================
+// 49. 기록 탭 현장 검색
+// ============================================================
+function searchWorkHistory() {
+    let keyword = document.getElementById('workSearchInput').value.trim();
+    let container = document.getElementById('workSearchResults');
+    if (!container) return;
+
+    if (!keyword) {
+        container.style.display = 'none';
+        container.innerHTML = '';
+        return;
+    }
+
+    let work = currentWork || loadWorkFromLocalStorage();
+    let results = work.workHistory.filter(function(w) {
+        return (w.placeName && w.placeName.includes(keyword)) ||
+               (w.content && w.content.includes(keyword)) ||
+               (w.camera && w.camera.includes(keyword)) ||
+               (w.worker && w.worker.includes(keyword)) ||
+               (w.date && w.date.includes(keyword));
+    });
+    results.sort(function(a, b) { return b.timestamp - a.timestamp; });
+    renderWorkSearchResults(results, keyword);
+}
+
+function renderWorkSearchResults(results, keyword) {
+    let container = document.getElementById('workSearchResults');
+    if (!container) return;
+
+    if (results.length === 0) {
+        container.innerHTML = '<div style="text-align:center;padding:16px;color:#a0aec0;">"' + escapeHtml(keyword) + '" 검색 결과가 없습니다</div>';
+        container.style.display = 'block';
+        return;
+    }
+
+    let html = '<div style="font-weight:600;font-size:13px;margin-bottom:8px;">🔍 검색 결과 (' + results.length + '건)</div>';
+    let dateGroups = {};
+    for (let i = 0; i < results.length; i++) {
+        let r = results[i];
+        if (!dateGroups[r.date]) dateGroups[r.date] = [];
+        dateGroups[r.date].push(r);
+    }
+    let dates = Object.keys(dateGroups).sort(function(a, b) { return b.localeCompare(a); });
+
+    for (let i = 0; i < dates.length; i++) {
+        let date = dates[i];
+        let records = dateGroups[date];
+        let dateObj = new Date(date + 'T00:00:00');
+        let weekdays = ['일','월','화','수','목','금','토'];
+        let dayLabel = (dateObj.getMonth() + 1) + '/' + dateObj.getDate() + '(' + weekdays[dateObj.getDay()] + ')';
+        html += '<div style="margin-bottom:10px;">';
+        html += '<div style="font-weight:700;font-size:13px;color:#4f7eb3;margin-bottom:6px;">📅 ' + dayLabel + '</div>';
+        for (let j = 0; j < records.length; j++) {
+            let r = records[j];
+            let hasContent = r.content && r.content.trim() !== '';
+            let safeName = escapeHtml(r.placeName).replace(/'/g, "\\'");
+            html += '<div onclick="showPlaceHistory(\'' + safeName + '\')" style="background:#f7fafc;border-radius:8px;padding:10px;margin-bottom:4px;cursor:pointer;border-left:3px solid ' + (hasContent ? '#38a169' : '#e53e3e') + ';">';
+            html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">';
+            html += '<span style="font-size:11px;color:#718096;">⏰ ' + (r.time || '--:--') + '</span>';
+            html += '<span style="font-weight:600;font-size:13px;">' + escapeHtml(r.placeName) + '</span>';
+            if (r.camera) {
+                html += '<span style="background:#ebf8ff;color:#3182ce;font-size:10px;padding:1px 6px;border-radius:8px;">📷 ' + escapeHtml(r.camera) + '</span>';
+            }
+            html += '</div>';
+            if (r.content) {
+                html += '<div style="font-size:12px;color:#4a5568;margin-top:4px;padding:4px 6px;background:#fff;border-radius:4px;">' + escapeHtml(r.content) + '</div>';
+            }
+            html += '<div style="font-size:11px;color:#a0aec0;margin-top:2px;">👤 ' + escapeHtml(r.worker || '미설정') + '</div>';
+            html += '</div>';
+        }
+        html += '</div>';
+    }
+    container.innerHTML = html;
+    container.style.display = 'block';
+}
+
+// ============================================================
+// 50. 현장 히스토리 모달
+// ============================================================
+async function showPlaceHistory(placeName) {
+    let work = currentWork || loadWorkFromLocalStorage();
+    let history = work.workHistory.filter(function(w) { return w.placeName === placeName; });
+    history.sort(function(a, b) { return b.timestamp - a.timestamp; });
+
+    let existing = document.getElementById('placeHistoryModal');
+    if (existing) existing.remove();
+
+    let html = '<div id="placeHistoryModal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);z-index:999999;display:flex;justify-content:center;align-items:center;padding:20px;" onclick="if(event.target===this)this.remove()">';
+    html += '<div style="background:white;border-radius:16px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.2);max-height:80vh;overflow-y:auto;" onclick="event.stopPropagation()">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">';
+    html += '<h3 style="font-size:17px;font-weight:700;color:#1a202c;">📋 ' + escapeHtml(placeName) + ' 작업 히스토리</h3>';
+    html += '<button onclick="document.getElementById(\'placeHistoryModal\').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#a0aec0;">×</button>';
+    html += '</div>';
+
+    if (history.length === 0) {
+        html += '<div style="text-align:center;padding:20px;color:#a0aec0;">작업 기록이 없습니다</div>';
+    } else {
+        html += '<div style="font-size:12px;color:#718096;margin-bottom:12px;">총 ' + history.length + '건의 기록</div>';
+        for (let i = 0; i < history.length; i++) {
+            let r = history[i];
+            let hasContent = r.content && r.content.trim() !== '';
+            let photos = await getPhotosByWorkId(r.id);
+            html += '<div style="background:#f7fafc;border-radius:8px;padding:12px;margin-bottom:8px;border-left:3px solid ' + (hasContent ? '#38a169' : '#e53e3e') + ';">';
+            html += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">';
+            html += '<span style="font-size:12px;font-weight:600;color:#4a5568;">📅 ' + r.date + '</span>';
+            html += '<span style="font-size:11px;color:#718096;">⏰ ' + (r.time || '--:--') + '</span>';
+            if (r.camera) {
+                html += '<span style="background:#ebf8ff;color:#3182ce;font-size:10px;padding:1px 6px;border-radius:8px;">📷 ' + escapeHtml(r.camera) + '</span>';
+            }
+            html += '</div>';
+            if (r.content) {
+                html += '<div style="font-size:13px;color:#2d3748;margin-bottom:4px;padding:6px 8px;background:#fff;border-radius:4px;border-left:2px solid #2b6cb0;">' + escapeHtml(r.content) + '</div>';
+            } else {
+                html += '<div style="font-size:12px;color:#e53e3e;margin-bottom:4px;">⚠️ 처리내용 미작성</div>';
+            }
+            html += '<div style="font-size:11px;color:#a0aec0;">👤 ' + escapeHtml(r.worker || '미설정') + '</div>';
+            if (photos.length > 0) {
+                html += '<div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;">';
+                for (let j = 0; j < Math.min(photos.length, 3); j++) {
+                    html += '<img src="' + photos[j].dataUrl + '" style="width:50px;height:50px;object-fit:cover;border-radius:6px;border:1px solid #e2e8f0;cursor:pointer;" onclick="event.stopPropagation();viewPhoto(\'' + photos[j].id + '\')">';
+                }
+                if (photos.length > 3) {
+                    html += '<div style="width:50px;height:50px;background:#e2e8f0;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#718096;">+' + (photos.length - 3) + '</div>';
+                }
+                html += '</div>';
+            }
+            html += '</div>';
+        }
+    }
+    html += '</div></div>';
+    document.body.insertAdjacentHTML('beforeend', html);
+}
+
+// ============================================================
+// 51. 카카오 챗봇 전송
+// ============================================================
+async function sendToKakaoChatbot(record) {
+    let chatbotKey = settings.kakaoChatbotKey;
+    let chatbotUserId = settings.kakaoChatbotUserId;
+
+    if (!chatbotKey || !chatbotUserId) {
+        showTabStatus('tab-work', '⚠️ 카카오 챗봇 미설정 (설정 탭에서 입력)', 'warning');
+        return false;
+    }
+
+    try {
+        let message = '📋 작업 기록
+';
+        message += '━━━━━━━━━━━━━━
+';
+        message += '📍 현장: ' + record.placeName + '
+';
+        if (record.camera) message += '📷 카메라: ' + record.camera + '
+';
+        message += '👤 작업자: ' + (record.worker || '미설정') + '
+';
+        message += '📅 일시: ' + record.date + ' ' + (record.time || '') + '
+';
+        if (record.content) {
+            message += '📝 처리내용:
+' + record.content + '
+';
+        }
+        message += '━━━━━━━━━━━━━━';
+
+        let response = await fetch('https://api.kakaocorp.com/v1/chatbot/message/send', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + chatbotKey,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                user_id: chatbotUserId,
+                content: message
+            })
+        });
+
+        if (!response.ok) throw new Error('전송 실패: ' + response.status);
+
+        // 사진 전송
+        let photos = await getPhotosByWorkId(record.id);
+        if (photos.length > 0) {
+            for (let i = 0; i < photos.length; i++) {
+                let blob = await (await fetch(photos[i].dataUrl)).blob();
+                let formData = new FormData();
+                formData.append('image', blob, photos[i].fileName);
+                formData.append('user_id', chatbotUserId);
+                await fetch('https://api.kakaocorp.com/v1/chatbot/message/image', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + chatbotKey },
+                    body: formData
+                });
+            }
+        }
+
+        showTabStatus('tab-work', '✅ 카카오톡 챗봇 전송 완료', 'ok');
+        return true;
+    } catch (error) {
+        showTabStatus('tab-work', '❌ 챗봇 전송 실패: ' + error.message, 'error');
+        return false;
+    }
+}
+
+// ============================================================
+// 52. 사진 내보내기 (로컬 서버)
+// ============================================================
+async function exportPhotosToServer() {
+    let serverUrl = document.getElementById('photoServerUrl') ? document.getElementById('photoServerUrl').value.trim() : '';
+    if (!serverUrl) {
+        showTabStatus('tab-work', '⚠️ 서버 주소를 입력하세요 (예: http://192.168.1.100:3000)', 'warning');
+        return;
+    }
+
+    let allPhotos = await getAllPhotos();
+    if (allPhotos.length === 0) {
+        showTabStatus('tab-work', '📷 내보낼 사진이 없습니다', 'warning');
+        return;
+    }
+
+    let work = currentWork || loadWorkFromLocalStorage();
+    let total = allPhotos.length;
+    let success = 0;
+    let fail = 0;
+
+    showTabStatus('tab-work', '📤 사진 전송 중... (0/' + total + ')', 'info');
+
+    for (let i = 0; i < allPhotos.length; i++) {
+        let photo = allPhotos[i];
+        let record = work.workHistory.find(function(w) { return w.id === photo.workId; });
+        if (!record) { fail++; continue; }
+
+        // ★ 폴더명: 현장명(카메라번호)
+        let folderName = record.placeName + (record.camera ? '(' + record.camera + ')' : '');
+
+        try {
+            let blob = await (await fetch(photo.dataUrl)).blob();
+            let formData = new FormData();
+            formData.append('photo', blob, photo.fileName);
+            formData.append('folder', folderName);
+            formData.append('date', record.date);
+
+            let uploadResponse = await fetch(serverUrl + '/upload', {
+                method: 'POST',
+                body: formData
+            });
+            if (uploadResponse.ok) success++;
+            else fail++;
+        } catch (error) {
+            fail++;
+        }
+
+        if ((i + 1) % 5 === 0 || i === total - 1) {
+            showTabStatus('tab-work', '📤 사진 전송 중... (' + (i + 1) + '/' + total + ')', 'info');
+        }
+    }
+
+    if (fail === 0) {
+        showTabStatus('tab-work', '✅ 사진 ' + success + '개 전송 완료!', 'ok');
+    } else {
+        showTabStatus('tab-work', '⚠️ 완료: 성공 ' + success + '개, 실패 ' + fail + '개', 'warning');
+    }
 }
 window.switchTab = switchTab;
