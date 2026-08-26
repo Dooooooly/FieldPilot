@@ -249,7 +249,7 @@ function loadSettings() {
             settings.kakaoJsKey = decodeKey(parsed.kakaoJsKey || '');
             settings.kakaoRestKey = decodeKey(parsed.kakaoRestKey || '');
 settings.kakaoChatbotKey = decodeKey(parsed.kakaoChatbotKey || '');
-settings.kakaoChatbotUserId = decodeKey(parsed.kakaoChatbotUserId || '');
+settings.kakaoChatbotRoomId = decodeKey(parsed.kakaoChatbotRoomId || '');
         } catch(e) {
             console.warn('⚠️ 설정 복원 오류, 기본값으로 초기화합니다.', e);
             settings.githubToken = '';
@@ -308,8 +308,9 @@ function saveSettings() {
         githubToken: encodeKey(settings.githubToken || ''),
         kakaoJsKey: encodeKey(settings.kakaoJsKey || ''),
         kakaoRestKey: encodeKey(settings.kakaoRestKey || ''),
-kakaoChatbotKey: encodeKey(settings.kakaoChatbotKey || ''),
-kakaoChatbotUserId: encodeKey(settings.kakaoChatbotUserId || '')
+        kakaoChatbotKey: encodeKey(settings.kakaoChatbotKey || ''),
+        kakaoChatbot
+
     };
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(encoded));
     updateSettingsStatus();
@@ -7474,60 +7475,62 @@ async function showPlaceHistory(placeName) {
 }
 
 // ============================================================
-// 51. 카카오 챗봇 전송
+// 51. 카카오 챗봇 전송 (그룹방 전송용으로 수정)
 // ============================================================
 async function sendToKakaoChatbot(record) {
     let chatbotKey = settings.kakaoChatbotKey;
-    let chatbotUserId = settings.kakaoChatbotUserId;
-
-    if (!chatbotKey || !chatbotUserId) {
-        showTabStatus('tab-work', '⚠️ 카카오 챗봇 미설정 (설정 탭에서 입력)', 'warning');
+    let roomId = settings.kakaoChatbotRoomId; // 🚨 user_id 대신 room_id 사용
+    
+    if (!chatbotKey || !roomId) {
+        showTabStatus('tab-work', '⚠️ 챗봇 Key와 방 ID(Room ID)를 설정해주세요.', 'warning');
         return false;
     }
-
+    
     try {
-    let message = '📋 작업 기록';
-    message += '━━━━━━━━━━━━━━';
-    message += '📍 현장: ' + record.placeName + '';
-    if (record.camera) message += '📷 카메라: ' + record.camera + '';
-    message += '👤 작업자: ' + (record.worker || '미설정') + '';
-    message += '📅 일시: ' + record.date + ' ' + (record.time || '') + '';
-    if (record.content) {
-        message += '📝 처리내용:' + record.content + '';
-    }
-    message += '━━━━━━━━━━━━━━';
+        let message = '📋 작업 기록\n';
+        message += '━━━━━━━━━━━━━━\n';
+        message += '📍 현장: ' + record.placeName + '\n';
+        if (record.camera) message += '📷 카메라: ' + record.camera + '\n';
+        message += '👤 작업자: ' + (record.worker || '미설정') + '\n';
+        message += '📅 일시: ' + record.date + ' ' + (record.time || '') + '\n';
+        if (record.content) {
+            message += '📝 처리내용:\n' + record.content + '\n';
+        }
+        message += '━━━━━━━━━━━━━━';
 
-        let response = await fetch('https://api.kakaocorp.com/v1/chatbot/message/send', {
+        let response = await fetch('https://api.kakao.work/v1/bots/send_message', { 
             method: 'POST',
             headers: {
-                'Authorization': 'Bearer ' + chatbotKey,
+                'Authorization': 'KakaoAK ' + chatbotKey,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                user_id: chatbotUserId,
-                content: message
+                room_id: roomId,
+                message: {
+                    text: message
+                }
             })
         });
-
+        
         if (!response.ok) throw new Error('전송 실패: ' + response.status);
-
-        // 사진 전송
+        
+        // 📷 사진 전송 (사진이 있는 경우)
         let photos = await getPhotosByWorkId(record.id);
         if (photos.length > 0) {
             for (let i = 0; i < photos.length; i++) {
                 let blob = await (await fetch(photos[i].dataUrl)).blob();
                 let formData = new FormData();
                 formData.append('image', blob, photos[i].fileName);
-                formData.append('user_id', chatbotUserId);
-                await fetch('https://api.kakaocorp.com/v1/chatbot/message/image', {
+                formData.append('room_id', roomId);
+                
+                await fetch('https://api.kakao.work/v1/bots/send_image', {
                     method: 'POST',
-                    headers: { 'Authorization': 'Bearer ' + chatbotKey },
+                    headers: { 'Authorization': 'KakaoAK ' + chatbotKey },
                     body: formData
                 });
             }
         }
-
-        showTabStatus('tab-work', '✅ 카카오톡 챗봇 전송 완료', 'ok');
+        showTabStatus('tab-work', '✅ 단톡방으로 전송 완료!', 'ok');
         return true;
     } catch (error) {
         showTabStatus('tab-work', '❌ 챗봇 전송 실패: ' + error.message, 'error');
@@ -7563,7 +7566,6 @@ async function exportPhotosToServer() {
         let record = work.workHistory.find(function(w) { return w.id === photo.workId; });
         if (!record) { fail++; continue; }
 
-        // ★ 폴더명: 현장명(카메라번호)
         let folderName = record.placeName + (record.camera ? '(' + record.camera + ')' : '');
 
         try {
@@ -7594,10 +7596,13 @@ async function exportPhotosToServer() {
         showTabStatus('tab-work', '⚠️ 완료: 성공 ' + success + '개, 실패 ' + fail + '개', 'warning');
     }
 }
-// 카카오 챗봇 설정 저장
+
+// ============================================================
+// 카카오 챗봇 설정 저장 및 테스트 (Room ID에 맞게 수정)
+// ============================================================
 function saveKakaoChatbot() {
     settings.kakaoChatbotKey = document.getElementById('kakaoChatbotKey').value.trim();
-    settings.kakaoChatbotUserId = document.getElementById('kakaoChatbotUserId').value.trim();
+    settings.kakaoChatbotRoomId = document.getElementById('kakaoChatbotRoomId').value.trim(); // 🚨 RoomId로 변경
     saveSettings();
     updateKakaoChatbotStatus();
     showTabStatus('tab-settings', '✅ 카카오 챗봇 설정 저장됨', 'ok');
@@ -7606,7 +7611,7 @@ function saveKakaoChatbot() {
 function updateKakaoChatbotStatus() {
     let el = document.getElementById('kakaoChatbotStatus');
     if (!el) return;
-    if (settings.kakaoChatbotKey && settings.kakaoChatbotUserId) {
+    if (settings.kakaoChatbotKey && settings.kakaoChatbotRoomId) {
         el.textContent = '✅ 챗봇 설정됨';
         el.className = 'badge badge-ok';
     } else {
@@ -7617,22 +7622,22 @@ function updateKakaoChatbotStatus() {
 
 async function testKakaoChatbot() {
     let key = document.getElementById('kakaoChatbotKey').value.trim();
-    let userId = document.getElementById('kakaoChatbotUserId').value.trim();
-    if (!key || !userId) {
-        showTabStatus('tab-settings', '⚠️ 챗봇 키와 사용자 ID를 입력하세요', 'warning');
+    let roomId = document.getElementById('kakaoChatbotRoomId').value.trim(); // 🚨 RoomId로 변경
+    if (!key || !roomId) {
+        showTabStatus('tab-settings', '⚠️ 챗봇 키와 방 ID(Room ID)를 입력하세요', 'warning');
         return;
     }
     try {
-        let response = await fetch('https://api.kakaocorp.com/v1/chatbot/message/send', {
+        let response = await fetch('https://api.kakao.work/v1/bots/send_message', { // 🚨 테스트도 그룹방 API로
             method: 'POST',
             headers: {
-                'Authorization': 'Bearer ' + key,
+                'Authorization': 'KakaoAK ' + key,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ user_id: userId, content: '✅ 경로 최적화 앱 테스트 메시지입니다.' })
+            body: JSON.stringify({ room_id: roomId, message: { text: '✅ 경로 최적화 앱 테스트 메시지입니다.' } })
         });
         if (response.ok) {
-            showTabStatus('tab-settings', '✅ 챗봇 테스트 성공! 카카오톡 확인', 'ok');
+            showTabStatus('tab-settings', '✅ 챗봇 테스트 성공! 단톡방 확인', 'ok');
         } else {
             showTabStatus('tab-settings', '❌ 챗봇 테스트 실패: ' + response.status, 'error');
         }
