@@ -248,6 +248,8 @@ function loadSettings() {
             settings.githubToken = decodeKey(parsed.githubToken || '');
             settings.kakaoJsKey = decodeKey(parsed.kakaoJsKey || '');
             settings.kakaoRestKey = decodeKey(parsed.kakaoRestKey || '');
+settings.kakaoChatbotKey = decodeKey(parsed.kakaoChatbotKey || '');
+settings.kakaoChatbotUserId = decodeKey(parsed.kakaoChatbotUserId || '');
         } catch(e) {
             console.warn('⚠️ 설정 복원 오류, 기본값으로 초기화합니다.', e);
             settings.githubToken = '';
@@ -305,7 +307,9 @@ function saveSettings() {
     let encoded = {
         githubToken: encodeKey(settings.githubToken || ''),
         kakaoJsKey: encodeKey(settings.kakaoJsKey || ''),
-        kakaoRestKey: encodeKey(settings.kakaoRestKey || '')
+        kakaoRestKey: encodeKey(settings.kakaoRestKey || ''),
+kakaoChatbotKey: encodeKey(settings.kakaoChatbotKey || ''),
+kakaoChatbotUserId: encodeKey(settings.kakaoChatbotUserId || '')
     };
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(encoded));
     updateSettingsStatus();
@@ -7596,6 +7600,52 @@ async function exportPhotosToServer() {
         showTabStatus('tab-work', '✅ 사진 ' + success + '개 전송 완료!', 'ok');
     } else {
         showTabStatus('tab-work', '⚠️ 완료: 성공 ' + success + '개, 실패 ' + fail + '개', 'warning');
+    }
+}
+// 카카오 챗봇 설정 저장
+function saveKakaoChatbot() {
+    settings.kakaoChatbotKey = document.getElementById('kakaoChatbotKey').value.trim();
+    settings.kakaoChatbotUserId = document.getElementById('kakaoChatbotUserId').value.trim();
+    saveSettings();
+    updateKakaoChatbotStatus();
+    showTabStatus('tab-settings', '✅ 카카오 챗봇 설정 저장됨', 'ok');
+}
+
+function updateKakaoChatbotStatus() {
+    let el = document.getElementById('kakaoChatbotStatus');
+    if (!el) return;
+    if (settings.kakaoChatbotKey && settings.kakaoChatbotUserId) {
+        el.textContent = '✅ 챗봇 설정됨';
+        el.className = 'badge badge-ok';
+    } else {
+        el.textContent = '⏳ 미설정';
+        el.className = 'badge badge-wait';
+    }
+}
+
+async function testKakaoChatbot() {
+    let key = document.getElementById('kakaoChatbotKey').value.trim();
+    let userId = document.getElementById('kakaoChatbotUserId').value.trim();
+    if (!key || !userId) {
+        showTabStatus('tab-settings', '⚠️ 챗봇 키와 사용자 ID를 입력하세요', 'warning');
+        return;
+    }
+    try {
+        let response = await fetch('https://api.kakaocorp.com/v1/chatbot/message/send', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + key,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ user_id: userId, content: '✅ 경로 최적화 앱 테스트 메시지입니다.' })
+        });
+        if (response.ok) {
+            showTabStatus('tab-settings', '✅ 챗봇 테스트 성공! 카카오톡 확인', 'ok');
+        } else {
+            showTabStatus('tab-settings', '❌ 챗봇 테스트 실패: ' + response.status, 'error');
+        }
+    } catch (error) {
+        showTabStatus('tab-settings', '❌ 챗봇 연결 실패: ' + error.message, 'error');
     }
 }
 window.switchTab = switchTab;
