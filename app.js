@@ -10,6 +10,12 @@ const OPTIMIZE_MODE_KEY = 'optimizeMode';
 const PRESETS_KEY = 'route_presets';
 const ROUTE_API_KEY = 'routeApi';
 
+// 현장처리 서버 주소는 GitHub의 server-config.js에서만 관리합니다.
+function getFieldServerUrl() {
+    const configured = (window.FIELD_SERVER_URL || '').trim();
+    return (configured || 'http://localhost:3000').replace(/\/$/, '');
+}
+
 // --- 지역별 중심 좌표 ---
 const REGION_CENTERS = {
     '강남구': { lat: 37.5172, lng: 127.0473 },
@@ -248,7 +254,6 @@ function loadSettings() {
             settings.githubToken = decodeKey(parsed.githubToken || '');
             settings.kakaoJsKey = decodeKey(parsed.kakaoJsKey || '');
             settings.kakaoRestKey = decodeKey(parsed.kakaoRestKey || '');
-            settings.photoServerUrl = parsed.photoServerUrl || 'http://localhost:3000';
         } catch(e) {
             console.warn('⚠️ 설정 복원 오류, 기본값으로 초기화합니다.', e);
             settings.githubToken = '';
@@ -263,12 +268,12 @@ function loadSettings() {
     document.getElementById('githubToken').value = settings.githubToken || '';
     document.getElementById('kakaoJsKey').value = settings.kakaoJsKey || '';
     document.getElementById('kakaoRestKey').value = settings.kakaoRestKey || '';
-    let ps = document.getElementById('photoServerUrlSetting');
-    if (ps) ps.value = settings.photoServerUrl || 'http://localhost:3000';
         let wn = document.getElementById('workerName');
 if (wn) wn.value = workerName;
 updateWorkerNameStatus();
     updateSettingsStatus();
+    let serverDisplay = document.getElementById('fieldServerUrlDisplay');
+    if (serverDisplay) serverDisplay.textContent = getFieldServerUrl();
     setTimeout(updatePhotoServerStatus, 300);
 }
 
@@ -309,8 +314,7 @@ function saveSettings() {
     let encoded = {
         githubToken: encodeKey(settings.githubToken || ''),
         kakaoJsKey: encodeKey(settings.kakaoJsKey || ''),
-        kakaoRestKey: encodeKey(settings.kakaoRestKey || ''),
-        photoServerUrl: settings.photoServerUrl || 'http://localhost:3000'
+        kakaoRestKey: encodeKey(settings.kakaoRestKey || '')
     };
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(encoded));
     updateSettingsStatus();
@@ -7308,7 +7312,7 @@ async function handleWorkPhotoUpload(event) {
             localSaved++;
 
             // 노트북 서버에도 즉시 저장: photos/<현장명>/<파일명>
-            let serverUrl = (settings.photoServerUrl || 'http://localhost:3000').replace(/\/$/, '');
+            let serverUrl = getFieldServerUrl();
             try {
                 let response = await fetch(serverUrl + '/api/photos', {
                     method: 'POST',
@@ -7528,7 +7532,7 @@ async function showPlaceHistory(placeName) {
 // 51. 카카오워크/현장처리 서버 연동
 // ============================================================
 async function sendWorkRecordToServer(record) {
-    let serverUrl = (settings.photoServerUrl || 'http://localhost:3000').replace(/\/$/, '');
+    let serverUrl = getFieldServerUrl();
     try {
         let response = await fetch(serverUrl + '/api/records/send-group', {
             method: 'POST',
@@ -7547,16 +7551,17 @@ async function sendWorkRecordToServer(record) {
 }
 
 async function testPhotoServer() {
-    let serverUrl = (document.getElementById('photoServerUrlSetting')?.value || settings.photoServerUrl || 'http://localhost:3000').trim().replace(/\/$/, '');
-    settings.photoServerUrl = serverUrl;
-    saveSettings();
+    let serverUrl = getFieldServerUrl();
     let badge = document.getElementById('photoServerStatus');
     if (badge) { badge.textContent = '⏳ 서버 확인 중...'; badge.className = 'badge badge-wait'; }
     try {
         let response = await fetch(serverUrl + '/api/health', { cache: 'no-store' });
         let data = await response.json();
         if (!response.ok || !data.ok) throw new Error(data.error || '서버 응답 오류');
-        if (badge) { badge.textContent = data.appKeyConfigured ? '🟢 서버 연결됨 · Bot 설정됨' : '🟡 서버 연결됨 · Bot Key 미설정'; badge.className = 'badge ' + (data.appKeyConfigured ? 'badge-ok' : 'badge-wait'); }
+        if (badge) {
+            badge.textContent = data.appKeyConfigured ? '🟢 서버 연결됨 · Bot 설정됨' : '🟡 서버 연결됨 · Bot Key 미설정';
+            badge.className = 'badge ' + (data.appKeyConfigured ? 'badge-ok' : 'badge-wait');
+        }
         showTabStatus('tab-settings', data.appKeyConfigured ? '✅ 현장처리 서버 연결됨' : '⚠️ 서버 연결됨. 서버 config.json의 Bot App Key를 확인하세요.', data.appKeyConfigured ? 'ok' : 'warning');
         return true;
     } catch (error) {
@@ -7567,32 +7572,30 @@ async function testPhotoServer() {
 }
 
 async function updatePhotoServerStatus() {
-    let input = document.getElementById('photoServerUrlSetting');
-    let url = (input?.value || settings.photoServerUrl || 'http://localhost:3000').trim().replace(/\/$/, '');
-    if (!url) return;
+    let url = getFieldServerUrl();
+    let badge = document.getElementById('photoServerStatus');
+    if (!url || !badge) return;
     try {
         let response = await fetch(url + '/api/health', { cache: 'no-store' });
         let data = await response.json();
-        let badge = document.getElementById('photoServerStatus');
-        if (badge && response.ok && data.ok) {
+        if (response.ok && data.ok) {
             badge.textContent = data.appKeyConfigured ? '🟢 서버 연결됨 · Bot 설정됨' : '🟡 서버 연결됨 · Bot Key 미설정';
             badge.className = 'badge ' + (data.appKeyConfigured ? 'badge-ok' : 'badge-wait');
+        } else {
+            badge.textContent = '🔴 서버 연결 실패';
+            badge.className = 'badge badge-fail';
         }
-    } catch (_) {}
-}
-
-function savePhotoServerSettings() {
-    let url = document.getElementById('photoServerUrlSetting');
-    settings.photoServerUrl = (url ? url.value.trim() : '') || 'http://localhost:3000';
-    saveSettings();
-    showTabStatus('tab-settings', '✅ 현장처리 서버 설정 저장됨', 'ok');
+    } catch (_) {
+        badge.textContent = '🔴 서버 연결 실패';
+        badge.className = 'badge badge-fail';
+    }
 }
 
 // ============================================================
 // 52. 사진 내보내기 → 카카오워크 1:1
 // ============================================================
 async function openKakaoWorkExportModal() {
-    let serverUrl = (settings.photoServerUrl || 'http://localhost:3000').replace(/\/$/, '');
+    let serverUrl = getFieldServerUrl();
     let existing = document.getElementById('kakaoWorkExportModal');
     if (existing) existing.remove();
 
@@ -7638,7 +7641,7 @@ async function loadKakaoWorkExportPhotos() {
     let box = document.getElementById('kwExportPhotos');
     if (!box) return;
     if (!site) { box.innerHTML = '현장을 선택하세요.'; return; }
-    let serverUrl = (settings.photoServerUrl || 'http://localhost:3000').replace(/\/$/, '');
+    let serverUrl = getFieldServerUrl();
     box.innerHTML = '⏳ 사진 불러오는 중...';
     try {
         let response = await fetch(serverUrl + '/api/photos?region=' + encodeURIComponent(currentRegion) + '&siteName=' + encodeURIComponent(site));
@@ -7661,7 +7664,7 @@ async function searchKakaoWorkExportWorkers() {
     let keyword = document.getElementById('kwExportWorkerSearch')?.value.trim() || '';
     let box = document.getElementById('kwExportWorkers');
     if (!box) return;
-    let serverUrl = (settings.photoServerUrl || 'http://localhost:3000').replace(/\/$/, '');
+    let serverUrl = getFieldServerUrl();
     box.innerHTML = '⏳ 검색 중...';
     try {
         let response = await fetch(serverUrl + '/api/users?q=' + encodeURIComponent(keyword));
@@ -7686,7 +7689,7 @@ async function sendKakaoWorkExport() {
     if (!site) { showTabStatus('tab-work', '⚠️ 현장을 선택하세요.', 'warning'); return; }
     if (!selected.length) { showTabStatus('tab-work', '⚠️ 보낼 사진을 선택하세요.', 'warning'); return; }
     if (!worker) { showTabStatus('tab-work', '⚠️ 작업자를 선택하세요.', 'warning'); return; }
-    let serverUrl = (settings.photoServerUrl || 'http://localhost:3000').replace(/\/$/, '');
+    let serverUrl = getFieldServerUrl();
     let button = document.querySelector('#kakaoWorkExportModal .btn-primary');
     if (button) { button.disabled = true; button.textContent = '⏳ 전송 중...'; }
     try {

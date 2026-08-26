@@ -874,15 +874,11 @@ body {
             </div>
             <!-- ★ 카카오워크 현장처리 서버 설정 -->
             <div class="setting-group">
-                <h4>🤖 현장처리 서버 연결</h4>
-                <div style="font-size:11px;color:#718096;margin-bottom:8px;">카카오워크 Bot App Key는 서버에만 보관합니다. 직원 PC에는 App Key를 저장하지 않습니다.</div>
-                <div class="row">
-                    <label for="photoServerUrlSetting">서버 주소</label>
-                    <input type="text" id="photoServerUrlSetting" placeholder="http://localhost:3000">
-                </div>
-<div class="row" style="margin-top:6px;">
-                    <button class="btn btn-primary btn-sm" onclick="savePhotoServerSettings()">저장</button>
-                    <button class="btn btn-outline btn-sm" onclick="testPhotoServer()">연결 테스트</button>
+                <h4>🤖 현장처리 서버</h4>
+                <div style="font-size:11px;color:#718096;line-height:1.5;margin-bottom:8px;">서버 주소는 GitHub의 <strong>server-config.js</strong>에서 관리합니다.<br>직원은 서버 주소나 Bot App Key를 직접 입력하지 않습니다.</div>
+                <div style="font-size:12px;color:#4a5568;background:#f7fafc;border:1px solid #e2e8f0;border-radius:8px;padding:9px;word-break:break-all;">현재 서버: <strong id="fieldServerUrlDisplay">확인 중...</strong></div>
+                <div class="row" style="margin-top:6px;">
+                    <button class="btn btn-primary btn-sm" onclick="testPhotoServer()" style="width:100%;">🔄 서버 연결 확인</button>
                 </div>
                 <div id="photoServerStatus" class="badge badge-wait" style="margin-top:4px;">⏳ 서버 미확인</div>
             </div>
@@ -1549,6 +1545,7 @@ body {
         </button>
     </div>
 
+    <script src="server-config.js"></script>
     <script src="app.js" defer></script>
 </body>
 </html>
