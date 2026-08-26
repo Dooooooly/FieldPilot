@@ -7508,6 +7508,103 @@ async function kakaoWorkJsonRequest(url, key, body) {
     return data;
 }
 
+async function kakaoWorkGetRequest(url, key) {
+    let response = await fetch(url, {
+        method: 'GET',
+        headers: getKakaoWorkHeaders(key)
+    });
+    let text = await response.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch (e) {}
+    if (!response.ok) {
+        let detail = data && data.error ? (data.error.code || data.error.message || '') : text;
+        throw new Error('HTTP ' + response.status + (detail ? ' - ' + detail : ''));
+    }
+    if (data && data.success === false) {
+        let detail = data.error ? (data.error.code || data.error.message || '알 수 없는 오류') : '알 수 없는 오류';
+        throw new Error(detail);
+    }
+    return data;
+}
+
+async function getKakaoWorkConversations(key) {
+    let all = [];
+    let cursor = '';
+    let guard = 0;
+    do {
+        let url = 'https://api.kakaowork.com/v1/conversations.list?type=all&limit=100';
+        if (cursor) url += '&cursor=' + encodeURIComponent(cursor);
+        let data = await kakaoWorkGetRequest(url, key);
+        if (Array.isArray(data.conversations)) all = all.concat(data.conversations);
+        cursor = data.cursor || '';
+        guard++;
+    } while (cursor && guard < 20);
+    return all;
+}
+
+function renderKakaoWorkRoomList(rooms) {
+    let select = document.getElementById('kakaoChatbotRoomSelect');
+    if (!select) return;
+    select.innerHTML = '<option value="">📂 그룹방을 선택하세요</option>';
+    let groups = (rooms || []).filter(function(room) { return room && room.type === 'group'; });
+    groups.sort(function(a, b) { return String(a.name || '').localeCompare(String(b.name || ''), 'ko'); });
+    groups.forEach(function(room) {
+        let option = document.createElement('option');
+        option.value = String(room.id);
+        option.textContent = (room.name || '(이름 없음)') + ' · ' + (room.users_count || 0) + '명 · ID ' + room.id;
+        option.dataset.roomName = room.name || '';
+        select.appendChild(option);
+    });
+    let saved = settings.kakaoChatbotRoomId || '';
+    if (saved && groups.some(function(r) { return String(r.id) === String(saved); })) select.value = String(saved);
+    updateKakaoRoomSelectionStatus();
+    return groups;
+}
+
+async function loadKakaoWorkRooms() {
+    let keyEl = document.getElementById('kakaoChatbotKey');
+    let key = keyEl ? keyEl.value.trim() : (settings.kakaoChatbotKey || '');
+    if (!key) {
+        showTabStatus('tab-settings', '⚠️ 먼저 Bot App Key를 입력하세요.', 'warning');
+        return;
+    }
+    let btn = document.getElementById('kakaoChatbotLoadRoomsBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ 방 불러오는 중...'; }
+    try {
+        let rooms = await getKakaoWorkConversations(key);
+        renderKakaoWorkRoomList(rooms);
+        let groups = rooms.filter(function(room) { return room && room.type === 'group'; });
+        let status = document.getElementById('kakaoChatbotRoomStatus');
+        if (status) status.textContent = '✅ 그룹방 ' + groups.length + '개 불러옴';
+        showTabStatus('tab-settings', '✅ 카카오워크 방 목록 불러오기 완료 (' + groups.length + '개 그룹방)', 'ok');
+    } catch (error) {
+        console.error('Kakao Work room list error:', error);
+        showTabStatus('tab-settings', '❌ 방 목록 조회 실패: ' + error.message, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '🔄 방 목록 불러오기'; }
+    }
+}
+
+function updateKakaoRoomSelectionStatus() {
+    let select = document.getElementById('kakaoChatbotRoomSelect');
+    let hidden = document.getElementById('kakaoChatbotRoomId');
+    let label = document.getElementById('kakaoChatbotSelectedRoom');
+    if (!select) return;
+    let id = select.value || '';
+    if (hidden) hidden.value = id;
+    if (id) {
+        settings.kakaoChatbotRoomId = id;
+        let opt = select.options[select.selectedIndex];
+        if (label) label.textContent = '📌 선택된 방: ' + (opt ? opt.textContent : id);
+    } else {
+        if (label) label.textContent = '📌 선택된 방 없음';
+    }
+}
+
+function selectKakaoWorkRoom() {
+    updateKakaoRoomSelectionStatus();
+}
+
 async function sendKakaoWorkText(conversationId, key, text) {
     return kakaoWorkJsonRequest('https://api.kakaowork.com/v1/messages.send', key, {
         conversation_id: String(conversationId),
@@ -7668,9 +7765,12 @@ async function exportPhotosToServer() {
 // ============================================================
 function saveKakaoChatbot() {
     settings.kakaoChatbotKey = document.getElementById('kakaoChatbotKey').value.trim();
-    settings.kakaoChatbotRoomId = document.getElementById('kakaoChatbotRoomId').value.trim();
+    settings.kakaoChatbotRoomId = document.getElementById('kakaoChatbotRoomSelect') ? document.getElementById('kakaoChatbotRoomSelect').value.trim() : document.getElementById('kakaoChatbotRoomId').value.trim();
+    let hidden = document.getElementById('kakaoChatbotRoomId');
+    if (hidden) hidden.value = settings.kakaoChatbotRoomId;
     saveSettings();
     updateKakaoChatbotStatus();
+    updateKakaoRoomSelectionStatus();
     showTabStatus('tab-settings', '✅ 카카오워크 Bot 설정 저장됨', 'ok');
 }
 
@@ -7688,16 +7788,29 @@ function updateKakaoChatbotStatus() {
 
 async function testKakaoChatbot() {
     let key = document.getElementById('kakaoChatbotKey').value.trim();
-    let roomId = document.getElementById('kakaoChatbotRoomId').value.trim();
+    let roomId = document.getElementById('kakaoChatbotRoomSelect') ? document.getElementById('kakaoChatbotRoomSelect').value.trim() : document.getElementById('kakaoChatbotRoomId').value.trim();
+    let photoInput = document.getElementById('kakaoChatbotTestPhoto');
     if (!key || !roomId) {
-        showTabStatus('tab-settings', '⚠️ App Key와 그룹방 Conversation ID를 입력하세요.', 'warning');
+        showTabStatus('tab-settings', '⚠️ App Key와 그룹방을 선택하세요.', 'warning');
         return;
     }
     try {
-        await sendKakaoWorkText(roomId, key, '✅ 경로 최적화 앱 카카오워크 테스트 메시지입니다.\n시간: ' + new Date().toLocaleString('ko-KR'));
-        showTabStatus('tab-settings', '✅ 카카오워크 그룹방 테스트 전송 성공', 'ok');
-        document.getElementById('kakaoChatbotStatus').textContent = '✅ 테스트 성공';
-        document.getElementById('kakaoChatbotStatus').className = 'badge badge-ok';
+        let testText = '✅ 경로 최적화 앱 카카오워크 테스트 메시지\n시간: ' + new Date().toLocaleString('ko-KR');
+        await sendKakaoWorkText(roomId, key, testText);
+        let files = photoInput && photoInput.files ? Array.from(photoInput.files) : [];
+        if (files.length > 0) {
+            let photos = [];
+            for (let i = 0; i < files.length; i++) {
+                if (files[i].size > 15 * 1024 * 1024) throw new Error('테스트 사진 ' + files[i].name + '이 15MB를 초과합니다.');
+                photos.push({ dataUrl: URL.createObjectURL(files[i]), fileName: files[i].name });
+            }
+            try { await sendKakaoWorkImages(roomId, key, photos); }
+            finally { photos.forEach(function(p) { try { URL.revokeObjectURL(p.dataUrl); } catch(e) {} }); }
+        }
+        showTabStatus('tab-settings', '✅ 테스트 전송 성공' + (files.length ? ' (메시지 + 사진 ' + files.length + '장)' : ' (메시지)'), 'ok');
+        let status = document.getElementById('kakaoChatbotStatus');
+        if (status) { status.textContent = '✅ 테스트 성공'; status.className = 'badge badge-ok'; }
+        if (photoInput) photoInput.value = '';
     } catch (error) {
         console.error('Kakao Work test error:', error);
         showTabStatus('tab-settings', '❌ 테스트 실패: ' + error.message, 'error');

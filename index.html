@@ -875,13 +875,23 @@ body {
         <input type="password" id="kakaoChatbotKey" autocomplete="off" placeholder="카카오워크 Bot App Key">
     </div>
     <div class="row">
-        <label>방 ID</label>
-        <input type="text" id="kakaoChatbotRoomId" inputmode="numeric" placeholder="그룹방 Conversation ID">
+        <label>그룹방</label>
+        <select id="kakaoChatbotRoomSelect" class="input-field" onchange="selectKakaoWorkRoom()">
+            <option value="">📂 먼저 방 목록을 불러오세요</option>
+        </select>
     </div>
-    <div class="row">
-        <button class="btn btn-primary btn-sm" onclick="saveKakaoChatbot()">저장</button>
-        <button class="btn btn-outline btn-sm" onclick="testKakaoChatbot()">테스트 전송</button>
+    <input type="hidden" id="kakaoChatbotRoomId">
+    <div class="row" style="margin-top:4px;">
+        <button id="kakaoChatbotLoadRoomsBtn" class="btn btn-outline btn-sm" onclick="loadKakaoWorkRooms()">🔄 방 목록 불러오기</button>
+        <button class="btn btn-primary btn-sm" onclick="saveKakaoChatbot()">💾 저장</button>
+        <button class="btn btn-outline btn-sm" onclick="testKakaoChatbot()">📨 테스트 전송</button>
     </div>
+    <div style="margin-top:6px;">
+        <label for="kakaoChatbotTestPhoto" style="font-size:11px;color:#718096;">📸 테스트 사진(선택)</label>
+        <input type="file" id="kakaoChatbotTestPhoto" accept="image/png,image/jpeg,image/gif,image/bmp" multiple style="width:100%;padding:6px 0;font-size:11px;">
+    </div>
+    <div id="kakaoChatbotSelectedRoom" style="font-size:11px;color:#718096;margin-top:4px;">📌 선택된 방 없음</div>
+    <div id="kakaoChatbotRoomStatus" style="font-size:11px;color:#718096;margin-top:2px;"></div>
     <div id="kakaoChatbotStatus" class="badge badge-wait">⏳ 미설정</div>
 </div>
 
