@@ -1,1 +1,1 @@
-window.FIELD_SERVER_URL = 'https://surprise-cia-anybody-strip.trycloudflare.com';
+window.FIELD_SERVER_URL = 'https://adapter-lace-morrison-there.trycloudflare.com';
