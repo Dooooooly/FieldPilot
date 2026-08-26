@@ -4460,14 +4460,35 @@ async function showWeekWeather() {
 // ============================================================
 // 29. Service Worker
 // ============================================================
-function registerServiceWorker() {
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/route-optimizer-pwa/sw.js')
-            .then(function(reg) {})
-            .catch(function(err) {});
+function getAppBasePath() {
+    // GitHub Pages: https://아이디.github.io/FieldPilot/
+    // 현재 페이지의 실제 경로를 기준으로 자동 결정
+    const path = window.location.pathname;
+
+    if (path.endsWith('/')) {
+        return path;
     }
+
+    return path.substring(0, path.lastIndexOf('/') + 1);
 }
 
+function getServiceWorkerUrl() {
+    return getAppBasePath() + 'sw.js';
+}
+
+function registerServiceWorker() {
+    if (!('serviceWorker' in navigator)) return;
+
+    const swUrl = getServiceWorkerUrl();
+
+    navigator.serviceWorker.register(swUrl)
+        .then(function(registration) {
+            console.log('Service Worker 등록 완료:', swUrl);
+        })
+        .catch(function(err) {
+            console.error('Service Worker 등록 실패:', err);
+        });
+}
 function displayAppVersion() {
     let statusEl = document.getElementById('updateStatus');
     if (!statusEl) return;
