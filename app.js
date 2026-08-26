@@ -269,6 +269,7 @@ function loadSettings() {
 if (wn) wn.value = workerName;
 updateWorkerNameStatus();
     updateSettingsStatus();
+    setTimeout(updatePhotoServerStatus, 300);
 }
 
 // ============================================================
@@ -6698,7 +6699,7 @@ function showWorkDateDetail(dateStr) {
     } else {
         for (let i = 0; i < dayRecords.length; i++) {
             let r = dayRecords[i];
-            let hasContent = r.category && r.content;
+            let hasContent = String(r.content || '').trim().length > 0;
             let timeDisplay = r.time || '--:--';
             html += '<div onclick="openWorkEditModal(\'' + r.id + '\')" style="background:#f7fafc;border-radius:8px;padding:10px;margin-bottom:6px;cursor:pointer;border-left:3px solid ' + (hasContent ? '#38a169' : '#e53e3e') + ';">';
             html += '<div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">';
@@ -7532,20 +7533,15 @@ async function sendWorkRecordToServer(record) {
         let response = await fetch(serverUrl + '/api/records/send-group', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                region: currentRegion || '',
-                record: record
-            })
+            body: JSON.stringify({ region: currentRegion || '', record: { ...record, region: currentRegion || '' } })
         });
         let data = await response.json().catch(function() { return {}; });
-        if (!response.ok) throw new Error(data.error || ('HTTP ' + response.status));
-        if (data.sent) {
-            showTabStatus('tab-work', '✅ 카카오워크 그룹방 전송 완료', 'ok');
-        }
+        if (!response.ok || data.sent !== true) throw new Error(data.error || data.reason || ('HTTP ' + response.status));
+        showTabStatus('tab-work', '✅ 카카오워크 그룹방 전송 완료', 'ok');
         return data;
     } catch (error) {
         console.warn('카카오워크 그룹방 자동 전송 실패:', error);
-        // 서버 미실행 상태에서는 저장 자체를 실패 처리하지 않음
+        showTabStatus('tab-work', '⚠️ 처리내역은 저장됐지만 카카오워크 전송 실패: ' + error.message, 'warning');
         return false;
     }
 }
@@ -7554,16 +7550,35 @@ async function testPhotoServer() {
     let serverUrl = (document.getElementById('photoServerUrlSetting')?.value || settings.photoServerUrl || 'http://localhost:3000').trim().replace(/\/$/, '');
     settings.photoServerUrl = serverUrl;
     saveSettings();
+    let badge = document.getElementById('photoServerStatus');
+    if (badge) { badge.textContent = '⏳ 서버 확인 중...'; badge.className = 'badge badge-wait'; }
     try {
-        let response = await fetch(serverUrl + '/api/health');
+        let response = await fetch(serverUrl + '/api/health', { cache: 'no-store' });
         let data = await response.json();
         if (!response.ok || !data.ok) throw new Error(data.error || '서버 응답 오류');
-        showTabStatus('tab-settings', '✅ 현장처리 서버 연결됨', 'ok');
+        if (badge) { badge.textContent = data.appKeyConfigured ? '🟢 서버 연결됨 · Bot 설정됨' : '🟡 서버 연결됨 · Bot Key 미설정'; badge.className = 'badge ' + (data.appKeyConfigured ? 'badge-ok' : 'badge-wait'); }
+        showTabStatus('tab-settings', data.appKeyConfigured ? '✅ 현장처리 서버 연결됨' : '⚠️ 서버 연결됨. 서버 config.json의 Bot App Key를 확인하세요.', data.appKeyConfigured ? 'ok' : 'warning');
         return true;
     } catch (error) {
+        if (badge) { badge.textContent = '🔴 서버 연결 실패'; badge.className = 'badge badge-fail'; }
         showTabStatus('tab-settings', '❌ 서버 연결 실패: ' + error.message, 'error');
         return false;
     }
+}
+
+async function updatePhotoServerStatus() {
+    let input = document.getElementById('photoServerUrlSetting');
+    let url = (input?.value || settings.photoServerUrl || 'http://localhost:3000').trim().replace(/\/$/, '');
+    if (!url) return;
+    try {
+        let response = await fetch(url + '/api/health', { cache: 'no-store' });
+        let data = await response.json();
+        let badge = document.getElementById('photoServerStatus');
+        if (badge && response.ok && data.ok) {
+            badge.textContent = data.appKeyConfigured ? '🟢 서버 연결됨 · Bot 설정됨' : '🟡 서버 연결됨 · Bot Key 미설정';
+            badge.className = 'badge ' + (data.appKeyConfigured ? 'badge-ok' : 'badge-wait');
+        }
+    } catch (_) {}
 }
 
 function savePhotoServerSettings() {
@@ -7581,9 +7596,9 @@ async function openKakaoWorkExportModal() {
     let existing = document.getElementById('kakaoWorkExportModal');
     if (existing) existing.remove();
 
-    let html = '<div id="kakaoWorkExportModal" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999999;display:flex;align-items:center;justify-content:center;padding:16px;" onclick="if(event.target===this)this.remove()">';
-    html += '<div style="background:#fff;border-radius:16px;width:100%;max-width:560px;max-height:88vh;overflow:auto;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.25)" onclick="event.stopPropagation()">';
-    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px"><h3 style="margin:0;font-size:17px">📤 카카오워크 1:1 내보내기</h3><button onclick="document.getElementById(\'kakaoWorkExportModal\').remove()" style="border:0;background:none;font-size:24px;color:#718096;cursor:pointer">×</button></div>';
+    let html = '<div id="kakaoWorkExportModal" class="modal-overlay active" style="z-index:999999" onclick="if(event.target===this)this.remove()">';
+    html += '<div class="modal kw-export-modal" onclick="event.stopPropagation()">';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px"><h3 style="margin:0">📤 카카오워크 1:1 내보내기</h3><button class="btn btn-outline btn-sm" onclick="document.getElementById(\'kakaoWorkExportModal\').remove()" style="min-width:36px;padding:4px 10px">×</button></div>';
     html += '<div id="kwExportBody" style="font-size:13px;color:#4a5568">⏳ 현장 목록을 불러오는 중...</div>';
     html += '</div></div>';
     document.body.insertAdjacentHTML('beforeend', html);
@@ -7607,14 +7622,14 @@ function renderKakaoWorkExportBody(sites) {
     sites.forEach(function(site) {
         options += '<option value="' + escapeHtml(site.name) + '">' + escapeHtml(site.name) + ' (' + site.count + '장)</option>';
     });
-    let html = '<div style="padding:8px 10px;background:#ebf8ff;border-radius:8px;margin-bottom:12px;color:#2b6cb0;font-weight:700">📍 현재 지역: ' + escapeHtml(currentRegion) + '</div>';
+    let html = '<div class="kw-export-current">📍 현재 지역: ' + escapeHtml(currentRegion) + '</div>';
     html += '<label style="font-weight:700;display:block;margin-bottom:5px">① 현장</label>';
-    html += '<select id="kwExportSite" onchange="loadKakaoWorkExportPhotos()" style="width:100%;padding:10px;border:2px solid #e2e8f0;border-radius:8px;margin-bottom:12px">' + options + '</select>';
+    html += '<select id="kwExportSite" class="kw-export-site" onchange="loadKakaoWorkExportPhotos()" style="margin-bottom:12px">' + options + '</select>';
     html += '<div id="kwExportPhotos" style="margin-bottom:14px">현장을 선택하세요.</div>';
     html += '<label style="font-weight:700;display:block;margin-bottom:5px">③ 작업자 검색</label>';
-    html += '<div style="display:flex;gap:6px;margin-bottom:8px"><input id="kwExportWorkerSearch" placeholder="작업자명 입력" style="flex:1;padding:10px;border:2px solid #e2e8f0;border-radius:8px"><button class="btn btn-outline btn-sm" onclick="searchKakaoWorkExportWorkers()">🔍 검색</button></div>';
+    html += '<div style="display:flex;gap:6px;margin-bottom:8px"><input id="kwExportWorkerSearch" class="modal input" placeholder="작업자명 입력" style="margin:0"><button class="btn btn-outline btn-sm" onclick="searchKakaoWorkExportWorkers()">🔍 검색</button></div>';
     html += '<div id="kwExportWorkers" style="margin-bottom:14px">작업자명을 검색하세요.</div>';
-    html += '<div style="font-size:11px;color:#718096;margin-bottom:12px">② 사진 선택 → ③ 작업자 선택 → 전송 순서입니다.</div>';
+    html += '<div class="kw-export-help">② 사진 선택 → ③ 작업자 선택 → 전송 순서입니다.</div>';
     html += '<button class="btn btn-primary btn-sm" onclick="sendKakaoWorkExport()" style="width:100%;padding:10px">📨 선택 사진을 1:1로 전송</button>';
     body.innerHTML = html;
 }
@@ -7631,9 +7646,9 @@ async function loadKakaoWorkExportPhotos() {
         if (!response.ok) throw new Error(data.error || ('HTTP ' + response.status));
         if (!data.photos.length) { box.innerHTML = '📷 저장된 사진이 없습니다.'; return; }
         let html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px"><strong>② 보낼 사진 선택 (' + data.photos.length + '장)</strong><span><button class="btn btn-outline btn-sm" onclick="document.querySelectorAll(\'.kw-photo-check\').forEach(x=>x.checked=true)">전체</button> <button class="btn btn-outline btn-sm" onclick="document.querySelectorAll(\'.kw-photo-check\').forEach(x=>x.checked=false)">해제</button></span></div>';
-        html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-height:330px;overflow:auto">';
+        html += '<div class="kw-export-photo-grid">';
         data.photos.forEach(function(p, i) {
-            html += '<label style="border:1px solid #e2e8f0;border-radius:8px;padding:5px;cursor:pointer"><input class="kw-photo-check" type="checkbox" value="' + escapeHtml(p.fileName) + '" data-path="' + escapeHtml(p.fileName) + '" style="margin-right:4px" ' + (i < 5 ? 'checked' : '') + '><img src="' + escapeHtml(serverUrl + '/api/photo?region=' + encodeURIComponent(currentRegion) + '&siteName=' + encodeURIComponent(site) + '&fileName=' + encodeURIComponent(p.fileName)) + '" style="width:100%;height:90px;object-fit:cover;border-radius:5px"><div style="font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + escapeHtml(p.fileName) + '">' + escapeHtml(p.fileName) + '</div></label>';
+            html += '<label class="kw-export-photo"><input class="kw-photo-check" type="checkbox" value="' + escapeHtml(p.fileName) + '" data-path="' + escapeHtml(p.fileName) + '" style="margin-right:4px" ' + (i < 5 ? 'checked' : '') + '><img src="' + escapeHtml(serverUrl + '/api/photo?region=' + encodeURIComponent(currentRegion) + '&siteName=' + encodeURIComponent(site) + '&fileName=' + encodeURIComponent(p.fileName)) + '" style="width:100%;height:90px;object-fit:cover;border-radius:5px"><div style="font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + escapeHtml(p.fileName) + '">' + escapeHtml(p.fileName) + '</div></label>';
         });
         html += '</div>';
         box.innerHTML = html;
@@ -7655,7 +7670,7 @@ async function searchKakaoWorkExportWorkers() {
         if (!data.users.length) { box.innerHTML = '검색 결과가 없습니다.'; return; }
         let html = '<div style="display:flex;flex-direction:column;gap:5px">';
         data.users.forEach(function(u) {
-            html += '<label style="display:flex;align-items:center;gap:8px;padding:9px;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer"><input type="radio" name="kwExportWorker" value="' + escapeHtml(String(u.id)) + '" data-name="' + escapeHtml(u.name || u.display_name || '') + '"><span><strong>' + escapeHtml(u.name || u.display_name || '-') + '</strong><small style="display:block;color:#a0aec0">' + escapeHtml(u.department || '') + '</small></span></label>';
+            html += '<label class="kw-export-worker"><input type="radio" name="kwExportWorker" value="' + escapeHtml(String(u.id)) + '" data-name="' + escapeHtml(u.name || u.display_name || '') + '"><span><strong>' + escapeHtml(u.name || u.display_name || '-') + '</strong><small style="display:block;color:#a0aec0">' + escapeHtml(u.department || '') + '</small></span></label>';
         });
         html += '</div>';
         box.innerHTML = html;
