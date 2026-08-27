@@ -6,46 +6,15 @@
 const STORAGE_KEY_PREFIX = 'places_';
 const SELECTED_REGION_KEY = 'selectedRegion';
 const SETTINGS_KEY = 'app_settings';
-
-// 현장처리 서버 주소는 GitHub의 server-config.js가 단일 기준입니다.
-// Cloudflare Quick Tunnel URL이 바뀌면 서버가 GitHub 파일을 자동 갱신하고,
-// 앱은 매 실행 시 no-store로 최신 값을 다시 읽어 캐시 문제를 방지합니다.
-let FIELD_SERVER_URL = String(window.FIELD_SERVER_URL || '').trim();
-
-function getFieldServerUrl() {
-    return String(window.FIELD_SERVER_URL || FIELD_SERVER_URL || '').trim().replace(/\/$/, '');
-}
-
-function updateFieldServerDisplay() {
-    const display = document.getElementById('photoServerUrlDisplay');
-    if (display) display.textContent = getFieldServerUrl() || '서버 주소 미설정';
-}
-
-async function refreshFieldServerConfig(showMessage) {
-    try {
-        const configUrl = 'server-config.js?nocache=' + Date.now();
-        const response = await fetch(configUrl, { cache: 'no-store' });
-        if (!response.ok) throw new Error('server-config.js HTTP ' + response.status);
-        const source = await response.text();
-        const match = source.match(/window\.FIELD_SERVER_URL\s*=\s*['\"]([^'\"]*)['\"]/);
-        if (!match) throw new Error('FIELD_SERVER_URL 설정을 찾을 수 없습니다.');
-        FIELD_SERVER_URL = match[1].trim();
-        window.FIELD_SERVER_URL = FIELD_SERVER_URL;
-        updateFieldServerDisplay();
-        if (showMessage && typeof showTabStatus === 'function') {
-            showTabStatus('tab-settings', FIELD_SERVER_URL ? '✅ 최신 현장처리 서버 주소를 반영했습니다.' : '⚠️ 현장처리 서버 주소가 아직 없습니다.', FIELD_SERVER_URL ? 'ok' : 'warning');
-        }
-        await updatePhotoServerStatus();
-        return FIELD_SERVER_URL;
-    } catch (error) {
-        console.warn('현장처리 서버 설정 갱신 실패:', error);
-        updateFieldServerDisplay();
-        return getFieldServerUrl();
-    }
-}
 const OPTIMIZE_MODE_KEY = 'optimizeMode';
 const PRESETS_KEY = 'route_presets';
 const ROUTE_API_KEY = 'routeApi';
+
+// 현장처리 서버 주소는 GitHub의 server-config.js에서만 관리합니다.
+function getFieldServerUrl() {
+    const configured = (window.FIELD_SERVER_URL || '').trim();
+    return (configured || 'http://localhost:3000').replace(/\/$/, '');
+}
 
 // --- 지역별 중심 좌표 ---
 const REGION_CENTERS = {
@@ -303,8 +272,9 @@ function loadSettings() {
 if (wn) wn.value = workerName;
 updateWorkerNameStatus();
     updateSettingsStatus();
-    updateFieldServerDisplay();
-    setTimeout(function(){ refreshFieldServerConfig(false); }, 0);
+    let serverDisplay = document.getElementById('fieldServerUrlDisplay');
+    if (serverDisplay) serverDisplay.textContent = getFieldServerUrl();
+    setTimeout(updatePhotoServerStatus, 300);
 }
 
 // ============================================================
@@ -5188,7 +5158,6 @@ document.addEventListener('DOMContentLoaded', function() {
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
     loadSettings();
-    refreshFieldServerConfig(false);
     loadRegionList();
     loadPresets();
     initDarkMode();
@@ -5865,23 +5834,6 @@ function injectDarkModeCSS() {
     // 기타
     c.push('body.dark-mode #darkModeToggleBtn:hover{background:rgba(255,255,255,0.1)!important}');
     c.push('body.dark-mode .dist{color:inherit!important}');
-    // ★ 최종 다크모드 보정: 동적/인라인 UI까지 일관된 대비 확보
-    c.push('body.dark-mode .setting-group,body.dark-mode .kw-export-modal,body.dark-mode .kw-export-current,body.dark-mode .kw-export-help,body.dark-mode details,body.dark-mode .advanced-options,body.dark-mode .help-section{background:#2d3748!important;color:#e2e8f0!important;border-color:#4a5568!important}');
-    c.push('body.dark-mode .kw-export-site,body.dark-mode .kw-export-worker,body.dark-mode .kw-export-photo{background:#2d3748!important;color:#e2e8f0!important;border-color:#4a5568!important}');
-    c.push('body.dark-mode .kw-export-worker strong,body.dark-mode .kw-export-photo div,body.dark-mode .kw-export-modal label,body.dark-mode .kw-export-modal small{color:#f7fafc!important}');
-    c.push('body.dark-mode table{background:#2d3748!important;color:#e2e8f0!important;border-color:#4a5568!important}');
-    c.push('body.dark-mode th{background:#374151!important;color:#f7fafc!important;border-color:#4a5568!important}');
-    c.push('body.dark-mode td{background:#2d3748!important;color:#e2e8f0!important;border-color:#4a5568!important}');
-    c.push('body.dark-mode pre,body.dark-mode code{background:#111827!important;color:#e5e7eb!important}');
-    c.push('body.dark-mode hr{border-color:#4a5568!important}');
-    c.push('body.dark-mode option{background:#2d3748!important;color:#e2e8f0!important}');
-    c.push('body.dark-mode .photo-camera-btn{background:#3182ce!important;color:#fff!important;border-color:#3182ce!important}');
-    c.push('body.dark-mode .photo-album-btn{background:#2d3748!important;color:#e2e8f0!important;border-color:#718096!important}');
-    c.push('body.dark-mode [style*="background:#fffff0"]{background:#3b3217!important;color:#fef3c7!important}');
-    c.push('body.dark-mode [style*="background:#fffbeb"]{background:#3b3217!important;color:#fef3c7!important}');
-    c.push('body.dark-mode [style*="background:#ebf8ff"]{background:#1e3a5f!important;color:#bfdbfe!important}');
-    c.push('body.dark-mode [style*="background:#e6f0fa"]{background:#263b52!important;color:#dbeafe!important}');
-    c.push('body.dark-mode [style*="background:#fff7ed"]{background:#4a2b16!important;color:#fed7aa!important}');
     style.textContent = c.join(' ');
     document.head.appendChild(style);
 }
@@ -6805,13 +6757,8 @@ function openWorkEditModal(workId) {
     modalHtml += '</div>';
     // ★ 사진 업로드 영역
     modalHtml += '<div style="margin-bottom:12px;">';
-    modalHtml += '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">📸 현장 사진</label>';
-    modalHtml += '<div style="display:flex;gap:8px;">';
-    modalHtml += '<button type="button" class="btn btn-primary btn-sm photo-camera-btn" onclick="document.getElementById(\'workCameraInput\').click()" style="flex:1;padding:10px;">📷 카메라</button>';
-    modalHtml += '<button type="button" class="btn btn-outline btn-sm photo-album-btn" onclick="document.getElementById(\'workAlbumInput\').click()" style="flex:1;padding:10px;">🖼️ 앨범/파일</button>';
-    modalHtml += '</div>';
-    modalHtml += '<input id="workCameraInput" type="file" accept="image/*" capture="environment" data-work-id="' + record.id + '" onchange="handleWorkPhotoUpload(event)" style="display:none">';
-    modalHtml += '<input id="workAlbumInput" type="file" accept="image/*" multiple data-work-id="' + record.id + '" onchange="handleWorkPhotoUpload(event)" style="display:none">';
+    modalHtml += '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">📸 현장 사진</label>';
+    modalHtml += '<input type="file" accept="image/*" capture="environment" multiple data-work-id="' + record.id + '" onchange="handleWorkPhotoUpload(event)" style="width:100%;padding:8px;border:2px dashed #cbd5e0;border-radius:8px;font-size:12px;cursor:pointer;">';
     modalHtml += '<div id="workPhotoStatus" style="font-size:11px;color:#a0aec0;margin-top:4px;"></div>';
     modalHtml += '<div id="workPhotoList" style="margin-top:8px;"></div>';
     modalHtml += '</div>';
@@ -7604,20 +7551,17 @@ async function sendWorkRecordToServer(record) {
 }
 
 async function testPhotoServer() {
-    await refreshFieldServerConfig(false);
     let serverUrl = getFieldServerUrl();
     let badge = document.getElementById('photoServerStatus');
-    if (!serverUrl) {
-        if (badge) { badge.textContent = '⚪ 서버 주소 미설정'; badge.className = 'badge badge-wait'; }
-        showTabStatus('tab-settings', '⚠️ 아직 현장처리 서버 주소가 없습니다. 노트북에서 start-all.bat을 실행하세요.', 'warning');
-        return false;
-    }
     if (badge) { badge.textContent = '⏳ 서버 확인 중...'; badge.className = 'badge badge-wait'; }
     try {
         let response = await fetch(serverUrl + '/api/health', { cache: 'no-store' });
         let data = await response.json();
         if (!response.ok || !data.ok) throw new Error(data.error || '서버 응답 오류');
-        if (badge) { badge.textContent = data.appKeyConfigured ? '🟢 서버 연결됨 · Bot 설정됨' : '🟡 서버 연결됨 · Bot Key 미설정'; badge.className = 'badge ' + (data.appKeyConfigured ? 'badge-ok' : 'badge-wait'); }
+        if (badge) {
+            badge.textContent = data.appKeyConfigured ? '🟢 서버 연결됨 · Bot 설정됨' : '🟡 서버 연결됨 · Bot Key 미설정';
+            badge.className = 'badge ' + (data.appKeyConfigured ? 'badge-ok' : 'badge-wait');
+        }
         showTabStatus('tab-settings', data.appKeyConfigured ? '✅ 현장처리 서버 연결됨' : '⚠️ 서버 연결됨. 서버 config.json의 Bot App Key를 확인하세요.', data.appKeyConfigured ? 'ok' : 'warning');
         return true;
     } catch (error) {
@@ -7628,31 +7572,23 @@ async function testPhotoServer() {
 }
 
 async function updatePhotoServerStatus() {
-    updateFieldServerDisplay();
     let url = getFieldServerUrl();
     let badge = document.getElementById('photoServerStatus');
-    if (!url) {
-        if (badge) { badge.textContent = '⚪ 서버 주소 미설정'; badge.className = 'badge badge-wait'; }
-        return false;
-    }
+    if (!url || !badge) return;
     try {
         let response = await fetch(url + '/api/health', { cache: 'no-store' });
         let data = await response.json();
-        if (!response.ok || !data.ok) throw new Error(data.error || '서버 응답 오류');
-        if (badge) {
+        if (response.ok && data.ok) {
             badge.textContent = data.appKeyConfigured ? '🟢 서버 연결됨 · Bot 설정됨' : '🟡 서버 연결됨 · Bot Key 미설정';
             badge.className = 'badge ' + (data.appKeyConfigured ? 'badge-ok' : 'badge-wait');
+        } else {
+            badge.textContent = '🔴 서버 연결 실패';
+            badge.className = 'badge badge-fail';
         }
-        return true;
     } catch (_) {
-        if (badge) { badge.textContent = '🔴 서버 연결 실패'; badge.className = 'badge badge-fail'; }
-        return false;
+        badge.textContent = '🔴 서버 연결 실패';
+        badge.className = 'badge badge-fail';
     }
-}
-
-// 서버 주소는 사용자가 입력/저장하지 않습니다. GitHub server-config.js가 단일 기준입니다.
-function savePhotoServerSettings() {
-    refreshFieldServerConfig(true);
 }
 
 // ============================================================

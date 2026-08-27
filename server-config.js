@@ -1,2 +1,3 @@
-// 자동 생성/갱신됩니다. start-all.bat이 Cloudflare URL을 업데이트합니다.
-window.FIELD_SERVER_URL = '';
+﻿// ?꾩옣泥섎━ ?쒕쾭 二쇱냼 ?ㅼ젙
+// Cloudflare Quick Tunnel URL - ?뚯뒪?몄슜
+window.FIELD_SERVER_URL = 'https://urban-feeling-dining-seeker.trycloudflare.com';
