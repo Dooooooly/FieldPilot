@@ -10,6 +10,42 @@ const OPTIMIZE_MODE_KEY = 'optimizeMode';
 const PRESETS_KEY = 'route_presets';
 const ROUTE_API_KEY = 'routeApi';
 
+// ============================================================
+// 서버 프록시 공용 헬퍼 (경로최적화/주소변환/날씨는 전부 노트북 서버 경유)
+// server-config.js에서 window.FIELD_SERVER_URL을 설정함
+// ============================================================
+function serverBase() {
+    return String(window.FIELD_SERVER_URL || '').trim().replace(/\/+$/, '');
+}
+
+async function serverGet(pathAndQuery) {
+    let base = serverBase();
+    if (!base) throw new Error('서버 주소(FIELD_SERVER_URL)가 설정되지 않았습니다.');
+    let res = await fetch(base + pathAndQuery);
+    if (!res.ok) {
+        let errBody = null;
+        try { errBody = await res.json(); } catch (e) {}
+        throw new Error((errBody && errBody.error) || ('서버 오류 ' + res.status));
+    }
+    return res.json();
+}
+
+async function serverPost(pathAndQuery, body) {
+    let base = serverBase();
+    if (!base) throw new Error('서버 주소(FIELD_SERVER_URL)가 설정되지 않았습니다.');
+    let res = await fetch(base + pathAndQuery, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body || {})
+    });
+    if (!res.ok) {
+        let errBody = null;
+        try { errBody = await res.json(); } catch (e) {}
+        throw new Error((errBody && errBody.error) || ('서버 오류 ' + res.status));
+    }
+    return res.json();
+}
+
 // --- 지역별 중심 좌표 ---
 const REGION_CENTERS = {
     '강남구': { lat: 37.5172, lng: 127.0473 },
@@ -1037,12 +1073,9 @@ btn.innerHTML = '<span style="font-size:14px;">🎯</span> 현재 위치';
 btn.disabled = false;
 }
             
-            let restKey = settings.kakaoRestKey;
+            let restKey = settings.kakaoRestKey || 'server-proxy'; // 서버가 실제 키 보유, 클라이언트는 게이트 통과용
             if (restKey) {
-                fetch('https://dapi.kakao.com/v2/local/geo/coord2address.json?x=' + lng + '&y=' + lat, {
-                    headers: { 'Authorization': 'KakaoAK ' + restKey }
-                })
-                .then(function(res) { return res.json(); })
+                serverGet('/api/geocode/reverse?lat=' + lat + '&lng=' + lng)
                 .then(function(data) {
                     let address = '현재 위치';
                     if (data.documents && data.documents.length > 0) {
@@ -1092,7 +1125,7 @@ async function setStartPoint() {
         showTabStatus('tab-places', '출발지를 입력하세요.', 'warning');
         return;
     }
-    let restKey = settings.kakaoRestKey;
+    let restKey = settings.kakaoRestKey || 'server-proxy'; // 서버가 실제 키 보유, 클라이언트는 게이트 통과용
     if (!restKey) {
         showTabStatus('tab-places', '⚠️ REST API 키가 필요합니다.', 'warning');
         return;
@@ -1532,7 +1565,7 @@ function saveAddPlaceModal() {
     let finalLng = lng;
 
     if (address && (isNaN(lat) || isNaN(lng))) {
-        let restKey = settings.kakaoRestKey;
+        let restKey = settings.kakaoRestKey || 'server-proxy'; // 서버가 실제 키 보유, 클라이언트는 게이트 통과용
         if (restKey) {
             geocodeAddress(address, restKey).then(function(geo) {
                 if (geo) {
@@ -1898,7 +1931,7 @@ async function saveModal() {
     let finalLng = lng;
 
     if (address && (isNaN(lat) || isNaN(lng))) {
-        let restKey = settings.kakaoRestKey;
+        let restKey = settings.kakaoRestKey || 'server-proxy'; // 서버가 실제 키 보유, 클라이언트는 게이트 통과용
         if (restKey) {
             let geo = await geocodeAddress(address, restKey);
             if (geo) {
@@ -1970,32 +2003,14 @@ function addWaypointFromList(id) {
 // 16. 지오코딩
 // ============================================================
 async function geocodeAddress(address, restKey, retries) {
+    // restKey는 더 이상 사용하지 않음 - 실제 카카오 REST 키는 노트북 서버(config.json)가 보관하고
+    // 이 함수는 서버의 /api/geocode 프록시를 호출한다. (인자는 기존 호출부와의 호환을 위해 유지)
     retries = retries || 1;
-    if (!address || !restKey) return null;
+    if (!address) return null;
     for (let attempt = 0; attempt <= retries; attempt++) {
         try {
-            let res = await fetch(
-                'https://dapi.kakao.com/v2/local/search/address.json?query=' + encodeURIComponent(address),
-                { headers: { 'Authorization': 'KakaoAK ' + restKey } }
-            );
-            if (!res.ok) {
-                if (attempt < retries) {
-                    await new Promise(r => setTimeout(r, 500));
-                    continue;
-                }
-                return null;
-            }
-            let data = await res.json();
-            if (data.documents && data.documents.length > 0) {
-                let doc = data.documents[0];
-                let road = doc.road_address;
-                if (road) {
-                    return { lat: parseFloat(road.y), lng: parseFloat(road.x), address: road.address_name };
-                }
-                let addr = doc.address;
-                return { lat: parseFloat(addr.y), lng: parseFloat(addr.x), address: addr.address_name };
-            }
-            return null;
+            let geo = await serverGet('/api/geocode?address=' + encodeURIComponent(address));
+            return geo || null;
         } catch(e) {
             if (attempt < retries) {
                 await new Promise(r => setTimeout(r, 500));
@@ -2123,20 +2138,10 @@ async function getRoadMetric(from, to, restKey) {
 
     roadOptimizeCallCount++;
     try {
-        let url = 'https://apis-navi.kakaomobility.com/v1/directions'
-            + '?origin=' + Number(from.lng) + ',' + Number(from.lat)
-            + '&destination=' + Number(to.lng) + ',' + Number(to.lat)
-            + '&priority=RECOMMEND';
-
-        let response = await fetch(url, {
-            method: 'GET',
-            headers: {
-                'Authorization': 'KakaoAK ' + restKey
-            }
-        });
-
-        if (!response.ok) throw new Error('HTTP ' + response.status);
-        let data = await response.json();
+        // 카카오모빌리티 direct 호출 대신 노트북 서버의 /api/route/directions 프록시 경유
+        let query = '?originLat=' + Number(from.lat) + '&originLng=' + Number(from.lng)
+            + '&destLat=' + Number(to.lat) + '&destLng=' + Number(to.lng);
+        let data = await serverGet('/api/route/directions' + query);
 
         let route = data && data.routes && data.routes[0];
         if (!route || !route.summary) throw new Error('도로 경로 없음');
@@ -2371,7 +2376,7 @@ async function runOptimize() {
             return;
         }
         
-        let restKey = settings.kakaoRestKey;
+        let restKey = settings.kakaoRestKey || 'server-proxy'; // 서버가 실제 키 보유, 클라이언트는 게이트 통과용
         if (!restKey) {
             showTabStatus('tab-places', '⚠️ REST API 키 필요 (설정 탭)', 'warning');
             return;
@@ -2735,7 +2740,7 @@ html += '</div>';
                     let p = routeResult.places[i];
                     addRouteMarker(p.lat, p.lng, (i + 1) + '. ' + p.name, false, i);
                 }
-                let restKey = settings.kakaoRestKey;
+                let restKey = settings.kakaoRestKey || 'server-proxy'; // 서버가 실제 키 보유, 클라이언트는 게이트 통과용
                 if (restKey) {
                     callKakaoMobilityRoute(allPoints, restKey).then(function(routeData) {
                         if (routeData) drawRoadRoute(routeData);
@@ -3037,30 +3042,20 @@ function clearSingleMarker() {
 // 21. 카카오모빌리티 API (경로 표시용)
 // ============================================================
 async function callKakaoMobilityRoute(points, restKey) {
-    if (!restKey || points.length < 2) return null;
+    // restKey는 더 이상 사용하지 않음 - 노트북 서버의 /api/route/waypoints 프록시가 실제 키를 보유
+    if (points.length < 2) return null;
     try {
         let origin = points[0], destination = points[points.length - 1], waypoints = points.slice(1, -1);
-        let url = 'https://apis-navi.kakaomobility.com/v1/waypoints/directions';
         let payload = {
             origin: { name: origin.name || '출발지', x: origin.lng, y: origin.lat },
-            destination: { name: destination.name || '도착지', x: destination.lng, y: destination.lat },
-            priority: 'RECOMMEND'
+            destination: { name: destination.name || '도착지', x: destination.lng, y: destination.lat }
         };
         if (waypoints.length > 0) {
             payload.waypoints = waypoints.map(function(w) {
                 return { name: w.name || '경유지', x: w.lng, y: w.lat };
             });
         }
-        let response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Authorization': 'KakaoAK ' + restKey,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
-        });
-        if (!response.ok) return null;
-        return await response.json();
+        return await serverPost('/api/route/waypoints', payload);
     } catch(e) {
         return null;
     }
@@ -4192,7 +4187,7 @@ async function importPlaces(data) {
         return;
     }
     let added = 0, updated = 0, skipped = 0;
-    let restKey = settings.kakaoRestKey;
+    let restKey = settings.kakaoRestKey || 'server-proxy'; // 서버가 실제 키 보유, 클라이언트는 게이트 통과용
     let rowsToGeocode = [];
     for (let i = 0; i < data.length; i++) {
         let row = data[i];
@@ -4305,12 +4300,9 @@ async function fetchWeather() {
     let weatherEl = document.getElementById('weatherDisplay');
     if (!weatherEl) return false;
     try {
-        let apiKey = 'b84c1b9a09d8316b679320cceb3a1097';
+        // OpenWeather 직접 호출 대신 노트북 서버의 /api/weather 프록시 경유 (키는 서버 config.json에만 존재)
         let center = (typeof userGpsCoords !== 'undefined' && userGpsCoords) ? userGpsCoords : getRegionCenter(currentRegion);
-        let url = 'https://api.openweathermap.org/data/2.5/weather?lat=' + center.lat + '&lon=' + center.lng + '&appid=' + apiKey + '&units=metric&lang=kr';
-        let response = await fetch(url);
-        if (!response.ok) throw new Error('날씨 API 호출 실패');
-        let data = await response.json();
+        let data = await serverGet('/api/weather?lat=' + center.lat + '&lng=' + center.lng);
         let temp = Math.round(data.main.temp);
         let icon = data.weather[0].icon;
         let main = data.weather[0].main;
@@ -4348,12 +4340,8 @@ async function showWeekWeather() {
     }
     await fetchWeather();
     let center = (typeof userGpsCoords !== 'undefined' && userGpsCoords) ? userGpsCoords : getRegionCenter(currentRegion);
-    let apiKey = 'b84c1b9a09d8316b679320cceb3a1097';
     try {
-        let url = 'https://api.openweathermap.org/data/2.5/forecast?lat=' + center.lat + '&lon=' + center.lng + '&appid=' + apiKey + '&units=metric&lang=kr';
-        let response = await fetch(url);
-        if (!response.ok) throw new Error('예보 조회 실패');
-        let data = await response.json();
+        let data = await serverGet('/api/weather/forecast?lat=' + center.lat + '&lng=' + center.lng);
 
         let dailyMap = {};
         data.list.forEach(function(item) {
@@ -5000,15 +4988,10 @@ document.addEventListener('click', function(event) {
 // ============================================================
 async function searchKakaoPlaces(query, size) {
     size = size || 5;
-    let restKey = settings.kakaoRestKey;
+    let restKey = settings.kakaoRestKey || 'server-proxy'; // 서버가 실제 키 보유, 클라이언트는 게이트 통과용
     if (!query || query.length < 2 || !restKey) return [];
     try {
-        let res = await fetch(
-            'https://dapi.kakao.com/v2/local/search/keyword.json?query=' + encodeURIComponent(query) + '&size=' + size,
-            { headers: { 'Authorization': 'KakaoAK ' + restKey } }
-        );
-        if (!res.ok) return [];
-        let data = await res.json();
+        let data = await serverGet('/api/places/search?q=' + encodeURIComponent(query) + '&size=' + size);
         return data.documents || [];
     } catch(e) {
         return [];
@@ -6058,15 +6041,10 @@ function tryCloseApp() {
 
 // ===== 동 추출 (카카오 coord2address API) =====
 async function extractDongFromCoords(lat, lng) {
-    let restKey = settings.kakaoRestKey;
+    let restKey = settings.kakaoRestKey || 'server-proxy'; // 서버가 실제 키 보유, 클라이언트는 게이트 통과용
     if (!restKey) return '';
     try {
-        let res = await fetch(
-            'https://dapi.kakao.com/v2/local/geo/coord2address.json?x=' + lng + '&y=' + lat,
-            { headers: { 'Authorization': 'KakaoAK ' + restKey } }
-        );
-        if (!res.ok) return '';
-        let data = await res.json();
+        let data = await serverGet('/api/geocode/reverse?lat=' + lat + '&lng=' + lng);
         if (data.documents && data.documents.length > 0) {
             let doc = data.documents[0];
             if (doc.address && doc.address.region_3depth_name) {
@@ -6218,6 +6196,8 @@ function saveStatsToLocalStorage(stats) {
     let key = getStatsKey(currentRegion);
     localStorage.setItem(key, JSON.stringify(stats));
     currentStats = stats;
+    // 노트북 서버에도 백업 (실패해도 로컬 저장은 그대로 유지됨 - 오프라인 안전)
+    serverPost('/api/stats?region=' + encodeURIComponent(currentRegion), stats).catch(function() {});
 }
 
 // ===== GitHub 업로드 (통계 기록 시 자동) =====
@@ -6548,6 +6528,8 @@ function saveWorkToLocalStorage(work) {
     let key = getWorkKey(currentRegion);
     localStorage.setItem(key, JSON.stringify(work));
     currentWork = work;
+    // 노트북 서버에도 백업 (실패해도 로컬 저장은 그대로 유지됨 - 오프라인 안전)
+    serverPost('/api/work-history?region=' + encodeURIComponent(currentRegion), work).catch(function() {});
 }
 
 async function uploadWorkToGitHub(work) {
@@ -7192,20 +7174,18 @@ function searchLunchRestaurants(menu) {
     let coords = (typeof userGpsCoords !== 'undefined' && userGpsCoords) ? userGpsCoords : null;
 
     function doSearch(lat, lng, isGps) {
-        let restKey = settings.kakaoRestKey;
+        let restKey = settings.kakaoRestKey || 'server-proxy'; // 서버가 실제 키 보유, 클라이언트는 게이트 통과용
         if (!restKey) {
             restaurantList.innerHTML = '<div style="text-align:center;padding:12px;color:#e53e3e;font-size:13px;">⚠️ 카카오 REST API 키가 필요합니다.</div>';
             return;
         }
         let query = menu + ' 맛집';
-        let url = 'https://dapi.kakao.com/v2/local/search/keyword.json?query=' + encodeURIComponent(query) + '&x=' + lng + '&y=' + lat + '&radius=3000&sort=distance';
-        fetch(url, { headers: { 'Authorization': 'KakaoAK ' + restKey } })
-            .then(function(res) { return res.json(); })
+        let apiUrl = '/api/places/search?q=' + encodeURIComponent(query) + '&lat=' + lat + '&lng=' + lng;
+        serverGet(apiUrl)
             .then(function(data) {
                 if (!data.documents || data.documents.length === 0) {
-                    let url2 = 'https://dapi.kakao.com/v2/local/search/keyword.json?query=' + encodeURIComponent(menu) + '&x=' + lng + '&y=' + lat + '&radius=3000&sort=distance';
-                    fetch(url2, { headers: { 'Authorization': 'KakaoAK ' + restKey } })
-                        .then(function(res2) { return res2.json(); })
+                    let apiUrl2 = '/api/places/search?q=' + encodeURIComponent(menu) + '&lat=' + lat + '&lng=' + lng;
+                    serverGet(apiUrl2)
                         .then(function(data2) {
                             renderRestaurantResults(data2.documents || [], menu, isGps);
                         })
@@ -7322,65 +7302,110 @@ function openLunchRestaurantInMap(el) {
     }, 1500);
 }
 // ============================================================
-// 47. 사진 저장소 (IndexedDB)
+// 47. 사진 저장소 (노트북 서버 /api/photos 로 직접 저장 - IndexedDB 제거됨)
+// 기존 IndexedDB 기반 함수와 이름/시그니처를 동일하게 유지해서
+// 이 밑의 업로드/표시/삭제/전송 코드는 손대지 않아도 되도록 함.
+// photoInfoCache: 화면에 렌더링된 사진의 opaque id -> 서버 위치 매핑 (메모리 캐시)
 // ============================================================
-let photoDB = null;
+let photoInfoCache = new Map();
 
-function initPhotoDB() {
-    return new Promise(function(resolve, reject) {
-        let request = indexedDB.open('routeOptimizerPhotos', 1);
-        request.onupgradeneeded = function(e) {
-            let db = e.target.result;
-            if (!db.objectStoreNames.contains('photos')) {
-                let store = db.createObjectStore('photos', { keyPath: 'id' });
-                store.createIndex('workId', 'workId', { unique: false });
-            }
-        };
-        request.onsuccess = function(e) {
-            photoDB = e.target.result;
-            resolve(photoDB);
-        };
-        request.onerror = function(e) { reject(e); };
-    });
+function findWorkRecordById(workId) {
+    let work = currentWork || loadWorkFromLocalStorage();
+    if (!work || !Array.isArray(work.workHistory)) return null;
+    return work.workHistory.find(function(w) { return w.id === workId; }) || null;
+}
+
+function photoDownloadUrl(region, siteName, fileName) {
+    return serverBase() + '/api/photo'
+        + '?region=' + encodeURIComponent(region)
+        + '&siteName=' + encodeURIComponent(siteName)
+        + '&fileName=' + encodeURIComponent(fileName);
+}
+
+function newPhotoId() {
+    return 'p_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
 async function savePhotoToDB(photo) {
-    if (!photoDB) await initPhotoDB();
-    return new Promise(function(resolve, reject) {
-        let tx = photoDB.transaction('photos', 'readwrite');
-        tx.objectStore('photos').add(photo);
-        tx.oncomplete = resolve;
-        tx.onerror = reject;
+    let record = findWorkRecordById(photo.workId);
+    if (!record) throw new Error('작업 기록(' + photo.workId + ')을 찾을 수 없어 사진을 저장할 수 없습니다.');
+    let region = record.region || currentRegion || '미지정지역';
+    let siteName = record.placeName || '미지정현장';
+
+    let result = await serverPost('/api/photos', {
+        region: region,
+        siteName: siteName,
+        dataUrl: photo.dataUrl,
+        fileName: photo.fileName,
+        workId: photo.workId,
+        date: record.date || '',
+        time: record.time || '',
+        worker: record.worker || '',
+        camera: record.camera || '',
+        content: record.content || ''
     });
+
+    let id = newPhotoId();
+    photoInfoCache.set(id, {
+        id: id,
+        workId: photo.workId,
+        region: region,
+        siteName: siteName,
+        fileName: result.fileName,
+        dataUrl: photoDownloadUrl(region, siteName, result.fileName),
+        fileSize: photo.fileSize,
+        uploadedAt: photo.uploadedAt
+    });
+    return id;
 }
 
 async function getPhotosByWorkId(workId) {
-    if (!photoDB) await initPhotoDB();
-    return new Promise(function(resolve, reject) {
-        let tx = photoDB.transaction('photos', 'readonly');
-        let request = tx.objectStore('photos').index('workId').getAll(workId);
-        request.onsuccess = function() { resolve(request.result); };
-        request.onerror = reject;
+    let record = findWorkRecordById(workId);
+    if (!record) return [];
+    let region = record.region || currentRegion || '미지정지역';
+    let siteName = record.placeName || '미지정현장';
+
+    let data;
+    try {
+        data = await serverGet('/api/photos?region=' + encodeURIComponent(region) + '&siteName=' + encodeURIComponent(siteName));
+    } catch (e) {
+        return [];
+    }
+    let rows = (data.photos || []).filter(function(p) { return String(p.workId) === String(workId); });
+    return rows.map(function(p) {
+        let id = newPhotoId();
+        let entry = {
+            id: id,
+            workId: workId,
+            region: region,
+            siteName: siteName,
+            fileName: p.fileName,
+            dataUrl: photoDownloadUrl(region, siteName, p.fileName),
+            fileSize: p.size,
+            uploadedAt: p.modifiedAt
+        };
+        photoInfoCache.set(id, entry);
+        return entry;
     });
 }
 
 async function deletePhotoFromDB(photoId) {
-    if (!photoDB) await initPhotoDB();
-    return new Promise(function(resolve, reject) {
-        let tx = photoDB.transaction('photos', 'readwrite');
-        tx.objectStore('photos').delete(photoId);
-        tx.oncomplete = resolve;
-        tx.onerror = reject;
-    });
+    let info = photoInfoCache.get(photoId);
+    if (!info) return;
+    try {
+        await fetch(serverBase() + '/api/photo'
+            + '?region=' + encodeURIComponent(info.region)
+            + '&siteName=' + encodeURIComponent(info.siteName)
+            + '&fileName=' + encodeURIComponent(info.fileName), { method: 'DELETE' });
+    } finally {
+        photoInfoCache.delete(photoId);
+    }
 }
 
 async function getAllPhotos() {
-    if (!photoDB) await initPhotoDB();
-    return new Promise(function(resolve, reject) {
-        let request = photoDB.transaction('photos', 'readonly').objectStore('photos').getAll();
-        request.onsuccess = function() { resolve(request.result); };
-        request.onerror = reject;
-    });
+    // 서버 전체를 스캔하지 않고, 지금까지 화면에 표시되어 캐시에 올라온 사진만 반환한다.
+    // (viewPhoto 등은 항상 렌더링 직후에 호출되므로 캐시에 존재함)
+    return Array.from(photoInfoCache.values());
 }
 
 // ============================================================
@@ -7647,63 +7672,13 @@ async function sendToKakaoChatbot(record) {
 }
 
 // ============================================================
-// 52. 사진 내보내기 (로컬 서버)
+// 52. 사진 내보내기 (더 이상 필요 없음)
+// 사진은 촬영 즉시 savePhotoToDB()를 통해 노트북 서버 /api/photos 에 바로 저장되므로
+// 별도의 "내보내기" 단계가 필요 없어짐. 기존 버튼이 이 함수를 계속 호출해도
+// 안내 메시지만 보여주고 끝나도록 남겨둠 (하위 호환용).
 // ============================================================
 async function exportPhotosToServer() {
-    let serverUrl = document.getElementById('photoServerUrl') ? document.getElementById('photoServerUrl').value.trim() : '';
-    if (!serverUrl) {
-        showTabStatus('tab-work', '⚠️ 서버 주소를 입력하세요 (예: http://192.168.1.100:3000)', 'warning');
-        return;
-    }
-
-    let allPhotos = await getAllPhotos();
-    if (allPhotos.length === 0) {
-        showTabStatus('tab-work', '📷 내보낼 사진이 없습니다', 'warning');
-        return;
-    }
-
-    let work = currentWork || loadWorkFromLocalStorage();
-    let total = allPhotos.length;
-    let success = 0;
-    let fail = 0;
-
-    showTabStatus('tab-work', '📤 사진 전송 중... (0/' + total + ')', 'info');
-
-    for (let i = 0; i < allPhotos.length; i++) {
-        let photo = allPhotos[i];
-        let record = work.workHistory.find(function(w) { return w.id === photo.workId; });
-        if (!record) { fail++; continue; }
-
-        // ★ 폴더명: 현장명(카메라번호)
-        let folderName = record.placeName + (record.camera ? '(' + record.camera + ')' : '');
-
-        try {
-            let blob = await (await fetch(photo.dataUrl)).blob();
-            let formData = new FormData();
-            formData.append('photo', blob, photo.fileName);
-            formData.append('folder', folderName);
-            formData.append('date', record.date);
-
-            let uploadResponse = await fetch(serverUrl + '/upload', {
-                method: 'POST',
-                body: formData
-            });
-            if (uploadResponse.ok) success++;
-            else fail++;
-        } catch (error) {
-            fail++;
-        }
-
-        if ((i + 1) % 5 === 0 || i === total - 1) {
-            showTabStatus('tab-work', '📤 사진 전송 중... (' + (i + 1) + '/' + total + ')', 'info');
-        }
-    }
-
-    if (fail === 0) {
-        showTabStatus('tab-work', '✅ 사진 ' + success + '개 전송 완료!', 'ok');
-    } else {
-        showTabStatus('tab-work', '⚠️ 완료: 성공 ' + success + '개, 실패 ' + fail + '개', 'warning');
-    }
+    showTabStatus('tab-work', 'ℹ️ 사진은 촬영 즉시 서버에 자동 저장됩니다. 별도 내보내기가 필요 없습니다.', 'info');
 }
 // 카카오 챗봇 설정 저장
 function saveKakaoChatbot() {
