@@ -6821,9 +6821,10 @@ let uploaded = await uploadWorkToGitHub(work);
 renderWorkTab();
 showWorkDateDetail(record.date);
 showTabStatus('tab-work', uploaded ? '✅ 처리내역 저장 완료 (⏰ ' + record.time + ' 기록)' : '⚠️ 저장됨. GitHub 업로드 실패', uploaded ? 'ok' : 'warning');
-// ★ 카카오 챗봇 자동 전송
-if (settings.kakaoChatbotKey && settings.kakaoChatbotUserId) {
-    sendToKakaoChatbot(record);
+// ★ 기존 서버의 카카오워크 그룹방 전송
+const kakaoSent = await sendToKakaoChatbot(record);
+if (!kakaoSent) {
+    console.warn('[FieldPilot] 기록 저장 후 카카오워크 전송 실패');
 }
 }
 
@@ -7656,48 +7657,44 @@ async function showPlaceHistory(placeName) {
 // 51. 카카오 챗봇 전송
 // ============================================================
 async function sendToKakaoChatbot(record) {
-    let chatbotKey = settings.kakaoChatbotKey;
-    let chatbotUserId = settings.kakaoChatbotUserId;
-
-    if (!chatbotKey || !chatbotUserId) {
-        showTabStatus('tab-work', '⚠️ 카카오 챗봇 미설정 (설정 탭에서 입력)', 'warning');
-        return false;
-    }
-
     try {
-        let message = '📋 작업 기록\n';
-        message += '━━━━━━━━━━━━━━\n';
-        message += '📍 현장: ' + record.placeName + '\n';
-        if (record.camera) message += '📷 카메라: ' + record.camera + '\n';
-        message += '👤 작업자: ' + (record.worker || '미설정') + '\n';
-        message += '📅 일시: ' + record.date + ' ' + (record.time || '') + '\n';
-        if (record.content) message += '📝 처리내용:\n' + record.content + '\n';
-        message += '━━━━━━━━━━━━━━';
+        const region = record?.region || currentRegion || '';
+        const result = await serverPost(
+            '/api/records/send-group',
+            {
+                region: region,
+                record: { ...(record || {}), region: region }
+            }
+        );
 
-        let response = await fetch('https://api.kakaocorp.com/v1/chatbot/message/send', {
-            method: 'POST',
-            headers: {'Authorization':'Bearer ' + chatbotKey, 'Content-Type':'application/json'},
-            body: JSON.stringify({user_id: chatbotUserId, content: message})
-        });
-        if (!response.ok) throw new Error('전송 실패: ' + response.status);
-
-        let photos = await getPhotosByWorkId(record.id);
-        for (let i = 0; i < photos.length; i++) {
-            let blob = await (await fetch(photos[i].dataUrl)).blob();
-            let formData = new FormData();
-            formData.append('image', blob, photos[i].fileName);
-            formData.append('user_id', chatbotUserId);
-            await fetch('https://api.kakaocorp.com/v1/chatbot/message/image', {
-                method: 'POST',
-                headers: {'Authorization':'Bearer ' + chatbotKey},
-                body: formData
-            });
+        if (!result || result.sent !== true) {
+            throw new Error(
+                result?.reason ||
+                result?.error ||
+                '카카오워크 그룹방 전송 실패'
+            );
         }
 
-        showTabStatus('tab-work', '✅ 카카오톡 챗봇 전송 완료', 'ok');
+        showTabStatus(
+            'tab-work',
+            '✅ 카카오워크 전송 완료',
+            'ok'
+        );
+
         return true;
     } catch (error) {
-        showTabStatus('tab-work', '❌ 챗봇 전송 실패: ' + error.message, 'error');
+        console.error(
+            '[FieldPilot] KakaoWork group send failed:',
+            error
+        );
+
+        showTabStatus(
+            'tab-work',
+            '❌ 카카오워크 전송 실패: ' +
+                error.message,
+            'error'
+        );
+
         return false;
     }
 }
