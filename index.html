@@ -637,7 +637,7 @@ body {
     }
 }
     </style>
-</head>
+<style>.field-auth-locked .tab-content:not(#tab-settings):not(#tab-help){opacity:.55;pointer-events:none}.field-auth-locked #tab-settings .setting-group:not(#authorizationGroup){opacity:.5;pointer-events:none}.bottom-tab.auth-disabled{opacity:.45;cursor:not-allowed}#authLockBanner{background:#fff8e1;color:#744210;border:1px solid #f6ad55;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;font-weight:600}</style></head>
 <body>
 
     <div id="offlineBanner">📡 오프라인 상태 - 변경사항이 저장되지 않을 수 있습니다</div>
@@ -832,7 +832,7 @@ body {
                 <div><div class="ux-tab-title">설정 및 데이터</div><div class="ux-tab-sub">API, 백업, 업데이트와 저장 데이터를 관리합니다.</div></div>
             </div>
 
-            <div class="setting-group">
+            <div id="authLockBanner">🔒 인가 전에는 경로·현장·기록·사진·통계 등 기능을 사용할 수 없습니다.</div><div class="setting-group" id="authorizationGroup"><h4>🔑 지역별 인가</h4><div class="row"><label for="authorizationCode">인가코드</label><input type="password" id="authorizationCode" autocomplete="off" placeholder="지역별 인가코드 입력"><button class="btn btn-primary btn-sm" onclick="authorizeFieldPilot()">인가</button><button class="btn btn-outline btn-sm" onclick="logoutFieldPilot()">로그아웃</button></div><div class="flex-row" style="gap:6px;margin-top:5px;flex-wrap:wrap;"><span id="authorizationStatus" class="badge badge-fail">🔒 인가되지 않음</span><span class="badge badge-wait">권한: <strong id="authorizedRole">미인가</strong></span><span class="badge badge-wait">지역: <strong id="authorizedRegion">없음</strong></span></div></div><div class="setting-group">
                 <h4>👤 작업자 설정</h4>
                 <div class="row">
                     <label for="workerName">이름</label>
@@ -870,7 +870,7 @@ body {
                     <input type="password" id="kakaoRestKey" autocomplete="off" placeholder="REST API 키">
                     <button class="btn btn-primary btn-sm" onclick="saveKakaoKeys()" style="flex:0 0 auto;">저장</button>
                 </div>
-                <div id="kakaoStatus" class="badge badge-wait" style="margin-top:4px;">⏳ API 키 미설정</div>
+                <div class="row" style="margin-top:4px;"><label for="weatherApiKey">날씨 키</label><input type="password" id="weatherApiKey" autocomplete="off" placeholder="OpenWeather API 키"><button class="btn btn-primary btn-sm" onclick="saveWeatherKey()">저장</button></div><div id="kakaoStatus" class="badge badge-wait" style="margin-top:4px;">⏳ API 키 미설정</div>
             </div>
             <!-- ★ 카카오워크 현장처리 서버 설정 -->
             <div class="setting-group">

@@ -10,6 +10,26 @@ const OPTIMIZE_MODE_KEY = 'optimizeMode';
 const PRESETS_KEY = 'route_presets';
 const ROUTE_API_KEY = 'routeApi';
 
+// --- 분리형 서버 설정 ---
+function getFieldServerUrl() {
+    const raw = (window.FIELD_SERVER_URL || '').trim();
+    return raw.replace(/\/$/, '');
+}
+function fieldServerApi(path) {
+    const base = getFieldServerUrl();
+    if (!base) throw new Error('FIELD_SERVER_URL이 설정되지 않았습니다.');
+    return base + (path.startsWith('/') ? path : '/' + path);
+}
+let fieldAuth={ok:false,token:'',role:'',region:'',expiresAt:0};
+function authHeaders(extra={}){const h={...extra};if(fieldAuth.token)h.Authorization='Bearer '+fieldAuth.token;return h;}
+async function fieldServerFetch(path,options={}){const r=await fetch(fieldServerApi(path),{...options,headers:authHeaders(options.headers||{})});if(r.status===401){setFeatureLock(true);throw new Error('인가가 필요합니다. 설정 탭에서 인가코드를 입력하세요.');}if(r.status===403)throw new Error('현재 인가된 지역만 사용할 수 있습니다.');return r;}
+function setFeatureLock(lock){document.body.classList.toggle('field-auth-locked',lock);document.querySelectorAll('.bottom-tab').forEach(b=>b.classList.toggle('auth-disabled',lock&&!['tab-settings','tab-help'].includes(b.getAttribute('data-tab'))));const x=document.getElementById('authLockBanner');if(x)x.style.display=lock?'block':'none';}
+function updateAuthUI(){const s=document.getElementById('authorizationStatus'),r=document.getElementById('authorizedRegion'),p=document.getElementById('authorizedRole');if(s){s.textContent=fieldAuth.ok?'✅ 인가 완료':'🔒 인가되지 않음';s.className=fieldAuth.ok?'badge badge-ok':'badge badge-fail';}if(r)r.textContent=fieldAuth.ok?(fieldAuth.role==='master'?'전체 지역 (마스터)':fieldAuth.region):'없음';if(p)p.textContent=fieldAuth.ok?(fieldAuth.role==='master'?'마스터':'지역 사용자'):'미인가';const rd=document.getElementById('regionDisplay');if(rd)rd.style.cursor=fieldAuth.ok&&fieldAuth.role==='master'?'pointer':'default';const ar=document.querySelector('#regionDisplay .region-arrow');if(ar)ar.style.display=fieldAuth.ok&&fieldAuth.role==='master'?'inline':'none';}
+async function authorizeFieldPilot(){const e=document.getElementById('authorizationCode'),code=e?e.value.trim():'';if(!code){showTabStatus('tab-settings','⚠️ 인가코드를 입력하세요.','warning');return false;}try{const r=await fetch(fieldServerApi('/api/auth/login'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})}),d=await r.json();if(!r.ok||!d.ok)throw new Error('인가코드가 올바르지 않습니다.');fieldAuth={ok:true,token:d.token,role:d.role,region:d.region||'',expiresAt:d.expiresAt||0};localStorage.setItem('field_auth_token',d.token);if(fieldAuth.role!=='master'){currentRegion=fieldAuth.region;localStorage.setItem(SELECTED_REGION_KEY,currentRegion);}setFeatureLock(false);updateAuthUI();loadRegionList();updateRegionDisplay();showTabStatus('tab-settings','✅ 인가 완료: '+(fieldAuth.role==='master'?'전체 지역':fieldAuth.region),'ok');return true;}catch(x){setFeatureLock(true);updateAuthUI();showTabStatus('tab-settings','❌ '+x.message,'error');return false;}}
+async function restoreFieldAuthorization(){const t=localStorage.getItem('field_auth_token')||'';if(!t){setFeatureLock(true);updateAuthUI();return false;}try{const r=await fetch(fieldServerApi('/api/auth/status'),{headers:{Authorization:'Bearer '+t},cache:'no-store'}),d=await r.json();if(!r.ok||!d.ok)throw 0;fieldAuth={ok:true,token:t,role:d.role,region:d.region||'',expiresAt:d.expiresAt||0};if(fieldAuth.role!=='master'){currentRegion=fieldAuth.region;localStorage.setItem(SELECTED_REGION_KEY,currentRegion);}setFeatureLock(false);updateAuthUI();return true;}catch(x){localStorage.removeItem('field_auth_token');setFeatureLock(true);updateAuthUI();return false;}}
+async function logoutFieldPilot(){try{if(fieldAuth.token)await fetch(fieldServerApi('/api/auth/logout'),{method:'POST',headers:{Authorization:'Bearer '+fieldAuth.token}});}catch(x){}localStorage.removeItem('field_auth_token');fieldAuth={ok:false,token:'',role:'',region:'',expiresAt:0};setFeatureLock(true);updateAuthUI();}
+
+
 // --- 지역별 중심 좌표 ---
 const REGION_CENTERS = {
     '강남구': { lat: 37.5172, lng: 127.0473 },
@@ -179,6 +199,7 @@ let isPopState = false;
 
 function switchTab(tabId, updateHistory = true) {
     if (!tabId) return;
+    if(!fieldAuth.ok&&!['tab-settings','tab-help'].includes(tabId)){showTabStatus('tab-settings','🔒 인가코드를 먼저 입력하세요.','warning');tabId='tab-settings';}
     let target = document.getElementById(tabId);
     if (!target) return;
     
@@ -249,7 +270,7 @@ function loadSettings() {
             settings.kakaoJsKey = decodeKey(parsed.kakaoJsKey || '');
             settings.kakaoRestKey = decodeKey(parsed.kakaoRestKey || '');
 settings.kakaoChatbotKey = decodeKey(parsed.kakaoChatbotKey || '');
-settings.kakaoChatbotUserId = decodeKey(parsed.kakaoChatbotUserId || '');
+settings.kakaoChatbotUserId = decodeKey(parsed.kakaoChatbotUserId || ''); settings.weatherApiKey=decodeKey(parsed.weatherApiKey||'');
         } catch(e) {
             console.warn('⚠️ 설정 복원 오류, 기본값으로 초기화합니다.', e);
             settings.githubToken = '';
@@ -263,7 +284,7 @@ settings.kakaoChatbotUserId = decodeKey(parsed.kakaoChatbotUserId || '');
     }
     document.getElementById('githubToken').value = settings.githubToken || '';
     document.getElementById('kakaoJsKey').value = settings.kakaoJsKey || '';
-    document.getElementById('kakaoRestKey').value = settings.kakaoRestKey || '';
+    document.getElementById('kakaoRestKey').value = settings.kakaoRestKey || ''; const wk=document.getElementById('weatherApiKey');if(wk)wk.value=settings.weatherApiKey||'';
     let wn = document.getElementById('workerName');
 if (wn) wn.value = workerName;
 updateWorkerNameStatus();
@@ -309,7 +330,7 @@ function saveSettings() {
         kakaoJsKey: encodeKey(settings.kakaoJsKey || ''),
         kakaoRestKey: encodeKey(settings.kakaoRestKey || ''),
 kakaoChatbotKey: encodeKey(settings.kakaoChatbotKey || ''),
-kakaoChatbotUserId: encodeKey(settings.kakaoChatbotUserId || '')
+kakaoChatbotUserId: encodeKey(settings.kakaoChatbotUserId || ''), weatherApiKey: encodeKey(settings.weatherApiKey || '')
     };
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(encoded));
     updateSettingsStatus();
@@ -475,6 +496,8 @@ function loadRegionList() {
 }
 
 function switchRegion(region) {
+    if(!fieldAuth.ok)return;
+    if(fieldAuth.role!=='master' && region!==fieldAuth.region){currentRegion=fieldAuth.region;return;}
     if (!region || region === '') return;
     
     clearTimeout(autoSyncTimer);
@@ -2359,249 +2382,52 @@ async function runOptimize() {
     let btn = document.getElementById('runOptimizeBtn');
     if (btn && btn.disabled) return;
     if (btn) btn.disabled = true;
-    
     try {
-        if (!startPoint || !startPoint.lat) {
+        if (!startPoint || !startPoint.lat || !startPoint.lng) {
             showTabStatus('tab-places', '🚩 출발지를 설정하세요!', 'warning');
-            document.getElementById('startPoint').focus();
-            return;
+            let el = document.getElementById('startPoint'); if (el) el.focus(); return;
         }
-        if (waypoints.length === 0) {
-            showTabStatus('tab-places', '📍 경유지를 추가하세요!', 'warning');
-            return;
-        }
-        
-        let restKey = settings.kakaoRestKey;
-        if (!restKey) {
-            showTabStatus('tab-places', '⚠️ REST API 키 필요 (설정 탭)', 'warning');
-            return;
-        }
-        
+        if (waypoints.length === 0) { showTabStatus('tab-places', '📍 경유지를 추가하세요!', 'warning'); return; }
+        if (!getFieldServerUrl()) { showTabStatus('tab-places', '⚠️ 서버 주소가 없습니다. server-config.js를 확인하세요.', 'error'); return; }
+        const restKey = settings.kakaoRestKey || '';
         showTabStatus('tab-places', '📍 주소 변환 중...', 'info');
-        
-        let wpCoords = [];
-        let hasError = false;
-        
-        for (let i = 0; i < waypoints.length; i++) {
-            let wp = waypoints[i];
-            let lat = wp.lat || 0;
-            let lng = wp.lng || 0;
-            let address = wp.address || '';
-            
+        const wpCoords = [];
+        for (let i=0;i<waypoints.length;i++) {
+            const wp=waypoints[i]; let lat=Number(wp.lat||0), lng=Number(wp.lng||0), address=wp.address||'';
             if (!lat || !lng) {
-                let found = places.find(function(p) { return p.name === wp.name; });
-                if (found && found.lat && found.lng) {
-                    lat = found.lat;
-                    lng = found.lng;
-                    address = found.address || '';
-                } else {
-                    let geo = await geocodeAddress(wp.name, restKey, 1);
-                    if (geo) {
-                        lat = geo.lat;
-                        lng = geo.lng;
-                        address = geo.address || wp.name;
-                        let place = places.find(function(p) { return p.name === wp.name; });
-                        if (place) {
-                            place.lat = lat;
-                            place.lng = lng;
-                            place.address = address;
-                        }
-                    } else {
-                        showTabStatus('tab-places', '❌ "' + wp.name + '" 변환 실패', 'error');
-                        hasError = true;
-                        break;
-                    }
+                const found=places.find(p=>p.name===wp.name);
+                if (found && Number(found.lat) && Number(found.lng)) { lat=Number(found.lat); lng=Number(found.lng); address=found.address||''; }
+                else if (restKey) {
+                    const geo=await geocodeAddress(wp.name,restKey,1);
+                    if (geo) { lat=Number(geo.lat); lng=Number(geo.lng); address=geo.address||wp.name; const place=places.find(p=>p.name===wp.name); if(place){place.lat=lat;place.lng=lng;place.address=address;} }
                 }
             }
-            wpCoords.push({
-                name: wp.name,
-                lat: lat,
-                lng: lng,
-                address: address,
-                remark: wp.remark || ''
-            });
+            if (!lat || !lng) { showTabStatus('tab-places','❌ "'+wp.name+'" 좌표 변환 실패','error'); savePlaces(); return; }
+            wpCoords.push({name:wp.name,lat,lng,address,remark:wp.remark||''});
         }
-        
-        if (hasError) {
-            savePlaces();
-            return;
-        }
-        
-        let validPlaces = wpCoords.filter(function(p) { return p.lat && p.lng; });
-        if (validPlaces.length === 0) {
-            showTabStatus('tab-places', '좌표가 있는 경유지가 없습니다.', 'error');
-            return;
-        }
-        
-        originalRouteCost = await routeCost(validPlaces.slice(), startPoint, restKey);
-        
-        showTabStatus('tab-places', '🛣️ 실제 도로거리 기반 최적화 계산 중...', 'info');
-        let sorted = await optimizeRouteAlgorithm(validPlaces, startPoint.lat, startPoint.lng, optimizeMode, restKey);
-        
-        if (!sorted || sorted.length === 0) {
-            showTabStatus('tab-places', '⚠️ 최적화 실패', 'error');
-            return;
-        }
-        
-        // ★ 기존 마커/폴리라인 완전 제거 (이전 경로 잔상 방지)
-clearRouteMarkers();
-clearSingleMarker();
-isShowingRouteMarkers = true;
-        
-        addRouteMarker(startPoint.lat, startPoint.lng, startPoint.name, true, -1);
-        
-        for (let i = 0; i < sorted.length; i++) {
-            let p = sorted[i];
-            addRouteMarker(p.lat, p.lng, (i + 1) + '. ' + p.name, false, i);
-        }
-        
-        let allPoints = [{
-            name: startPoint.name,
-            lat: startPoint.lat,
-            lng: startPoint.lng,
-            address: startPoint.address || ''
-        }].concat(sorted);
-        
-        let routeData = await callKakaoMobilityRoute(allPoints, restKey);
-        
-        if (routeData) {
-            drawRoadRoute(routeData);
-        } else {
-            drawRoute(allPoints);
-            showTabStatus('tab-route', '⚠️ 도로 경로를 불러올 수 없어 직선으로 표시합니다.', 'warning');
-        }
-        
-        let totalKm = 0;
-        let totalMin = 0;
-        let sectionDistances = [];
-        let sectionTimes = [];
-        
-        if (routeData && routeData.routes && routeData.routes[0] && routeData.routes[0].sections) {
-            let route = routeData.routes[0];
-            
-            if (route.summary) {
-                totalKm = route.summary.distance / 1000;
-                totalMin = Math.round(route.summary.duration / 60);
-            }
-            
-            for (let i = 0; i < route.sections.length; i++) {
-                let section = route.sections[i];
-                let distKm = section.distance / 1000;
-                let timeMin = Math.round(section.duration / 60);
-                sectionDistances.push(distKm);
-                sectionTimes.push(timeMin);
-            }
-            
-            while (sectionDistances.length < sorted.length) {
-                let idx = sectionDistances.length;
-                let prev = idx === 0 ? startPoint : sorted[idx - 1];
-                let curr = sorted[idx];
-                if (prev && curr) {
-                    let dist = haversineKm(prev.lat, prev.lng, curr.lat, curr.lng);
-                    sectionDistances.push(dist);
-                    sectionTimes.push(Math.round(dist / 40 * 60));
-                } else {
-                    sectionDistances.push(0);
-                    sectionTimes.push(0);
-                }
-            }
-        } else {
-            for (let i = 0; i < allPoints.length - 1; i++) {
-                let p1 = allPoints[i];
-                let p2 = allPoints[i + 1];
-                let dist = haversineKm(p1.lat, p1.lng, p2.lat, p2.lng);
-                totalKm += dist;
-                sectionDistances.push(dist);
-                sectionTimes.push(Math.round(dist / 40 * 60));
-            }
-            totalMin = Math.round(totalKm / 40 * 60);
-        }
-        
-        totalKm = parseFloat(totalKm.toFixed(2));
-        totalMin = Math.round(totalMin);
-        
-        for (let i = 0; i < sorted.length; i++) {
-            let dist = sectionDistances[i] || 0;
-            let time = sectionTimes[i] || 0;
-            sorted[i]._segDist = parseFloat(dist.toFixed(2));
-            sorted[i]._segTime = Math.round(time);
-        }
-        
-        routeResult = {
-            places: sorted,
-            startPoint: startPoint,
-            totalKm: totalKm,
-            totalMin: totalMin,
-            mode: optimizeMode
-        };
-        
-        document.getElementById('placeCount').textContent = validPlaces.length + '개소';
-        document.getElementById('totalDistance').textContent = totalKm + ' km';
-        document.getElementById('totalTime').textContent = totalMin + ' 분';
-        document.getElementById('optimizeMode').textContent = optimizeMode === 'Nearest' ? '가까운순' : '먼순';
-        
-        if (originalRouteCost) {
-            let savedKm = parseFloat((originalRouteCost.distanceKm - totalKm).toFixed(2));
-            let savedMin = Math.round(originalRouteCost.durationMin - totalMin);
-            let savedRow = document.getElementById('savedRow');
-            let savedEl = document.getElementById('savedAmount');
-            if (savedRow && savedEl) {
-                if (savedKm > 0.1 || savedMin > 0) {
-                    savedRow.style.display = 'flex';
-                    let parts = [];
-                    if (savedKm > 0.1) parts.push('-' + savedKm + 'km');
-                    if (savedMin > 0) parts.push('-' + savedMin + '분');
-                    savedEl.textContent = parts.join(' ') + ' 절약 ✨';
-                    savedEl.style.color = '#38a169';
-                } else {
-                    savedRow.style.display = 'none';
-                }
-            }
-        }
-        
-        showRouteList();
-        
-        if (startPoint && startPoint.lat && startPoint.lng) {
-            focusRouteStart();
-        }
-        
-        let meta = sorted._optimizationMeta || {};
-        let roadMsg = '';
-        if (meta.roadSuccess !== undefined && meta.roadFallback !== undefined) {
-            let totalRoadCalls = meta.roadSuccess + meta.roadFallback;
-            if (totalRoadCalls > 0) {
-                let roadPercent = Math.round((meta.roadSuccess / totalRoadCalls) * 100);
-                if (roadPercent === 100) {
-                    roadMsg = '🛣️ 모든 구간 실제 도로 정보 사용 (' + totalRoadCalls + '구간)';
-                } else if (roadPercent >= 50) {
-                    roadMsg = '🛣️ ' + roadPercent + '% 도로 정보 사용 (' + meta.roadSuccess + '/' + totalRoadCalls + '구간)';
-                } else {
-                    roadMsg = '⚠️ 일부 구간은 도로정보 대신 직선거리로 보완했습니다. (' + meta.roadFallback + '/' + totalRoadCalls + '구간)';
-                }
-            }
-        }
-        
-        if (meta.roadCalls >= ROAD_OPTIMIZE_MAX_CALLS) {
-            roadMsg += ' ⚠️ API 호출 제한 도달';
-            showTabStatus('tab-route', '⚠️ 도로 API 호출 제한에 도달했습니다. 일부 구간은 직선거리로 계산됨.', 'warning');
-        }
-        
-        let modeText = optimizeMode === 'Nearest' ? '가까운순' : '먼순';
-        let objectiveText = routeObjective === 'time' ? '최소시간' 
-            : routeObjective === 'balanced' ? '거리+시간 균형' 
-            : '최단거리';
-        let resultMsg = '✅ 최적화 완료! ' + validPlaces.length + '개소 · ' + totalKm + 'km · ' + totalMin + '분';
-        if (roadMsg) resultMsg += ' · ' + roadMsg;
-        showTabStatus('tab-route', resultMsg, 'ok');
-        
-        updateOptimizationLiveSummary();
-        
-        switchTab('tab-route');
-    } catch(e) {
-        showTabStatus('tab-places', '❌ 오류 발생: ' + e.message, 'error');
-    } finally {
-        if (btn) btn.disabled = false;
-    }
+        savePlaces();
+        showTabStatus('tab-places','🛣️ 서버에서 도로 기반 경로 최적화 계산 중...','info');
+        const response=await fieldServerFetch('/api/route/optimize',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+            startPoint:{name:startPoint.name||'출발지',lat:Number(startPoint.lat),lng:Number(startPoint.lng),address:startPoint.address||''},
+            places:wpCoords,mode:optimizeMode,objective:routeObjective||'distance',useDirectionHint:useDirectionHint!==false,useRoadOptimization:useRoadOptimization!==false, region:currentRegion
+        })});
+        const raw=await response.text(); let data; try{data=JSON.parse(raw);}catch{data=null;}
+        if(!response.ok||!data||data.ok===false) throw new Error(data?.error||('서버 오류 HTTP '+response.status));
+        const sorted=Array.isArray(data.places)?data.places:[]; if(!sorted.length){showTabStatus('tab-places','⚠️ 최적화 결과가 없습니다.','error');return;}
+        originalRouteCost=data.originalCost||null; clearRouteMarkers(); clearSingleMarker(); isShowingRouteMarkers=true;
+        addRouteMarker(startPoint.lat,startPoint.lng,startPoint.name,true,-1); sorted.forEach((p,i)=>addRouteMarker(p.lat,p.lng,(i+1)+'. '+p.name,false,i));
+        const allPoints=[{name:startPoint.name,lat:Number(startPoint.lat),lng:Number(startPoint.lng),address:startPoint.address||''}].concat(sorted);
+        const routeData=data.routeData||null; if(routeData) drawRoadRoute(routeData); else drawRoute(allPoints);
+        let totalKm=Number(data.totalKm||0), totalMin=Math.round(Number(data.totalMin||0));
+        if(!totalKm&&routeData?.routes?.[0]?.summary){totalKm=Number(routeData.routes[0].summary.distance||0)/1000;totalMin=Math.round(Number(routeData.routes[0].summary.duration||0)/60);}
+        routeResult={places:sorted,startPoint,totalKm:Number(totalKm.toFixed(2)),totalMin,mode:optimizeMode,routeData,meta:data.meta||{}};
+        document.getElementById('placeCount').textContent=sorted.length+'개소'; document.getElementById('totalDistance').textContent=routeResult.totalKm+' km'; document.getElementById('totalTime').textContent=routeResult.totalMin+' 분'; document.getElementById('optimizeMode').textContent=optimizeMode==='Nearest'?'가까운순':'먼순';
+        if(originalRouteCost){const savedKm=Number((originalRouteCost.distanceKm-routeResult.totalKm).toFixed(2)),savedMin=Math.round(originalRouteCost.durationMin-routeResult.totalMin),row=document.getElementById('savedRow'),el=document.getElementById('savedAmount');if(row&&el){if(savedKm>0.1||savedMin>0){row.style.display='flex';const parts=[];if(savedKm>0.1)parts.push('-'+savedKm+'km');if(savedMin>0)parts.push('-'+savedMin+'분');el.textContent=parts.join(' ')+' 절약 ✨';el.style.color='#38a169';}else row.style.display='none';}}
+        showRouteList(); if(startPoint&&startPoint.lat&&startPoint.lng)focusRouteStart();
+        const meta=data.meta||{}; let roadMsg=''; if(meta.roadCalls!=null){const success=Number(meta.roadSuccess||0),fallback=Number(meta.roadFallback||0),total=success+fallback;if(total){const pct=Math.round(success/total*100);roadMsg=pct===100?'🛣️ 실제 도로정보 '+total+'회 사용':'🛣️ 도로정보 '+pct+'% 사용';}}
+        showTabStatus('tab-route','✅ 최적화 완료! '+sorted.length+'개소 · '+routeResult.totalKm+'km · '+routeResult.totalMin+'분'+(roadMsg?' · '+roadMsg:''),'ok'); updateOptimizationLiveSummary(); switchTab('tab-route');
+    } catch(e) { console.error('[route optimize]',e); showTabStatus('tab-places','❌ 서버 최적화 실패: '+(e.message||e),'error'); }
+    finally { if(btn) btn.disabled=false; }
 }
 
 // ============================================================
@@ -3735,6 +3561,8 @@ async function uploadToGitHub(silent) {
 }
 
 async function downloadFromGitHub() {
+    if(!fieldAuth.ok){showTabStatus('tab-settings','🔒 인가코드를 먼저 입력하세요.','warning');return;}
+    if(fieldAuth.role!=='master'){ return processDownloadFromGitHub(fieldAuth.region); }
     let token = settings.githubToken;
     if (!token) {
         showTabStatus('tab-settings', '⚠️ GitHub 토큰이 없습니다.', 'warning');
@@ -4307,8 +4135,8 @@ async function fetchWeather() {
     try {
         let apiKey = 'b84c1b9a09d8316b679320cceb3a1097';
         let center = (typeof userGpsCoords !== 'undefined' && userGpsCoords) ? userGpsCoords : getRegionCenter(currentRegion);
-        let url = 'https://api.openweathermap.org/data/2.5/weather?lat=' + center.lat + '&lon=' + center.lng + '&appid=' + apiKey + '&units=metric&lang=kr';
-        let response = await fetch(url);
+        let url = fieldServerApi('/api/weather?type=current&lat='+encodeURIComponent(center.lat)+'&lon='+encodeURIComponent(center.lng));
+        let response = await fieldServerFetch(url.replace(getFieldServerUrl(),''));
         if (!response.ok) throw new Error('날씨 API 호출 실패');
         let data = await response.json();
         let temp = Math.round(data.main.temp);
@@ -4350,8 +4178,8 @@ async function showWeekWeather() {
     let center = (typeof userGpsCoords !== 'undefined' && userGpsCoords) ? userGpsCoords : getRegionCenter(currentRegion);
     let apiKey = 'b84c1b9a09d8316b679320cceb3a1097';
     try {
-        let url = 'https://api.openweathermap.org/data/2.5/forecast?lat=' + center.lat + '&lon=' + center.lng + '&appid=' + apiKey + '&units=metric&lang=kr';
-        let response = await fetch(url);
+        let url = fieldServerApi('/api/weather?type=forecast&lat='+encodeURIComponent(center.lat)+'&lon='+encodeURIComponent(center.lng));
+        let response = await fieldServerFetch(url.replace(getFieldServerUrl(),''));
         if (!response.ok) throw new Error('예보 조회 실패');
         let data = await response.json();
 
@@ -4860,6 +4688,8 @@ function deleteRegionFromPopup() {
 }
 
 function openRegionManager() {
+    if(!fieldAuth.ok)return;
+    if(fieldAuth.role!=='master'){showTabStatus('tab-settings','🔒 현재 지역은 '+fieldAuth.region+'만 사용할 수 있습니다.','warning');return;}
     let existing = document.getElementById('regionManagerModal');
     if (existing) existing.remove();
     
@@ -5168,7 +4998,9 @@ document.addEventListener('DOMContentLoaded', function() {
 // 38. 초기화 실행
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
+    initFieldServerConfig();
     loadSettings();
+    setFeatureLock(true); updateAuthUI(); loadPublicServerConfig(); restoreFieldAuthorization();
     loadRegionList();
     loadPresets();
     initDarkMode();
@@ -7618,9 +7450,9 @@ async function sendToKakaoChatbot(record) {
         if (record.content) message += '📝 처리내용:\n' + record.content + '\n';
         message += '━━━━━━━━━━━━━━';
 
-        let response = await fetch('https://api.kakaocorp.com/v1/chatbot/message/send', {
+        let response = await fieldServerFetch('/api/proxy/kakaocorp/v1/chatbot/message/send', {
             method: 'POST',
-            headers: {'Authorization':'Bearer ' + chatbotKey, 'Content-Type':'application/json'},
+            headers: {'Authorization':'Bearer ' + chatbotKey, 'X-FieldPilot-Auth':'Bearer '+fieldAuth.token, 'Content-Type':'application/json'},
             body: JSON.stringify({user_id: chatbotUserId, content: message})
         });
         if (!response.ok) throw new Error('전송 실패: ' + response.status);
@@ -7631,9 +7463,9 @@ async function sendToKakaoChatbot(record) {
             let formData = new FormData();
             formData.append('image', blob, photos[i].fileName);
             formData.append('user_id', chatbotUserId);
-            await fetch('https://api.kakaocorp.com/v1/chatbot/message/image', {
+            await fieldServerFetch('/api/proxy/kakaocorp/v1/chatbot/message/image', {
                 method: 'POST',
-                headers: {'Authorization':'Bearer ' + chatbotKey},
+                headers: {'Authorization':'Bearer ' + chatbotKey, 'X-FieldPilot-Auth':'Bearer '+fieldAuth.token},
                 body: formData
             });
         }
@@ -7705,6 +7537,7 @@ async function exportPhotosToServer() {
         showTabStatus('tab-work', '⚠️ 완료: 성공 ' + success + '개, 실패 ' + fail + '개', 'warning');
     }
 }
+function saveWeatherKey(){const e=document.getElementById('weatherApiKey');settings.weatherApiKey=e?e.value.trim():'';saveSettings();showTabStatus('tab-settings','✅ 날씨 API 키 저장됨','ok');}
 // 카카오 챗봇 설정 저장
 function saveKakaoChatbot() {
     settings.kakaoChatbotKey = document.getElementById('kakaoChatbotKey').value.trim();
@@ -7751,4 +7584,11 @@ async function testKakaoChatbot() {
         showTabStatus('tab-settings', '❌ 챗봇 연결 실패: ' + error.message, 'error');
     }
 }
+async function testPhotoServer() {
+    const status=document.getElementById('photoServerStatus'), display=document.getElementById('fieldServerUrlDisplay'), url=getFieldServerUrl();
+    if(display) display.textContent=url||'미설정';
+    if(!url){if(status){status.textContent='❌ 서버 주소 미설정';status.className='badge badge-fail';}showTabStatus('tab-settings','❌ FIELD_SERVER_URL이 없습니다.','error');return false;}
+    try{if(status){status.textContent='⏳ 연결 확인 중...';status.className='badge badge-wait';}const r=await fetch(fieldServerApi('/api/health'),{cache:'no-store'}),d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||('HTTP '+r.status));if(status){status.textContent='✅ 서버 연결됨';status.className='badge badge-ok';}showTabStatus('tab-settings','✅ 서버 연결 정상','ok');return true;}catch(e){if(status){status.textContent='❌ 연결 실패';status.className='badge badge-fail';}showTabStatus('tab-settings','❌ 서버 연결 실패: '+e.message,'error');return false;}}
+function initFieldServerConfig(){const d=document.getElementById('fieldServerUrlDisplay');if(d)d.textContent=getFieldServerUrl()||'미설정';}
+window.testPhotoServer=testPhotoServer;
 window.switchTab = switchTab;
