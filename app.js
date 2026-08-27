@@ -304,6 +304,37 @@ settings.kakaoChatbotUserId = decodeKey(parsed.kakaoChatbotUserId || '');
 if (wn) wn.value = workerName;
 updateWorkerNameStatus();
     updateSettingsStatus();
+    let fsDisplay = document.getElementById('fieldServerUrlDisplay');
+    if (fsDisplay) fsDisplay.textContent = serverBase() || '(설정 안 됨 - server-config.js 확인)';
+}
+
+// ============================================================
+// 현장처리 서버 연결 확인 (설정 탭 "🔄 서버 연결 확인" 버튼)
+// ============================================================
+async function testPhotoServer() {
+    let statusEl = document.getElementById('photoServerStatus');
+    let base = serverBase();
+    if (!base) {
+        if (statusEl) { statusEl.textContent = '⚠️ FIELD_SERVER_URL이 설정되지 않았습니다'; statusEl.className = 'badge badge-fail'; }
+        return;
+    }
+    if (statusEl) { statusEl.textContent = '⏳ 확인 중...'; statusEl.className = 'badge badge-wait'; }
+    try {
+        let data = await serverGet('/api/health');
+        let parts = [];
+        parts.push(data.kakaoRestKeyConfigured ? '카카오키✅' : '카카오키❌');
+        parts.push(data.openWeatherKeyConfigured ? '날씨키✅' : '날씨키❌');
+        parts.push(data.appKeyConfigured ? '봇키✅' : '봇키❌');
+        if (statusEl) {
+            statusEl.textContent = '✅ 서버 연결됨 (' + parts.join(' ') + ')';
+            statusEl.className = 'badge badge-ok';
+        }
+    } catch (e) {
+        if (statusEl) {
+            statusEl.textContent = '❌ 서버에 연결할 수 없습니다: ' + e.message;
+            statusEl.className = 'badge badge-fail';
+        }
+    }
 }
 
 // ============================================================
