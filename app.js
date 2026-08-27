@@ -4133,7 +4133,6 @@ async function fetchWeather() {
     let weatherEl = document.getElementById('weatherDisplay');
     if (!weatherEl) return false;
     try {
-        let apiKey = 'b84c1b9a09d8316b679320cceb3a1097';
         let center = (typeof userGpsCoords !== 'undefined' && userGpsCoords) ? userGpsCoords : getRegionCenter(currentRegion);
         let url = fieldServerApi('/api/weather?type=current&lat='+encodeURIComponent(center.lat)+'&lon='+encodeURIComponent(center.lng));
         let response = await fieldServerFetch(url.replace(getFieldServerUrl(),''));
