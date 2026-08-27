@@ -4432,7 +4432,7 @@ async function showWeekWeather() {
 // ============================================================
 function registerServiceWorker() {
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/route-optimizer-pwa/sw.js')
+        navigator.serviceWorker.register('/FieldPilot/sw.js')
             .then(function(reg) {})
             .catch(function(err) {});
     }
@@ -4442,7 +4442,7 @@ function displayAppVersion() {
     let statusEl = document.getElementById('updateStatus');
     if (!statusEl) return;
     
-    fetch('/route-optimizer-pwa/sw.js?v=' + Date.now())
+    fetch('/FieldPilot/sw.js?v=' + Date.now())
         .then(function(response) {
             if (!response.ok) throw new Error('sw.js 로드 실패');
             return response.text();
@@ -4487,7 +4487,7 @@ function checkForUpdates() {
             return registration.update();
         })
         .then(function() {
-            return fetch('/route-optimizer-pwa/sw.js?v=' + Date.now());
+            return fetch('/FieldPilot/sw.js?v=' + Date.now());
         })
         .then(function(response) {
             if (!response.ok) throw new Error('sw.js 로드 실패');
