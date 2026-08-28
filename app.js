@@ -327,6 +327,12 @@ function switchTab(tabId, updateHistory = true) {
     if (!tabId) return;
     let target = document.getElementById(tabId);
     if (!target) return;
+    if (tabId !== 'tab-route' && kakaoMap) {
+    try {
+        kakaoMap.setDraggable(false);
+        kakaoMap.setZoomable(false);
+    } catch (e) {}
+}
     
     document.querySelectorAll('.tab-content').forEach(function(el) {
         el.classList.remove('active');
@@ -339,17 +345,25 @@ function switchTab(tabId, updateHistory = true) {
         btn.setAttribute('aria-current', isActive ? 'page' : 'false');
     });
     
-    // ★ 지도 탭으로 전환할 때만 1회 relayout
-    if (tabId === 'tab-route') {
-setTimeout(function() {
-    if (kakaoMap) {
-        kakaoMap.relayout();
-        kakaoMap.setDraggable(true);
-        kakaoMap.setZoomable(true);
-    } else if (typeof initMap === 'function') {
-        initMap();
-    }
-}, 300);
+   // ============================================================
+// 지도 탭 진입 시에만 지도 활성화
+// ============================================================
+if (tabId === 'tab-route') {
+    requestAnimationFrame(function() {
+        setTimeout(function() {
+            if (kakaoMap) {
+                try {
+                    kakaoMap.relayout();
+                    kakaoMap.setDraggable(true);
+                    kakaoMap.setZoomable(true);
+                } catch (e) {
+                    console.warn('[MAP] relayout 실패:', e);
+                }
+            } else if (!sdkLoading) {
+                initMap();
+            }
+        }, 150);
+    });
 }
     
     if (tabId === 'tab-list' && typeof renderPlaces === 'function') {
@@ -1136,21 +1150,36 @@ function deleteRegion() {
 // 5. 설정 내보내기/가져오기
 // ============================================================
 function exportSettings() {
-    let data = {
-        githubToken: settings.githubToken || '',
+    const data = {
         kakaoJsKey: settings.kakaoJsKey || '',
         kakaoRestKey: settings.kakaoRestKey || '',
         routeApi: routeApi || 'kakao',
         exportDate: new Date().toISOString()
     };
-    let blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    let url = URL.createObjectURL(blob);
-    let a = document.createElement('a');
+
+    const blob = new Blob(
+        [JSON.stringify(data, null, 2)],
+        { type: 'application/json' }
+    );
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+
     a.href = url;
-    a.download = 'settings_' + new Date().toISOString().slice(0,10) + '.json';
+    a.download =
+        'fieldpilot-settings-' +
+        new Date().toISOString().slice(0, 10) +
+        '.json';
+
     a.click();
+
     URL.revokeObjectURL(url);
-    showTabStatus('tab-settings', '✅ 설정 내보내기 완료', 'ok');
+
+    showTabStatus(
+        'tab-settings',
+        '✅ 설정 백업 완료',
+        'ok'
+    );
 }
 
 function importSettings(event) {
@@ -3621,8 +3650,21 @@ function focusMapOnPoint(lat, lng, level) {
         } catch (e) {}
     }
     pendingMapCenter = center;
-    if (!sdkLoading) { try { initMap(); } catch (e) {} }
-    return false;
+
+// 지도 탭이 활성화된 경우에만 SDK 로딩
+const routeTab = document.getElementById('tab-route');
+const routeActive = routeTab &&
+    routeTab.classList.contains('active');
+
+if (routeActive && !sdkLoading) {
+    try {
+        initMap();
+    } catch (e) {
+        console.warn('[MAP] 지연 초기화 실패:', e);
+    }
+}
+
+return false;
 }
 
 function applyPendingMapCenter() {
@@ -3647,6 +3689,14 @@ function focusRouteStart() {
 function initMap() {
     let container = document.getElementById('map');
     if (!container) return;
+    if (kakaoMap) {
+    try {
+        kakaoMap.relayout();
+    } catch (e) {}
+    return;
+}
+
+if (sdkLoading) return;
     let jsKey = settings.kakaoJsKey;
     if (!jsKey) {
         container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;color:#e53e3e;font-size:14px;background:#fff5f5;border-radius:12px;padding:20px;text-align:center;">⚠️ 설정 탭에서<br>카카오 JavaScript 키를 입력하세요</div>';
@@ -5643,10 +5693,6 @@ restoreFieldPilotAuth()
     renderWaypointList();
     updateOptimizationLiveSummary();
     updateStorageInfo();
-    setTimeout(initMap, 500);
-    setTimeout(function() {
-        if (!kakaoMap && !sdkLoading) initMap();
-    }, 3000);
     registerServiceWorker();
     setTimeout(displayAppVersion, 1000);
     
