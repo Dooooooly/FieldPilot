@@ -1485,55 +1485,92 @@ function loadRegionList() {
         return;
     }
 
-    // 일반 사용자
     if (isRegionUser()) {
 
-        const region =
-            fieldPilotAuth.region;
+    const region =
+        String(fieldPilotAuth.region || '').trim();
 
-        currentRegion =
-            region;
-
-        localStorage.setItem(
-            SELECTED_REGION_KEY,
-            region
+    if (!region) {
+        console.warn(
+            '[AUTH] 지역 사용자이지만 region이 없습니다.'
         );
 
-        const option =
-            document.createElement(
-                'option'
-            );
-
-        option.value =
-            region;
-
-        option.textContent =
-            region;
-
-        select.appendChild(option);
-
-        select.value =
-            region;
-
-        select.disabled =
-            true;
-
-        const data =
-            localStorage.getItem(
-                getStorageKey(region)
-            );
-
-        places =
-            data ?
-            JSON.parse(data) :
-            [];
+        currentRegion = '';
+        places = [];
 
         updateRegionDisplay();
-        renderPlaces();
-        updateStorageInfo();
+        updateFeatureLockState();
 
         return;
     }
+
+    currentRegion = region;
+
+    localStorage.setItem(
+        SELECTED_REGION_KEY,
+        region
+    );
+
+    const option =
+        document.createElement('option');
+
+    option.value = region;
+    option.textContent = region;
+
+    select.appendChild(option);
+
+    select.value = region;
+    select.disabled = true;
+
+    /*
+     * 기존 LOCAL 데이터를 먼저 표시한다.
+     * 처음 사용하는 사용자라면 빈 배열이 된다.
+     */
+    const data =
+        localStorage.getItem(
+            getStorageKey(region)
+        );
+
+    try {
+        places =
+            data
+                ? JSON.parse(data)
+                : [];
+    } catch (error) {
+
+        console.warn(
+            '[LOCAL] 지역 데이터 파싱 실패:',
+            error
+        );
+
+        places = [];
+    }
+
+    updateRegionDisplay();
+    renderPlaces();
+    updateStorageInfo();
+
+    /*
+     * ★ 핵심
+     * 지역 인가가 완료되면 반드시
+     * SERVER → LOCAL 동기화를 수행한다.
+     *
+     * 처음 사용하는 사용자도 여기서
+     * 서버의 용산 현장 목록을 가져온다.
+     */
+    loadPlacesFromServer(
+        region,
+        true
+    ).catch(function(error) {
+
+        console.warn(
+            '[SERVER → LOCAL] 지역 현장 초기 로딩 실패:',
+            error
+        );
+    });
+
+    return;
+}
     select.innerHTML = '';
     
     let regions = [];
@@ -9068,6 +9105,21 @@ async function authorizeFieldPilot() {
         applyAuthorizationState();
         loadRegionList();
 
+if (
+    fieldPilotAuth.role === 'region' &&
+    fieldPilotAuth.region
+) {
+    currentRegion =
+        fieldPilotAuth.region;
+
+    await loadPlacesFromServer(
+        currentRegion,
+        true
+    );
+
+    renderPlaces();
+    updateStorageInfo();
+}
         if (fieldPilotAuth.role === 'master') {
             alert(
                 '✅ 마스터 권한으로 인가되었습니다.'
