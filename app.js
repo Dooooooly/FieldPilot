@@ -453,25 +453,91 @@ async function testGitHubToken() {
 // 4. 저장소 및 지역 관리
 // ============================================================
 function savePlaces() {
-    let key = getStorageKey(currentRegion);
-    localStorage.setItem(key, JSON.stringify(places));
+    if (!currentRegion) {
+        console.warn('지역이 없어 현장을 저장할 수 없습니다.');
+        return;
+    }
+
+    // 1. LOCAL 즉시 저장
+    const key = getStorageKey(currentRegion);
+    localStorage.setItem(
+        key,
+        JSON.stringify(places)
+    );
+
     renderPlaces();
     updateStorageInfo();
-    //scheduleAutoSync();
+
+    // 2. SERVER 동기화 예약
+    scheduleAutoSync();
 }
+
+let placeSyncInProgress = false;
+let placeSyncPending = false;
 
 function scheduleAutoSync() {
     clearTimeout(autoSyncTimer);
-    if (!settings.githubToken) return;
+
+    if (!currentRegion) return;
+
     if (!navigator.onLine) {
-        showTabStatus('tab-settings', '📡 오프라인 - GitHub 동기화 보류됨', 'warning');
+        placeSyncPending = true;
+        showTabStatus(
+            'tab-settings',
+            '📡 오프라인 - 서버 동기화 대기 중',
+            'warning'
+        );
         return;
     }
-    autoSyncTimer = setTimeout(function() {
-        uploadToGitHub(true);
-    }, 5000);
-}
 
+    autoSyncTimer = setTimeout(async function() {
+
+        if (placeSyncInProgress) {
+            placeSyncPending = true;
+            return;
+        }
+
+        placeSyncInProgress = true;
+        placeSyncPending = false;
+
+        try {
+            await serverPost(
+                '/api/places?region=' +
+                encodeURIComponent(currentRegion),
+                {
+                    version: 1,
+                    region: currentRegion,
+                    places: places,
+                    lastUpdated: new Date().toISOString()
+                }
+            );
+
+            console.log(
+                '[LOCAL → SERVER] 현장 동기화 완료:',
+                currentRegion,
+                places.length
+            );
+
+        } catch (error) {
+
+            placeSyncPending = true;
+
+            console.error(
+                '[LOCAL → SERVER] 동기화 실패:',
+                error
+            );
+
+        } finally {
+
+            placeSyncInProgress = false;
+
+            if (placeSyncPending) {
+                scheduleAutoSync();
+            }
+        }
+
+    }, 1500);
+}
 function updateStorageInfo() {
     let size = 0;
     for (let i = 0; i < localStorage.length; i++) {
@@ -479,6 +545,71 @@ function updateStorageInfo() {
         if (key) size += localStorage.getItem(key).length * 2;
     }
     document.getElementById('storageInfo').textContent = '저장소: ' + (size / 1024).toFixed(1) + ' KB';
+}
+async function loadPlacesFromServer(region, useServer = true) {
+    if (!region) {
+        places = [];
+        return;
+    }
+
+    const localKey = getStorageKey(region);
+    const localData = localStorage.getItem(localKey);
+
+    // 1. LOCAL을 먼저 화면에 표시
+    if (localData) {
+        try {
+            places = JSON.parse(localData);
+        } catch (e) {
+            console.warn('LOCAL 현장 데이터 파싱 실패:', e);
+            places = [];
+        }
+    } else {
+        places = [];
+    }
+
+    renderPlaces();
+    updateStorageInfo();
+
+    if (!useServer || !navigator.onLine) {
+        return;
+    }
+
+    // 2. 서버 최신 데이터 확인
+    try {
+        const data = await serverGet(
+            '/api/places?region=' +
+            encodeURIComponent(region)
+        );
+
+        if (
+            data &&
+            Array.isArray(data.places)
+        ) {
+            places = data.places;
+
+            // 서버 데이터를 LOCAL 캐시로 반영
+            localStorage.setItem(
+                localKey,
+                JSON.stringify(places)
+            );
+
+            renderPlaces();
+            updateStorageInfo();
+
+            console.log(
+                '[SERVER → LOCAL] 현장 로딩:',
+                region,
+                places.length
+            );
+        }
+
+    } catch (error) {
+
+        console.warn(
+            '[SERVER → LOCAL] 실패. LOCAL 데이터 사용:',
+            error.message
+        );
+    }
 }
 
 function loadRegionList() {
@@ -527,11 +658,10 @@ function loadRegionList() {
     
     updateRegionDisplay();
     
-    let key = getStorageKey(currentRegion);
-    let data = localStorage.getItem(key);
-    places = data ? JSON.parse(data) : [];
-    renderPlaces();
-    updateStorageInfo();
+    loadPlacesFromServer(
+    currentRegion,
+    true
+);
     
     if (kakaoMap) {
         let center = getRegionCenter(currentRegion);
@@ -541,74 +671,95 @@ function loadRegionList() {
     }
 }
 
-function switchRegion(region) {
+async function switchRegion(region) {
     if (!region || region === '') return;
-    
+
     clearTimeout(autoSyncTimer);
+
     currentRegion = region;
-    localStorage.setItem(SELECTED_REGION_KEY, region);
-    
+
+    localStorage.setItem(
+        SELECTED_REGION_KEY,
+        region
+    );
+
     let select = document.getElementById('regionSelect');
+
     if (select) {
         select.value = region;
-        for (let i = 0; i < select.options.length; i++) {
-            if (select.options[i].value === region) {
-                select.selectedIndex = i;
-                break;
-            }
-        }
     }
-    
+
     updateRegionDisplay();
-    
-    let key = getStorageKey(region);
-    let data = localStorage.getItem(key);
-    places = data ? JSON.parse(data) : [];
-    
-    renderPlaces();
-    updateStorageInfo();
-    
+
+    // LOCAL → SERVER
+    await loadPlacesFromServer(region, true);
+
+    // 경로 데이터 초기화
     waypoints = [];
     routeResult = null;
     startPoint = null;
+
     renderWaypointList();
+
     clearRouteMarkers();
     clearSingleMarker();
+
     isShowingRouteMarkers = false;
-    
-    document.getElementById('startInfo').textContent = '⏳ 출발지를 검색하거나 현재 위치 버튼을 눌러 설정하세요';
-    document.getElementById('startInfo').style.color = '#718096';
-    document.getElementById('placeCount').textContent = '0개소';
-    document.getElementById('totalDistance').textContent = '0.00 km';
-    document.getElementById('totalTime').textContent = '0 분';
-    document.getElementById('optimizeMode').textContent = '-';
+
+    document.getElementById('startInfo').textContent =
+        '⏳ 출발지를 검색하거나 현재 위치 버튼을 눌러 설정하세요';
+
+    document.getElementById('startInfo').style.color =
+        '#718096';
+
+    document.getElementById('placeCount').textContent =
+        '0개소';
+
+    document.getElementById('totalDistance').textContent =
+        '0.00 km';
+
+    document.getElementById('totalTime').textContent =
+        '0 분';
+
+    document.getElementById('optimizeMode').textContent =
+        '-';
+
     document.getElementById('routeList').innerHTML = '';
-    document.getElementById('savedRow').style.display = 'none';
-    
-    let btnContainer = document.getElementById('kakaoMapButtonContainer');
-    if (btnContainer) {
-        btnContainer.style.display = 'none';
-    }
+
+    document.getElementById('savedRow').style.display =
+        'none';
+
     currentPlaceId = null;
-    
+
     if (kakaoMap) {
         let center = getRegionCenter(region);
-        kakaoMap.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
+
+        kakaoMap.setCenter(
+            new kakao.maps.LatLng(
+                center.lat,
+                center.lng
+            )
+        );
+
         kakaoMap.setLevel(5);
         kakaoMap.relayout();
     }
-    
-    let activeTab = document.querySelector('.tab-content.active');
+
+    let activeTab =
+        document.querySelector('.tab-content.active');
+
     if (activeTab) {
-        showTabStatus(activeTab.id, '📍 ' + region + ' 지역으로 전환됨 (' + places.length + '개 현장)', 'info');
+        showTabStatus(
+            activeTab.id,
+            '📍 ' + region +
+            ' 지역으로 전환됨 (' +
+            places.length +
+            '개 현장)',
+            'info'
+        );
     }
+
     fetchWeather();
-    
-    if (settings.githubToken && navigator.onLine) {
-        setTimeout(function() {
-            uploadToGitHub(true);
-        }, 3000);
-    }
 }
 
 function addRegion() {
@@ -3733,7 +3884,7 @@ async function uploadToGitHub(silent) {
                         });
                         places = merged;
                         savePlaces();
-                        await uploadToGitHub(silent);
+                        serverPost('/api/places')
                     } else {
                         showTabStatus('tab-settings', '❌ 충돌 해결 실패', 'error');
                     }
@@ -4280,7 +4431,9 @@ favorite: false
     }
 }
     }
-    if (added > 0 || updated > 0) savePlaces(); scheduleAutoSync();
+   if (added > 0 || updated > 0) {
+    savePlaces();
+}
     showUploadResult('✅ 추가 ' + added + ', 업데이트 ' + updated + ', 건너뜀 ' + skipped, 'success');
     searchPlaces();
 }
@@ -4293,7 +4446,32 @@ function showUploadResult(msg, type) {
     el.style.background = colors[type] || colors.info;
 }
 
-function exportData() {
+async function exportData() {
+    if (currentRegion && navigator.onLine) {
+    try {
+        const serverData = await serverGet(
+            '/api/places?region=' +
+            encodeURIComponent(currentRegion)
+        );
+
+        if (
+            serverData &&
+            Array.isArray(serverData.places)
+        ) {
+            places = serverData.places;
+
+            localStorage.setItem(
+                getStorageKey(currentRegion),
+                JSON.stringify(places)
+            );
+        }
+    } catch (e) {
+        console.warn(
+            '서버 최신 데이터 조회 실패. LOCAL 데이터로 내보냅니다.',
+            e.message
+        );
+    }
+}
 let data = [];
 if (places.length === 0) {
 data = [
@@ -5188,12 +5366,10 @@ document.addEventListener('DOMContentLoaded', function() {
     initDarkMode();
     
     if (currentRegion) {
-        let key = getStorageKey(currentRegion);
-        let data = localStorage.getItem(key);
-        places = data ? JSON.parse(data) : [];
-    } else {
-        places = [];
-    }
+    loadPlacesFromServer(currentRegion, true);
+} else {
+    places = [];
+}
     
     updateRegionDisplay();
     
