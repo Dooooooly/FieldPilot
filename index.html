@@ -831,6 +831,64 @@ body {
                 <div class="ux-tab-icon">⚙️</div>
                 <div><div class="ux-tab-title">설정 및 데이터</div><div class="ux-tab-sub">API, 백업, 업데이트와 저장 데이터를 관리합니다.</div></div>
             </div>
+            <div class="setting-group">
+
+    <h4>🔐 FieldPilot 인가</h4>
+
+    <div class="row">
+
+        <label for="fieldPilotAuthCode">
+            인가코드
+        </label>
+
+        <input
+            type="password"
+            id="fieldPilotAuthCode"
+            placeholder="지역 인가코드 입력"
+            autocomplete="off"
+            onkeydown="
+                if(event.key === 'Enter')
+                    authorizeFieldPilot();
+            "
+        >
+
+        <button
+            class="btn btn-primary btn-sm"
+            onclick="authorizeFieldPilot()"
+        >
+            인가
+        </button>
+
+    </div>
+
+    <div
+        style="
+            display:flex;
+            align-items:center;
+            gap:8px;
+            margin-top:8px;
+        "
+    >
+
+        <span
+            id="fieldPilotAuthStatus"
+            class="badge badge-wait"
+        >
+            🔒 미인가 - 기능 사용 불가
+        </span>
+
+        <button
+            id="fieldPilotLogoutBtn"
+            class="btn btn-outline btn-sm"
+            onclick="logoutFieldPilot()"
+            style="display:none;"
+        >
+            로그아웃
+        </button>
+
+    </div>
+
+</div>
 
             <div class="setting-group">
                 <h4>👤 작업자 설정</h4>
