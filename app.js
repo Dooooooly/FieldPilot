@@ -508,13 +508,31 @@ async function testGitHubToken() {
 // 4. 저장소 및 지역 관리
 // ============================================================
 function savePlaces() {
-    if (!currentRegion) {
-        console.warn('지역이 없어 현장을 저장할 수 없습니다.');
-        return;
+
+    if (!isAuthorized()) {
+        showTabStatus(
+            'tab-settings',
+            '🔒 인가코드 인증이 필요합니다.',
+            'warning'
+        );
+        return false;
     }
 
-    // 1. LOCAL 즉시 저장
-    const key = getStorageKey(currentRegion);
+    if (
+        isRegionUser() &&
+        currentRegion !== fieldPilotAuth.region
+    ) {
+        showTabStatus(
+            'tab-settings',
+            '🔒 허용된 지역이 아닙니다.',
+            'warning'
+        );
+        return false;
+    }
+
+    let key =
+        getStorageKey(currentRegion);
+
     localStorage.setItem(
         key,
         JSON.stringify(places)
@@ -523,8 +541,9 @@ function savePlaces() {
     renderPlaces();
     updateStorageInfo();
 
-    // 2. SERVER 동기화 예약
     scheduleAutoSync();
+
+    return true;
 }
 
 let placeSyncInProgress = false;
@@ -5102,13 +5121,39 @@ function updateOptimizationLiveSummary() {
 // 32. 지역 관리 팝업
 // ============================================================
 function updateRegionDisplay() {
-    let nameEl = document.getElementById('currentRegionName');
-    if (!nameEl) return;
-    let currentRegion = localStorage.getItem(SELECTED_REGION_KEY);
-    if (currentRegion) {
-        nameEl.textContent = currentRegion;
+
+    const display =
+        document.getElementById(
+            'regionDisplay'
+        );
+
+    const name =
+        document.getElementById(
+            'currentRegionName'
+        );
+
+    if (name) {
+        name.textContent =
+            currentRegion ||
+            '지역 선택';
+    }
+
+    if (!display) return;
+
+    if (
+        isAuthorized() &&
+        isMaster()
+    ) {
+        display.onclick =
+            openRegionManager;
+
+        display.style.cursor =
+            'pointer';
     } else {
-        nameEl.textContent = '지역 선택';
+        display.onclick = null;
+
+        display.style.cursor =
+            'default';
     }
 }
 
@@ -5514,9 +5559,20 @@ document.addEventListener('DOMContentLoaded', function() {
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
     loadSettings();
-    loadRegionList();
-    loadPresets();
-    initDarkMode();
+
+restoreFieldPilotAuth()
+    .then(function() {
+
+        loadRegionList();
+
+        loadPresets();
+
+        initDarkMode();
+
+        updateRegionDisplay();
+
+        updateFeatureLockState();
+    });
     
     if (currentRegion) {
     loadPlacesFromServer(currentRegion, true);
