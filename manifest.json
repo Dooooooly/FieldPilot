@@ -2,7 +2,7 @@
   "name": "경로 최적화",
   "short_name": "RouteOpt",
   "description": "경로 최적화 시스템",
-  "start_url": "/route-optimizer-pwa/",
+  "start_url": "/FieldPilot/",
   "display": "standalone",
   "theme_color": "#2b6cb0",
   "background_color": "#f0f2f5",
