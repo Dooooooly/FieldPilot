@@ -20,29 +20,51 @@ function serverBase() {
 
 async function serverGet(pathAndQuery) {
     let base = serverBase();
-    if (!base) throw new Error('서버 주소(FIELD_SERVER_URL)가 설정되지 않았습니다.');
-    let res = await fetch(base + pathAndQuery);
-    if (!res.ok) {
-        let errBody = null;
-        try { errBody = await res.json(); } catch (e) {}
-        throw new Error((errBody && errBody.error) || ('서버 오류 ' + res.status));
-    }
-    return res.json();
-}
 
-async function serverPost(pathAndQuery, body) {
-    let base = serverBase();
-    if (!base) throw new Error('서버 주소(FIELD_SERVER_URL)가 설정되지 않았습니다.');
-    let res = await fetch(base + pathAndQuery, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body || {})
-    });
+    if (!base) {
+        throw new Error(
+            '서버 주소(FIELD_SERVER_URL)가 설정되지 않았습니다.'
+        );
+    }
+
+    const headers = {};
+
+    const token = getAuthToken();
+
+    if (token) {
+        headers.Authorization = 'Bearer ' + token;
+    }
+
+    let res = await fetch(
+        base + pathAndQuery,
+        {
+            method: 'GET',
+            headers
+        }
+    );
+
+    if (res.status === 401) {
+        handleAuthExpired();
+        throw new Error('인가가 필요합니다.');
+    }
+
+    if (res.status === 403) {
+        throw new Error('해당 지역에 접근할 권한이 없습니다.');
+    }
+
     if (!res.ok) {
         let errBody = null;
-        try { errBody = await res.json(); } catch (e) {}
-        throw new Error((errBody && errBody.error) || ('서버 오류 ' + res.status));
+
+        try {
+            errBody = await res.json();
+        } catch (e) {}
+
+        throw new Error(
+            (errBody && (errBody.message || errBody.error)) ||
+            ('서버 오류 ' + res.status)
+        );
     }
+
     return res.json();
 }
 
@@ -93,6 +115,39 @@ const COLORS = [
     '#10AC84', '#EE5A24', '#5F27CD', '#1DD1A1', '#F368E0',
     '#00D2D3', '#54A0FF', '#FF9FF3', '#F368E0'
 ];
+// ============================================================
+// 인증 상태
+// ============================================================
+const AUTH_STORAGE_KEY = 'fieldPilotAuth';
+
+let fieldPilotAuth = {
+    authorized: false,
+    role: '',
+    region: '',
+    token: ''
+};
+
+function getAuthToken() {
+    return fieldPilotAuth?.token || '';
+}
+
+function isAuthorized() {
+    return !!(
+        fieldPilotAuth &&
+        fieldPilotAuth.authorized &&
+        fieldPilotAuth.token
+    );
+}
+
+function isMaster() {
+    return isAuthorized() &&
+        fieldPilotAuth.role === 'master';
+}
+
+function isRegionUser() {
+    return isAuthorized() &&
+        fieldPilotAuth.role === 'region';
+}
 
 // --- 상태 변수 ---
 let currentRegion = localStorage.getItem(SELECTED_REGION_KEY) || '';
@@ -613,6 +668,78 @@ async function loadPlacesFromServer(region, useServer = true) {
 }
 
 function loadRegionList() {
+    let select =
+        document.getElementById(
+            'regionSelect'
+        );
+
+    if (!select) return;
+
+    select.innerHTML = '';
+
+    // 인가되지 않았으면 지역을 만들거나 선택하지 않음
+    if (!isAuthorized()) {
+
+        currentRegion = '';
+
+        places = [];
+
+        updateRegionDisplay();
+
+        updateFeatureLockState();
+
+        return;
+    }
+
+    // 일반 사용자
+    if (isRegionUser()) {
+
+        const region =
+            fieldPilotAuth.region;
+
+        currentRegion =
+            region;
+
+        localStorage.setItem(
+            SELECTED_REGION_KEY,
+            region
+        );
+
+        const option =
+            document.createElement(
+                'option'
+            );
+
+        option.value =
+            region;
+
+        option.textContent =
+            region;
+
+        select.appendChild(option);
+
+        select.value =
+            region;
+
+        select.disabled =
+            true;
+
+        const data =
+            localStorage.getItem(
+                getStorageKey(region)
+            );
+
+        places =
+            data ?
+            JSON.parse(data) :
+            [];
+
+        updateRegionDisplay();
+        renderPlaces();
+        updateStorageInfo();
+
+        return;
+    }
     let select = document.getElementById('regionSelect');
     select.innerHTML = '';
     
@@ -672,6 +799,32 @@ function loadRegionList() {
 }
 
 async function switchRegion(region) {
+    if (!isAuthorized()) {
+        showTabStatus(
+            'tab-settings',
+            '🔒 먼저 인가코드를 입력하세요.',
+            'warning'
+        );
+        return;
+    }
+
+    if (
+        !isMaster() &&
+        region !== fieldPilotAuth.region
+    ) {
+        showTabStatus(
+            'tab-settings',
+            '🔒 ' +
+            fieldPilotAuth.region +
+            ' 지역만 사용할 수 있습니다.',
+            'warning'
+        );
+        return;
+    }
+
+    if (!region || region === '') {
+        return;
+    }
     if (!region || region === '') return;
 
     clearTimeout(autoSyncTimer);
@@ -7929,5 +8082,467 @@ async function testKakaoChatbot() {
     } catch (error) {
         showTabStatus('tab-settings', '❌ 챗봇 연결 실패: ' + error.message, 'error');
     }
+}
+// ============================================================
+// FieldPilot 인가
+// ============================================================
+async function authorizeFieldPilot() {
+    const input =
+        document.getElementById('fieldPilotAuthCode');
+
+    const code =
+        String(input?.value || '').trim();
+
+    if (!code) {
+        alert('인가코드를 입력하세요.');
+        return;
+    }
+
+    const base = serverBase();
+
+    if (!base) {
+        alert(
+            '서버 주소가 설정되지 않았습니다.'
+        );
+        return;
+    }
+
+    try {
+        const response = await fetch(
+            base + '/api/auth/login',
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type':
+                        'application/json'
+                },
+                body: JSON.stringify({
+                    code
+                })
+            }
+        );
+
+        const data =
+            await response.json();
+
+        if (!response.ok || !data.ok) {
+            throw new Error(
+                data.message ||
+                data.error ||
+                '인가에 실패했습니다.'
+            );
+        }
+
+        fieldPilotAuth = {
+            authorized: true,
+            role: data.role || '',
+            region: data.region || '',
+            token: data.token || '',
+            expiresAt: data.expiresAt || 0
+        };
+
+        localStorage.setItem(
+            AUTH_STORAGE_KEY,
+            JSON.stringify(fieldPilotAuth)
+        );
+
+        input.value = '';
+
+        applyAuthorizationState();
+
+        if (fieldPilotAuth.role === 'master') {
+            alert(
+                '✅ 마스터 권한으로 인가되었습니다.'
+            );
+        } else {
+            alert(
+                '✅ ' +
+                fieldPilotAuth.region +
+                ' 지역으로 인가되었습니다.'
+            );
+        }
+
+    } catch (error) {
+        console.error(
+            '[FieldPilot Auth]',
+            error
+        );
+
+        alert(
+            '❌ 인가 실패\n\n' +
+            error.message
+        );
+    }
+}
+function applyAuthorizationState() {
+
+    const authorized =
+        isAuthorized();
+
+    const status =
+        document.getElementById(
+            'fieldPilotAuthStatus'
+        );
+
+    const authInput =
+        document.getElementById(
+            'fieldPilotAuthCode'
+        );
+
+    const logoutButton =
+        document.getElementById(
+            'fieldPilotLogoutBtn'
+        );
+
+    if (status) {
+
+        if (!authorized) {
+
+            status.textContent =
+                '🔒 미인가 - 기능 사용 불가';
+
+            status.className =
+                'badge badge-wait';
+
+        } else if (isMaster()) {
+
+            status.textContent =
+                '👑 마스터 - 전체 지역 사용 가능';
+
+            status.className =
+                'badge badge-ok';
+
+        } else {
+
+            status.textContent =
+                '📍 ' +
+                fieldPilotAuth.region +
+                ' 지역으로 인가됨';
+
+            status.className =
+                'badge badge-ok';
+        }
+    }
+
+    if (authInput) {
+        authInput.style.display =
+            authorized ? 'none' : '';
+    }
+
+    if (logoutButton) {
+        logoutButton.style.display =
+            authorized ? '' : 'none';
+    }
+
+    applyRegionLock();
+    updateFeatureLockState();
+}
+function applyRegionLock() {
+
+    const select =
+        document.getElementById(
+            'regionSelect'
+        );
+
+    const regionDisplay =
+        document.getElementById(
+            'regionDisplay'
+        );
+
+    const regionManager =
+        document.getElementById(
+            'regionManager'
+        );
+
+    if (!isAuthorized()) {
+
+        if (select) {
+            select.disabled = true;
+        }
+
+        if (regionManager) {
+            regionManager.style.display =
+                'none';
+        }
+
+        return;
+    }
+
+    // 마스터
+    if (isMaster()) {
+
+        if (select) {
+            select.disabled = false;
+        }
+
+        if (regionManager) {
+            regionManager.style.display =
+                '';
+        }
+
+        if (regionDisplay) {
+            regionDisplay.style.cursor =
+                'pointer';
+        }
+
+        return;
+    }
+
+    // 일반 지역 사용자
+    const authorizedRegion =
+        fieldPilotAuth.region;
+
+    currentRegion =
+        authorizedRegion;
+
+    localStorage.setItem(
+        SELECTED_REGION_KEY,
+        authorizedRegion
+    );
+
+    if (select) {
+
+        select.value =
+            authorizedRegion;
+
+        select.disabled =
+            true;
+    }
+
+    // 지역관리 자체를 숨김
+    if (regionManager) {
+        regionManager.style.display =
+            'none';
+    }
+
+    if (regionDisplay) {
+        regionDisplay.style.cursor =
+            'default';
+
+        regionDisplay.onclick =
+            null;
+    }
+}
+function updateFeatureLockState() {
+
+    const locked =
+        !isAuthorized();
+
+    document.body.classList.toggle(
+        'fieldpilot-locked',
+        locked
+    );
+
+    const selectors = [
+        '#tab-list button',
+        '#tab-places button',
+        '#tab-route button',
+        '#tab-work button',
+        '#tab-stats button',
+        '#tab-list input',
+        '#tab-places input',
+        '#tab-route input',
+        '#tab-work input',
+        '#tab-stats input',
+        '#tab-list select',
+        '#tab-places select',
+        '#tab-route select',
+        '#tab-work select',
+        '#tab-stats select'
+    ];
+
+    selectors.forEach(function(selector) {
+
+        document
+            .querySelectorAll(selector)
+            .forEach(function(el) {
+
+                // 설정탭은 제외
+                if (
+                    el.closest(
+                        '#tab-settings'
+                    )
+                ) {
+                    return;
+                }
+
+                el.disabled =
+                    locked;
+            });
+    });
+}
+async function restoreFieldPilotAuth() {
+
+    const saved =
+        localStorage.getItem(
+            AUTH_STORAGE_KEY
+        );
+
+    if (!saved) {
+        fieldPilotAuth = {
+            authorized: false,
+            role: '',
+            region: '',
+            token: ''
+        };
+
+        applyAuthorizationState();
+        return;
+    }
+
+    try {
+
+        const parsed =
+            JSON.parse(saved);
+
+        if (!parsed.token) {
+            throw new Error(
+                'token 없음'
+            );
+        }
+
+        fieldPilotAuth = parsed;
+
+        const base =
+            serverBase();
+
+        const response =
+            await fetch(
+                base +
+                '/api/auth/status',
+                {
+                    headers: {
+                        Authorization:
+                            'Bearer ' +
+                            parsed.token
+                    }
+                }
+            );
+
+        if (!response.ok) {
+            throw new Error(
+                '세션 만료'
+            );
+        }
+
+        const data =
+            await response.json();
+
+        fieldPilotAuth = {
+            ...parsed,
+            authorized: true,
+            role: data.role,
+            region: data.region,
+            expiresAt:
+                data.expiresAt
+        };
+
+        localStorage.setItem(
+            AUTH_STORAGE_KEY,
+            JSON.stringify(
+                fieldPilotAuth
+            )
+        );
+
+    } catch (error) {
+
+        console.warn(
+            '[Auth Restore]',
+            error
+        );
+
+        localStorage.removeItem(
+            AUTH_STORAGE_KEY
+        );
+
+        fieldPilotAuth = {
+            authorized: false,
+            role: '',
+            region: '',
+            token: ''
+        };
+    }
+
+    applyAuthorizationState();
+}
+function handleAuthExpired() {
+
+    localStorage.removeItem(
+        AUTH_STORAGE_KEY
+    );
+
+    fieldPilotAuth = {
+        authorized: false,
+        role: '',
+        region: '',
+        token: ''
+    };
+
+    currentRegion = '';
+    places = [];
+
+    applyAuthorizationState();
+
+    alert(
+        '🔒 인가 세션이 만료되었습니다.\n' +
+        '설정 탭에서 다시 인가코드를 입력하세요.'
+    );
+}
+async function logoutFieldPilot() {
+
+    try {
+
+        const token =
+            getAuthToken();
+
+        if (token) {
+
+            const base =
+                serverBase();
+
+            await fetch(
+                base +
+                '/api/auth/logout',
+                {
+                    method: 'POST',
+                    headers: {
+                        Authorization:
+                            'Bearer ' +
+                            token
+                    }
+                }
+            );
+        }
+
+    } catch (e) {
+        console.warn(
+            '[Logout]',
+            e
+        );
+    }
+
+    localStorage.removeItem(
+        AUTH_STORAGE_KEY
+    );
+
+    fieldPilotAuth = {
+        authorized: false,
+        role: '',
+        region: '',
+        token: ''
+    };
+
+    currentRegion = '';
+    places = [];
+
+    applyAuthorizationState();
+
+    loadRegionList();
+
+    showTabStatus(
+        'tab-settings',
+        '🔒 로그아웃되었습니다.',
+        'info'
+    );
 }
 window.switchTab = switchTab;
