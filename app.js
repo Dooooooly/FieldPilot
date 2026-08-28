@@ -6459,73 +6459,228 @@ document.addEventListener('DOMContentLoaded', function() {
 // ============================================================
 // 38. 초기화 실행
 // ============================================================
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+
+    // ------------------------------------------------------------
+    // 1. 기본 설정 로드
+    // ------------------------------------------------------------
     loadSettings();
 
-restoreFieldPilotAuth()
-    .then(function() {
+    // ------------------------------------------------------------
+    // 2. ★ 인증 복원을 먼저 완료
+    //    인증 완료 전에 currentRegion을 검사하면
+    //    첫 사용자에게 현장 데이터가 로드되지 않는 문제가 발생함
+    // ------------------------------------------------------------
+    try {
 
-        loadRegionList();
+        await restoreFieldPilotAuth();
 
-        loadPresets();
+    } catch (error) {
 
-        initDarkMode();
+        console.warn(
+            '[AUTH] 인증 상태 복원 실패:',
+            error
+        );
+    }
 
-        updateRegionDisplay();
+    // ------------------------------------------------------------
+    // 3. 인증 결과에 따라 지역 목록 / 현재 지역 결정
+    // ------------------------------------------------------------
+    loadRegionList();
 
-        updateFeatureLockState();
-    });
-    
-    if (currentRegion) {
-    loadPlacesFromServer(currentRegion, true);
-} else {
-    places = [];
-}
-    
+    // ------------------------------------------------------------
+    // 4. 기타 초기 설정
+    // ------------------------------------------------------------
+    loadPresets();
+
+    initDarkMode();
+
     updateRegionDisplay();
-    
-    let sortSelect = document.getElementById('sortPlaces');
-    if (sortSelect) currentSort = sortSelect.value;
-    
-    renderPlaces();
-    renderWaypointList();
-    updateOptimizationLiveSummary();
-    updateStorageInfo();
-    registerServiceWorker();
-    setTimeout(displayAppVersion, 1000);
-    
-   function initWeather() {
-    if (weatherRetryCount >= MAX_WEATHER_RETRY) {
-        console.log('날씨 API 재시도 한도 도달. 10분 후 재시도.');
-        setTimeout(function() {
-            weatherRetryCount = 0;
-            initWeather();
-        }, 600000);
-        return;
-    }
-    fetchWeather().then(function(success) {
-        if (!success) {
-            weatherRetryCount++;
-            setTimeout(initWeather, 10000);
-        } else {
-            weatherRetryCount = 0;
-        }
-    });
-}
-setTimeout(initWeather, 3000);
-// ★ 1시간(3,600,000ms)마다 주기 갱신
-if (weatherInterval) clearInterval(weatherInterval);
-weatherInterval = setInterval(function() {
-    weatherRetryCount = 0;
-    fetchWeather();
-}, 3600000);
 
-initHistoryHash();
-let helpHeader = document.querySelector('#tab-help .ux-tab-header') || document.querySelector('#tab-help h3') || document.querySelector('#tab-help h2');
-    if (helpHeader) {
-        helpHeader.style.cursor = 'pointer';
-        helpHeader.addEventListener('click', handleHelpEasterEgg);
+    updateFeatureLockState();
+
+    // ------------------------------------------------------------
+    // 5. ★ 현재 지역이 확정된 후 서버 현장 데이터 로드
+    // ------------------------------------------------------------
+    if (
+        isAuthorized() &&
+        currentRegion
+    ) {
+
+        try {
+
+            await loadPlacesFromServer(
+                currentRegion,
+                true
+            );
+
+            console.log(
+                '[INIT] 현장 데이터 로딩 완료:',
+                currentRegion,
+                places.length
+            );
+
+        } catch (error) {
+
+            console.warn(
+                '[INIT] 서버 현장 데이터 로딩 실패:',
+                error
+            );
+        }
+
+    } else {
+
+        places = [];
+
+        console.log(
+            '[INIT] 인증된 지역 없음 - 현장 데이터 비움'
+        );
     }
+
+    // ------------------------------------------------------------
+    // 6. 화면 초기화
+    // ------------------------------------------------------------
+    updateRegionDisplay();
+
+    let sortSelect =
+        document.getElementById('sortPlaces');
+
+    if (sortSelect) {
+        currentSort = sortSelect.value;
+    }
+
+    renderPlaces();
+
+    renderWaypointList();
+
+    updateOptimizationLiveSummary();
+
+    updateStorageInfo();
+
+    // ------------------------------------------------------------
+    // 7. Service Worker
+    // ------------------------------------------------------------
+    registerServiceWorker();
+
+    // ------------------------------------------------------------
+    // 8. 앱 버전 표시
+    // ------------------------------------------------------------
+    setTimeout(
+        displayAppVersion,
+        1000
+    );
+
+    // ------------------------------------------------------------
+    // 9. 날씨 초기화
+    // ------------------------------------------------------------
+    function initWeather() {
+
+        if (
+            weatherRetryCount >=
+            MAX_WEATHER_RETRY
+        ) {
+
+            console.log(
+                '날씨 API 재시도 한도 도달. 10분 후 재시도.'
+            );
+
+            setTimeout(function() {
+
+                weatherRetryCount = 0;
+
+                initWeather();
+
+            }, 600000);
+
+            return;
+        }
+
+        fetchWeather()
+            .then(function(success) {
+
+                if (!success) {
+
+                    weatherRetryCount++;
+
+                    setTimeout(
+                        initWeather,
+                        10000
+                    );
+
+                } else {
+
+                    weatherRetryCount = 0;
+                }
+            })
+            .catch(function(error) {
+
+                console.warn(
+                    '[WEATHER] 초기화 실패:',
+                    error
+                );
+
+                weatherRetryCount++;
+
+                setTimeout(
+                    initWeather,
+                    10000
+                );
+            });
+    }
+
+    setTimeout(
+        initWeather,
+        3000
+    );
+
+    // ------------------------------------------------------------
+    // 10. 날씨 1시간 주기 갱신
+    // ------------------------------------------------------------
+    if (weatherInterval) {
+        clearInterval(
+            weatherInterval
+        );
+    }
+
+    weatherInterval =
+        setInterval(function() {
+
+            weatherRetryCount = 0;
+
+            fetchWeather();
+
+        }, 3600000);
+
+    // ------------------------------------------------------------
+    // 11. 브라우저 히스토리 / 탭 상태
+    // ------------------------------------------------------------
+    initHistoryHash();
+
+    // ------------------------------------------------------------
+    // 12. 도움말 이스터에그
+    // ------------------------------------------------------------
+    let helpHeader =
+        document.querySelector(
+            '#tab-help .ux-tab-header'
+        ) ||
+        document.querySelector(
+            '#tab-help h3'
+        ) ||
+        document.querySelector(
+            '#tab-help h2'
+        );
+
+    if (helpHeader) {
+
+        helpHeader.style.cursor =
+            'pointer';
+
+        helpHeader.addEventListener(
+            'click',
+            handleHelpEasterEgg
+        );
+    }
+
 }); // ★★ DOMContentLoaded(38. 초기화 실행) 콜백을 닫는 괄호 — 반드시 필요합니다! ★★
 
 // ============================================================
