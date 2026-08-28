@@ -759,7 +759,6 @@ function loadRegionList() {
 
         return;
     }
-    let select = document.getElementById('regionSelect');
     select.innerHTML = '';
     
     let regions = [];
