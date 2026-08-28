@@ -6459,229 +6459,267 @@ document.addEventListener('DOMContentLoaded', function() {
 // ============================================================
 // 38. 초기화 실행
 // ============================================================
-document.addEventListener('DOMContentLoaded', async function() {
 
-    // ------------------------------------------------------------
-    // 1. 기본 설정 로드
-    // ------------------------------------------------------------
-    loadSettings();
-
-    // ------------------------------------------------------------
-    // 2. ★ 인증 복원을 먼저 완료
-    //    인증 완료 전에 currentRegion을 검사하면
-    //    첫 사용자에게 현장 데이터가 로드되지 않는 문제가 발생함
-    // ------------------------------------------------------------
-    try {
-
-        await restoreFieldPilotAuth();
-
-    } catch (error) {
-
-        console.warn(
-            '[AUTH] 인증 상태 복원 실패:',
-            error
-        );
-    }
-
-    // ------------------------------------------------------------
-    // 3. 인증 결과에 따라 지역 목록 / 현재 지역 결정
-    // ------------------------------------------------------------
-    loadRegionList();
-
-    // ------------------------------------------------------------
-    // 4. 기타 초기 설정
-    // ------------------------------------------------------------
-    loadPresets();
-
-    initDarkMode();
-
-    updateRegionDisplay();
-
-    updateFeatureLockState();
-
-    // ------------------------------------------------------------
-    // 5. ★ 현재 지역이 확정된 후 서버 현장 데이터 로드
-    // ------------------------------------------------------------
-    if (
-        isAuthorized() &&
-        currentRegion
-    ) {
-
-        try {
-
-            await loadPlacesFromServer(
-                currentRegion,
-                true
-            );
-
-            console.log(
-                '[INIT] 현장 데이터 로딩 완료:',
-                currentRegion,
-                places.length
-            );
-
-        } catch (error) {
-
-            console.warn(
-                '[INIT] 서버 현장 데이터 로딩 실패:',
-                error
-            );
-        }
-
-    } else {
-
-        places = [];
+document.addEventListener(
+    'DOMContentLoaded',
+    async function() {
 
         console.log(
-            '[INIT] 인증된 지역 없음 - 현장 데이터 비움'
+            '[FieldPilot] 초기화 시작'
         );
-    }
 
-    // ------------------------------------------------------------
-    // 6. 화면 초기화
-    // ------------------------------------------------------------
-    updateRegionDisplay();
+        // --------------------------------------------------------
+        // 1. 설정
+        // --------------------------------------------------------
 
-    let sortSelect =
-        document.getElementById('sortPlaces');
+        loadSettings();
 
-    if (sortSelect) {
-        currentSort = sortSelect.value;
-    }
+        // --------------------------------------------------------
+        // 2. 인증 복구
+        // --------------------------------------------------------
 
-    renderPlaces();
+        const authorized =
+            await restoreFieldPilotAuth();
 
-    renderWaypointList();
+        // --------------------------------------------------------
+        // 3. 기본 UI
+        // --------------------------------------------------------
 
-    updateOptimizationLiveSummary();
+        loadRegionList();
 
-    updateStorageInfo();
+        loadPresets();
 
-    // ------------------------------------------------------------
-    // 7. Service Worker
-    // ------------------------------------------------------------
-    registerServiceWorker();
+        initDarkMode();
 
-    // ------------------------------------------------------------
-    // 8. 앱 버전 표시
-    // ------------------------------------------------------------
-    setTimeout(
-        displayAppVersion,
-        1000
-    );
+        updateRegionDisplay();
 
-    // ------------------------------------------------------------
-    // 9. 날씨 초기화
-    // ------------------------------------------------------------
-    function initWeather() {
+        updateFeatureLockState();
+
+        // --------------------------------------------------------
+        // 4. 인증된 사용자만 서버 데이터 로드
+        // --------------------------------------------------------
 
         if (
-            weatherRetryCount >=
-            MAX_WEATHER_RETRY
+            authorized &&
+            isAuthorized()
         ) {
 
-            console.log(
-                '날씨 API 재시도 한도 도달. 10분 후 재시도.'
-            );
+            /*
+             * 일반 사용자
+             *
+             * 인가코드에 연결된 지역을 강제로 사용
+             */
 
-            setTimeout(function() {
+            if (
+                fieldPilotAuth.role !==
+                'master'
+            ) {
 
-                weatherRetryCount = 0;
+                currentRegion =
+                    fieldPilotAuth.region;
 
-                initWeather();
+                localStorage.setItem(
+                    SELECTED_REGION_KEY,
+                    currentRegion
+                );
+            }
 
-            }, 600000);
+            /*
+             * 현장 목록 서버에서 로드
+             */
 
-            return;
-        }
+            if (currentRegion) {
 
-        fetchWeather()
-            .then(function(success) {
+                console.log(
+                    '[FieldPilot] 현장 목록 로드:',
+                    currentRegion
+                );
 
-                if (!success) {
+                try {
 
-                    weatherRetryCount++;
-
-                    setTimeout(
-                        initWeather,
-                        10000
+                    await loadPlacesFromServer(
+                        currentRegion,
+                        true
                     );
 
-                } else {
+                } catch (error) {
 
-                    weatherRetryCount = 0;
+                    console.error(
+                        '[FieldPilot] 현장 목록 로드 실패:',
+                        error
+                    );
                 }
-            })
-            .catch(function(error) {
 
-                console.warn(
-                    '[WEATHER] 초기화 실패:',
-                    error
+            }
+
+        } else {
+
+            /*
+             * 미인가 상태
+             */
+
+            currentRegion = '';
+
+            places = [];
+
+        }
+
+        // --------------------------------------------------------
+        // 5. UI 갱신
+        // --------------------------------------------------------
+
+        updateRegionDisplay();
+
+        const sortSelect =
+            document.getElementById(
+                'sortPlaces'
+            );
+
+        if (sortSelect) {
+
+            currentSort =
+                sortSelect.value;
+
+        }
+
+        renderPlaces();
+
+        renderWaypointList();
+
+        updateOptimizationLiveSummary();
+
+        updateStorageInfo();
+
+        updateFeatureLockState();
+
+        // --------------------------------------------------------
+        // 6. 서비스워커
+        // --------------------------------------------------------
+
+        registerServiceWorker();
+
+        setTimeout(
+            displayAppVersion,
+            1000
+        );
+
+        // --------------------------------------------------------
+        // 7. 날씨
+        // --------------------------------------------------------
+
+        function initWeather() {
+
+            if (
+                weatherRetryCount >=
+                MAX_WEATHER_RETRY
+            ) {
+
+                console.log(
+                    '날씨 API 재시도 한도 도달. 10분 후 재시도.'
                 );
-
-                weatherRetryCount++;
 
                 setTimeout(
-                    initWeather,
-                    10000
+                    function() {
+
+                        weatherRetryCount = 0;
+
+                        initWeather();
+
+                    },
+                    600000
                 );
-            });
-    }
 
-    setTimeout(
-        initWeather,
-        3000
-    );
+                return;
+            }
 
-    // ------------------------------------------------------------
-    // 10. 날씨 1시간 주기 갱신
-    // ------------------------------------------------------------
-    if (weatherInterval) {
-        clearInterval(
-            weatherInterval
-        );
-    }
+            fetchWeather()
+                .then(
+                    function(success) {
 
-    weatherInterval =
-        setInterval(function() {
+                        if (!success) {
 
-            weatherRetryCount = 0;
+                            weatherRetryCount++;
 
-            fetchWeather();
+                            setTimeout(
+                                initWeather,
+                                10000
+                            );
 
-        }, 3600000);
+                        } else {
 
-    // ------------------------------------------------------------
-    // 11. 브라우저 히스토리 / 탭 상태
-    // ------------------------------------------------------------
-    initHistoryHash();
+                            weatherRetryCount = 0;
 
-    // ------------------------------------------------------------
-    // 12. 도움말 이스터에그
-    // ------------------------------------------------------------
-    let helpHeader =
-        document.querySelector(
-            '#tab-help .ux-tab-header'
-        ) ||
-        document.querySelector(
-            '#tab-help h3'
-        ) ||
-        document.querySelector(
-            '#tab-help h2'
+                        }
+
+                    }
+                );
+
+        }
+
+        setTimeout(
+            initWeather,
+            3000
         );
 
-    if (helpHeader) {
+        if (weatherInterval) {
 
-        helpHeader.style.cursor =
-            'pointer';
+            clearInterval(
+                weatherInterval
+            );
 
-        helpHeader.addEventListener(
-            'click',
-            handleHelpEasterEgg
+        }
+
+        weatherInterval =
+            setInterval(
+                function() {
+
+                    weatherRetryCount = 0;
+
+                    fetchWeather();
+
+                },
+                3600000
+            );
+
+        // --------------------------------------------------------
+        // 8. 히스토리
+        // --------------------------------------------------------
+
+        initHistoryHash();
+
+        // --------------------------------------------------------
+        // 9. 도움말 이스터에그
+        // --------------------------------------------------------
+
+        const helpHeader =
+            document.querySelector(
+                '#tab-help .ux-tab-header'
+            ) ||
+            document.querySelector(
+                '#tab-help h3'
+            ) ||
+            document.querySelector(
+                '#tab-help h2'
+            );
+
+        if (helpHeader) {
+
+            helpHeader.style.cursor =
+                'pointer';
+
+            helpHeader.addEventListener(
+                'click',
+                handleHelpEasterEgg
+            );
+
+        }
+
+        console.log(
+            '[FieldPilot] 초기화 완료'
         );
-    }
 
-}); // ★★ DOMContentLoaded(38. 초기화 실행) 콜백을 닫는 괄호 — 반드시 필요합니다! ★★
+    }
+);// ★★ DOMContentLoaded(38. 초기화 실행) 콜백을 닫는 괄호 — 반드시 필요합니다! ★★
 
 // ============================================================
 // 탭 진입 시 자동 동기화
@@ -9641,20 +9679,21 @@ function updateFeatureLockState() {
 async function restoreFieldPilotAuth() {
 
     const saved =
-        localStorage.getItem(
-            AUTH_STORAGE_KEY
-        );
+        localStorage.getItem(AUTH_STORAGE_KEY);
 
+    // 저장된 인증정보가 없음
     if (!saved) {
+
         fieldPilotAuth = {
             authorized: false,
             role: '',
             region: '',
-            token: ''
+            token: '',
+            expiresAt: 0
         };
 
         applyAuthorizationState();
-        return;
+        return false;
     }
 
     try {
@@ -9662,46 +9701,83 @@ async function restoreFieldPilotAuth() {
         const parsed =
             JSON.parse(saved);
 
-        if (!parsed.token) {
+        if (
+            !parsed.token ||
+            !parsed.role
+        ) {
             throw new Error(
-                'token 없음'
+                '저장된 인증정보가 올바르지 않습니다.'
             );
         }
 
-        fieldPilotAuth = parsed;
+        /*
+         * --------------------------------------------------------
+         * 서버 세션 확인
+         * --------------------------------------------------------
+         *
+         * token이 살아 있으면 그대로 복구한다.
+         */
 
-        const base =
-            serverBase();
+        const base = serverBase();
+
+        if (!base) {
+            throw new Error(
+                '서버 주소가 없습니다.'
+            );
+        }
 
         const response =
             await fetch(
-                base +
-                '/api/auth/status',
+                base + '/api/auth/status',
                 {
+                    method: 'GET',
                     headers: {
                         Authorization:
-                            'Bearer ' +
-                            parsed.token
+                            'Bearer ' + parsed.token
                     }
                 }
             );
 
         if (!response.ok) {
             throw new Error(
-                '세션 만료'
+                '서버 인증 세션 만료'
             );
         }
 
         const data =
             await response.json();
 
+        if (!data.ok) {
+            throw new Error(
+                '인증 상태 확인 실패'
+            );
+        }
+
+        /*
+         * 서버에서 확인된 인증정보로 복구
+         */
+
         fieldPilotAuth = {
-            ...parsed,
+
             authorized: true,
-            role: data.role,
-            region: data.region,
+
+            role:
+                data.role ||
+                parsed.role ||
+                '',
+
+            region:
+                data.region ||
+                parsed.region ||
+                '',
+
+            token:
+                parsed.token,
+
             expiresAt:
-                data.expiresAt
+                data.expiresAt ||
+                parsed.expiresAt ||
+                0
         };
 
         localStorage.setItem(
@@ -9711,6 +9787,16 @@ async function restoreFieldPilotAuth() {
             )
         );
 
+        applyAuthorizationState();
+
+        console.log(
+            '[Auth] 인증 복구 완료:',
+            fieldPilotAuth.role,
+            fieldPilotAuth.region
+        );
+
+        return true;
+
     } catch (error) {
 
         console.warn(
@@ -9718,19 +9804,36 @@ async function restoreFieldPilotAuth() {
             error
         );
 
+        /*
+         * 여기서는 즉시 인증정보를 삭제한다.
+         * 서버 세션이 실제로 만료된 경우에만
+         * 다시 인가코드를 요구한다.
+         */
+
         localStorage.removeItem(
             AUTH_STORAGE_KEY
         );
 
         fieldPilotAuth = {
-            authorized: false,
-            role: '',
-            region: '',
-            token: ''
-        };
-    }
 
-    applyAuthorizationState();
+            authorized: false,
+
+            role: '',
+
+            region: '',
+
+            token: '',
+
+            expiresAt: 0
+        };
+
+        currentRegion = '';
+        places = [];
+
+        applyAuthorizationState();
+
+        return false;
+    }
 }
 function handleAuthExpired() {
 
