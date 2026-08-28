@@ -8204,6 +8204,7 @@ async function authorizeFieldPilot() {
         input.value = '';
 
         applyAuthorizationState();
+        loadRegionList();
 
         if (fieldPilotAuth.role === 'master') {
             alert(
