@@ -67,6 +67,61 @@ async function serverGet(pathAndQuery) {
 
     return res.json();
 }
+async function serverPost(pathAndQuery, data) {
+    const base = serverBase();
+
+    if (!base) {
+        throw new Error(
+            '서버 주소(FIELD_SERVER_URL)가 설정되지 않았습니다.'
+        );
+    }
+
+    const headers = {
+        'Content-Type': 'application/json'
+    };
+
+    const token = getAuthToken();
+
+    if (token) {
+        headers.Authorization = 'Bearer ' + token;
+    }
+
+    const res = await fetch(
+        base + pathAndQuery,
+        {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(data)
+        }
+    );
+
+    if (res.status === 401) {
+        handleAuthExpired();
+        throw new Error('인가가 필요합니다.');
+    }
+
+    if (res.status === 403) {
+        throw new Error(
+            '해당 지역에 접근할 권한이 없습니다.'
+        );
+    }
+
+    if (!res.ok) {
+        let errBody = null;
+
+        try {
+            errBody = await res.json();
+        } catch (e) {}
+
+        throw new Error(
+            (errBody &&
+                (errBody.message || errBody.error)) ||
+            ('서버 오류 ' + res.status)
+        );
+    }
+
+    return res.json();
+}
 
 // --- 지역별 중심 좌표 ---
 const REGION_CENTERS = {
