@@ -379,6 +379,15 @@ if (tabId === 'tab-route') {
 if (tabId === 'tab-work' && typeof autoSyncWork === 'function') {
     autoSyncWork();
 }
+    // ============================================================
+// 설정 탭 진입 시 설정 화면 갱신
+// ============================================================
+if (
+    tabId === 'tab-settings' &&
+    typeof refreshSettingsTab === 'function'
+) {
+    refreshSettingsTab();
+}
     
     if (window.innerWidth < 700) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -401,38 +410,7 @@ function decodeKey(val) {
     try { return atob(val); } catch(e) { return val; }
 }
 
-function loadSettings() {
-    let saved = localStorage.getItem(SETTINGS_KEY);
-    if (saved) {
-        try {
-            let parsed = JSON.parse(saved);
-            settings.githubToken = decodeKey(parsed.githubToken || '');
-            settings.kakaoJsKey = decodeKey(parsed.kakaoJsKey || '');
-            settings.kakaoRestKey = decodeKey(parsed.kakaoRestKey || '');
-settings.kakaoChatbotKey = decodeKey(parsed.kakaoChatbotKey || '');
-settings.kakaoChatbotUserId = decodeKey(parsed.kakaoChatbotUserId || '');
-        } catch(e) {
-            console.warn('⚠️ 설정 복원 오류, 기본값으로 초기화합니다.', e);
-            settings.githubToken = '';
-            settings.kakaoJsKey = '';
-            settings.kakaoRestKey = '';
-        }
-    } else {
-        settings.githubToken = '';
-        settings.kakaoJsKey = '';
-        settings.kakaoRestKey = '';
-    }
-    document.getElementById('githubToken').value = settings.githubToken || '';
-    document.getElementById('kakaoJsKey').value = settings.kakaoJsKey || '';
-    document.getElementById('kakaoRestKey').value = settings.kakaoRestKey || '';
-    let wn = document.getElementById('workerName');
-if (wn) wn.value = workerName;
-updateWorkerNameStatus();
-    updateSettingsStatus();
-    let fsDisplay = document.getElementById('fieldServerUrlDisplay');
-    if (fsDisplay) fsDisplay.textContent = serverBase() || '(설정 안 됨 - server-config.js 확인)';
-}
-
+function loadSettings() { let saved = localStorage.getItem(SETTINGS_KEY); if (saved) { try { let parsed = JSON.parse(saved); settings.githubToken = decodeKey(parsed.githubToken || ''); // 구버전 데이터 호환 settings.kakaoJsKey = decodeKey(parsed.kakaoJsKey || ''); settings.kakaoRestKey = decodeKey(parsed.kakaoRestKey || ''); settings.kakaoChatbotKey = decodeKey(parsed.kakaoChatbotKey || ''); settings.kakaoChatbotUserId = decodeKey(parsed.kakaoChatbotUserId || ''); } catch (e) { console.warn( '⚠️ 설정 복원 오류:', e ); settings = { githubToken: '', kakaoJsKey: '', kakaoRestKey: '', kakaoChatbotKey: '', kakaoChatbotUserId: '' }; } } else { settings = { githubToken: '', kakaoJsKey: '', kakaoRestKey: '', kakaoChatbotKey: '', kakaoChatbotUserId: '' }; } // 작업자 이름 let workerInput = document.getElementById('workerName'); if (workerInput) { workerInput.value = workerName || ''; } updateWorkerNameStatus(); updateSettingsStatus(); updateSettingsConnectionUI(); updateAuthorizationUI(); }
 // ============================================================
 // 현장처리 서버 연결 확인 (설정 탭 "🔄 서버 연결 확인" 버튼)
 // ============================================================
@@ -465,86 +443,26 @@ async function testPhotoServer() {
 // ============================================================
 // 42. 작업자 이름
 // ============================================================
-function saveWorkerName() {
-    let input = document.getElementById('workerName');
-    if (!input) return;
-    workerName = input.value.trim();
-    localStorage.setItem('workerName', workerName);
-    updateWorkerNameStatus();
-    updateWorkWorkerDisplay();
-    showTabStatus('tab-settings', workerName ? '✅ 작업자 이름 저장됨: ' + workerName : '⚠️ 이름이 비어있습니다', workerName ? 'ok' : 'warning');
-}
+function saveWorkerName() { let input = document.getElementById('workerName'); if (!input) return; workerName = input.value.trim(); localStorage.setItem( 'workerName', workerName ); updateWorkerNameStatus(); updateWorkWorkerDisplay(); showTabStatus( 'tab-settings', workerName ? '✅ 작업자 이름이 저장되었습니다.' : '⚠️ 이름이 비어 있습니다.', workerName ? 'ok' : 'warning' ); } function updateWorkerNameStatus() { let status = document.getElementById( 'workerNameStatus' ); let display = document.getElementById( 'settingsWorkerNameDisplay' ); if (workerName) { if (status) { status.textContent = '✅ ' + workerName; status.className = 'badge badge-ok'; } if (display) { display.textContent = workerName; } } else { if (status) { status.textContent = '⏳ 이름 미설정'; status.className = 'badge badge-wait'; } if (display) { display.textContent = '미설정'; } } } function updateWorkWorkerDisplay() { let el = document.getElementById( 'workWorkerDisplay' ); if (el) { el.textContent = workerName ? '👤 ' + workerName : '👤 미설정'; } }
 
-function updateWorkerNameStatus() {
-    let el = document.getElementById('workerNameStatus');
-    if (!el) return;
-    if (workerName) {
-        el.textContent = '✅ ' + workerName;
-        el.className = 'badge badge-ok';
-    } else {
-        el.textContent = '⏳ 이름 미설정';
-        el.className = 'badge badge-wait';
-    }
-}
+function saveSettings() { if (!settings) { settings = { githubToken: '', kakaoJsKey: '', kakaoRestKey: '', kakaoChatbotKey: '', kakaoChatbotUserId: '' }; } let encoded = { githubToken: encodeKey( settings.githubToken || '' ), kakaoJsKey: encodeKey( settings.kakaoJsKey || '' ), kakaoRestKey: encodeKey( settings.kakaoRestKey || '' ), kakaoChatbotKey: encodeKey( settings.kakaoChatbotKey || '' ), kakaoChatbotUserId: encodeKey( settings.kakaoChatbotUserId || '' ) }; localStorage.setItem( SETTINGS_KEY, JSON.stringify(encoded) ); updateSettingsStatus(); }
 
-function updateWorkWorkerDisplay() {
-    let el = document.getElementById('workWorkerDisplay');
-    if (el) el.textContent = workerName ? '👤 ' + workerName : '👤 미설정';
-}
+function updateSettingsStatus() { updateWorkerNameStatus(); updateSettingsConnectionUI(); updateAuthorizationUI(); }
 
-function saveSettings() {
-    if (!settings) {
-        settings = { githubToken: '', kakaoJsKey: '', kakaoRestKey: '' };
-    }
-    let encoded = {
-        githubToken: encodeKey(settings.githubToken || ''),
-        kakaoJsKey: encodeKey(settings.kakaoJsKey || ''),
-        kakaoRestKey: encodeKey(settings.kakaoRestKey || ''),
-kakaoChatbotKey: encodeKey(settings.kakaoChatbotKey || ''),
-kakaoChatbotUserId: encodeKey(settings.kakaoChatbotUserId || '')
-    };
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(encoded));
-    updateSettingsStatus();
-}
+function saveGitHubToken() { let input = document.getElementById( 'githubToken' ); if (!input) { console.warn( 'githubToken 입력창이 없습니다. 관리자 서버 설정을 사용하십시오.' ); return; } settings.githubToken = input.value.trim(); saveSettings(); showTabStatus( 'tab-settings', '✅ GitHub 설정 저장됨', 'ok' ); }
 
-function updateSettingsStatus() {
-    let gs = document.getElementById('githubStatus');
-    if (settings.githubToken) {
-        gs.textContent = '✅ 토큰 설정됨';
-        gs.className = 'badge badge-ok';
-    } else {
-        gs.textContent = '⏳ 토큰 미설정';
-        gs.className = 'badge badge-wait';
-    }
-    let ks = document.getElementById('kakaoStatus');
-    if (settings.kakaoJsKey && settings.kakaoRestKey) {
-        ks.textContent = '✅ API 키 설정됨';
-        ks.className = 'badge badge-ok';
-    } else {
-        ks.textContent = '⏳ API 키 미설정';
-        ks.className = 'badge badge-wait';
-    }
-}
+function saveKakaoKeys() { let jsInput = document.getElementById( 'kakaoJsKey' ); let restInput = document.getElementById( 'kakaoRestKey' ); if (jsInput) { settings.kakaoJsKey = jsInput.value.trim(); } if (restInput) { settings.kakaoRestKey = restInput.value.trim(); } saveSettings(); // 구버전 UI가 존재할 때만 지도 재로드 if (jsInput) { let container = document.getElementById( 'map' ); if (container) { container.innerHTML = '<div style="' + 'display:flex;' + 'justify-content:center;' + 'align-items:center;' + 'height:100%;' + 'color:#d69e2e;' + 'font-size:14px;' + 'background:#fffff0;' + 'border-radius:12px;' + '">' + '⏳ 카카오 지도 재로딩 중...' + '</div>'; } kakaoMap = null; setTimeout( initMap, 300 ); } }
 
-function saveGitHubToken() {
-    settings.githubToken = document.getElementById('githubToken').value.trim();
-    saveSettings();
-    showTabStatus('tab-settings', '✅ GitHub 토큰 저장됨', 'ok');
-}
+function updateSettingsConnectionUI() { let server = document.getElementById( 'settingsServerStatus' ); let github = document.getElementById( 'settingsGithubStatus' ); let kakao = document.getElementById( 'settingsKakaoStatus' ); let version = document.getElementById( 'settingsAppVersion' ); // 서버 if (server) { if (serverBase()) { server.textContent = '● 서버 설정됨'; server.style.color = '#38a169'; } else { server.textContent = '● 서버 미설정'; server.style.color = '#e53e3e'; } } // GitHub // GitHub는 브라우저에서 직접 접근하지 않고 // 서버 동기화를 기준으로 표시 if (github) { if (serverBase()) { github.textContent = '● 자동 동기화'; github.style.color = '#38a169'; } else { github.textContent = '● 서버 필요'; github.style.color = '#d69e2e'; } } // Kakao // JS Key는 앱 내부에서 관리 // REST API는 서버가 관리 if (kakao) { kakao.textContent = '● 서버 관리'; kakao.style.color = '#38a169'; } // 버전 if (version) { version.textContent = '최신'; } }
 
-function saveKakaoKeys() {
-    settings.kakaoJsKey = document.getElementById('kakaoJsKey').value.trim();
-    settings.kakaoRestKey = document.getElementById('kakaoRestKey').value.trim();
-    saveSettings();
-    showTabStatus('tab-settings', '✅ 카카오 API 키 저장됨', 'ok');
-    let container = document.getElementById('map');
-    if (container) {
-        container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;color:#d69e2e;font-size:14px;background:#fffff0;border-radius:12px;">⏳ 키 저장됨, 지도 재로딩 중...</div>';
-    }
-    kakaoMap = null;
-    setTimeout(initMap, 500);
-}
+async function refreshSettingsConnectionStatus() { let serverEl = document.getElementById( 'settingsServerStatus' ); let githubEl = document.getElementById( 'settingsGithubStatus' ); let kakaoEl = document.getElementById( 'settingsKakaoStatus' ); if (serverEl) { serverEl.textContent = '⏳ 확인 중...'; serverEl.style.color = '#d69e2e'; } try { let data = await serverGet( '/api/health' ); if (serverEl) { serverEl.textContent = '● 연결됨'; serverEl.style.color = '#38a169'; } if (githubEl) { if ( data.githubConfigured === true || data.gitHubConfigured === true ) { githubEl.textContent = '● 연결됨'; githubEl.style.color = '#38a169'; } else { githubEl.textContent = '● 자동 동기화'; githubEl.style.color = '#38a169'; } } if (kakaoEl) { let kakaoOk = data.kakaoRestKeyConfigured || data.appKeyConfigured; kakaoEl.textContent = kakaoOk ? '● 연결됨' : '● 서버 확인 필요'; kakaoEl.style.color = kakaoOk ? '#38a169' : '#d69e2e'; } // 기존 서버 상태 UI도 갱신 let oldStatus = document.getElementById( 'photoServerStatus' ); if (oldStatus) { oldStatus.textContent = '✅ 서버 연결됨'; oldStatus.className = 'badge badge-ok'; } } catch (error) { if (serverEl) { serverEl.textContent = '● 연결 실패'; serverEl.style.color = '#e53e3e'; } if (githubEl) { githubEl.textContent = '● 확인 불가'; githubEl.style.color = '#e53e3e'; } if (kakaoEl) { kakaoEl.textContent = '● 확인 불가'; kakaoEl.style.color = '#e53e3e'; } console.warn( '[Settings] 서버 상태 확인 실패:', error ); } updateSettingsConnectionUI(); }
 
+function updateAuthorizationUI() { let authStatus = document.getElementById( 'settingsAuthStatus' ); let region = document.getElementById( 'settingsRegionDisplay' ); let adminGroup = document.getElementById( 'adminSettingsGroup' ); if (!isAuthorized()) { if (authStatus) { authStatus.textContent = '🔒 미인가'; authStatus.className = 'badge badge-wait'; } if (region) { region.textContent = '-'; } if (adminGroup) { adminGroup.style.display = 'none'; } return; } if (isMaster()) { if (authStatus) { authStatus.textContent = '👑 마스터'; authStatus.className = 'badge badge-ok'; } if (region) { region.textContent = currentRegion || '전체 지역'; } if (adminGroup) { adminGroup.style.display = ''; } } else { if (authStatus) { authStatus.textContent = '📍 지역 사용자'; authStatus.className = 'badge badge-ok'; } if (region) { region.textContent = fieldPilotAuth.region || currentRegion || '-'; } if (adminGroup) { adminGroup.style.display = 'none'; } } }                                                                                                                                                                                                                                                                                                                                                    
+
+function toggleAdminSettings() { if (!isMaster()) { showTabStatus( 'tab-settings', '⚠️ 관리자 권한이 필요합니다.', 'warning' ); return; } let panel = document.getElementById( 'adminSettingsPanel' ); let arrow = document.getElementById( 'adminSettingsArrow' ); if (!panel) return; let opening = panel.style.display === 'none' || !panel.style.display; panel.style.display = opening ? 'block' : 'none'; if (arrow) { arrow.textContent = opening ? '⌄' : '›'; } }                                                                                                                                                                                                                                                                                                                                                    
+
+async function refreshSettingsTab() { updateWorkerNameStatus(); updateAuthorizationUI(); updateSettingsConnectionUI(); if (isAuthorized()) { await refreshSettingsConnectionStatus(); } }                                                                                                                                                                                                                                                                                                                                                   
+                                                                                                                                                                                                                                                                                                                                                    
 async function testGitHubToken() {
     let token = settings.githubToken || document.getElementById('githubToken').value.trim();
     if (!token) {
@@ -8449,6 +8367,9 @@ function applyAuthorizationState() {
 
     applyRegionLock();
     updateFeatureLockState();
+
+    updateAuthorizationUI();
+    updateSettingsConnectionUI();
 }
 function applyRegionLock() {
 
