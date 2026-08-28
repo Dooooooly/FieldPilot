@@ -7661,14 +7661,86 @@ function loadStatsFromLocalStorage() {
     return { version: 1, visitHistory: [], lastUpdated: null };
 }
 
-function saveStatsToLocalStorage(stats) {
-    let key = getStatsKey(currentRegion);
-    localStorage.setItem(key, JSON.stringify(stats));
-    currentStats = stats;
-    // 노트북 서버에도 백업 (실패해도 로컬 저장은 그대로 유지됨 - 오프라인 안전)
-    serverPost('/api/stats?region=' + encodeURIComponent(currentRegion), stats).catch(function() {});
-}
+async function saveStatsToLocalStorage(stats) {
 
+    const region =
+        String(currentRegion || '').trim();
+
+    // ------------------------------------------------------------
+    // LOCAL 저장은 항상 먼저 수행
+    // ------------------------------------------------------------
+    const key =
+        getStatsKey(region);
+
+    localStorage.setItem(
+        key,
+        JSON.stringify(stats)
+    );
+
+    currentStats = stats;
+
+    // ------------------------------------------------------------
+    // 지역이 없으면 서버 전송하지 않음
+    // ------------------------------------------------------------
+    if (!region) {
+        console.warn(
+            '[STATS] currentRegion이 없어 서버 동기화를 건너뜁니다.'
+        );
+        return false;
+    }
+
+    // ------------------------------------------------------------
+    // 인증 토큰 확인
+    // ------------------------------------------------------------
+    const token =
+        getAuthToken();
+
+    if (!token) {
+        console.warn(
+            '[STATS] 인증 토큰이 없어 서버 동기화를 건너뜁니다.'
+        );
+        return false;
+    }
+
+    // ------------------------------------------------------------
+    // 온라인 상태 확인
+    // ------------------------------------------------------------
+    if (!navigator.onLine) {
+        console.warn(
+            '[STATS] 오프라인 상태 - LOCAL에만 저장했습니다.'
+        );
+        return false;
+    }
+
+    // ------------------------------------------------------------
+    // SERVER 동기화
+    // ------------------------------------------------------------
+    try {
+
+        const result =
+            await serverPost(
+                '/api/stats?region=' +
+                encodeURIComponent(region),
+                stats
+            );
+
+        console.log(
+            '[STATS] SERVER 동기화 성공:',
+            result
+        );
+
+        return true;
+
+    } catch (error) {
+
+        console.error(
+            '[STATS] SERVER 동기화 실패:',
+            error
+        );
+
+        return false;
+    }
+}
 // ===== GitHub 업로드 (통계 기록 시 자동) =====
 async function uploadStatsToGitHub(stats) {
     let token = settings.githubToken;
@@ -7993,12 +8065,79 @@ function loadWorkFromLocalStorage() {
     return { version: 1, categories: ['카메라', '비상벨', '전원설비', '네트워크', '기타'], workHistory: [], lastUpdated: null };
 }
 
-function saveWorkToLocalStorage(work) {
-    let key = getWorkKey(currentRegion);
-    localStorage.setItem(key, JSON.stringify(work));
+async function saveWorkToLocalStorage(work) {
+
+    const region =
+        String(currentRegion || '').trim();
+
+    const key =
+        getWorkKey(region);
+
+    // ------------------------------------------------------------
+    // LOCAL 저장
+    // ------------------------------------------------------------
+    localStorage.setItem(
+        key,
+        JSON.stringify(work)
+    );
+
     currentWork = work;
-    // 노트북 서버에도 백업 (실패해도 로컬 저장은 그대로 유지됨 - 오프라인 안전)
-    serverPost('/api/work-history?region=' + encodeURIComponent(currentRegion), work).catch(function() {});
+
+    // ------------------------------------------------------------
+    // 서버 전송 조건
+    // ------------------------------------------------------------
+    if (!region) {
+        console.warn(
+            '[WORK] currentRegion이 없어 서버 동기화를 건너뜁니다.'
+        );
+        return false;
+    }
+
+    const token =
+        getAuthToken();
+
+    if (!token) {
+        console.warn(
+            '[WORK] 인증 토큰이 없어 서버 동기화를 건너뜁니다.'
+        );
+        return false;
+    }
+
+    if (!navigator.onLine) {
+        console.warn(
+            '[WORK] 오프라인 상태 - LOCAL에만 저장했습니다.'
+        );
+        return false;
+    }
+
+    // ------------------------------------------------------------
+    // SERVER 동기화
+    // ------------------------------------------------------------
+    try {
+
+        const result =
+            await serverPost(
+                '/api/work-history?region=' +
+                encodeURIComponent(region),
+                work
+            );
+
+        console.log(
+            '[WORK] SERVER 동기화 성공:',
+            result
+        );
+
+        return true;
+
+    } catch (error) {
+
+        console.error(
+            '[WORK] SERVER 동기화 실패:',
+            error
+        );
+
+        return false;
+    }
 }
 
 async function uploadWorkToGitHub(work) {
