@@ -248,6 +248,7 @@ let currentWork = null;
 let workerName = localStorage.getItem('workerName') || '';
 let workCalendarYear = new Date().getFullYear();
 let workCalendarMonth = new Date().getMonth();
+let selectedWorkDate = '';
 let pendingWorkUpload = false;
 
 // --- 마커/검색 상태 ---
@@ -873,16 +874,14 @@ function updateSettingsConnectionUI() {
 
     if (kakao) {
 
-        const jsKeyConfigured =
-            !!(
-                settings &&
-                settings.kakaoJsKey
-            );
+        const jsKeyConfigured = isKakaoMapReadyOrConfigured();
 
         if (jsKeyConfigured) {
 
             kakao.textContent =
-                '● 지도키 설정됨';
+                kakaoMap
+                    ? '● 지도 사용 중'
+                    : '● 지도키 설정됨';
 
             kakao.style.color =
                 '#38a169';
@@ -906,6 +905,18 @@ function updateSettingsConnectionUI() {
         version.textContent =
             '최신';
     }
+}
+
+function isKakaoMapReadyOrConfigured() {
+    return !!(
+        kakaoMap ||
+        KAKAO_JAVASCRIPT_KEY ||
+        (
+            typeof window !== 'undefined' &&
+            window.kakao &&
+            window.kakao.maps
+        )
+    );
 }
 
 
@@ -997,16 +1008,22 @@ async function refreshSettingsConnectionStatus() {
 
         if (kakaoEl) {
 
-            const kakaoOk =
-                !!(
-                    data.kakaoRestKeyConfigured ||
-                    data.appKeyConfigured
-                );
+            const mapReady = !!kakaoMap;
+            const mapConfigured =
+                isKakaoMapReadyOrConfigured();
+            const kakaoOk = !!(
+                mapConfigured ||
+                data.kakaoRestKeyConfigured ||
+                data.appKeyConfigured
+            );
 
             if (kakaoOk) {
 
-                kakaoEl.textContent =
-                    '● 서버 연결됨';
+                kakaoEl.textContent = mapReady
+                    ? '● 지도 사용 중'
+                    : mapConfigured
+                        ? '● 지도키 설정됨'
+                        : '● 서버 연결됨';
 
                 kakaoEl.style.color =
                     '#38a169';
@@ -5287,6 +5304,7 @@ function createMap(container) {
         // kakaoMap.setZoomable(true);    ← 제거
         
         applyPendingMapCenter();
+        updateSettingsConnectionUI();
         showTabStatus('tab-route', '🗺️ 지도 로드 완료', 'ok');
     } catch(e) {
         container.innerHTML = '<div style="...">❌ 지도 생성 실패</div>';
@@ -8006,6 +8024,11 @@ function injectDarkModeCSS() {
     c.push('body.dark-mode #workCalendar{color:#e2e8f0!important}');
     c.push('body.dark-mode #workDateDetail{color:#e2e8f0!important}');
     c.push('body.dark-mode #workWorkerDisplay{color:#a0aec0!important}');
+    c.push('body.dark-mode .work-calendar-day{background:#2d3748!important;border-color:#4a5568!important;color:#e2e8f0!important}');
+    c.push('body.dark-mode .work-calendar-day:hover{background:#3a4556!important;border-color:#718096!important}');
+    c.push('body.dark-mode .work-calendar-day.is-today{background:#2a4365!important;border-color:#63b3ed!important}');
+    c.push('body.dark-mode .work-calendar-day.is-selected{background:#2c5282!important;border-color:#90cdf4!important;box-shadow:0 0 0 2px rgba(144,205,244,.38)!important}');
+    c.push('body.dark-mode .work-date-selection{background:#2c5282!important;border-color:#63b3ed!important;color:#ebf8ff!important}');
     // 상태
     c.push('body.dark-mode .tab-status{background:#2d3748!important;color:#e2e8f0!important}');
     c.push('body.dark-mode .tab-status.ok,body.dark-mode .tab-status.success{background:#276749!important;color:#c6f6d5!important}');
@@ -8041,12 +8064,23 @@ function injectDarkModeCSS() {
     c.push('body.dark-mode [style*="background:#ffffff"]{background:#2d3748!important}');
     c.push('body.dark-mode [style*="background:#ebf8ff"]{background:#2c5282!important}');
     c.push('body.dark-mode [style*="background:#fff5f5"]{background:#742a2a!important}');
+    c.push('body.dark-mode [style*="background:#f0fff4"]{background:#22543d!important}');
+    c.push('body.dark-mode [style*="background:#fffff0"]{background:#4a3b16!important}');
+    c.push('body.dark-mode [style*="background:#fefcbf"]{background:#5f4b16!important}');
+    c.push('body.dark-mode [style*="background:#faf5ff"]{background:#44337a!important}');
+    c.push('body.dark-mode [style*="background:#edf2f7"]{background:#374151!important}');
+    c.push('body.dark-mode [style*="background:#f8fafc"]{background:#273244!important}');
+    c.push('body.dark-mode [style*="background:#fffaf0"]{background:#4a3520!important}');
     c.push('body.dark-mode [style*="color:#4a5568"]{color:#cbd5e0!important}');
     c.push('body.dark-mode [style*="color:#718096"]{color:#a0aec0!important}');
     c.push('body.dark-mode [style*="color:#2d3748"]{color:#e2e8f0!important}');
     c.push('body.dark-mode [style*="color:#1a202c"]{color:#f7fafc!important}');
     c.push('body.dark-mode [style*="color:#1f2937"]{color:#f7fafc!important}');
     c.push('body.dark-mode [style*="color:#a0aec0"]{color:#a0aec0!important}');
+    c.push('body.dark-mode [style*="color:#276749"]{color:#9ae6b4!important}');
+    c.push('body.dark-mode [style*="color:#975a16"]{color:#fbd38d!important}');
+    c.push('body.dark-mode [style*="color:#2b6cb0"]{color:#90cdf4!important}');
+    c.push('body.dark-mode [style*="color:#4f7eb3"]{color:#90cdf4!important}');
     c.push('body.dark-mode [style*="border-color:#e2e8f0"]{border-color:#4a5568!important}');
     c.push('body.dark-mode [style*="border:1px solid #e2e8f0"]{border-color:#4a5568!important}');
     c.push('body.dark-mode [style*="border-top:1px solid #e2e8f0"]{border-color:#4a5568!important}');
@@ -8063,6 +8097,9 @@ function injectDarkModeCSS() {
     c.push('body.dark-mode .advanced-options{background:#2d3748!important;border-color:#4a5568!important}');
     c.push('body.dark-mode .switch-text strong{color:#f7fafc!important}');
     c.push('body.dark-mode .switch-text small{color:#a0aec0!important}');
+    c.push('body.dark-mode details,body.dark-mode summary,body.dark-mode table,body.dark-mode th,body.dark-mode td{background-color:#2d3748!important;color:#e2e8f0!important;border-color:#4a5568!important}');
+    c.push('body.dark-mode pre,body.dark-mode code{background:#1a202c!important;color:#bee3f8!important;border-color:#4a5568!important}');
+    c.push('body.dark-mode hr{border-color:#4a5568!important}');
     // 기타
     c.push('body.dark-mode #darkModeToggleBtn:hover{background:rgba(255,255,255,0.1)!important}');
     c.push('body.dark-mode .dist{color:inherit!important}');
@@ -9045,15 +9082,20 @@ function renderWorkTab() {
         let count = dateCounts[dateStr] || 0;
         let isToday = dateStr === today;
         let dayOfWeek = new Date(year, month, d).getDay();
-        let bgColor = isToday ? '#ebf8ff' : 'transparent';
-        let border = isToday ? '2px solid #3182ce' : '1px solid #e2e8f0';
+        let isSelected = dateStr === selectedWorkDate;
+        let stateClass =
+            (isToday ? ' is-today' : '') +
+            (isSelected ? ' is-selected' : '');
         let textColor = dayOfWeek === 0 ? '#e53e3e' : dayOfWeek === 6 ? '#3182ce' : '#2d3748';
-        html += '<div onclick="showWorkDateDetail(\'' + dateStr + '\')" style="text-align:center;padding:6px 2px;min-height:48px;border-radius:6px;cursor:pointer;background:' + bgColor + ';border:' + border + ';">';
+        html += '<button type="button" class="work-calendar-day' + stateClass + '" onclick="showWorkDateDetail(\'' + dateStr + '\')" aria-pressed="' + (isSelected ? 'true' : 'false') + '" aria-label="' + dateStr + (count ? ', 기록 ' + count + '건' : ', 기록 없음') + '" style="width:100%;text-align:center;padding:6px 2px;min-height:52px;border-radius:7px;cursor:pointer;background:' + (isSelected ? '#bee3f8' : isToday ? '#ebf8ff' : 'transparent') + ';border:' + (isSelected ? '3px solid #2b6cb0' : isToday ? '2px solid #3182ce' : '1px solid #e2e8f0') + ';box-shadow:' + (isSelected ? '0 0 0 2px rgba(49,130,206,.18)' : 'none') + ';">';
         html += '<div style="font-size:13px;font-weight:' + (isToday ? '700' : '400') + ';color:' + textColor + ';">' + d + '</div>';
         if (count > 0) {
             html += '<div style="font-size:10px;color:white;background:#38a169;border-radius:8px;padding:1px 4px;margin-top:2px;">' + count + '건</div>';
         }
-        html += '</div>';
+        if (isSelected) {
+            html += '<div style="font-size:9px;color:#2b6cb0;font-weight:700;margin-top:2px;">✓ 선택</div>';
+        }
+        html += '</button>';
     }
     html += '</div>';
     container.innerHTML = html;
@@ -9063,6 +9105,8 @@ function changeWorkMonth(delta) {
     workCalendarMonth += delta;
     if (workCalendarMonth < 0) { workCalendarMonth = 11; workCalendarYear--; }
     if (workCalendarMonth > 11) { workCalendarMonth = 0; workCalendarYear++; }
+    selectedWorkDate = '';
+    hideWorkDateDetail(false);
     renderWorkTab();
 }
 
@@ -9070,6 +9114,8 @@ function changeWorkMonth(delta) {
 // 45. 날짜별 상세 + 처리내역 모달
 // ============================================================
 function showWorkDateDetail(dateStr) {
+    selectedWorkDate = dateStr;
+    renderWorkTab();
     let work = currentWork || loadWorkFromLocalStorage();
     let history = work.workHistory || [];
     let dayRecords = history.filter(function(w) { return w.date === dateStr; });
@@ -9081,8 +9127,8 @@ function showWorkDateDetail(dateStr) {
     let dayLabel = (dateObj.getMonth() + 1) + '월 ' + dateObj.getDate() + '일 (' + weekdays[dateObj.getDay()] + ')';
 
     let html = '';
-    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">';
-    html += '<div style="font-weight:700;font-size:15px;">📅 ' + dayLabel + '</div>';
+    html += '<div class="work-date-selection" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding:10px 12px;background:#ebf8ff;border:2px solid #3182ce;border-radius:9px;">';
+    html += '<div><div style="font-size:10px;color:#4f7eb3;font-weight:700;margin-bottom:2px;">현재 선택한 날짜</div><div style="font-weight:700;font-size:15px;">📅 ' + dayLabel + '</div></div>';
     html += '<button class="btn btn-outline btn-sm" onclick="hideWorkDateDetail()" style="padding:4px 12px;">✕ 닫기</button>';
     html += '</div>';
 
@@ -9115,9 +9161,13 @@ function showWorkDateDetail(dateStr) {
     container.style.display = 'block';
 }
 
-function hideWorkDateDetail() {
+function hideWorkDateDetail(clearSelection = true) {
     let container = document.getElementById('workDateDetail');
     if (container) { container.style.display = 'none'; container.innerHTML = ''; }
+    if (clearSelection) {
+        selectedWorkDate = '';
+        renderWorkTab();
+    }
 }
 
 function openWorkEditModal(workId) {
@@ -9970,11 +10020,13 @@ async function autoMatchKakaoWorkRecipient() {
         fieldPilotAuth?.kakaoWorkUserName || ''
     ).trim();
 
-    // 마스터가 수신자를 변경했을 경우를 대비해
-    // 현재 서버 세션의 최신 매핑을 확인한다.
+    // 세션 생성 시 저장된 수신자 복사본이 아니라 현재 선택 지역의
+    // 최신 사용자 매칭을 직접 조회한다. 마스터 세션도 동일하게 동작한다.
     try {
         const response = await fetch(
-            serverBase() + '/api/auth/status',
+            serverBase() +
+                '/api/kakao-work/recipient?region=' +
+                encodeURIComponent(region),
             {
                 method: 'GET',
                 headers: {
@@ -9989,31 +10041,15 @@ async function autoMatchKakaoWorkRecipient() {
 
             if (data.ok) {
                 userId = String(
-                    data.kakaoWorkUserId ||
-                    userId ||
-                    ''
+                    data.kakaoWorkUserId || ''
                 ).trim();
 
                 userName = String(
-                    data.kakaoWorkUserName ||
-                    userName ||
-                    ''
+                    data.kakaoWorkUserName || ''
                 ).trim();
 
                 fieldPilotAuth = {
                     ...fieldPilotAuth,
-                    role:
-                        data.role ||
-                        fieldPilotAuth.role ||
-                        '',
-                    region:
-                        data.region ||
-                        fieldPilotAuth.region ||
-                        region,
-                    expiresAt:
-                        data.expiresAt ||
-                        fieldPilotAuth.expiresAt ||
-                        0,
                     kakaoWorkUserId: userId,
                     kakaoWorkUserName: userName
                 };
@@ -10023,10 +10059,20 @@ async function autoMatchKakaoWorkRecipient() {
                     JSON.stringify(fieldPilotAuth)
                 );
             }
+        } else {
+            const errorData = await response.json().catch(function() {
+                return {};
+            });
+
+            throw new Error(
+                errorData.message ||
+                errorData.error ||
+                '수신자 매칭을 확인하지 못했습니다.'
+            );
         }
     } catch (error) {
         console.warn(
-            '[KakaoWork] 최신 수신자 확인 실패 → 저장값 사용:',
+            '[KakaoWork] 최신 지역 수신자 확인 실패 → 저장값 사용:',
             error
         );
     }
@@ -12417,6 +12463,8 @@ async function loadRuntimeConfiguration() {
             githubInput.placeholder = '노트북서버/config.json의 github.token에서 설정';
             githubInput.autocomplete = 'off';
         }
+
+        updateSettingsConnectionUI();
 
         return runtime;
     } catch (error) {
