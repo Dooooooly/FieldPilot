@@ -1,0 +1,2462 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>경로 최적화</title>
+
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🚗%3C/text%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🚗%3C/text%3E%3C/svg%3E">
+
+    <meta name="theme-color" content="#6b9bd2">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <style>
+        :root {
+            --bg-primary: #f7f8fc;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f7fafc;
+            --bg-hover: #edf2f7;
+            --bg-active: #eff6ff;
+            --text-primary: #1a202c;
+            --text-secondary: #4a5568;
+            --text-muted: #718096;
+            --text-placeholder: #a0aec0;
+            --border-color: #e2e8f0;
+            --border-light: #f0f2f5;
+            --primary-color: #4f7eb3;
+            --primary-hover: #3d6a9e;
+            --success-color: #5a9e6f;
+            --success-hover: #4a8a5e;
+            --danger-color: #e53e3e;
+            --danger-hover: #c53030;
+            --warning-color: #f6ad55;
+            --purple-color: #7c3aed;
+            --shadow-sm: 0 1px 4px rgba(0,0,0,0.04);
+            --shadow-md: 0 2px 16px rgba(75,111,165,0.2);
+            --shadow-lg: 0 4px 18px rgba(0,0,0,0.08);
+            --header-gradient: linear-gradient(135deg, #4a6fa5, #6b9bd2);
+            --summary-bg: linear-gradient(135deg, #ebf8ff, #e6f0fa);
+            --map-bg: #e2e8f0;
+            --tab-icon-color: #94a3b8;
+            --fav-active: #f6ad55;
+            --fav-inactive: #cbd5e0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html {
+            height: 100%;
+            overflow-x: hidden;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            min-height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+            padding-bottom: 80px !important;
+            overscroll-behavior-y: contain;
+            touch-action: pan-y;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        #offlineBanner {
+            display: none;
+            background: var(--danger-color);
+            color: white;
+            text-align: center;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 999;
+        }
+        #offlineBanner.show { display: block; }
+
+        .bottom-tabs {
+            position: fixed !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            width: 100% !important;
+            height: 64px !important;
+            min-height: 64px !important;
+            display: flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            background: var(--bg-secondary) !important;
+            border-top: 1px solid var(--border-color) !important;
+            z-index: 2147483647 !important;
+            pointer-events: auto !important;
+            box-shadow: var(--shadow-lg) !important;
+            align-items: stretch !important;
+            padding: 0 !important;
+        }
+        .bottom-tab {
+            flex: 1 1 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            min-width: 0 !important;
+            height: 64px !important;
+            border: 0 !important;
+            background: transparent !important;
+            cursor: pointer !important;
+            pointer-events: auto !important;
+            color: var(--tab-icon-color) !important;
+            font-size: 10px !important;
+            font-weight: 700 !important;
+            transition: all 0.15s !important;
+            -webkit-tap-highlight-color: transparent !important;
+            padding: 4px 2px !important;
+        }
+        .bottom-tab .tab-icon { display: block !important; font-size: 20px !important; line-height: 1 !important; margin-bottom: 3px !important; }
+        .bottom-tab.active { color: #2563eb !important; background: var(--bg-active) !important; }
+        .bottom-tab.help-tab { color: var(--purple-color) !important; }
+        .bottom-tab.help-tab.active { color: var(--purple-color) !important; background: rgba(124, 58, 237, 0.1) !important; }
+
+        @media (max-width: 700px) {
+            body { padding-bottom: 76px !important; }
+            .bottom-tabs { height: 68px !important; min-height: 68px !important; }
+            .bottom-tab { height: 68px !important; font-size: 10px !important; }
+        }
+
+        .flex-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+        .flex-1 { flex: 1; min-width: 0; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+        .header {
+            background: var(--header-gradient);
+            color: white;
+            padding: 10px 16px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow-md);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .header-left h1 { font-size: 17px; font-weight: 700; letter-spacing: -0.5px; }
+        .header-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+        .weather {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(255,255,255,0.15);
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            border: 1px solid rgba(255,255,255,0.08);
+            height: 32px;
+            color: white;
+            white-space: nowrap;
+        }
+        .weather:hover { background: rgba(255,255,255,0.25); transform: translateY(-1px); }
+        .weather .temp { font-weight: 700; font-size: 13px; }
+        .header-divider { width: 1px; height: 20px; background: rgba(255,255,255,0.2); flex-shrink: 0; }
+
+        .main { max-width: 600px; margin: 0 auto; padding: 12px 14px 80px; }
+        .tab-content { display: none; animation: fadeUp 0.3s ease; }
+        .tab-content.active { display: block; }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        .card {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 12px 14px;
+            margin-bottom: 10px;
+            box-shadow: var(--shadow-sm);
+        }
+        .card-title { font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            justify-content: center;
+            min-height: 36px;
+        }
+        .btn:active { transform: scale(0.96); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .btn-primary { background: var(--primary-color); color: white; }
+        .btn-primary:hover:not(:disabled) { background: var(--primary-hover); box-shadow: 0 4px 12px rgba(79,126,179,0.3); }
+        .btn-success { background: var(--success-color); color: white; }
+        .btn-success:hover:not(:disabled) { background: var(--success-hover); box-shadow: 0 4px 12px rgba(90,158,111,0.3); }
+        .btn-danger { background: var(--danger-color); color: white; }
+        .btn-danger:hover:not(:disabled) { background: var(--danger-hover); box-shadow: 0 4px 12px rgba(229,62,62,0.3); }
+        .btn-outline { background: transparent; color: var(--text-secondary); border: 2px solid var(--border-color); }
+        .btn-outline:hover:not(:disabled) { background: var(--bg-tertiary); border-color: var(--border-color); }
+        .btn-sm { padding: 4px 10px; font-size: 11px; min-height: 30px; border-radius: 6px; }
+        .btn-block { width: 100%; }
+        .btn-lg { padding: 14px 20px; font-size: 16px; min-height: 50px; border-radius: 10px; }
+
+        .input-field {
+            padding: 6px 10px;
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 12px;
+            transition: all 0.2s;
+            background: var(--bg-secondary);
+            min-height: 34px;
+            width: 100%;
+            color: var(--text-primary);
+        }
+        .input-field:focus { border-color: var(--primary-color); outline: none; box-shadow: 0 0 0 3px rgba(79,126,179,0.15); }
+        .input-field::placeholder { color: var(--text-placeholder); }
+        .input-field-sm { min-height: 30px; font-size: 11px; padding: 4px 8px; }
+
+        .fav-filter-btn {
+            font-size: 12px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            border: 2px solid var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+            min-height: 30px;
+        }
+        .fav-filter-btn.active { background: #f6ad55; border-color: #f6ad55; color: white; }
+
+        .place-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 10px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            margin-bottom: 3px;
+            border-left: 3px solid var(--primary-color);
+            gap: 6px;
+            min-height: 40px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .place-item:hover { background: var(--bg-hover); }
+        .place-item .info { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; overflow: hidden; }
+        .place-item .info .name { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-primary); }
+        .place-item .info .addr { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .place-item .info .remark { font-size: 10px; color: var(--text-placeholder); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60px; }
+        .place-item .actions { display: flex; gap: 2px; flex-shrink: 0; align-items: center; }
+        .place-item .actions button {
+            background: none;
+            border: none;
+            font-size: 14px;
+            cursor: pointer;
+            padding: 4px 4px;
+            border-radius: 6px;
+            transition: all 0.2s;
+            min-width: 30px;
+            min-height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+        }
+        .place-item .actions button:hover { background: rgba(0,0,0,0.06); }
+        .place-item .actions button:active { transform: scale(0.92); }
+        .place-item .actions .add:hover { color: var(--success-color); }
+        .place-item .actions .del:hover { color: var(--danger-color); }
+        .place-item .actions .map:hover { color: var(--primary-color); }
+        .place-item .actions .fav { font-size: 16px; transition: all 0.2s; }
+        .place-item .actions .fav.active { color: var(--fav-active); text-shadow: 0 0 8px rgba(246,173,85,0.3); }
+        .place-item .actions .fav.inactive { color: var(--fav-inactive); }
+        .place-item .actions .fav:hover { transform: scale(1.15); background: rgba(0,0,0,0.04); }
+
+        .waypoint-list {
+            list-style: none;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .waypoint-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 10px;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            margin-bottom: 3px;
+            font-size: 13px;
+            cursor: grab;
+            transition: background 0.2s;
+            border: 1px solid transparent;
+        }
+        .waypoint-list li:hover { background: var(--bg-hover); }
+        .waypoint-list li:active { cursor: grabbing; }
+        .waypoint-list li.sortable-chosen { background: rgba(79,126,179,0.2); border-color: var(--primary-color); box-shadow: 0 4px 12px rgba(79,126,179,0.2); }
+        .waypoint-list li .drag-handle { color: var(--text-placeholder); margin-right: 6px; font-size: 14px; cursor: grab; }
+        .waypoint-list li .idx { background: var(--primary-color); color: white; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; margin-right: 8px; flex-shrink: 0; }
+        .waypoint-list li .remove { color: var(--danger-color); cursor: pointer; font-weight: 700; padding: 0 6px; }
+
+        .empty-msg { text-align: center; color: var(--text-placeholder); padding: 16px; font-size: 13px; }
+
+        .search-results {
+            position: absolute;
+            width: 100%;
+            max-height: 220px;
+            overflow-y: auto;
+            background: var(--bg-secondary);
+            border: 2px solid var(--border-color);
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            display: none;
+            z-index: 50;
+            margin-top: -2px;
+            box-shadow: var(--shadow-md);
+        }
+        .search-results .result-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-size: 13px;
+            border-bottom: 1px solid var(--border-light);
+            transition: background 0.15s;
+            color: var(--text-primary);
+        }
+        .search-results .result-item:hover { background: rgba(79,126,179,0.1); }
+        .search-results .result-item .result-check { width: 16px; height: 16px; cursor: pointer; flex-shrink: 0; }
+        .search-results .result-item .result-info { flex: 1; min-width: 0; }
+        .search-results .result-item .result-info .addr { font-size: 11px; color: var(--text-muted); }
+        .search-results .result-item .result-info .source { font-size: 10px; color: var(--text-placeholder); margin-left: 4px; }
+
+        .summary {
+            background: var(--summary-bg);
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin-top: 8px;
+        }
+        .summary-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 13px; }
+        .summary-row .label { color: var(--text-secondary); }
+        .summary-row .value { font-weight: 700; color: var(--text-primary); }
+        .summary-row .saved { color: var(--success-color); font-weight: 700; }
+
+        .tab-status {
+            display: none;
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            margin-top: 6px;
+            animation: fadeSlide 0.3s ease;
+        }
+        .tab-status.show { display: block !important; }
+        .tab-status.ok, .tab-status.success { background: #c6f6d5; color: #22543d; }
+        .tab-status.error { background: #fed7d7; color: #9b2c2c; }
+        .tab-status.warning { background: #fefcbf; color: #975a16; }
+        .tab-status.info { background: #bee3f8; color: #2a4365; }
+        @keyframes fadeSlide { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
+        #map { width: 100%; height: 340px; border-radius: 12px; background: var(--map-bg); margin-bottom: 10px; touch-action: auto; overflow: hidden; }
+
+        .route-item {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 6px 10px;
+            margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 3px solid var(--success-color);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 13px;
+            box-shadow: var(--shadow-sm);
+        }
+        .route-item:hover { background: rgba(90,158,111,0.08); }
+        .route-item .idx { color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; margin-right: 8px; }
+        .route-item .info { flex: 1; min-width: 0; }
+        .route-item .info .name { font-weight: 600; color: var(--text-primary); }
+        .route-item .info .addr { font-size: 11px; color: var(--text-muted); }
+        .route-item .info .remark { font-size: 10px; color: var(--text-placeholder); margin-left: 4px; }
+        .route-item .dist { font-size: 12px; font-weight: 600; text-align: right; flex-shrink: 0; color: var(--text-secondary); }
+        .route-start { border-left-color: var(--primary-color); }
+        .route-start .idx { background: var(--primary-color); }
+        .route-start:hover { background: rgba(79,126,179,0.08); }
+
+        .preset-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            margin-bottom: 4px;
+            cursor: pointer;
+            border-left: 3px solid var(--primary-color);
+            transition: all 0.2s;
+            box-shadow: var(--shadow-sm);
+        }
+        .preset-item:hover { background: rgba(79,126,179,0.08); transform: translateX(3px); }
+        .preset-item .preset-info { flex: 1; }
+        .preset-item .preset-name { font-weight: 600; font-size: 13px; color: var(--text-primary); }
+        .preset-item .preset-detail { font-size: 11px; color: var(--text-muted); }
+        .preset-item .preset-delete { background: none; border: none; color: var(--text-placeholder); font-size: 16px; cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: all 0.2s; }
+        .preset-item .preset-delete:hover { color: var(--danger-color); background: rgba(229,62,62,0.1); }
+
+        .setting-group {
+            background: var(--bg-tertiary);
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 6px;
+        }
+        .setting-group h4 { font-size: 13px; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; color: var(--text-primary); }
+        .setting-group .row { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+        .setting-group .row label { font-size: 12px; font-weight: 600; color: var(--text-secondary); min-width: 60px; }
+        .setting-group .row input { flex: 1; min-width: 88px; padding: 5px 8px; border: 2px solid var(--border-color); border-radius: 6px; font-size: 12px; background: var(--bg-secondary); color: var(--text-primary); }
+        .setting-group .row input:focus { border-color: var(--primary-color); outline: none; }
+
+        .badge { font-size: 11px; padding: 2px 10px; border-radius: 20px; display: inline-block; }
+        .badge-ok { background: #c6f6d5; color: #22543d; }
+        .badge-wait { background: #e2e8f0; color: #4a5568; }
+        .badge-fail { background: #fed7d7; color: #9b2c2c; }
+        .kw-export-modal { max-width: 560px; max-height: 88vh; overflow-y: auto; }
+        .kw-export-site { width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px; background:#fff; color:#2d3748; }
+        .kw-export-photo-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; max-height:330px; overflow:auto; }
+        .kw-export-photo { border:1px solid #e2e8f0; border-radius:8px; padding:5px; cursor:pointer; background:#fff; }
+        .kw-export-photo img { width:100%; height:90px; object-fit:cover; border-radius:5px; display:block; }
+        .kw-export-worker { display:flex; align-items:center; gap:8px; padding:9px; border:1px solid #e2e8f0; border-radius:8px; cursor:pointer; background:#fff; }
+        .kw-export-current { padding:8px 10px; background:#ebf8ff; border-radius:8px; margin-bottom:12px; color:#2b6cb0; font-weight:700; }
+        .kw-export-error { padding:12px; background:#fff5f5; border-radius:8px; color:#c53030; }
+        .kw-export-help { font-size:11px; color:#718096; margin-bottom:12px; }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 200;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 360px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+        #addPlaceModal .modal { max-width: 400px; padding: 20px 24px; }
+        #optimizeSettingsModal .modal { max-width: 420px; max-height: 90vh; overflow-y: auto; }
+        .modal h3 { font-size: 17px; margin-bottom: 12px; }
+        .modal .btn-row { margin-top: 12px; }
+        .modal input { width: 100%; padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 13px; margin-bottom: 8px; }
+        .modal input:focus { border-color: #4f7eb3; outline: none; }
+
+        .help-section { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid #e2e8f0; }
+        .help-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .help-section .help-title { font-weight: 700; font-size: 14px; color: #4f7eb3; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+        .help-section .help-body { font-size: 13px; color: #4a5568; line-height: 1.7; padding-left: 4px; }
+
+        .choice-grid { display: grid; gap: 8px; }
+        .choice-grid.two { grid-template-columns: 1fr 1fr; }
+        .choice-grid.three { grid-template-columns: repeat(3, 1fr); }
+        .choice-card, .metric-card {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-align: left;
+            border: 1px solid #e2e8f0;
+            background: #fff;
+            border-radius: 10px;
+            padding: 10px 12px;
+            cursor: pointer;
+            transition: 0.18s ease;
+            min-height: 52px;
+        }
+        .choice-card:hover, .metric-card:hover { border-color: #90cdf4; transform: translateY(-1px); }
+        .choice-card.active, .metric-card.active { border-color: #3182ce; background: #ebf8ff; box-shadow: 0 0 0 1px rgba(49,130,206,0.08); }
+        .choice-radio, .metric-radio { font-size: 13px; color: #a0aec0; width: 14px; }
+        .choice-card.active .choice-radio, .metric-card.active .metric-radio { color: #3182ce; }
+        .choice-icon, .metric-icon { font-size: 18px; }
+        .choice-content, .metric-content { display: flex; flex-direction: column; min-width: 0; }
+        .choice-content strong, .metric-content strong { font-size: 13px; font-weight: 700; color: #2d3748; }
+        .choice-content small, .metric-content small { font-size: 11px; color: #718096; line-height: 1.35; margin-top: 2px; }
+        .selection-hint { font-size: 11px; color: #4a5568; background: #f7fafc; border-radius: 6px; padding: 6px 10px; margin-top: 8px; }
+        .metric-card input { position: absolute; opacity: 0; pointer-events: none; }
+
+        .advanced-options {
+            border: 1px solid #edf2f7;
+            border-radius: 10px;
+            background: #fff;
+            overflow: hidden;
+        }
+        .switch-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 10px 14px;
+            cursor: pointer;
+        }
+        .switch-row + .switch-row { border-top: 1px solid #edf2f7; }
+        .switch-text { display: flex; flex-direction: column; }
+        .switch-text strong { font-size: 12px; font-weight: 600; color: #2d3748; }
+        .switch-text small { font-size: 10px; color: #718096; margin-top: 2px; }
+        .switch-row input { position: absolute; opacity: 0; }
+        .switch-ui {
+            width: 36px;
+            height: 20px;
+            border-radius: 999px;
+            background: #cbd5e0;
+            position: relative;
+            flex: 0 0 36px;
+            transition: 0.18s;
+        }
+        .switch-ui:after { content: ""; position: absolute; width: 16px; height: 16px; top: 2px; left: 2px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.2); transition: 0.18s; }
+        .switch-row input:checked + .switch-ui { background: #3182ce; }
+        .switch-row input:checked + .switch-ui:after { transform: translateX(16px); }
+
+        .ux-tab-header { display: flex; align-items: center; gap: 10px; padding: 2px 3px 10px; }
+        .ux-tab-icon { width: 36px; height: 36px; border-radius: 11px; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 20px; flex: 0 0 36px; }
+        .ux-tab-title { font-weight: 800; font-size: 15px; color: #1f2937; }
+        .ux-tab-sub { font-size: 10px; color: #718096; margin-top: 2px; line-height: 1.4; }
+        #tab-list .ux-tab-icon { background: #f0fdf4; color: #16a34a; }
+        #tab-settings .ux-tab-icon { background: #f5f3ff; color: #7c3aed; }
+        #tab-help .ux-tab-icon { background: #fff7ed; color: #ea580c; }
+
+        .commit-item {
+            padding: 6px 10px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .commit-item .commit-info { flex: 1; min-width: 0; }
+        .commit-item .commit-msg { font-weight: 600; }
+        .commit-item .commit-date { color: #a0aec0; font-size: 10px; }
+        .commit-item .restore-btn { font-size: 10px; padding: 2px 10px; border-radius: 12px; background: #4f7eb3; color: white; border: none; cursor: pointer; flex-shrink: 0; }
+        .commit-item .restore-btn:hover { background: #3d6a9e; }
+
+        @media (max-width: 480px) {
+            .header { padding: 6px 10px; }
+            .header-left h1 { font-size: 14px; }
+            .weather { font-size: 10px; padding: 2px 8px; height: 26px; }
+            .weather .temp { font-size: 11px; }
+            .main { padding: 8px 8px 70px; }
+            .card { padding: 10px 12px; }
+            .btn { font-size: 12px; padding: 6px 12px; min-height: 32px; border-radius: 6px; }
+            .btn-lg { font-size: 14px; padding: 12px 16px; min-height: 44px; }
+            .input-field { font-size: 12px; padding: 5px 8px; min-height: 30px; }
+            #map { height: 260px; }
+            .place-item { padding: 4px 6px; min-height: 34px; }
+            .place-item .info .name { font-size: 12px; }
+            .place-item .info .addr { font-size: 10px; }
+            .place-item .info .remark { font-size: 9px; max-width: 40px; }
+            .place-item .actions button { font-size: 12px; min-width: 26px; min-height: 26px; }
+            .search-results .result-item { padding: 5px 8px; font-size: 12px; }
+            .route-item { font-size: 12px; padding: 4px 8px; }
+            .route-item .idx { width: 20px; height: 20px; font-size: 10px; }
+            .route-item .info .addr { font-size: 10px; }
+            .route-item .info .remark { font-size: 9px; }
+            .modal { padding: 16px; }
+            .bottom-tabs { height: 56px !important; min-height: 56px !important; }
+            .bottom-tab { height: 56px !important; font-size: 9px !important; }
+            .bottom-tab .tab-icon { font-size: 18px !important; }
+            body { padding-bottom: 64px !important; }
+            .choice-grid.two { grid-template-columns: 1fr; }
+            .choice-grid.three { grid-template-columns: 1fr; }
+        }
+        /* ===== 아이폰 안전 영역 (Safe Area) ===== */
+body {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+}
+.header {
+    padding-top: calc(10px + env(safe-area-inset-top, 0px));
+}
+.bottom-tabs {
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+    height: calc(64px + env(safe-area-inset-bottom, 0px)) !important;
+    min-height: calc(64px + env(safe-area-inset-bottom, 0px)) !important;
+}
+.bottom-tab {
+    height: calc(64px + env(safe-area-inset-bottom, 0px)) !important;
+}
+.main {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+}
+
+/* ===== 통계/작업 기록 탭 아이콘 색상 ===== */
+#tab-stats .ux-tab-icon { background: #ebf8ff; color: #2b6cb0; }
+#tab-work .ux-tab-icon { background: #f0fff4; color: #38a169; }
+
+/* ===== 버튼 크기 통일 ===== */
+.btn-sm { padding: 6px 12px !important; font-size: 12px !important; min-height: 32px !important; }
+.btn { font-size: 13px; min-height: 36px; }
+.btn-lg { font-size: 15px; min-height: 48px; }
+
+/* ===== 헤더 통일 ===== */
+.ux-tab-header { padding: 8px 3px 12px; }
+.ux-tab-title { font-size: 16px; }
+.ux-tab-sub { font-size: 11px; }
+
+/* ===== 모달 안전 영역 ===== */
+.modal, .modal-overlay > div {
+    max-height: calc(90vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+}
+
+/* ===== 아이폰 가로 모드 대응 ===== */
+@supports (padding: max(0px)) {
+    body {
+        padding-left: max(0px, env(safe-area-inset-left));
+        padding-right: max(0px, env(safe-area-inset-right));
+    }
+}
+    </style>
+</head>
+<body>
+
+    <div id="offlineBanner">📡 오프라인 상태 - 변경사항이 저장되지 않을 수 있습니다</div>
+
+    <header class="header">
+        <div class="header-left"><h1>🚗 경로 최적화</h1></div>
+        <div class="header-right">
+            <div class="weather" id="weatherDisplay" onclick="showWeekWeather()">
+                <span>⏳</span><span class="temp">--°C</span>
+            </div>
+            <span class="header-divider"></span>
+            <div class="weather" id="regionDisplay" onclick="openRegionManager()" style="cursor:pointer;">
+                <span id="currentRegionLabel">현재:</span>
+                <span id="currentRegionName">지역 선택</span>
+                <span class="region-arrow">▼</span>
+            </div>
+            <select id="regionSelect" style="display:none;" onchange="switchRegion(this.value)"></select>
+        </div>
+    </header>
+
+    <div class="main">
+
+        <!-- ===== 탭: 경로 ===== -->
+        <div id="tab-places" class="tab-content active">
+            <div class="card">
+                <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; width:100%; margin-bottom:8px;">
+                    <span>🚩 출발지</span>
+                    <button class="btn btn-outline btn-sm" onclick="setCurrentLocation()" style="font-size:11px; padding:3px 10px; min-height:28px; display:flex; align-items:center; gap:4px; border-color:#cbd5e0; color:#4a5568; background:#f7fafc; border-radius:20px;">
+                        <span style="font-size:14px;">🎯</span> 현재 위치
+                    </button>
+                </div>
+                <div style="position:relative;">
+                    <div class="flex-row" style="gap:6px;">
+                        <input type="text" id="startPoint" class="input-field flex-1" placeholder="출발지 검색" style="min-height:38px;" oninput="searchStartPoint(this.value)" onclick="searchStartPoint(this.value)" onkeydown="handleStartKeydown(event)">
+                        <button class="btn btn-primary" onclick="setStartPoint()" style="font-size:12px; padding:6px 12px; min-height:38px; white-space:nowrap;">설정</button>
+                    </div>
+                    <div id="startSearchResults" class="search-results"></div>
+                </div>
+                <div id="startInfo" style="font-size:12px; color:#718096; margin-top:4px;">⏳ 출발지를 검색하거나 🎯 현재 위치 버튼을 눌러 설정하세요</div>
+            </div>
+
+            <div class="card">
+                <div class="flex-between" style="margin-bottom:6px;">
+                    <div class="card-title" style="margin-bottom:0; font-size:14px;">📍 경유지 <span id="wpCount" style="font-size:12px;color:#a0aec0;font-weight:400;"></span></div>
+                    <button id="multiToggleBtn" onclick="toggleMultiSelect()" style="font-size:11px; padding:4px 14px; min-height:30px; border-radius:16px; border:2px solid #cbd5e0; background:white; color:#4a5568; cursor:pointer; transition:all 0.2s; font-weight:600; display:flex; align-items:center; gap:4px;">📋 여러개 추가</button>
+                </div>
+                <div style="position:relative;">
+                    <div class="flex-row" style="margin-bottom:4px; gap:6px;">
+                        <input type="text" id="waypointInput" class="input-field flex-1" placeholder="경유지 입력" style="min-height:38px;" oninput="searchWaypoint(this.value)" onkeydown="handleWaypointKeydown(event)">
+                        <button id="addWaypointBtn" class="btn btn-success" onclick="addWaypoint()" style="font-size:13px; padding:6px 18px; min-height:38px; font-weight:600; white-space:nowrap; transition:all 0.3s;">➕ 추가</button>
+                    </div>
+                    <div id="waypointSearchResults" class="search-results"></div>
+                </div>
+                <ul class="waypoint-list" id="waypointList"><li class="empty-msg">경유지를 추가하세요</li></ul>
+
+                <div id="modeStatus" style="font-size:11px; color:#a0aec0; margin-top:4px; text-align:center;">💡 일반 모드 - 경유지를 입력하고 추가하세요</div>
+
+                <div style="display:flex; flex-direction:column; gap:6px; margin-top:6px;">
+    <button class="btn btn-primary" id="runOptimizeBtn" onclick="runOptimize()" style="width:100%; justify-content:center; align-items:center;">⚡ 경로 최적화 실행</button>
+    <div style="display:flex; gap:6px; width:100%;">
+        <button class="btn btn-danger btn-sm" onclick="resetRoute()" style="flex:1; justify-content:center; align-items:center;">🔄 초기화</button>
+        <button class="btn btn-outline btn-sm" onclick="openOptimizeSettingsModal()" style="flex:1; justify-content:center; align-items:center;">⚙️ 설정</button>
+    </div>
+</div>
+
+                <div id="optimizationStatus" style="font-size:11px; color:#4a5568; text-align:center; margin-top:6px; padding:4px 8px; background:#f7fafc; border-radius:6px;">
+                    가까운순 · 최단거리 · 직선거리 보완 · 방향 미고려 · 카카오맵
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="flex-between" style="margin-bottom:6px;">
+                    <span class="card-title" style="margin-bottom:0; font-size:14px;">💾 프리셋</span>
+                    <button class="btn btn-primary btn-sm" onclick="addPreset()" style="font-size:11px; padding:4px 14px; min-height:30px;">➕ 저장</button>
+                </div>
+                <div id="presetList" style="max-height:150px; overflow-y:auto;"></div>
+                <div style="font-size:10px; color:#a0aec0; margin-top:4px;">프리셋을 클릭하면 불러오고, ✕ 버튼으로 삭제할 수 있어요</div>
+            </div>
+
+            <div id="placesStatus" class="tab-status"></div>
+        </div>
+
+       <!-- ===== 탭: 지도 ===== -->
+<div id="tab-route" class="tab-content">
+    <div id="tab-route-uxheader" class="ux-tab-header">
+        <div class="ux-tab-icon">🗺️</div>
+        <div><div class="ux-tab-title">최적 경로</div><div class="ux-tab-sub">전체 경로와 구간별 이동 정보를 확인하세요.</div></div>
+    </div>
+    <div id="map"></div>
+    <div class="summary">
+        <div class="summary-row"><span class="label">📍 방문지</span><span class="value" id="placeCount">0개소</span></div>
+        <div class="summary-row"><span class="label">📏 총 거리</span><span class="value" id="totalDistance">0.00 km</span></div>
+        <div class="summary-row"><span class="label">⏱️ 총 시간</span><span class="value" id="totalTime">0 분</span></div>
+        <div class="summary-row"><span class="label">📐 최적화</span><span class="value" id="optimizeMode">-</span></div>
+        <div class="summary-row" id="savedRow" style="display:none;"><span class="label">💡 절약 효과</span><span class="saved" id="savedAmount">-</span></div>
+    </div>
+
+    <!-- ===== 경로 요약 카드 (틀 제거, 버튼만 존재) ===== -->
+    <div id="route-summary-card" class="card" style="display: none; margin-top: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <h3 style="margin: 0; font-size: 1rem; color: var(--text-primary);">✨ 최적 경로 계산 완료</h3>
+            <button id="nav-start-btn" class="btn btn-primary btn-sm" style="padding: 4px 12px; font-size: 0.8rem;">
+                🚗 전체 경로 연결 (<span id="waypoint-count-badge">0</span>)
+            </button>
+        </div>
+        <p id="summary-text" style="color: var(--text-secondary); font-size: 0.9rem; margin: 0 0 8px 0;"></p>
+        <div id="nav-limit-msg" style="font-size: 0.7rem; color: var(--text-muted); text-align: center; margin-top: 4px;"></div>
+    </div>
+
+    <div id="routeList" style="margin-top:8px;"></div>
+    <div id="routeStatus" class="tab-status"></div>
+</div>
+
+        <!-- ===== 탭: 현장 ===== -->
+        <div id="tab-list" class="tab-content">
+            <div id="tab-list-uxheader" class="ux-tab-header">
+                <div class="ux-tab-icon">📋</div>
+                <div><div class="ux-tab-title">현장 관리</div><div class="ux-tab-sub">현장 등록 · 검색 · 가져오기 · 경유지 추가를 한곳에서 관리합니다.</div></div>
+            </div>
+            <div class="card">
+                <div class="flex-between" style="margin-bottom:6px;">
+                    <span class="card-title" style="margin-bottom:0; font-size:14px;">📋 현장리스트 <span id="listCount" style="font-size:12px;color:#a0aec0;font-weight:400;"></span></span>
+                    <button class="fav-filter-btn" id="favFilterBtn" onclick="toggleFavFilter()">⭐ 즐겨찾기</button>
+                </div>
+                <div class="flex-row" style="margin-bottom:6px; gap:6px;">
+                    <button class="btn btn-outline btn-sm" style="flex:1; font-size:11px; padding:6px 8px;" onclick="document.getElementById('fileInput').click()">📥 엑셀 가져오기</button>
+                    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFile(event)">
+                    <button class="btn btn-outline btn-sm" style="flex:1; font-size:11px; padding:6px 8px;" onclick="exportData()">📤 엑셀 내보내기</button>
+                    <button class="btn btn-primary btn-sm" style="flex:0.8; font-size:11px; padding:6px 8px;" onclick="openAddPlaceModal()">➕ 현장추가</button>
+                </div>
+                <div id="uploadResult" style="font-size:11px; padding:2px 6px;"></div>
+                <div class="flex-between" style="margin-bottom:4px; gap:8px;">
+                    <input type="text" id="searchPlace" class="input-field input-field-sm" placeholder="🔍 현장 검색" style="flex:1; min-height:30px; font-size:12px;" oninput="searchPlaces()">
+                    <div style="display:flex; gap:6px; align-items:center; flex-shrink:0;">
+                        <label style="font-size:11px; color:#718096; white-space:nowrap;">정렬:</label>
+                        <select id="sortPlaces" onchange="applySort()" style="padding:3px 8px; border:2px solid #e2e8f0; border-radius:6px; font-size:11px; background:white; height:28px;">
+                            <option value="name-asc">이름 ↑</option>
+                            <option value="name-desc">이름 ↓</option>
+                            <option value="no-coord">⚠️ 주소 변환 실패</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="placeList" style="max-height:380px; overflow-y:auto; min-height:100px;"></div>
+                <div id="listStatus" class="tab-status"></div>
+            </div>
+        </div>
+
+        <div id="tab-stats" class="tab-content">
+    <div id="tab-stats-uxheader" class="ux-tab-header">
+        <div class="ux-tab-icon">📊</div>
+        <div style="flex:1;">
+            <div class="ux-tab-title">방문 통계</div>
+            <div class="ux-tab-sub">현장 방문 기록과 동별 분포를 확인합니다.</div>
+        </div>
+    </div>
+    <div id="statsContent">
+        <div style="text-align:center; padding:40px 20px; color:#a0aec0;">
+            ⏳ 통계 데이터를 불러오려면<br>🔄 새로고침 버튼을 눌러주세요
+        </div>
+    </div>
+</div>
+<div id="tab-work" class="tab-content">
+    <div id="tab-work-uxheader" class="ux-tab-header">
+        <div class="ux-tab-icon">📝</div>
+        <div style="flex:1;">
+            <div class="ux-tab-title">작업 기록</div>
+            <div class="ux-tab-sub">날짜별 처리내역을 관리합니다.</div>
+        </div>
+        <div style="display:flex; gap:6px;">
+        </div>
+    </div>
+    <div id="workWorkerDisplay" style="font-size:12px; color:#718096; margin-bottom:8px;">👤 미설정</div>
+    <!-- ★ 현장 검색 -->
+<div style="margin-bottom:12px;">
+    <input type="text" id="workSearchInput" placeholder="🔍 현장명/처리내용/카메라 번호 검색..." oninput="searchWorkHistory()" style="width:100%;padding:10px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;">
+</div>
+<div id="workSearchResults" style="display:none;margin-bottom:12px;"></div>
+    <div id="workCalendar"></div>
+    <div id="workDateDetail" style="display:none; margin-top:12px; border-top:1px solid #e2e8f0; padding-top:12px;"></div>
+    <!-- ★ 카카오워크 사진 내보내기 -->
+<div style="margin-top:16px;padding:14px;background:#f7fafc;border-radius:10px;border:1px solid #e2e8f0;">
+    <div style="font-weight:700;font-size:14px;margin-bottom:6px;">📤 카카오워크 1:1 내보내기</div>
+    <div style="font-size:11px;color:#718096;margin-bottom:8px;">현재 선택 지역의 현장 → 사진 선택 → 작업자 검색 → Bot으로 1:1 전송</div>
+    <button class="btn btn-primary btn-sm" onclick="openKakaoWorkExportModal()" style="width:100%;padding:9px;">📨 내보낼 사진 선택</button>
+</div>
+</div>
+        <!-- ============================================================
+     카카오워크 1:1 내보내기
+     ============================================================ -->
+<div
+    id="kakaoWorkExportModal"
+    style="
+        display:none;
+        position:fixed;
+        inset:0;
+        z-index:99999;
+        background:rgba(0,0,0,.48);
+        align-items:center;
+        justify-content:center;
+        padding:16px;
+    "
+>
+    <div
+        style="
+            width:min(480px,100%);
+            max-height:92vh;
+            overflow:auto;
+            background:#fff;
+            border-radius:18px;
+            box-shadow:0 20px 60px rgba(0,0,0,.28);
+            padding:20px;
+        "
+    >
+
+        <!-- 헤더 -->
+        <div
+            style="
+                display:flex;
+                align-items:center;
+                justify-content:space-between;
+                margin-bottom:16px;
+            "
+        >
+
+            <div>
+                <div
+                    style="
+                        font-size:18px;
+                        font-weight:700;
+                    "
+                >
+                    📤 카카오워크 1:1 내보내기
+                </div>
+
+                <div
+                    style="
+                        font-size:12px;
+                        color:#718096;
+                        margin-top:4px;
+                    "
+                >
+                    사용자 → 현장 → 사진 순서로 선택하세요.
+                </div>
+            </div>
+
+            <button
+                type="button"
+                onclick="closeKakaoWorkExportModal()"
+                style="
+                    border:0;
+                    background:none;
+                    font-size:25px;
+                    color:#718096;
+                    cursor:pointer;
+                    line-height:1;
+                "
+            >
+                ×
+            </button>
+
+        </div>
+
+
+        <!-- 전송 대상 -->
+        <div
+            style="
+                margin-bottom:15px;
+                padding:12px;
+                background:#f0fff4;
+                border:1px solid #c6f6d5;
+                border-radius:10px;
+            "
+        >
+
+            <div
+                style="
+                    font-size:12px;
+                    color:#718096;
+                    margin-bottom:5px;
+                "
+            >
+                👤 전송 대상
+            </div>
+
+            <div
+                id="kakaoWorkSelectedUserBox"
+                style="display:block;"
+            >
+                <div
+                    id="kakaoWorkSelectedUser"
+                    style="font-size:14px;font-weight:700;"
+                >
+                    ⏳ 인가 사용자 확인 중...
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 현장 -->
+        <div
+            style="
+                margin-bottom:15px;
+            "
+        >
+
+            <label
+                style="
+                    display:block;
+                    font-size:13px;
+                    font-weight:700;
+                    margin-bottom:6px;
+                "
+            >
+                📍 현장
+            </label>
+
+            <select
+                id="kakaoWorkExportPlace"
+                onchange="onKakaoWorkExportPlaceChange()"
+                style="
+                    width:100%;
+                    box-sizing:border-box;
+                    padding:11px 12px;
+                    border:1px solid #e2e8f0;
+                    border-radius:10px;
+                    background:#fff;
+                    font-size:14px;
+                "
+            >
+                <option value="">
+                    현장을 선택하세요.
+                </option>
+            </select>
+
+        </div>
+
+
+        <!-- 사진 -->
+        <div
+            style="
+                margin-bottom:15px;
+            "
+        >
+
+            <div
+                style="
+                    display:flex;
+                    justify-content:space-between;
+                    align-items:center;
+                    margin-bottom:6px;
+                "
+            >
+
+                <label
+                    style="
+                        font-size:13px;
+                        font-weight:700;
+                    "
+                >
+                    📷 사진 선택
+                </label>
+
+                <span
+                    id="kakaoWorkExportPhotoSelectedCount"
+                    style="
+                        font-size:11px;
+                        color:#718096;
+                    "
+                >
+                    0장 선택
+                </span>
+
+            </div>
+
+            <div
+                id="kakaoWorkExportFileList"
+                style="
+                    max-height:270px;
+                    overflow-y:auto;
+                    padding:9px 10px;
+                    background:#f7fafc;
+                    border-radius:10px;
+                "
+            >
+                <div
+                    style="
+                        padding:15px;
+                        text-align:center;
+                        color:#a0aec0;
+                        font-size:12px;
+                    "
+                >
+                    현장을 선택하면 서버에 저장된 사진 목록이 표시됩니다.
+                </div>
+            </div>
+
+        </div>
+
+
+        <!-- 상태 -->
+        <div
+            id="kakaoWorkExportStatus"
+            style="
+                display:none;
+                margin-bottom:13px;
+                padding:10px 12px;
+                border-radius:9px;
+                font-size:12px;
+            "
+        ></div>
+
+
+        <!-- 버튼 -->
+        <div
+            style="
+                display:flex;
+                gap:8px;
+            "
+        >
+
+            <button
+                type="button"
+                onclick="closeKakaoWorkExportModal()"
+                style="
+                    flex:1;
+                    padding:12px;
+                    border:1px solid #e2e8f0;
+                    background:#fff;
+                    border-radius:10px;
+                    cursor:pointer;
+                    font-size:14px;
+                "
+            >
+                취소
+            </button>
+
+            <button
+                id="kakaoWorkExportSendBtn"
+                type="button"
+                onclick="sendKakaoWorkOneToOne()"
+                style="
+                    flex:1;
+                    padding:12px;
+                    border:0;
+                    background:#3182ce;
+                    color:#fff;
+                    border-radius:10px;
+                    cursor:pointer;
+                    font-size:14px;
+                    font-weight:700;
+                "
+            >
+                📤 1:1 전송
+            </button>
+
+        </div>
+
+    </div>
+</div>
+
+<!-- ===== 탭: 설정 ===== -->
+<div id="tab-settings" class="tab-content">
+
+    <div id="tab-settings-uxheader" class="ux-tab-header">
+        <div class="ux-tab-icon">⚙️</div>
+
+        <div style="flex:1;">
+            <div class="ux-tab-title">설정</div>
+            <div class="ux-tab-sub">
+                사용자 정보와 앱 상태를 관리합니다.
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ========================================================
+         사용자
+    ========================================================= -->
+    <div class="setting-group">
+
+        <h4>👤 사용자</h4>
+
+        <div style="
+            display:flex;
+            align-items:center;
+            gap:10px;
+            padding:10px;
+            background:var(--bg-tertiary);
+            border-radius:10px;
+        ">
+
+            <div style="
+                width:38px;
+                height:38px;
+                border-radius:50%;
+                background:var(--primary-color);
+                color:#fff;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                font-size:18px;
+                flex-shrink:0;
+            ">
+                👤
+            </div>
+
+            <div style="flex:1;min-width:0;">
+
+                <div
+                    id="settingsWorkerNameDisplay"
+                    style="
+                        font-size:14px;
+                        font-weight:700;
+                        color:var(--text-primary);
+                        overflow:hidden;
+                        text-overflow:ellipsis;
+                        white-space:nowrap;
+                    "
+                >
+                    미설정
+                </div>
+
+                <div
+                    id="workerNameStatus"
+                    class="badge badge-wait"
+                    style="margin-top:4px;"
+                >
+                    ⏳ 이름 미설정
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div class="row" style="margin-top:8px;">
+
+            <input
+                type="text"
+                id="workerName"
+                autocomplete="off"
+                placeholder="작업자 이름"
+                class="input-field"
+            >
+
+            <button
+                class="btn btn-primary btn-sm"
+                onclick="saveWorkerName()"
+                style="flex:0 0 auto;"
+            >
+                저장
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- ========================================================
+         연결 상태
+    ========================================================= -->
+    <div class="setting-group">
+
+        <h4>📡 연결 상태</h4>
+
+        <div style="
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:6px;
+        ">
+
+            <div style="
+                padding:9px 10px;
+                background:var(--bg-tertiary);
+                border-radius:8px;
+            ">
+
+                <div style="
+                    font-size:11px;
+                    color:var(--text-muted);
+                    margin-bottom:3px;
+                ">
+                    서버
+                </div>
+
+                <div
+                    id="settingsServerStatus"
+                    style="
+                        font-size:13px;
+                        font-weight:700;
+                    "
+                >
+                    ⏳ 확인 중
+                </div>
+
+            </div>
+
+
+            <div style="
+                padding:9px 10px;
+                background:var(--bg-tertiary);
+                border-radius:8px;
+            ">
+
+                <div style="
+                    font-size:11px;
+                    color:var(--text-muted);
+                    margin-bottom:3px;
+                ">
+                    GitHub
+                </div>
+
+                <div
+                    id="settingsGithubStatus"
+                    style="
+                        font-size:13px;
+                        font-weight:700;
+                    "
+                >
+                    ⏳ 확인 중
+                </div>
+
+            </div>
+
+
+            <div style="
+                padding:9px 10px;
+                background:var(--bg-tertiary);
+                border-radius:8px;
+            ">
+
+                <div style="
+                    font-size:11px;
+                    color:var(--text-muted);
+                    margin-bottom:3px;
+                ">
+                    Kakao API
+                </div>
+
+                <div
+                    id="settingsKakaoStatus"
+                    style="
+                        font-size:13px;
+                        font-weight:700;
+                    "
+                >
+                    ⏳ 확인 중
+                </div>
+
+            </div>
+
+
+            <div style="
+                padding:9px 10px;
+                background:var(--bg-tertiary);
+                border-radius:8px;
+            ">
+
+                <div style="
+                    font-size:11px;
+                    color:var(--text-muted);
+                    margin-bottom:3px;
+                ">
+                    앱 버전
+                </div>
+
+                <div
+                    id="settingsAppVersion"
+                    style="
+                        font-size:13px;
+                        font-weight:700;
+                    "
+                >
+                    최신
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <button
+            class="btn btn-outline btn-sm btn-block"
+            onclick="refreshSettingsConnectionStatus()"
+            style="margin-top:8px;"
+        >
+            🔄 연결 상태 새로고침
+        </button>
+
+    </div>
+
+
+    <!-- ========================================================
+         현재 권한
+    ========================================================= -->
+    <div class="setting-group">
+
+        <h4>🔐 내 권한</h4>
+
+        <div style="
+            padding:11px;
+            background:var(--bg-tertiary);
+            border-radius:9px;
+        ">
+
+            <div style="
+                display:flex;
+                justify-content:space-between;
+                align-items:center;
+                margin-bottom:7px;
+            ">
+
+                <span style="
+                    font-size:12px;
+                    color:var(--text-muted);
+                ">
+                    인가 상태
+                </span>
+
+                <span
+                    id="settingsAuthStatus"
+                    class="badge badge-wait"
+                >
+                    🔒 미인가
+                </span>
+
+            </div>
+
+
+            <div style="
+                display:flex;
+                justify-content:space-between;
+                align-items:center;
+            ">
+
+                <span style="
+                    font-size:12px;
+                    color:var(--text-muted);
+                ">
+                    사용 지역
+                </span>
+
+                <strong
+                    id="settingsRegionDisplay"
+                    style="
+                        font-size:13px;
+                        color:var(--text-primary);
+                    "
+                >
+                    -
+                </strong>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ========================================================
+         인가
+    ========================================================= -->
+    <div
+        class="setting-group"
+        id="settingsAuthGroup"
+    >
+
+        <h4>🔑 FieldPilot 인가</h4>
+
+        <div style="
+            font-size:11px;
+            color:var(--text-muted);
+            line-height:1.5;
+            margin-bottom:7px;
+        ">
+            발급받은 지역 인가코드를 입력하세요.
+        </div>
+
+        <div class="row">
+
+            <input
+                type="password"
+                id="fieldPilotAuthCode"
+                placeholder="인가코드 입력"
+                autocomplete="off"
+                class="input-field"
+                onkeydown="
+                    if(event.key === 'Enter')
+                        authorizeFieldPilot();
+                "
+            >
+
+            <button
+                class="btn btn-primary btn-sm"
+                onclick="authorizeFieldPilot()"
+                style="flex:0 0 auto;"
+            >
+                인가
+            </button>
+
+        </div>
+
+        <div style="
+            display:flex;
+            align-items:center;
+            gap:8px;
+            margin-top:8px;
+        ">
+
+            <span
+                id="fieldPilotAuthStatus"
+                class="badge badge-wait"
+            >
+                🔒 미인가
+            </span>
+
+            <button
+                id="fieldPilotLogoutBtn"
+                class="btn btn-outline btn-sm"
+                onclick="logoutFieldPilot()"
+                style="display:none;"
+            >
+                로그아웃
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- ========================================================
+         앱 관리
+    ========================================================= -->
+    <div class="setting-group">
+
+        <h4>🔄 앱 관리</h4>
+
+        <div class="row" style="gap:6px;">
+
+            <button
+                class="btn btn-primary btn-sm"
+                onclick="checkForUpdates()"
+                style="flex:1;"
+            >
+                🔍 업데이트 확인
+            </button>
+
+            <button
+                class="btn btn-outline btn-sm"
+                onclick="forceUpdateApp()"
+                style="
+                    flex:1;
+                    border-color:#e53e3e;
+                    color:#e53e3e;
+                "
+            >
+                ⚡ 캐시 초기화
+            </button>
+
+        </div>
+
+        <div
+            id="updateStatus"
+            style="
+                font-size:11px;
+                color:var(--text-muted);
+                margin-top:6px;
+            "
+        >
+            최신 버전 확인 중...
+        </div>
+
+    </div>
+
+
+    <!-- ========================================================
+         관리자
+    ========================================================= -->
+    <div
+        class="setting-group"
+        id="adminSettingsGroup"
+        style="display:none;"
+    >
+
+        <button
+            class="btn btn-outline btn-block"
+            onclick="toggleAdminSettings()"
+            style="
+                justify-content:space-between;
+                text-align:left;
+            "
+        >
+
+            <span>
+                🔧 관리자 설정
+            </span>
+
+            <span
+                id="adminSettingsArrow"
+                style="font-size:16px;"
+            >
+                ›
+            </span>
+
+        </button>
+
+
+        <div
+            id="adminSettingsPanel"
+            style="
+                display:none;
+                margin-top:8px;
+            "
+        >
+
+            <!-- 지역 관리 -->
+            <div style="
+                padding:10px;
+                background:var(--bg-tertiary);
+                border-radius:9px;
+                margin-bottom:7px;
+            ">
+
+                <div style="
+                    font-weight:700;
+                    font-size:13px;
+                    margin-bottom:4px;
+                ">
+                    📍 지역 관리
+                </div>
+
+                <div style="
+                    font-size:11px;
+                    color:var(--text-muted);
+                    margin-bottom:7px;
+                ">
+                    지역 추가, 삭제 및 마스터 지역 전환
+                </div>
+
+                <button
+                    class="btn btn-outline btn-sm btn-block"
+                    onclick="openRegionManager()"
+                >
+                    📍 지역 관리 열기
+                </button>
+
+            </div>
+            <!-- ============================================================
+     카카오워크 지역 사용자 관리
+     ============================================================ -->
+
+<div
+    id="adminKakaoWorkMapping"
+    style="
+        margin-top:16px;
+        padding:14px;
+        background:#f7fafc;
+        border:1px solid #e2e8f0;
+        border-radius:10px;
+    "
+>
+
+    <div
+        style="
+            font-weight:700;
+            font-size:14px;
+            margin-bottom:4px;
+        "
+    >
+        👤 카카오워크 지역 사용자 관리
+    </div>
+
+    <div
+        style="
+            font-size:11px;
+            color:#718096;
+            margin-bottom:12px;
+        "
+    >
+        지역 사용자가 카카오워크 1:1 내보내기를 사용할 때
+        자동으로 선택될 수신자를 지정합니다.
+    </div>
+
+    <div
+        id="adminKakaoWorkMappings"
+    >
+        ⏳ 설정을 불러오는 중...
+    </div>
+
+</div>
+
+
+            <!-- GitHub -->
+            <div style="
+                padding:10px;
+                background:var(--bg-tertiary);
+                border-radius:9px;
+                margin-bottom:7px;
+            ">
+
+                <div style="
+                    font-weight:700;
+                    font-size:13px;
+                    margin-bottom:4px;
+                ">
+                    ☁️ GitHub 동기화
+                </div>
+
+                <div style="
+                    font-size:11px;
+                    color:var(--text-muted);
+                    margin-bottom:7px;
+                ">
+                    LOCAL → SERVER → GitHub 데이터 관리
+                </div>
+
+                <div style="
+                    display:grid;
+                    grid-template-columns:1fr 1fr;
+                    gap:5px;
+                ">
+
+                    <button
+                        class="btn btn-success btn-sm"
+                        onclick="uploadToGitHub()"
+                    >
+                        📤 업로드
+                    </button>
+
+                    <button
+                        class="btn btn-outline btn-sm"
+                        onclick="downloadFromGitHub()"
+                    >
+                        📥 다운로드
+                    </button>
+
+                    <button
+                        class="btn btn-outline btn-sm"
+                        onclick="showGitHubHistory()"
+                        style="grid-column:1 / -1;"
+                    >
+                        📋 동기화 히스토리
+                    </button>
+
+                </div>
+
+                <div
+                    id="githubStatus"
+                    class="badge badge-wait"
+                    style="margin-top:6px;"
+                >
+                    ⏳ 서버 동기화 상태 확인
+                </div>
+
+                <div
+                    id="githubHistory"
+                    style="display:none;"
+                ></div>
+
+            </div>
+
+
+            <!-- 데이터 관리 -->
+            <div style="
+                padding:10px;
+                background:var(--bg-tertiary);
+                border-radius:9px;
+                margin-bottom:7px;
+            ">
+
+                <div style="
+                    font-weight:700;
+                    font-size:13px;
+                    margin-bottom:4px;
+                ">
+                    💾 데이터 관리
+                </div>
+
+                <div style="
+                    font-size:11px;
+                    color:var(--text-muted);
+                    margin-bottom:7px;
+                ">
+                    설정 백업 및 복원
+                </div>
+
+                <div style="
+                    display:grid;
+                    grid-template-columns:1fr 1fr;
+                    gap:5px;
+                ">
+
+                    <button
+                        class="btn btn-outline btn-sm"
+                        onclick="exportSettings()"
+                    >
+                        📤 설정 백업
+                    </button>
+
+                    <button
+                        class="btn btn-outline btn-sm"
+                        onclick="
+                            document
+                                .getElementById('settingsInput')
+                                .click()
+                        "
+                    >
+                        📥 설정 복원
+                    </button>
+
+                </div>
+
+                <input
+                    type="file"
+                    id="settingsInput"
+                    accept=".json"
+                    style="display:none;"
+                    onchange="importSettings(event)"
+                >
+
+                <div
+                    id="storageInfo"
+                    style="
+                        font-size:11px;
+                        color:var(--text-muted);
+                        margin-top:7px;
+                    "
+                >
+                    저장소 사용량: 계산 중...
+                </div>
+
+            </div>
+
+
+            <!-- 전체 초기화 -->
+            <div style="
+                padding:10px;
+                background:#fff5f5;
+                border:1px solid #fed7d7;
+                border-radius:9px;
+            ">
+
+                <div style="
+                    font-weight:700;
+                    font-size:13px;
+                    color:#c53030;
+                    margin-bottom:4px;
+                ">
+                    ⚠️ 위험 영역
+                </div>
+
+                <div style="
+                    font-size:11px;
+                    color:#9b2c2c;
+                    line-height:1.5;
+                    margin-bottom:7px;
+                ">
+                    모든 로컬 데이터를 삭제합니다.
+                    삭제 후 복구할 수 없습니다.
+                </div>
+
+                <button
+                    class="btn btn-danger btn-sm btn-block"
+                    onclick="resetAll()"
+                >
+                    🗑️ 모든 데이터 초기화
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div
+        id="settingsStatus"
+        class="tab-status"
+    ></div>
+
+</div>
+
+       <!-- ============ 9. HELP TAB ============ -->
+<div id="tab-help" class="tab-content">
+    <div class="ux-tab-header">
+        <div class="ux-tab-icon">❓</div>
+        <div style="flex:1;">
+            <div class="ux-tab-title">도움말</div>
+            <div class="ux-tab-sub">처음이신가요? 실제 화면으로 안내해 드릴게요!</div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- 1. 🚀 빠른 시작 (3단계 흐름) -->
+    <!-- ═══════════════════════════════════════ -->
+    <div style="background:linear-gradient(135deg,#667eea,#764ba2);border-radius:12px;padding:16px;margin-bottom:16px;color:white;">
+        <div style="font-weight:700;font-size:15px;margin-bottom:12px;">🚀 빠른 시작 (3단계)</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.15);border-radius:8px;padding:10px;">
+                <span style="background:white;color:#667eea;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;">1</span>
+                <span style="font-size:13px;"><strong>현장 등록</strong> → 작업할 현장들을 등록하거나 엑셀에서 가져오세요</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.15);border-radius:8px;padding:10px;">
+                <span style="background:white;color:#667eea;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;">2</span>
+                <span style="font-size:13px;"><strong>경로 최적화</strong> → 출발지 + 경유지 설정 후 최적화 실행</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.15);border-radius:8px;padding:10px;">
+                <span style="background:white;color:#667eea;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;">3</span>
+                <span style="font-size:13px;"><strong>기록 & 통계</strong> → 방문 기록 저장하고 통계로 확인</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- 2. 🗺️ 경로 탭 가이드 -->
+    <!-- ═══════════════════════════════════════ -->
+    <div style="margin-bottom:20px;">
+        <div style="font-weight:700;font-size:15px;margin-bottom:10px;display:flex;align-items:center;gap:6px;">🗺️ 경로 탭 사용하기</div>
+        
+        <!-- 실제 화면 재현 -->
+        <div style="background:#f7fafc;border-radius:12px;padding:14px;border:1px solid #e2e8f0;margin-bottom:12px;">
+            <div style="font-size:11px;color:#a0aec0;margin-bottom:8px;">📱 실제 화면 미리보기</div>
+            <div style="background:white;border-radius:8px;padding:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+                <!-- 출발지 영역 -->
+                <div style="background:#ebf8ff;border-radius:8px;padding:10px;margin-bottom:8px;">
+                    <div style="font-size:12px;font-weight:600;color:#2b6cb0;margin-bottom:6px;">🚩 출발지</div>
+                    <div style="display:flex;gap:6px;">
+                        <div style="flex:1;background:#f7fafc;border:1px solid #e2e8f0;border-radius:6px;padding:6px 8px;font-size:11px;color:#718096;">출발지 검색...</div>
+                        <div style="background:#3182ce;color:white;border-radius:6px;padding:6px 10px;font-size:11px;white-space:nowrap;">🎯 현재 위치</div>
+                    </div>
+                    <div style="font-size:11px;color:#22543d;margin-top:6px;">✅ 이태원동 주민센터 (서울시 용산구)</div>
+                </div>
+                <!-- 경유지 영역 -->
+                <div style="background:#f0fff4;border-radius:8px;padding:10px;margin-bottom:8px;">
+                    <div style="font-size:12px;font-weight:600;color:#38a169;margin-bottom:6px;">📍 경유지 <span style="font-size:10px;color:#718096;">(3개)</span></div>
+                    <div style="display:flex;gap:6px;margin-bottom:6px;">
+                        <div style="flex:1;background:#f7fafc;border:1px solid #e2e8f0;border-radius:6px;padding:6px 8px;font-size:11px;color:#718096;">경유지 검색...</div>
+                        <div style="background:#38a169;color:white;border-radius:6px;padding:6px 10px;font-size:11px;">➕ 추가</div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:4px;">
+                        <div style="display:flex;align-items:center;gap:6px;padding:4px 6px;background:#f7fafc;border-radius:4px;font-size:11px;">
+                            <span style="color:#a0aec0;">⠿</span>
+                            <span style="background:#FF6B6B;color:white;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;">1</span>
+                            <span style="flex:1;">한남대교 북단</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:6px;padding:4px 6px;background:#f7fafc;border-radius:4px;font-size:11px;">
+                            <span style="color:#a0aec0;">⠿</span>
+                            <span style="background:#FF9F43;color:white;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;">2</span>
+                            <span style="flex:1;">남산타워</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:6px;padding:4px 6px;background:#f7fafc;border-radius:4px;font-size:11px;">
+                            <span style="color:#a0aec0;">⠿</span>
+                            <span style="background:#FECA57;color:white;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;">3</span>
+                            <span style="flex:1;">명동성당</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- 최적화 버튼 -->
+                <div style="background:#3182ce;color:white;border-radius:8px;padding:10px;text-align:center;font-size:12px;font-weight:600;">⚡ 경로 최적화 실행</div>
+            </div>
+        </div>
+
+        <!-- 사용 순서 설명 -->
+        <div style="background:white;border-radius:10px;padding:14px;border:1px solid #e2e8f0;">
+            <div style="font-weight:600;font-size:13px;margin-bottom:8px;">📋 사용 순서</div>
+            <div style="display:flex;flex-direction:column;gap:8px;font-size:12px;color:#4a5568;">
+                <div style="display:flex;gap:8px;">
+                    <span style="background:#ebf8ff;color:#2b6cb0;border-radius:6px;padding:2px 8px;font-weight:600;white-space:nowrap;">Step 1</span>
+                    <span><strong>출발지 설정</strong> - 검색창에 장소를 입력하거나 <strong>🎯 현재 위치</strong> 버튼으로 내 위치를 출발지로 설정</span>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <span style="background:#ebf8ff;color:#2b6cb0;border-radius:6px;padding:2px 8px;font-weight:600;white-space:nowrap;">Step 2</span>
+                    <span><strong>경유지 추가</strong> - 방문할 현장들을 검색해서 추가 (최대 15개)</span>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <span style="background:#ebf8ff;color:#2b6cb0;border-radius:6px;padding:2px 8px;font-weight:600;white-space:nowrap;">Step 3</span>
+                    <span><strong>최적화 실행</strong> - 버튼을 누르면 카카오맵 도로 데이터를 기반으로 가장 효율적인 순서 계산</span>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <span style="background:#ebf8ff;color:#2b6cb0;border-radius:6px;padding:2px 8px;font-weight:600;white-space:nowrap;">Step 4</span>
+                    <span><strong>결과 확인</strong> - 지도에 최적 경로 표시, 하단에 거리/시간/절약량 확인</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 동작 원리 -->
+        <details style="background:#f7fafc;border-radius:8px;padding:12px;margin-top:8px;cursor:pointer;">
+            <summary style="font-weight:600;font-size:13px;">💡 동작 원리: 어떻게 최적 경로를 계산하나요?</summary>
+            <div style="font-size:12px;color:#4a5568;margin-top:8px;line-height:1.6;">
+                <div style="margin-bottom:6px;"><strong>1. 후보 경로 생성</strong> - 3가지 방식으로 초기 경로를 만듭니다</div>
+                <div style="margin-left:12px;margin-bottom:4px;">• <strong>방향 기반</strong>: 출발지 기준 시계방향/반시계방향으로 묶어서 순서 결정</div>
+                <div style="margin-left:12px;margin-bottom:4px;">• <strong>도로 기반</strong>: 카카오맵 API로 실제 도로 거리 측정 후 가장 가까운 곳부터 방문</div>
+                <div style="margin-left:12px;margin-bottom:6px;">• <strong>직선 거리 기반</strong>: 직선거리 기준으로 가까운 곳부터 방문</div>
+                <div style="margin-bottom:6px;"><strong>2. 경로 개선 (2-opt)</strong> - 각 후보 경로를 최대 3번 반복하면서 교차 구간을 찾아 더 짧은 경로로 교체</div>
+                <div><strong>3. 최종 선택</strong> - 3가지 후보 중 총 거리(또는 시간)가 가장 짧은 경로를 최종 결과로 선택</div>
+            </div>
+        </details>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- 3. 📋 현장 탭 가이드 -->
+    <!-- ═══════════════════════════════════════ -->
+    <div style="margin-bottom:20px;">
+        <div style="font-weight:700;font-size:15px;margin-bottom:10px;display:flex;align-items:center;gap:6px;">📋 현장 탭 사용하기</div>
+        
+        <!-- 실제 화면 재현 -->
+        <div style="background:#f7fafc;border-radius:12px;padding:14px;border:1px solid #e2e8f0;margin-bottom:12px;">
+            <div style="font-size:11px;color:#a0aec0;margin-bottom:8px;">📱 실제 화면 미리보기</div>
+            <div style="background:white;border-radius:8px;padding:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+                <!-- 검색/필터 영역 -->
+                <div style="display:flex;gap:6px;margin-bottom:8px;">
+                    <div style="flex:1;background:#f7fafc;border:1px solid #e2e8f0;border-radius:6px;padding:6px 8px;font-size:11px;color:#718096;">현장 검색...</div>
+                    <div style="background:#4f7eb3;color:white;border-radius:6px;padding:6px 10px;font-size:11px;">➕ 현장 추가</div>
+                </div>
+                <!-- 현장 리스트 -->
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                    <div style="display:flex;align-items:center;gap:8px;padding:8px;background:#f7fafc;border-radius:6px;border-left:3px solid #4f7eb3;">
+                        <div style="flex:1;">
+                            <div style="font-size:12px;font-weight:600;">이태원파출소</div>
+                            <div style="font-size:10px;color:#718096;">이태원로 153</div>
+                        </div>
+                        <div style="display:flex;gap:4px;font-size:10px;">
+                            <span>📍</span><span>➕</span><span>🗑️</span><span>★</span>
+                        </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;padding:8px;background:#f7fafc;border-radius:6px;border-left:3px solid #e53e3e;">
+                        <div style="flex:1;">
+                            <div style="font-size:12px;font-weight:600;">한남동 주민센터 <span style="color:#e53e3e;">⚠️</span></div>
+                            <div style="font-size:10px;color:#718096;">주소 변환 실패</div>
+                        </div>
+                        <div style="display:flex;gap:4px;font-size:10px;">
+                            <span>📍</span><span>➕</span><span>🗑️</span><span>☆</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 버튼 설명 -->
+        <div style="background:white;border-radius:10px;padding:14px;border:1px solid #e2e8f0;">
+            <div style="font-weight:600;font-size:13px;margin-bottom:8px;">🔘 각 버튼의 역할</div>
+            <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#4a5568;">
+                <div><strong>📍</strong> 지도 보기 - 지도 탭으로 이동해서 해당 현장 위치 표시</div>
+                <div><strong>➕</strong> 경유지 추가 - 경로 탭의 경유지 목록에 바로 추가</div>
+                <div><strong>🗑️</strong> 삭제 - 현장 삭제 (확인 모달 표시)</div>
+                <div><strong>★/☆</strong> 즐겨찾기 - 자주 방문하는 현장 표시</div>
+                <div><strong>⚠️</strong> 경고 표시 - 주소 변환 실패로 좌표가 없는 현장 (편집으로 수정 필요)</div>
+            </div>
+        </div>
+
+        <!-- 동작 원리 -->
+        <details style="background:#f7fafc;border-radius:8px;padding:12px;margin-top:8px;cursor:pointer;">
+            <summary style="font-weight:600;font-size:13px;">💡 동작 원리: 주소는 어떻게 좌표로 변환되나요?</summary>
+            <div style="font-size:12px;color:#4a5568;margin-top:8px;line-height:1.6;">
+                <div style="margin-bottom:6px;">현장을 추가하거나 엑셀에서 가져올 때, 주소가 있으면 자동으로 <strong>카카오 지오코딩 API</strong>를 호출합니다.</div>
+                <div style="margin-bottom:6px;"><strong>변환 과정:</strong></div>
+                <div style="margin-left:12px;margin-bottom:4px;">1. 주소를 카카오 서버에 전송</div>
+                <div style="margin-left:12px;margin-bottom:4px;">2. 도로명주소 우선 → 지번주소 순서로 좌표 확인</div>
+                <div style="margin-left:12px;margin-bottom:4px;">3. 좌표 + 전체 주소 + 행정동(동 정보) 저장</div>
+                <div style="margin-bottom:6px;"><strong>⚠️ 변환 실패 시:</strong> 주소가 잘못되었거나 카카오가 인식하지 못하는 경우입니다. 편집 버튼을 눌러 주소를 수정하거나 위도/경도를 직접 입력하세요.</div>
+                <div><strong>💾 저장 위치:</strong> 모든 현장 데이터는 브라우저의 로컬 저장소(localStorage)에 저장되며, GitHub 토큰을 설정하면 자동으로 GitHub에도 백업됩니다.</div>
+            </div>
+        </details>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- 4. 📊 통계 탭 가이드 -->
+    <!-- ═══════════════════════════════════════ -->
+    <div style="margin-bottom:20px;">
+        <div style="font-weight:700;font-size:15px;margin-bottom:10px;display:flex;align-items:center;gap:6px;">📊 통계 탭 사용하기</div>
+        
+        <!-- 실제 화면 재현 -->
+        <div style="background:#f7fafc;border-radius:12px;padding:14px;border:1px solid #e2e8f0;margin-bottom:12px;">
+            <div style="font-size:11px;color:#a0aec0;margin-bottom:8px;">📱 실제 화면 미리보기</div>
+            <div style="background:white;border-radius:8px;padding:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+                <div style="font-size:12px;color:#718096;margin-bottom:8px;">총 현장: <strong>45개</strong></div>
+                <div style="font-weight:600;font-size:13px;margin-bottom:6px;">동별 현장 분포</div>
+                <!-- 막대 그래프 재현 -->
+                <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px;">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="min-width:60px;font-size:11px;text-align:right;">이태원동</span>
+                        <div style="flex:1;background:#e2e8f0;border-radius:4px;height:14px;overflow:hidden;">
+                            <div style="width:80%;background:#4f7eb3;height:100%;border-radius:4px;"></div>
+                        </div>
+                        <span style="min-width:30px;font-size:11px;font-weight:600;">12개</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="min-width:60px;font-size:11px;text-align:right;">한남동</span>
+                        <div style="flex:1;background:#e2e8f0;border-radius:4px;height:14px;overflow:hidden;">
+                            <div style="width:50%;background:#4f7eb3;height:100%;border-radius:4px;"></div>
+                        </div>
+                        <span style="min-width:30px;font-size:11px;font-weight:600;">8개</span>
+                    </div>
+                </div>
+                <!-- 방문 분석 -->
+                <div style="font-weight:700;font-size:13px;margin-bottom:8px;">📈 방문 분석</div>
+                <div style="display:flex;gap:6px;margin-bottom:8px;">
+                    <div style="background:#4f7eb3;color:white;border-radius:6px;padding:4px 10px;font-size:11px;">오늘</div>
+                    <div style="background:#f7fafc;border:1px solid #cbd5e0;border-radius:6px;padding:4px 10px;font-size:11px;">이번 주</div>
+                    <div style="background:#f7fafc;border:1px solid #cbd5e0;border-radius:6px;padding:4px 10px;font-size:11px;">이번 달</div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <div style="flex:1;background:#f7fafc;border-radius:8px;padding:8px;text-align:center;">
+                        <div style="font-size:16px;font-weight:700;color:#2b6cb0;">3</div>
+                        <div style="font-size:10px;color:#718096;">방문 횟수</div>
+                    </div>
+                    <div style="flex:1;background:#f7fafc;border-radius:8px;padding:8px;text-align:center;">
+                        <div style="font-size:16px;font-weight:700;color:#38a169;">15</div>
+                        <div style="font-size:10px;color:#718096;">방문 현장</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 사용 설명 -->
+        <div style="background:white;border-radius:10px;padding:14px;border:1px solid #e2e8f0;">
+            <div style="font-weight:600;font-size:13px;margin-bottom:8px;">📋 통계는 어떻게 쌓이나요?</div>
+            <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#4a5568;">
+                <div style="display:flex;gap:8px;">
+                    <span style="background:#ebf8ff;color:#2b6cb0;border-radius:6px;padding:2px 8px;font-weight:600;white-space:nowrap;">Step 1</span>
+                    <span>경로 탭에서 최적화 완료 후 <strong>📊 통계 기록</strong> 버튼 클릭</span>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <span style="background:#ebf8ff;color:#2b6cb0;border-radius:6px;padding:2px 8px;font-weight:600;white-space:nowrap;">Step 2</span>
+                    <span>방문한 모든 현장의 동 정보가 자동 변환되어 저장</span>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <span style="background:#ebf8ff;color:#2b6cb0;border-radius:6px;padding:2px 8px;font-weight:600;white-space:nowrap;">Step 3</span>
+                    <span>통계 탭에서 동별 분포, 방문 횟수, 최다 방문 장소 확인</span>
+                </div>
+            </div>
+            <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:8px;margin-top:8px;font-size:11px;color:#744210;">
+                ⚠️ <strong>중요:</strong> 통계 기록 버튼을 눌러야만 방문 기록이 저장됩니다. 최적화만 실행하고 버튼을 누르지 않으면 기록되지 않습니다.
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- 5. 📝 기록 탭 가이드 -->
+    <!-- ═══════════════════════════════════════ -->
+    <div style="margin-bottom:20px;">
+        <div style="font-weight:700;font-size:15px;margin-bottom:10px;display:flex;align-items:center;gap:6px;">📝 기록 탭 사용하기</div>
+        
+        <!-- 실제 화면 재현 -->
+        <div style="background:#f7fafc;border-radius:12px;padding:14px;border:1px solid #e2e8f0;margin-bottom:12px;">
+            <div style="font-size:11px;color:#a0aec0;margin-bottom:8px;">📱 실제 화면 미리보기</div>
+            <div style="background:white;border-radius:8px;padding:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+                <!-- 캘린더 헤더 -->
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                    <span style="font-size:11px;">◀</span>
+                    <span style="font-weight:700;font-size:13px;">2026년 4월</span>
+                    <span style="font-size:11px;">▶</span>
+                </div>
+                <!-- 캘린더 그리드 -->
+                <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:8px;">
+                    <div style="text-align:center;font-size:10px;color:#e53e3e;">일</div>
+                    <div style="text-align:center;font-size:10px;">월</div>
+                    <div style="text-align:center;font-size:10px;">화</div>
+                    <div style="text-align:center;font-size:10px;">수</div>
+                    <div style="text-align:center;font-size:10px;">목</div>
+                    <div style="text-align:center;font-size:10px;">금</div>
+                    <div style="text-align:center;font-size:10px;color:#3182ce;">토</div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;">
+                    <div style="text-align:center;padding:4px;font-size:11px;border-radius:4px;border:1px solid transparent;"></div>
+                    <div style="text-align:center;padding:4px;font-size:11px;border-radius:4px;border:1px solid transparent;"></div>
+                    <div style="text-align:center;padding:4px;font-size:11px;border-radius:4px;border:1px solid transparent;"></div>
+                    <div style="text-align:center;padding:4px;font-size:11px;border-radius:4px;border:2px solid #3182ce;background:#ebf8ff;">25<div style="font-size:8px;background:#38a169;color:white;border-radius:8px;padding:1px 3px;margin-top:2px;">3건</div></div>
+                    <div style="text-align:center;padding:4px;font-size:11px;border-radius:4px;border:1px solid #e2e8f0;">26</div>
+                    <div style="text-align:center;padding:4px;font-size:11px;border-radius:4px;border:1px solid #e2e8f0;">27</div>
+                    <div style="text-align:center;padding:4px;font-size:11px;border-radius:4px;border:1px solid #e2e8f0;">28</div>
+                </div>
+                <!-- 날짜별 상세 -->
+                <div style="border-top:1px solid #e2e8f0;margin-top:8px;padding-top:8px;">
+                    <div style="font-weight:700;font-size:12px;margin-bottom:6px;">📅 4월 25일 (금)</div>
+                    <div style="background:#f7fafc;border-radius:6px;padding:8px;border-left:3px solid #38a169;margin-bottom:4px;">
+                        <div style="display:flex;align-items:center;gap:6px;font-size:11px;">
+                            <span style="color:#4a5568;">⏰ 14:30</span>
+                            <span>이태원파출소</span>
+                            <span style="background:#ebf8ff;color:#3182ce;font-size:9px;padding:1px 6px;border-radius:8px;">📷 01</span>
+                        </div>
+                        <div style="font-size:10px;color:#718096;margin-top:2px;">👤 김철수</div>
+                        <div style="font-size:10px;color:#4a5568;margin-top:4px;padding:4px 6px;background:#fff;border-radius:4px;border-left:2px solid #2b6cb0;">카메라 점검 완료</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 사용 설명 -->
+        <div style="background:white;border-radius:10px;padding:14px;border:1px solid #e2e8f0;">
+            <div style="font-weight:600;font-size:13px;margin-bottom:8px;">📋 작업 기록 사용법</div>
+            <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#4a5568;">
+                <div><strong>1. 캘린더에서 날짜 선택</strong> - 초록색 배지가 있는 날짜는 작업 기록이 있는 날</div>
+                <div><strong>2. 기록 카드 클릭</strong> - 처리내역 작성 모달 열림 (카메라 번호, 처리내용 입력)</div>
+                <div><strong>3. 저장 버튼 클릭</strong> - 저장 시 현재 시간이 자동으로 기록됨</div>
+                <div><strong>4. 미작성 항목</strong> - 빨간색 "⚠️ 미작성" 표시가 있는 항목은 터치해서 작성</div>
+            </div>
+            <div style="background:#f0fff4;border:1px solid #c6f6d5;border-radius:6px;padding:8px;margin-top:8px;font-size:11px;color:#276749;">
+                💡 <strong>자동 기록:</strong> 경로 탭에서 📊 통계 기록 버튼을 누르면 방문한 현장들이 작업 기록 탭에도 자동으로 추가됩니다.
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- 6. ⚙️ 설정 탭 가이드 -->
+    <!-- ═══════════════════════════════════════ -->
+    <div style="margin-bottom:20px;">
+        <div style="font-weight:700;font-size:15px;margin-bottom:10px;display:flex;align-items:center;gap:6px;">⚙️ 설정 탭 사용하기</div>
+        
+        <!-- 설정 항목 설명 -->
+        <div style="background:white;border-radius:10px;padding:14px;border:1px solid #e2e8f0;">
+            <div style="font-weight:600;font-size:13px;margin-bottom:8px;">🔧 필수 설정 항목</div>
+            <div style="display:flex;flex-direction:column;gap:8px;font-size:12px;color:#4a5568;">
+                <div style="background:#f7fafc;border-radius:8px;padding:10px;">
+                    <div style="font-weight:600;margin-bottom:4px;">👤 작업자 이름</div>
+                    <div>작업 기록에 표시될 이름을 입력하세요. 저장하면 모든 기록에 자동으로 적용됩니다.</div>
+                </div>
+                <div style="background:#f7fafc;border-radius:8px;padding:10px;">
+                    <div style="font-weight:600;margin-bottom:4px;">🔐 GitHub 연동</div>
+                    <div>GitHub 토큰을 입력하면 현장 데이터가 자동으로 백업됩니다. 여러 기기에서 동일한 데이터를 사용할 수 있습니다.</div>
+                    <div style="font-size:11px;color:#718096;margin-top:4px;">생성 방법: GitHub → Settings → Developer settings → Personal access tokens</div>
+                </div>
+                <div style="background:#f7fafc;border-radius:8px;padding:10px;">
+                    <div style="font-weight:600;margin-bottom:4px;">🗺️ 카카오 API 키</div>
+                    <div>지도 표시(JavaScript 키)에 필요합니다. 주소 변환·경로 최적화·날씨는 이제 노트북 서버가 대신 처리하므로 REST API 키는 여기 입력하지 않아도 됩니다 (서버의 config.json에서 관리).</div>
+                    <div style="font-size:11px;color:#718096;margin-top:4px;">생성 방법: developers.kakao.com → 앱 생성 → 키 발급</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- 7. 🔧 고급 기능 -->
+    <!-- ═══════════════════════════════════════ -->
+    <div style="margin-bottom:20px;">
+        <div style="font-weight:700;font-size:15px;margin-bottom:10px;display:flex;align-items:center;gap:6px;">🔧 고급 기능</div>
+        
+        <div style="display:flex;flex-direction:column;gap:8px;">
+            <details style="background:white;border-radius:10px;padding:12px;border:1px solid #e2e8f0;cursor:pointer;">
+                <summary style="font-weight:600;font-size:13px;">📍 드래그로 경유지 순서 변경</summary>
+                <div style="font-size:12px;color:#4a5568;margin-top:8px;line-height:1.6;">
+                    경로 탭의 최적화 결과에서 <strong>⠿ 핸들</strong>을 드래그하면 순서를 바꿀 수 있습니다.<br>
+                    순서를 변경하면 지도의 경로도 자동으로 다시 그려지며, 각 구간별 거리/시간도 재계산됩니다.<br>
+                    <span style="color:#718096;font-size:11px;">단, 출발지(🚩) 위치로는 이동할 수 없습니다.</span>
+                </div>
+            </details>
+
+            <details style="background:white;border-radius:10px;padding:12px;border:1px solid #e2e8f0;cursor:pointer;">
+                <summary style="font-weight:600;font-size:13px;">💾 프리셋 저장/불러오기</summary>
+                <div style="font-size:12px;color:#4a5568;margin-top:8px;line-height:1.6;">
+                    자주 사용하는 출발지 + 경유지 조합을 프리셋으로 저장할 수 있습니다.<br>
+                    저장한 프리셋은 한 번의 클릭으로 불러올 수 있어 반복 작업에 유용합니다.<br>
+                    <span style="color:#718096;font-size:11px;">저장 위치: 경로 탭 하단 "프리셋" 섹션</span>
+                </div>
+            </details>
+
+            <details style="background:white;border-radius:10px;padding:12px;border:1px solid #e2e8f0;cursor:pointer;">
+                <summary style="font-weight:600;font-size:13px;">📊 엑셀 가져오기/내보내기</summary>
+                <div style="font-size:12px;color:#4a5568;margin-top:8px;line-height:1.6;">
+                    현장 탭에서 엑셀 파일(.xlsx, .xls, .csv)로 현장 목록을 가져오거나 내보낼 수 있습니다.<br>
+                    <strong>가져오기:</strong> 현장명, 주소 컬럼이 있으면 자동으로 인식하고 주소 변환을 실행합니다.<br>
+                    <strong>내보내기:</strong> 현재 현장 목록을 엑셀 파일로 다운로드합니다.
+                </div>
+            </details>
+
+            <details style="background:white;border-radius:10px;padding:12px;border:1px solid #e2e8f0;cursor:pointer;">
+                <summary style="font-weight:600;font-size:13px;">🗺️ 전체 경로 연결 (카카오맵 연동)</summary>
+                <div style="font-size:12px;color:#4a5568;margin-top:8px;line-height:1.6;">
+                    최적화 완료 후 <strong>🗺️ 전체 연결</strong> 버튼을 누르면 카카오맵 앱에서 전체 경로를 한 번에 확인할 수 있습니다.<br>
+                    <span style="color:#718096;font-size:11px;">카카오맵 앱 제한: 경유지 최대 5개 (초과 시 앞 5개만 전달)</span>
+                </div>
+            </details>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- 8. ❓ 자주 묻는 질문 -->
+    <!-- ═══════════════════════════════════════ -->
+    <div style="margin-bottom:20px;">
+        <div style="font-weight:700;font-size:15px;margin-bottom:10px;display:flex;align-items:center;gap:6px;">❓ 자주 묻는 질문</div>
+        
+        <div style="display:flex;flex-direction:column;gap:6px;">
+            <details style="background:#f7fafc;border-radius:8px;padding:12px;cursor:pointer;">
+                <summary style="font-weight:600;font-size:13px;">주소 변환이 실패했다고 나와요 (⚠️ 표시)</summary>
+                <div style="font-size:12px;color:#4a5568;margin-top:8px;line-height:1.6;">
+                    주소가 잘못되었거나 카카오가 인식하지 못하는 주소입니다.<br>
+                    현장 탭에서 해당 현장을 클릭해서 주소를 수정하거나, 위도/경도를 직접 입력하세요.<br>
+                    <span style="color:#718096;font-size:11px;">예: "서울시 용산구 이태원동 123-4" → "서울특별시 용산구 이태원로 153"</span>
+                </div>
+            </details>
+
+            <details style="background:#f7fafc;border-radius:8px;padding:12px;cursor:pointer;">
+                <summary style="font-weight:600;font-size:13px;">지도가 안 나와요</summary>
+                <div style="font-size:12px;color:#4a5568;margin-top:8px;line-height:1.6;">
+                    설정 탭에서 카카오 JavaScript 키를 입력했는지 확인하세요.<br>
+                    키를 입력한 후에도 안 나오면 캐시 초기화 후 새로고침을 시도하세요.<br>
+                    <span style="color:#718096;font-size:11px;">설정 탭 → 업데이트 관리 → 캐시 초기화</span>
+                </div>
+            </details>
+
+            <details style="background:#f7fafc;border-radius:8px;padding:12px;cursor:pointer;">
+                <summary style="font-weight:600;font-size:13px;">데이터가 사라졌어요</summary>
+                <div style="font-size:12px;color:#4a5568;margin-top:8px;line-height:1.6;">
+                    데이터는 브라우저의 로컬 저장소에 저장됩니다. 브라우저 캐시를 삭제하면 데이터도 함께 삭제됩니다.<br>
+                    GitHub 토큰을 설정해두면 자동으로 백업되므로, 다운로드 버튼으로 복원할 수 있습니다.<br>
+                    <span style="color:#718096;font-size:11px;">설정 탭 → GitHub 연동 → 📥 다운로드</span>
+                </div>
+            </details>
+
+            <details style="background:#f7fafc;border-radius:8px;padding:12px;cursor:pointer;">
+                <summary style="font-weight:600;font-size:13px;">통계 기록을 눌렀는데 저장이 안 돼요</summary>
+                <div style="font-size:12px;color:#4a5568;margin-top:8px;line-height:1.6;">
+                    먼저 최적화를 실행한 상태인지 확인하세요. 최적화 결과 없이 통계 기록 버튼을 누르면 저장할 데이터가 없습니다.<br>
+                    GitHub 업로드 실패 시에도 로컬에는 저장되므로 걱정하지 마세요.
+                </div>
+            </details>
+        </div>
+    </div>
+
+    <!-- 하단 여백 -->
+    <div style="height:20px;"></div>
+</div>
+    <!-- ===== 현장추가 모달 ===== -->
+    <div class="modal-overlay" id="addPlaceModal">
+        <div class="modal" style="max-width:400px;">
+            <h3 style="font-size:17px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+                <span>➕ 현장 추가</span>
+                <button onclick="closeAddPlaceModal()" style="background:none; border:none; font-size:22px; cursor:pointer; color:#a0aec0;">&times;</button>
+            </h3>
+            <input type="text" id="modalPlaceName" placeholder="현장명" style="width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px; margin-bottom:8px;">
+            <div style="position:relative; margin-bottom:8px;">
+                <input type="text" id="modalPlaceAddr" placeholder="주소" style="width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px;" oninput="searchAddressForModal(this.value)" onkeydown="handleAddrKeydown(event)">
+                <div id="modalAddrSearchResults" class="search-results" style="position:absolute; width:100%;"></div>
+            </div>
+            <div style="display:flex; gap:8px; margin-bottom:8px;">
+                <input type="number" id="modalPlaceLat" placeholder="위도 (선택)" step="any" style="flex:1; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px;">
+                <input type="number" id="modalPlaceLng" placeholder="경도 (선택)" step="any" style="flex:1; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px;">
+            </div>
+            <div style="margin-bottom:8px;">
+    <label for="modalDong" style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;color:#4a5568;">🏘️ 동 (행정동)</label>
+    <input id="modalDong" type="text" placeholder="동 (선택)" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;">
+</div>
+            <input type="text" id="modalPlaceRemark" placeholder="비고" style="width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px; margin-bottom:12px;">
+            <div style="display:flex; gap:8px; justify-content:flex-end;">
+                <button class="btn btn-outline btn-sm" onclick="closeAddPlaceModal()" style="padding:6px 16px;">취소</button>
+                <button class="btn btn-primary btn-sm" onclick="saveAddPlaceModal()" style="padding:6px 16px;">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 현장 편집 모달 (오류 영역 추가) ===== -->
+    <div class="modal-overlay" id="modal">
+        <div class="modal">
+            <h3 id="modalTitle" style="font-size:17px; margin-bottom:12px;">✏️ 현장 편집</h3>
+            <div style="font-size:12px; color:#718096; margin-bottom:10px; padding:6px 10px; background:#f7fafc; border-radius:6px; border-left:3px solid #e53e3e;">
+                💡 주소 또는 위도/경도 중 <strong>하나는 필수</strong>입니다.
+            </div>
+            <div id="modalEditError" style="display:none; font-size:12px; color:#e53e3e; background:#fed7d7; padding:6px 10px; border-radius:6px; margin-bottom:8px;"></div>
+            <input type="text" id="modalName" placeholder="현장명" style="width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px; margin-bottom:8px;">
+            <input type="text" id="modalAddress" placeholder="주소 (선택)" style="width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px; margin-bottom:8px;">
+            <div style="display:flex; gap:8px; margin-bottom:8px;">
+                <input type="number" id="modalLat" placeholder="위도 (선택)" step="any" style="flex:1; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px;">
+                <input type="number" id="modalLng" placeholder="경도 (선택)" step="any" style="flex:1; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px;">
+            </div>
+            <div style="margin-bottom:8px;">
+    <label for="modalDong" style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;color:#4a5568;">🏘️ 동 (행정동)</label>
+    <input id="modalDong" type="text" placeholder="동 (선택)" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;">
+</div>
+            <input type="text" id="modalRemark" placeholder="비고" style="width:100%; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px; margin-bottom:8px;">
+            <input type="hidden" id="modalId">
+            <div class="btn-row flex-row" style="justify-content:flex-end;">
+                <button class="btn btn-outline btn-sm" onclick="closeModal()" style="padding:6px 16px;">취소</button>
+                <button class="btn btn-primary btn-sm" onclick="saveModal()" style="padding:6px 16px;">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 최적화 설정 모달 ===== -->
+    <div class="modal-overlay" id="optimizeSettingsModal">
+        <div class="modal" style="max-width:420px; max-height:90vh; overflow-y:auto;">
+            <h3 style="font-size:17px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+                <span>⚙️ 경로 최적화 설정</span>
+                <button onclick="closeOptimizeSettingsModal()" style="background:none; border:none; font-size:22px; cursor:pointer; color:#a0aec0;">&times;</button>
+            </h3>
+
+            <div style="margin-bottom:16px;">
+                <div style="font-size:13px; font-weight:600; color:#2d3748; margin-bottom:8px;">① 초기 경로 생성</div>
+                <div class="choice-grid two" style="gap:8px;">
+                    <button type="button" class="choice-card active" id="modalModeNearest" onclick="setModalOptimizeMode('Nearest')" aria-pressed="true" style="padding:10px 12px; min-height:52px;">
+                        <span class="choice-radio" style="font-size:13px; color:#3182ce;">●</span>
+                        <span class="choice-icon" style="font-size:18px;">📍</span>
+                        <span class="choice-content">
+                            <strong style="font-size:13px; font-weight:700;">가까운순</strong>
+                            <small style="font-size:11px; color:#718096;">현재 위치에서 가까운 경유지부터 시작</small>
+                        </span>
+                    </button>
+                    <button type="button" class="choice-card" id="modalModeFarthest" onclick="setModalOptimizeMode('Farthest')" aria-pressed="false" style="padding:10px 12px; min-height:52px;">
+                        <span class="choice-radio" style="font-size:13px; color:#a0aec0;">○</span>
+                        <span class="choice-icon" style="font-size:18px;">🎯</span>
+                        <span class="choice-content">
+                            <strong style="font-size:13px; font-weight:700;">먼순</strong>
+                            <small style="font-size:11px; color:#718096;">먼 경유지를 먼저 처리하도록 시작</small>
+                        </span>
+                    </button>
+                </div>
+                <div id="modalModeInfo" class="selection-hint" style="font-size:11px; color:#4a5568; background:#f7fafc; padding:6px 10px; border-radius:6px; margin-top:8px;">
+                    💡 현재 초기 경로: 가까운순
+                </div>
+            </div>
+
+            <div style="margin-bottom:16px;">
+                <div style="font-size:13px; font-weight:600; color:#2d3748; margin-bottom:8px;">② 최종 최적화 기준</div>
+                <div class="choice-grid three" style="gap:8px;">
+                    <label class="metric-card active" id="modalMetricDistance" style="padding:10px 12px; min-height:52px; cursor:pointer;">
+                        <input type="radio" name="modalRouteObjective" value="distance" checked onchange="setModalRouteObjective('distance')" style="position:absolute; opacity:0;">
+                        <span class="metric-radio" style="font-size:13px; color:#3182ce;">●</span>
+                        <span class="metric-icon" style="font-size:18px;">🛣️</span>
+                        <span class="metric-content">
+                            <strong style="font-size:13px; font-weight:700;">최단거리</strong>
+                            <small style="font-size:11px; color:#718096;">총 주행거리 최소화</small>
+                        </span>
+                    </label>
+                    <label class="metric-card" id="modalMetricTime" style="padding:10px 12px; min-height:52px; cursor:pointer;">
+                        <input type="radio" name="modalRouteObjective" value="time" onchange="setModalRouteObjective('time')" style="position:absolute; opacity:0;">
+                        <span class="metric-radio" style="font-size:13px; color:#a0aec0;">○</span>
+                        <span class="metric-icon" style="font-size:18px;">⏱️</span>
+                        <span class="metric-content">
+                            <strong style="font-size:13px; font-weight:700;">최소시간</strong>
+                            <small style="font-size:11px; color:#718096;">예상 주행시간 최소화</small>
+                        </span>
+                    </label>
+                    <label class="metric-card" id="modalMetricBalanced" style="padding:10px 12px; min-height:52px; cursor:pointer;">
+                        <input type="radio" name="modalRouteObjective" value="balanced" onchange="setModalRouteObjective('balanced')" style="position:absolute; opacity:0;">
+                        <span class="metric-radio" style="font-size:13px; color:#a0aec0;">○</span>
+                        <span class="metric-icon" style="font-size:18px;">⚖️</span>
+                        <span class="metric-content">
+                            <strong style="font-size:13px; font-weight:700;">거리+시간 균형</strong>
+                            <small style="font-size:11px; color:#718096;">거리와 시간을 함께 고려</small>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="advanced-options" style="border:1px solid #edf2f7; border-radius:10px; overflow:hidden; margin-bottom:16px;">
+                <label class="switch-row" style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; cursor:pointer; border-bottom:1px solid #edf2f7;">
+                    <span class="switch-text">
+                        <strong style="font-size:12px; font-weight:600; color:#2d3748;">실제 도로 기준 최적화</strong>
+                        <small style="font-size:10px; color:#718096;">가능하면 실제 도로거리·시간을 사용합니다.</small>
+                    </span>
+                    <input type="checkbox" id="modalUseRoadOptimization" checked onchange="setModalRoadOptimization(this.checked)" style="position:absolute; opacity:0;">
+                    <span class="switch-ui"></span>
+                </label>
+                <label class="switch-row" style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; cursor:pointer;">
+                    <span class="switch-text">
+                        <strong style="font-size:12px; font-weight:600; color:#2d3748;">경유지 방향 고려</strong>
+                        <small style="font-size:10px; color:#718096;">기존 16방향 정보를 초기 경로 생성에 활용합니다.</small>
+                    </span>
+                    <input type="checkbox" id="modalUseDirectionHint" checked onchange="setModalDirectionHint(this.checked)" style="position:absolute; opacity:0;">
+                    <span class="switch-ui"></span>
+                </label>
+            </div>
+
+            <div style="margin-bottom:12px;">
+                <div style="font-size:13px; font-weight:600; color:#2d3748; margin-bottom:8px;">③ 경로 API 선택</div>
+                <div class="choice-grid two" style="gap:8px;">
+                    <label class="choice-card active" id="modalApiKakao" style="padding:10px 12px; min-height:52px; cursor:pointer;" onclick="setModalRouteApi('kakao')">
+                        <input type="radio" name="modalRouteApi" value="kakao" checked style="position:absolute; opacity:0;">
+                        <span class="choice-radio" style="font-size:13px; color:#3182ce;">●</span>
+                        <span class="choice-icon" style="font-size:18px;">🗺️</span>
+                        <span class="choice-content">
+                            <strong style="font-size:13px; font-weight:700;">카카오맵</strong>
+                            <small style="font-size:11px; color:#718096;">기본 길찾기</small>
+                        </span>
+                    </label>
+                    <label class="choice-card" id="modalApiTmap" style="padding:10px 12px; min-height:52px; cursor:pointer;" onclick="setModalRouteApi('tmap')">
+                        <input type="radio" name="modalRouteApi" value="tmap" style="position:absolute; opacity:0;">
+                        <span class="choice-radio" style="font-size:13px; color:#a0aec0;">○</span>
+                        <span class="choice-icon" style="font-size:18px;">🚗</span>
+                        <span class="choice-content">
+                            <strong style="font-size:13px; font-weight:700;">TMap</strong>
+                            <small style="font-size:10px; color:#e53e3e; margin-top:2px;">⚠️ 경유지 미지원 (출발→도착만)</small>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <div style="display:flex; gap:8px; justify-content:flex-end; border-top:1px solid #e2e8f0; padding-top:12px;">
+                <button class="btn btn-outline btn-sm" onclick="closeOptimizeSettingsModal()" style="padding:6px 16px;">닫기</button>
+                <button class="btn btn-primary btn-sm" onclick="saveOptimizeSettings()" style="padding:6px 16px;">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 하단 탭 ===== -->
+    <div class="bottom-tabs">
+        <button class="bottom-tab active" data-tab="tab-places" onclick="switchTab('tab-places')">
+            <span class="tab-icon">🗺️</span> 경로
+        </button>
+        <button class="bottom-tab" data-tab="tab-route" onclick="switchTab('tab-route')">
+            <span class="tab-icon">📍</span> 지도
+        </button>
+        <button class="bottom-tab" data-tab="tab-list" onclick="switchTab('tab-list')">
+            <span class="tab-icon">📋</span> 현장
+        </button>
+        <button class="bottom-tab" data-tab="tab-work" onclick="switchTab('tab-work')">
+            <span class="tab-icon">📝</span>기록
+        </button>
+        <button class="bottom-tab" data-tab="tab-stats" onclick="switchTab('tab-stats')">
+            <span class="tab-icon">📊</span>  통계
+        </button>
+        <button class="bottom-tab" data-tab="tab-settings" onclick="switchTab('tab-settings')">
+            <span class="tab-icon">⚙️</span> 설정
+        </button>
+        <button class="bottom-tab help-tab" data-tab="tab-help" onclick="switchTab('tab-help')">
+            <span class="tab-icon">❓</span> 도움말
+        </button>
+    </div>
+
+    <script src="server-config.js"></script>
+    <script src="app.js" defer></script>
+</body>
+</html>
