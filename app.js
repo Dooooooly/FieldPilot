@@ -278,6 +278,17 @@ function escapeHtml(str) {
     return div.innerHTML;
 }
 
+// HTML 속성/인라인 onclick 등에 사용할 안전한 문자열 이스케이프
+function escapeJsString(value) {
+    return String(value ?? '')
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/\r/g, '\\r')
+        .replace(/\n/g, '\\n')
+        .replace(/\u2028/g, '\\u2028')
+        .replace(/\u2029/g, '\\u2029');
+}
+
 function haversineKm(lat1, lng1, lat2, lng2) {
     let R = 6371;
     let dLat = (lat2 - lat1) * Math.PI / 180;
