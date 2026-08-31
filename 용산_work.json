@@ -187,15 +187,16 @@
     {
       "id": "mtgza8crs5j6m0",
       "date": "2026-08-31",
-      "time": "",
+      "time": "17:30",
       "timestamp": 1788165020619,
       "placeName": "자치01-12",
       "dong": "후암동",
       "worker": "이준형",
       "category": "",
-      "content": "",
-      "camera": "",
-      "fromStats": true
+      "content": "ㅈㄷㅎㅈ",
+      "camera": "ㅎㅈㄷㅎ",
+      "fromStats": true,
+      "updatedAt": "2026-08-31T08:30:52.844Z"
     }
   ],
   "lastUpdated": "2026-08-31T08:30:20.619Z"
