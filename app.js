@@ -8557,6 +8557,45 @@ function searchWorkAddPlace() {
     results.innerHTML = html;
     results.style.display = 'block';
 }
+// ============================================================
+// 카카오워크 1:1 내보내기 모달
+// ============================================================
+function openKakaoWorkExportModal() {
+
+    const modal =
+        document.getElementById('kakaoWorkExportModal');
+
+    if (!modal) {
+        console.warn(
+            '[KakaoWork] kakaoWorkExportModal 요소가 없습니다.'
+        );
+
+        return;
+    }
+
+    // 모달 열기
+    modal.style.display = 'flex';
+
+    // 현재 선택된 지역/현장 정보 갱신
+    if (
+        typeof updateKakaoWorkExportPreview ===
+        'function'
+    ) {
+        updateKakaoWorkExportPreview();
+    }
+}
+// ============================================================
+// 카카오워크 1:1 내보내기 모달 닫기
+// ============================================================
+function closeKakaoWorkExportModal() {
+
+    const modal =
+        document.getElementById('kakaoWorkExportModal');
+
+    if (!modal) return;
+
+    modal.style.display = 'none';
+}
 
 function selectWorkAddPlace(placeId) {
     var place = places.find(function(p) { return String(p.id) === String(placeId); });
