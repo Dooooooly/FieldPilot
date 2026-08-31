@@ -10084,7 +10084,7 @@ async function sendKakaoWorkDirectMessage() {
 
         const result =
             await serverPost(
-                '/api/kakaowork/direct-send',
+                '/api/kakaowork/one-to-one',
                 {
 
                     user:
