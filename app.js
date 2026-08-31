@@ -1176,7 +1176,621 @@ function updateAuthorizationUI() {
     }
 }
 
+// ============================================================
+// 관리자 - 카카오워크 지역 사용자 관리
+// ============================================================
 
+async function loadAdminKakaoWorkMappings() {
+
+    if (!isMaster()) {
+        return;
+    }
+
+    const container =
+        document.getElementById(
+            'adminKakaoWorkMappings'
+        );
+
+    if (!container) {
+        return;
+    }
+
+    container.innerHTML =
+        '<div style="padding:10px;text-align:center;color:#718096;">' +
+        '⏳ 불러오는 중...' +
+        '</div>';
+
+    try {
+
+        const data =
+            await serverGet(
+                '/api/admin/kakao-work/mappings'
+            );
+
+        renderAdminKakaoWorkMappings(
+            data.mappings || {}
+        );
+
+    } catch (error) {
+
+        container.innerHTML =
+            '<div style="padding:10px;color:#e53e3e;">' +
+            '❌ 불러오기 실패<br>' +
+            '<small>' +
+            escapeHtml(
+                error.message
+            ) +
+            '</small>' +
+            '</div>';
+    }
+}
+function renderAdminKakaoWorkMappings(
+    mappings
+) {
+
+    const container =
+        document.getElementById(
+            'adminKakaoWorkMappings'
+        );
+
+    if (!container) {
+        return;
+    }
+
+    const regions =
+        Object.keys(
+            mappings || {}
+        );
+
+    // 지역 목록은 현재 regionSelect에서 가져온다.
+    const select =
+        document.getElementById(
+            'regionSelect'
+        );
+
+    const regionNames = [];
+
+    if (select) {
+
+        Array.from(
+            select.options
+        ).forEach(function(option) {
+
+            const value =
+                String(
+                    option.value || ''
+                ).trim();
+
+            if (
+                value &&
+                !regionNames.includes(
+                    value
+                )
+            ) {
+                regionNames.push(
+                    value
+                );
+            }
+
+        });
+    }
+
+    // 매핑에만 존재하는 지역도 유지
+    regions.forEach(function(region) {
+
+        if (
+            !regionNames.includes(
+                region
+            )
+        ) {
+            regionNames.push(
+                region
+            );
+        }
+
+    });
+
+    if (!regionNames.length) {
+
+        container.innerHTML =
+            '<div style="padding:10px;color:#718096;">' +
+            '등록된 지역이 없습니다.' +
+            '</div>';
+
+        return;
+    }
+
+    let html = '';
+
+    regionNames.forEach(
+        function(region) {
+
+            const mapping =
+                mappings[region] || {};
+
+            html +=
+                '<div style="' +
+                'background:white;' +
+                'border:1px solid #e2e8f0;' +
+                'border-radius:9px;' +
+                'padding:12px;' +
+                'margin-bottom:8px;' +
+                '">';
+
+            html +=
+                '<div style="' +
+                'font-weight:700;' +
+                'font-size:13px;' +
+                'margin-bottom:8px;' +
+                '">' +
+                '📍 ' +
+                escapeHtml(region) +
+                '</div>';
+
+            html +=
+                '<div style="' +
+                'font-size:11px;' +
+                'color:#718096;' +
+                'margin-bottom:5px;' +
+                '">' +
+                '현재 수신자' +
+                '</div>';
+
+            if (mapping.userId) {
+
+                html +=
+                    '<div style="' +
+                    'padding:8px;' +
+                    'background:#f0fff4;' +
+                    'border-radius:7px;' +
+                    'margin-bottom:8px;' +
+                    '">' +
+
+                    '👤 <strong>' +
+                    escapeHtml(
+                        mapping.userName ||
+                        mapping.userId
+                    ) +
+                    '</strong>' +
+
+                    '<div style="' +
+                    'font-size:10px;' +
+                    'color:#718096;' +
+                    'margin-top:2px;' +
+                    '">' +
+                    'User ID: ' +
+                    escapeHtml(
+                        String(
+                            mapping.userId
+                        )
+                    ) +
+                    '</div>' +
+
+                    '</div>';
+
+            } else {
+
+                html +=
+                    '<div style="' +
+                    'padding:8px;' +
+                    'background:#fffaf0;' +
+                    'color:#b7791f;' +
+                    'border-radius:7px;' +
+                    'margin-bottom:8px;' +
+                    '">' +
+                    '⚠️ 수신자 미설정' +
+                    '</div>';
+            }
+
+            html +=
+                '<div style="' +
+                'display:flex;' +
+                'gap:6px;' +
+                '">';
+
+            html +=
+                '<button ' +
+                'class="btn btn-primary btn-sm" ' +
+                'style="flex:1;" ' +
+                'onclick="openAdminKakaoWorkUserPicker(\'' +
+                escapeJsString(
+                    region
+                ) +
+                '\')">' +
+                '👤 사용자 선택' +
+                '</button>';
+
+            html +=
+                '<button ' +
+                'class="btn btn-outline btn-sm" ' +
+                'onclick="clearAdminKakaoWorkMapping(\'' +
+                escapeJsString(
+                    region
+                ) +
+                '\')">' +
+                '삭제' +
+                '</button>';
+
+            html +=
+                '</div>';
+
+            html +=
+                '</div>';
+        }
+    );
+
+    container.innerHTML =
+        html;
+}
+async function openAdminKakaoWorkUserPicker(
+    region
+) {
+
+    const existing =
+        document.getElementById(
+            'adminKakaoWorkUserModal'
+        );
+
+    if (existing) {
+        existing.remove();
+    }
+
+    const html = `
+<div
+    id="adminKakaoWorkUserModal"
+    style="
+        position:fixed;
+        inset:0;
+        background:rgba(0,0,0,.55);
+        z-index:999999;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        padding:20px;
+    "
+    onclick="if(event.target===this)this.remove()"
+>
+
+    <div
+        style="
+            background:white;
+            width:min(520px,100%);
+            max-height:80vh;
+            overflow:auto;
+            border-radius:14px;
+            padding:16px;
+            box-shadow:0 20px 50px rgba(0,0,0,.25);
+        "
+        onclick="event.stopPropagation()"
+    >
+
+        <div
+            style="
+                display:flex;
+                justify-content:space-between;
+                align-items:center;
+                margin-bottom:12px;
+            "
+        >
+
+            <strong>
+                👤 ${escapeHtml(region)}
+                카카오워크 수신자
+            </strong>
+
+            <button
+                class="btn btn-outline btn-sm"
+                onclick="
+                    document
+                        .getElementById(
+                            'adminKakaoWorkUserModal'
+                        )
+                        .remove()
+                "
+            >
+                ×
+            </button>
+
+        </div>
+
+        <input
+            id="adminKakaoWorkUserSearch"
+            type="text"
+            placeholder="이름 / 부서 / 이메일 검색"
+            style="
+                width:100%;
+                box-sizing:border-box;
+                padding:10px;
+                border:1px solid #cbd5e0;
+                border-radius:8px;
+                margin-bottom:10px;
+            "
+            oninput="
+                searchAdminKakaoWorkUsers(
+                    '${escapeJsString(region)}'
+                )
+            "
+        >
+
+        <div
+            id="adminKakaoWorkUserResults"
+        >
+            ⏳ 사용자 불러오는 중...
+        </div>
+
+    </div>
+
+</div>
+`;
+
+    document.body.insertAdjacentHTML(
+        'beforeend',
+        html
+    );
+
+    await searchAdminKakaoWorkUsers(
+        region
+    );
+}
+async function searchAdminKakaoWorkUsers(
+    region
+) {
+
+    const input =
+        document.getElementById(
+            'adminKakaoWorkUserSearch'
+        );
+
+    const box =
+        document.getElementById(
+            'adminKakaoWorkUserResults'
+        );
+
+    if (!box) {
+        return;
+    }
+
+    const keyword =
+        String(
+            input?.value || ''
+        ).trim();
+
+    box.innerHTML =
+        '<div style="padding:12px;text-align:center;color:#718096;">' +
+        '⏳ 검색 중...' +
+        '</div>';
+
+    try {
+
+        const data =
+            await serverGet(
+                '/api/admin/kakao-work/users?q=' +
+                encodeURIComponent(
+                    keyword
+                )
+            );
+
+        const users =
+            data.users || [];
+
+        if (!users.length) {
+
+            box.innerHTML =
+                '<div style="padding:16px;text-align:center;color:#718096;">' +
+                '검색 결과가 없습니다.' +
+                '</div>';
+
+            return;
+        }
+
+        let html =
+            '<div style="display:flex;flex-direction:column;gap:6px;">';
+
+        users.forEach(
+            function(user) {
+
+                html +=
+                    '<button ' +
+                    'type="button" ' +
+                    'style="' +
+                    'display:block;' +
+                    'width:100%;' +
+                    'text-align:left;' +
+                    'background:white;' +
+                    'border:1px solid #e2e8f0;' +
+                    'border-radius:8px;' +
+                    'padding:10px;' +
+                    'cursor:pointer;' +
+                    '" ' +
+                    'onclick="selectAdminKakaoWorkUser(' +
+                    '\'' +
+                    escapeJsString(
+                        region
+                    ) +
+                    '\',' +
+                    '\'' +
+                    escapeJsString(
+                        String(
+                            user.id
+                        )
+                    ) +
+                    '\',' +
+                    '\'' +
+                    escapeJsString(
+                        user.name ||
+                        ''
+                    ) +
+                    '\'' +
+                    ')">';
+
+                html +=
+                    '<strong>' +
+                    escapeHtml(
+                        user.name ||
+                        '-'
+                    ) +
+                    '</strong>';
+
+                if (
+                    user.department ||
+                    user.position
+                ) {
+
+                    html +=
+                        '<div style="font-size:11px;color:#718096;margin-top:3px;">' +
+                        escapeHtml(
+                            [
+                                user.department,
+                                user.position
+                            ]
+                            .filter(Boolean)
+                            .join(' · ')
+                        ) +
+                        '</div>';
+                }
+
+                html +=
+                    '<div style="font-size:10px;color:#a0aec0;margin-top:3px;">' +
+                    'ID: ' +
+                    escapeHtml(
+                        String(
+                            user.id
+                        )
+                    ) +
+                    '</div>';
+
+                html +=
+                    '</button>';
+            }
+        );
+
+        html +=
+            '</div>';
+
+        box.innerHTML =
+            html;
+
+    } catch (error) {
+
+        box.innerHTML =
+            '<div style="padding:12px;color:#e53e3e;">' +
+            '❌ 검색 실패<br>' +
+            '<small>' +
+            escapeHtml(
+                error.message
+            ) +
+            '</small>' +
+            '</div>';
+    }
+}
+async function selectAdminKakaoWorkUser(
+    region,
+    userId,
+    userName
+) {
+
+    try {
+
+        const result =
+            await serverPost(
+                '/api/admin/kakao-work/mappings',
+                {
+                    region,
+                    userId,
+                    userName
+                }
+            );
+
+        if (!result.ok) {
+
+            throw new Error(
+                result.message ||
+                result.error ||
+                '저장 실패'
+            );
+        }
+
+        const modal =
+            document.getElementById(
+                'adminKakaoWorkUserModal'
+            );
+
+        if (modal) {
+            modal.remove();
+        }
+
+        showTabStatus(
+            'tab-settings',
+            '✅ ' +
+            region +
+            ' 수신자를 ' +
+            userName +
+            '님으로 설정했습니다.',
+            'ok'
+        );
+
+        await loadAdminKakaoWorkMappings();
+
+    } catch (error) {
+
+        alert(
+            '❌ 카카오워크 사용자 저장 실패\n\n' +
+            error.message
+        );
+    }
+}
+async function clearAdminKakaoWorkMapping(
+    region
+) {
+
+    if (
+        !confirm(
+            region +
+            ' 지역의 카카오워크 수신자를 삭제하시겠습니까?'
+        )
+    ) {
+        return;
+    }
+
+    try {
+
+        const result =
+            await serverPost(
+                '/api/admin/kakao-work/mappings',
+                {
+                    region,
+                    userId: '',
+                    userName: ''
+                }
+            );
+
+        if (!result.ok) {
+
+            throw new Error(
+                result.message ||
+                result.error ||
+                '삭제 실패'
+            );
+        }
+
+        showTabStatus(
+            'tab-settings',
+            '✅ ' +
+            region +
+            ' 수신자 설정을 삭제했습니다.',
+            'ok'
+        );
+
+        await loadAdminKakaoWorkMappings();
+
+    } catch (error) {
+
+        alert(
+            '❌ 삭제 실패\n\n' +
+            error.message
+        );
+    }
+}
 // ============================================================
 // 관리자 설정 펼치기 / 접기
 // ============================================================
@@ -1227,6 +1841,9 @@ function toggleAdminSettings() {
                 ? '⌄'
                 : '›';
     }
+    if (opening) {
+    loadAdminKakaoWorkMappings();
+}
 }
 
 
