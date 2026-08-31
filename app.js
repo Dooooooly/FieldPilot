@@ -8973,7 +8973,7 @@ function showWorkDateDetail(dateStr) {
     } else {
         for (let i = 0; i < dayRecords.length; i++) {
             let r = dayRecords[i];
-            let hasContent = r.category && r.content;
+            let hasContent = !!String(r.content || '').trim();
             let timeDisplay = r.time || '--:--';
             html += '<div onclick="openWorkEditModal(\'' + r.id + '\')" style="background:#f7fafc;border-radius:8px;padding:10px;margin-bottom:6px;cursor:pointer;border-left:3px solid ' + (hasContent ? '#38a169' : '#e53e3e') + ';">';
             html += '<div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">';
@@ -9097,6 +9097,36 @@ function openWorkAddModal(dateStr) {
     if (existing) existing.remove();
 
     var workId = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+
+    // ★ 사진 촬영 전에 작업 기록을 임시 등록한다.
+    // savePhotoToDB()가 workId로 기록을 찾을 수 있도록 한다.
+    var draftWork = currentWork || loadWorkFromLocalStorage();
+    if (!draftWork || !Array.isArray(draftWork.workHistory)) {
+        draftWork = {
+            version: 1,
+            categories: [],
+            workHistory: [],
+            lastUpdated: null
+        };
+    }
+    var draftNow = new Date();
+    draftWork.workHistory.push({
+        id: workId,
+        date: dateStr,
+        time: draftNow.getHours().toString().padStart(2, '0') + ':' + draftNow.getMinutes().toString().padStart(2, '0'),
+        timestamp: draftNow.getTime(),
+        placeName: '',
+        dong: '',
+        worker: workerName || '미설정',
+        category: '',
+        content: '',
+        camera: '',
+        fromStats: false,
+        _draft: true
+    });
+    draftWork.lastUpdated = draftNow.toISOString();
+    currentWork = draftWork;
+    saveWorkToLocalStorage(draftWork);
     var modalHtml = '<div id="workAddModal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);z-index:999999;display:flex;justify-content:center;align-items:center;padding:20px;" onclick="if(event.target===this)cancelWorkAdd(\'' + workId + '\')">';
     modalHtml += '<div style="background:white;border-radius:16px;padding:24px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.2);max-height:85vh;overflow-y:auto;" onclick="event.stopPropagation()">';
     modalHtml += '<h3 style="font-size:17px;font-weight:700;color:#1a202c;margin-bottom:12px;">➕ 처리내역 추가</h3>';
@@ -9145,6 +9175,20 @@ async function cancelWorkAdd(workId) {
     } catch (e) {
         console.warn('임시 사진 삭제 실패:', e);
     }
+
+    var work = currentWork || loadWorkFromLocalStorage();
+    if (work && Array.isArray(work.workHistory)) {
+        var before = work.workHistory.length;
+        work.workHistory = work.workHistory.filter(function(w) {
+            return !(String(w.id) === String(workId) && w._draft);
+        });
+        if (work.workHistory.length !== before) {
+            work.lastUpdated = new Date().toISOString();
+            currentWork = work;
+            saveWorkToLocalStorage(work);
+        }
+    }
+
     var modal = document.getElementById('workAddModal');
     if (modal) modal.remove();
 }
@@ -10721,6 +10765,20 @@ function selectWorkAddPlace(placeId) {
 
     if (hidden) hidden.value = place.name;
     if (search) search.value = place.name;
+
+    // ★ 임시 작업 기록에 현장을 즉시 반영
+    var draftWork = currentWork || loadWorkFromLocalStorage();
+    if (draftWork && Array.isArray(draftWork.workHistory)) {
+        var draftRecord = draftWork.workHistory.find(function(w) {
+            return String(w.id) === String(placeId) && w._draft;
+        });
+        if (draftRecord) {
+            draftRecord.placeName = place.name;
+            draftWork.lastUpdated = new Date().toISOString();
+            currentWork = draftWork;
+            saveWorkToLocalStorage(draftWork);
+        }
+    }
     if (results) {
         results.innerHTML = '';
         results.style.display = 'none';
@@ -10744,26 +10802,48 @@ async function saveWorkAdd(dateStr, workId) {
     }
 
     var work = currentWork || loadWorkFromLocalStorage();
+    if (!work || !Array.isArray(work.workHistory)) {
+        work = { version: 1, categories: [], workHistory: [], lastUpdated: null };
+    }
+
     var now = new Date();
     var timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
-
-    work.workHistory.push({
-        id: workId,
-        date: dateStr,
-        time: timeStr,
-        timestamp: now.getTime(),
-        placeName: placeName,
-        dong: '',
-        worker: workerName || '미설정',
-        category: '',
-        content: content,
-        camera: camera,
-        fromStats: false
+    var record = work.workHistory.find(function(w) {
+        return String(w.id) === String(workId);
     });
 
+    if (!record) {
+        record = {
+            id: workId,
+            date: dateStr,
+            time: timeStr,
+            timestamp: now.getTime(),
+            placeName: placeName,
+            dong: '',
+            worker: workerName || '미설정',
+            category: '',
+            content: content,
+            camera: camera,
+            fromStats: false
+        };
+        work.workHistory.push(record);
+    } else {
+        record.date = dateStr;
+        record.time = record.time || timeStr;
+        record.timestamp = record.timestamp || now.getTime();
+        record.placeName = placeName;
+        record.worker = workerName || record.worker || '미설정';
+        record.content = content;
+        record.camera = camera;
+        record._draft = false;
+    }
+
     work.lastUpdated = now.toISOString();
+    currentWork = work;
     saveWorkToLocalStorage(work);
-    document.getElementById('workAddModal').remove();
+
+    var modal = document.getElementById('workAddModal');
+    if (modal) modal.remove();
 
     var uploaded = await uploadWorkToGitHub(work);
     renderWorkTab();
@@ -11127,7 +11207,34 @@ function newPhotoId() {
 
 async function savePhotoToDB(photo) {
     let record = findWorkRecordById(photo.workId);
-    if (!record) throw new Error('작업 기록(' + photo.workId + ')을 찾을 수 없어 사진을 저장할 수 없습니다.');
+
+    // ★ 신규 작업 사진을 먼저 촬영한 경우의 안전망
+    if (!record) {
+        let work = currentWork || loadWorkFromLocalStorage();
+        if (!work || !Array.isArray(work.workHistory)) {
+            work = { version: 1, categories: [], workHistory: [], lastUpdated: null };
+        }
+
+        record = {
+            id: photo.workId,
+            date: new Date().toISOString().slice(0, 10),
+            time: '',
+            timestamp: Date.now(),
+            placeName: '',
+            dong: '',
+            worker: workerName || '미설정',
+            category: '',
+            content: '',
+            camera: '',
+            fromStats: false,
+            _draft: true
+        };
+
+        work.workHistory.push(record);
+        work.lastUpdated = new Date().toISOString();
+        currentWork = work;
+        saveWorkToLocalStorage(work);
+    }
     let region = record.region || currentRegion || '미지정지역';
     let siteName = record.placeName || '미지정현장';
 
