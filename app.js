@@ -9,7 +9,9 @@ const SETTINGS_KEY = 'app_settings';
 const OPTIMIZE_MODE_KEY = 'optimizeMode';
 const PRESETS_KEY = 'route_presets';
 const ROUTE_API_KEY = 'routeApi';
-const KAKAO_JAVASCRIPT_KEY = '46f550c3a5a9bfc0ceff4bce9ecf71f8';
+// 지도 SDK 키는 서버의 /api/public-config에서 런타임에 받는다.
+// (카카오 개발자 콘솔에서 허용 도메인도 반드시 제한해야 합니다.)
+let KAKAO_JAVASCRIPT_KEY = '';
 
 // ============================================================
 // 서버 프록시 공용 헬퍼 (경로최적화/주소변환/날씨는 전부 노트북 서버 경유)
@@ -1944,6 +1946,11 @@ function savePlaces() {
         JSON.stringify(places)
     );
 
+    // IndexedDB가 기본 저장소이며 localStorage는 기존 버전 호환용 사본이다.
+    fieldPilotCore()?.storage?.setValue(key, places).catch(function(error) {
+        console.warn('[FieldPilot] IndexedDB 현장 저장 실패:', error);
+    });
+
     renderPlaces();
     updateStorageInfo();
 
@@ -1962,6 +1969,10 @@ function scheduleAutoSync() {
 
     if (!navigator.onLine) {
         placeSyncPending = true;
+        queueServerWrite(
+            '/api/places?region=' + encodeURIComponent(currentRegion),
+            { version: 1, region: currentRegion, places: places, lastUpdated: new Date().toISOString() }
+        );
         showTabStatus(
             'tab-settings',
             '📡 오프라인 - 서버 동기화 대기 중',
@@ -2001,6 +2012,10 @@ function scheduleAutoSync() {
         } catch (error) {
 
             placeSyncPending = true;
+            queueServerWrite(
+                '/api/places?region=' + encodeURIComponent(currentRegion),
+                { version: 1, region: currentRegion, places: places, lastUpdated: new Date().toISOString() }
+            );
 
             console.error(
                 '[LOCAL → SERVER] 동기화 실패:',
@@ -2033,7 +2048,16 @@ async function loadPlacesFromServer(region, useServer = true) {
     }
 
     const localKey = getStorageKey(region);
-    const localData = localStorage.getItem(localKey);
+    let localData = localStorage.getItem(localKey);
+    try {
+        const indexedValue = await fieldPilotCore()?.storage?.getValue(localKey, null);
+        if (indexedValue !== null && indexedValue !== undefined) {
+            localData = typeof indexedValue === 'string'
+                ? indexedValue : JSON.stringify(indexedValue);
+        }
+    } catch (error) {
+        console.warn('[FieldPilot] IndexedDB 현장 로드 실패, 호환 저장소 사용:', error);
+    }
 
     // 1. LOCAL을 먼저 화면에 표시
     if (localData) {
@@ -2072,6 +2096,9 @@ async function loadPlacesFromServer(region, useServer = true) {
                 localKey,
                 JSON.stringify(places)
             );
+            fieldPilotCore()?.storage?.setValue(localKey, places).catch(function(error) {
+                console.warn('[FieldPilot] IndexedDB 현장 캐시 저장 실패:', error);
+            });
 
             renderPlaces();
             updateStorageInfo();
@@ -4117,6 +4144,52 @@ async function twoOptRoad(route, startPoint, restKey, mode) {
     return route;
 }
 
+// 15개 이상 경유지에서는 기존 Greedy/2-opt에 더해 SA 후보를 만든다.
+// 도로 API를 반복 호출하지 않고 기하학적 비용으로 후보만 생성한 뒤 기존 도로
+// 최적화 단계가 검증하므로, 기존 결과보다 나쁜 경로를 채택하지 않는다.
+function simulatedAnnealingSeed(route, startPoint) {
+    if (!Array.isArray(route) || route.length < 15) return route ? route.slice() : [];
+
+    function geometricCost(candidate) {
+        let current = startPoint;
+        let cost = 0;
+        for (let i = 0; i < candidate.length; i++) {
+            cost += haversineKm(current.lat, current.lng, candidate[i].lat, candidate[i].lng);
+            current = candidate[i];
+        }
+        return cost;
+    }
+
+    let current = route.slice();
+    let currentCost = geometricCost(current);
+    let best = current.slice();
+    let bestCost = currentCost;
+    let temperature = Math.max(1, currentCost * 0.08);
+    const iterations = Math.min(900, Math.max(180, current.length * 36));
+
+    for (let step = 0; step < iterations; step++) {
+        const left = Math.floor(Math.random() * (current.length - 1));
+        const right = left + 1 + Math.floor(Math.random() * (current.length - left - 1));
+        const candidate = current.slice(0, left)
+            .concat(current.slice(left, right + 1).reverse())
+            .concat(current.slice(right + 1));
+        const candidateCost = geometricCost(candidate);
+        const delta = candidateCost - currentCost;
+
+        if (delta < 0 || Math.random() < Math.exp(-delta / temperature)) {
+            current = candidate;
+            currentCost = candidateCost;
+            if (currentCost < bestCost) {
+                best = current.slice();
+                bestCost = currentCost;
+            }
+        }
+        temperature *= 0.985;
+    }
+
+    return best;
+}
+
 async function optimizeRouteAlgorithm(places, startLat, startLng, mode, restKey) {
     if (!places || places.length === 0) return [];
     if (places.length === 1) return places.slice();
@@ -4143,6 +4216,10 @@ async function optimizeRouteAlgorithm(places, startLat, startLng, mode, restKey)
     if (mode === 'Farthest') clustered.reverse();
     seeds.push(clustered);
 
+    if (places.length >= 15) {
+        seeds.push(simulatedAnnealingSeed(geometric, start));
+    }
+
     let bestRoute = seeds[0];
     let bestCost = await routeCost(bestRoute, start, restKey);
     let bestScore = getOptimizationScore(bestCost);
@@ -4166,7 +4243,9 @@ async function optimizeRouteAlgorithm(places, startLat, startLng, mode, restKey)
         roadFallback: roadCallFallbackCount,
         distanceKm: bestCost.distanceKm,
         durationMin: bestCost.durationMin,
-        method: '도로거리 기반 Greedy + Multi-start + 2-opt'
+        method: places.length >= 15
+            ? '도로거리 기반 Greedy + Multi-start + SA + 2-opt'
+            : '도로거리 기반 Greedy + Multi-start + 2-opt'
     };
     return bestRoute;
 }
@@ -5080,6 +5159,23 @@ function initMap() {
 
     // SDK 로딩 중이면 중복 로딩 방지
     if (sdkLoading) return;
+
+    // 키는 서버 런타임 설정에서만 받는다. 아직 준비되지 않았다면 한 번 로드 후 재시도한다.
+    if (!KAKAO_JAVASCRIPT_KEY) {
+        sdkLoading = true;
+        loadRuntimeConfiguration().then(function() {
+            sdkLoading = false;
+            if (KAKAO_JAVASCRIPT_KEY) {
+                initMap();
+            } else {
+                container.innerHTML =
+                    '<div style="display:flex;justify-content:center;align-items:center;height:100%;' +
+                    'color:#975a16;font-size:14px;background:#fffff0;border-radius:12px;padding:20px;text-align:center;">' +
+                    '⚠️ 서버의 jsKey 설정이 필요합니다.</div>';
+            }
+        });
+        return;
+    }
 
     container.innerHTML =
         '<div style="display:flex;justify-content:center;align-items:center;height:100%;' +
@@ -7046,8 +7142,9 @@ function handleAddrKeydown(event) {
 
 // ============================================================
 // 37. 하단 탭 이벤트 및 초기화
+// DOMContentLoaded 리스너를 하나만 유지하기 위해 38번 초기화에서 호출한다.
 // ============================================================
-document.addEventListener('DOMContentLoaded', function() {
+function initializeBottomTabs() {
     let tabs = document.querySelectorAll('.bottom-tab');
     tabs.forEach(function(tab) {
         tab.removeEventListener('click', tab._clickHandler);
@@ -7085,7 +7182,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     updateOnlineStatus();
-});
+}
 
 // ============================================================
 // 38. 초기화 실행
@@ -7099,11 +7196,14 @@ document.addEventListener(
             '[FieldPilot] 초기화 시작'
         );
 
+        initializeBottomTabs();
+
         // --------------------------------------------------------
         // 1. 설정
         // --------------------------------------------------------
 
         loadSettings();
+        await loadRuntimeConfiguration();
 
         // --------------------------------------------------------
         // 2. 인증 복구
@@ -8346,6 +8446,12 @@ async function saveStatsToLocalStorage(stats) {
         JSON.stringify(stats)
     );
 
+    try {
+        await fieldPilotCore()?.storage?.setValue(key, stats);
+    } catch (error) {
+        console.warn('[FieldPilot] IndexedDB 통계 저장 실패:', error);
+    }
+
     currentStats = stats;
 
     // ------------------------------------------------------------
@@ -8378,6 +8484,7 @@ async function saveStatsToLocalStorage(stats) {
         console.warn(
             '[STATS] 오프라인 상태 - LOCAL에만 저장했습니다.'
         );
+        queueServerWrite('/api/stats?region=' + encodeURIComponent(region), stats);
         return false;
     }
 
@@ -8406,6 +8513,8 @@ async function saveStatsToLocalStorage(stats) {
             '[STATS] SERVER 동기화 실패:',
             error
         );
+
+        queueServerWrite('/api/stats?region=' + encodeURIComponent(region), stats);
 
         return false;
     }
@@ -8750,6 +8859,12 @@ async function saveWorkToLocalStorage(work) {
         JSON.stringify(work)
     );
 
+    try {
+        await fieldPilotCore()?.storage?.setValue(key, work);
+    } catch (error) {
+        console.warn('[FieldPilot] IndexedDB 작업기록 저장 실패:', error);
+    }
+
     currentWork = work;
 
     // ------------------------------------------------------------
@@ -8776,6 +8891,7 @@ async function saveWorkToLocalStorage(work) {
         console.warn(
             '[WORK] 오프라인 상태 - LOCAL에만 저장했습니다.'
         );
+        queueServerWrite('/api/work-history?region=' + encodeURIComponent(region), work);
         return false;
     }
 
@@ -8804,6 +8920,8 @@ async function saveWorkToLocalStorage(work) {
             '[WORK] SERVER 동기화 실패:',
             error
         );
+
+        queueServerWrite('/api/work-history?region=' + encodeURIComponent(region), work);
 
         return false;
     }
@@ -11238,12 +11356,10 @@ async function savePhotoToDB(photo) {
     let region = record.region || currentRegion || '미지정지역';
     let siteName = record.placeName || '미지정현장';
 
-    let result = await serverPost('/api/photos', {
+    let result = await uploadPhotoMultipart({
+        ...photo,
         region: region,
         siteName: siteName,
-        dataUrl: photo.dataUrl,
-        fileName: photo.fileName,
-        workId: photo.workId,
         date: record.date || '',
         time: record.time || '',
         worker: record.worker || '',
@@ -11257,8 +11373,10 @@ async function savePhotoToDB(photo) {
         workId: photo.workId,
         region: region,
         siteName: siteName,
-        fileName: result.fileName,
-        dataUrl: photoDownloadUrl(region, siteName, result.fileName),
+        fileName: result.fileName || photo.fileName || '',
+        dataUrl: result.queued
+            ? (photo.dataUrl || result.previewUrl || '')
+            : photoDownloadUrl(region, siteName, result.fileName),
         fileSize: photo.fileSize,
         uploadedAt: photo.uploadedAt
     });
@@ -11326,24 +11444,17 @@ async function handleWorkPhotoUpload(event) {
 
     for (let i = 0; i < files.length; i++) {
         let file = files[i];
-        if (file.size > 5 * 1024 * 1024) {
-            showTabStatus('tab-work', '⚠️ "' + file.name + '" 5MB 초과', 'warning');
+        if (file.size > 15 * 1024 * 1024) {
+            showTabStatus('tab-work', '⚠️ "' + file.name + '" 15MB 초과', 'warning');
             continue;
         }
-        await new Promise(function(resolve) {
-            let reader = new FileReader();
-            reader.onload = async function(e) {
-                await savePhotoToDB({
-                    id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5) + '_' + i,
-                    workId: workId,
-                    dataUrl: e.target.result,
-                    fileName: file.name,
-                    fileSize: file.size,
-                    uploadedAt: new Date().toISOString()
-                });
-                resolve();
-            };
-            reader.readAsDataURL(file);
+        await savePhotoToDB({
+            id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5) + '_' + i,
+            workId: workId,
+            file: file,
+            fileName: file.name,
+            fileSize: file.size,
+            uploadedAt: new Date().toISOString()
         });
     }
 
@@ -12269,3 +12380,347 @@ async function logoutFieldPilot() {
     );
 }
 window.switchTab = switchTab;
+
+// ============================================================
+// 54. 보안·대용량 처리 호환 계층
+// 기존 전역 함수와 인라인 이벤트를 유지하면서 신규 모듈/서버 API로 점진 전환한다.
+// ============================================================
+function fieldPilotCore() {
+    return window.FieldPilotCore || null;
+}
+
+function isGitHubConfigured() {
+    return !!settings?.githubConfigured;
+}
+
+async function loadRuntimeConfiguration() {
+    const base = serverBase();
+    if (!base) return null;
+
+    try {
+        const response = await fetch(base + '/api/public-config', { cache: 'no-store' });
+        if (!response.ok) throw new Error('서버 오류 ' + response.status);
+        const runtime = await response.json();
+        KAKAO_JAVASCRIPT_KEY = String(runtime.kakaoJavascriptKey || '').trim();
+        settings.githubConfigured = runtime.githubConfigured === true;
+
+        const jsInput = document.getElementById('kakaoJsKey');
+        if (jsInput) {
+            jsInput.value = KAKAO_JAVASCRIPT_KEY ? '서버에서 설정됨' : '';
+            jsInput.placeholder = '노트북서버/config.json의 jsKey에서 설정';
+            jsInput.readOnly = true;
+        }
+
+        const githubInput = document.getElementById('githubToken');
+        if (githubInput) {
+            githubInput.value = '';
+            githubInput.placeholder = '노트북서버/config.json의 github.token에서 설정';
+            githubInput.autocomplete = 'off';
+        }
+
+        return runtime;
+    } catch (error) {
+        console.warn('[FieldPilot] 런타임 설정 로드 실패:', error);
+        return null;
+    }
+}
+
+// GitHub PAT·지도/REST 키는 더 이상 localStorage에 남기지 않는다.
+function loadSettings() {
+    let parsed = {};
+    try { parsed = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') || {}; } catch (e) {}
+
+    const hadLegacySecrets = !!(parsed.githubToken || parsed.kakaoJsKey || parsed.kakaoRestKey);
+    delete parsed.githubToken;
+    delete parsed.kakaoJsKey;
+    delete parsed.kakaoRestKey;
+    if (hadLegacySecrets) {
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(parsed));
+    }
+
+    settings = {
+        githubConfigured: false,
+        kakaoJsKey: '',
+        kakaoRestKey: 'server-proxy',
+        kakaoChatbotKey: decodeKey(parsed.kakaoChatbotKey || ''),
+        kakaoChatbotUserId: decodeKey(parsed.kakaoChatbotUserId || '')
+    };
+
+    const workerInput = document.getElementById('workerName');
+    if (workerInput) workerInput.value = workerName || '';
+    updateWorkerNameStatus();
+    updateSettingsStatus();
+    updateSettingsConnectionUI();
+    updateAuthorizationUI();
+
+    if (hadLegacySecrets) {
+        setTimeout(function() {
+            showTabStatus('tab-settings', '🔐 이전 브라우저 키를 삭제했습니다. 노트북 서버 설정을 사용합니다.', 'info');
+        }, 0);
+    }
+}
+
+function saveSettings() {
+    const encoded = {
+        kakaoChatbotKey: encodeKey(settings.kakaoChatbotKey || ''),
+        kakaoChatbotUserId: encodeKey(settings.kakaoChatbotUserId || '')
+    };
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(encoded));
+    updateSettingsStatus();
+}
+
+function saveGitHubToken() {
+    const input = document.getElementById('githubToken');
+    if (input) input.value = '';
+    showTabStatus('tab-settings', '🔐 GitHub 토큰은 브라우저에 저장하지 않습니다. 노트북서버/config.json의 github.token을 설정하세요.', 'info');
+}
+
+function saveKakaoKeys() {
+    const jsInput = document.getElementById('kakaoJsKey');
+    const restInput = document.getElementById('kakaoRestKey');
+    if (jsInput) jsInput.value = KAKAO_JAVASCRIPT_KEY ? '서버에서 설정됨' : '';
+    if (restInput) {
+        restInput.value = '서버 프록시 사용';
+        restInput.readOnly = true;
+    }
+    showTabStatus('tab-settings', '🔐 카카오 키는 노트북서버/config.json에서 관리합니다.', 'info');
+}
+
+async function testGitHubToken() {
+    const status = document.getElementById('githubStatus');
+    if (status) {
+        status.textContent = '⏳ 서버 설정 확인 중...';
+        status.className = 'badge badge-wait';
+    }
+    try {
+        const data = await serverGet('/api/github/status');
+        settings.githubConfigured = data.configured === true;
+        if (status) {
+            status.textContent = settings.githubConfigured
+                ? '✅ 서버 GitHub 연결됨' : '⏳ 서버 GitHub 미설정';
+            status.className = settings.githubConfigured ? 'badge badge-ok' : 'badge badge-wait';
+        }
+    } catch (error) {
+        if (status) {
+            status.textContent = '❌ 서버 확인 실패';
+            status.className = 'badge badge-fail';
+        }
+    }
+}
+
+async function githubSync(kind, region, data, message) {
+    if (!isGitHubConfigured() || !navigator.onLine || !region) return false;
+    try {
+        await serverPost('/api/github/sync', { kind: kind, region: region, data: data, message: message });
+        return true;
+    } catch (error) {
+        console.warn('[FieldPilot] GitHub 서버 동기화 실패:', error);
+        return false;
+    }
+}
+
+async function githubData(kind, region, ref) {
+    let query = '/api/github/data?kind=' + encodeURIComponent(kind) + '&region=' + encodeURIComponent(region);
+    if (ref) query += '&ref=' + encodeURIComponent(ref);
+    return serverGet(query);
+}
+
+async function uploadToGitHub(silent) {
+    if (!currentRegion) {
+        if (!silent) showTabStatus('tab-settings', '⚠️ 현재 선택된 지역이 없습니다.', 'warning');
+        return false;
+    }
+    const uploaded = await githubSync('places', currentRegion, places,
+        'FieldPilot places sync: ' + currentRegion);
+    if (!silent) {
+        showTabStatus('tab-settings', uploaded
+            ? '✅ GitHub 업로드 완료! (' + places.length + '개)'
+            : '⚠️ GitHub 서버 설정 또는 연결을 확인하세요.', uploaded ? 'ok' : 'warning');
+    }
+    return uploaded;
+}
+
+async function downloadFromGitHub() {
+    try {
+        const data = await serverGet('/api/github/regions');
+        const regions = data.regions || [];
+        if (!regions.length) {
+            showTabStatus('tab-settings', '📭 GitHub에 저장된 지역 데이터가 없습니다.', 'warning');
+            return;
+        }
+        showRegionSelectModal(regions, function(region) {
+            if (region) processDownloadFromGitHub(region);
+        });
+    } catch (error) {
+        showTabStatus('tab-settings', '❌ 목록 조회 실패: ' + error.message, 'error');
+    }
+}
+
+async function processDownloadFromGitHub(region) {
+    try {
+        const result = await githubData('places', region);
+        if (!result.found) throw new Error('저장된 지역 데이터가 없습니다.');
+        places = Array.isArray(result.data) ? result.data : (result.data?.places || []);
+        currentRegion = region;
+        localStorage.setItem(SELECTED_REGION_KEY, region);
+        savePlaces();
+        renderPlaces();
+        updateRegionDisplay();
+        showTabStatus('tab-settings', '✅ GitHub에서 ' + region + ' 데이터를 불러왔습니다.', 'ok');
+    } catch (error) {
+        showTabStatus('tab-settings', '❌ 다운로드 실패: ' + error.message, 'error');
+    }
+}
+
+async function showGitHubHistory() {
+    const historyDiv = document.getElementById('githubHistory');
+    if (!historyDiv || !currentRegion) return;
+    historyDiv.style.display = 'block';
+    historyDiv.textContent = '⏳ 변경 이력 불러오는 중...';
+    try {
+        const result = await serverGet('/api/github/history?kind=places&region=' + encodeURIComponent(currentRegion));
+        const commits = result.commits || [];
+        historyDiv.innerHTML = commits.length ? commits.map(function(commit) {
+            return '<div style="padding:8px;border-bottom:1px solid #e2e8f0;">'
+                + '<strong>' + escapeHtml(commit.message || '변경') + '</strong><br>'
+                + '<small>' + escapeHtml(new Date(commit.date).toLocaleString()) + '</small> '
+                + '<button class="restore-btn" onclick="restoreFromGitHub(\'' + escapeJsString(commit.sha) + '\')">복원</button></div>';
+        }).join('') : '📭 변경 이력이 없습니다.';
+    } catch (error) {
+        historyDiv.textContent = '❌ 이력 조회 실패: ' + error.message;
+    }
+}
+
+async function restoreFromGitHub(sha) {
+    if (!currentRegion || !sha) return;
+    try {
+        const result = await githubData('places', currentRegion, sha);
+        if (!result.found) throw new Error('해당 버전의 데이터를 찾을 수 없습니다.');
+        places = Array.isArray(result.data) ? result.data : (result.data?.places || []);
+        savePlaces();
+        renderPlaces();
+        showTabStatus('tab-settings', '✅ 선택한 버전으로 복원했습니다.', 'ok');
+    } catch (error) {
+        showTabStatus('tab-settings', '❌ 복원 실패: ' + error.message, 'error');
+    }
+}
+
+async function uploadStatsToGitHub(stats) {
+    return githubSync('stats', currentRegion, stats, 'FieldPilot stats sync: ' + currentRegion);
+}
+
+async function refreshStatsFromGitHub() {
+    try {
+        const result = await githubData('stats', currentRegion);
+        if (result.found) {
+            currentStats = result.data;
+            saveStatsToLocalStorage(currentStats);
+        }
+        renderStatsTab();
+    } catch (error) {
+        renderStatsTab();
+        showTabStatus('tab-stats', '⚠️ 서버 통계 동기화 실패: ' + error.message, 'warning');
+    }
+}
+
+async function uploadWorkToGitHub(work) {
+    const uploaded = await githubSync('work', currentRegion, work, 'FieldPilot work sync: ' + currentRegion);
+    if (uploaded) pendingWorkUpload = false;
+    return uploaded;
+}
+
+async function refreshWorkFromGitHub() {
+    try {
+        const result = await githubData('work', currentRegion);
+        if (result.found) {
+            currentWork = result.data;
+            saveWorkToLocalStorage(currentWork);
+        }
+        renderWorkTab();
+    } catch (error) {
+        renderWorkTab();
+        showTabStatus('tab-work', '⚠️ 서버 작업기록 동기화 실패: ' + error.message, 'warning');
+    }
+}
+
+function updateOnlineStatus() {
+    const banner = document.getElementById('offlineBanner');
+    if (banner) banner.classList.toggle('show', !navigator.onLine);
+    if (!navigator.onLine) {
+        showTabStatus('tab-settings', '📡 오프라인 - 변경사항을 안전하게 대기열에 보관합니다.', 'warning');
+        return;
+    }
+
+    fieldPilotCore()?.flushQueue?.().then(function(result) {
+        if (result.sent) showTabStatus('tab-settings', '✅ 오프라인 대기 작업 ' + result.sent + '건을 전송했습니다.', 'ok');
+    }).catch(function(error) {
+        console.warn('[FieldPilot] 오프라인 대기열 전송 실패:', error);
+    });
+    if (isGitHubConfigured()) {
+        setTimeout(function() { uploadToGitHub(true); }, 1000);
+        if (pendingWorkUpload) setTimeout(function() { uploadWorkToGitHub(currentWork || loadWorkFromLocalStorage()); }, 1500);
+    }
+}
+
+function autoSyncStats() {
+    if (isGitHubConfigured() && navigator.onLine) refreshStatsFromGitHub();
+    else renderStatsTab();
+}
+
+function autoSyncWork() {
+    if (isGitHubConfigured() && navigator.onLine) refreshWorkFromGitHub();
+    else renderWorkTab();
+}
+
+function queueServerWrite(path, json) {
+    const core = fieldPilotCore();
+    if (!core?.queueWhenOffline) return Promise.resolve(null);
+    return core.queueWhenOffline({ method: 'POST', path: path, json: json })
+        .catch(function(error) {
+            console.warn('[FieldPilot] 오프라인 대기열 추가 실패:', error);
+            return null;
+        });
+}
+
+async function uploadPhotoMultipart(photo) {
+    let file = photo.file;
+    if (!file && photo.dataUrl) {
+        const blob = await (await fetch(photo.dataUrl)).blob();
+        file = new File([blob], photo.fileName || 'photo.jpg', { type: blob.type || 'image/jpeg' });
+    }
+    if (!file) throw new Error('사진 파일을 찾을 수 없습니다.');
+
+    const core = fieldPilotCore();
+    const resized = core?.resizeImage ? await core.resizeImage(file) : file;
+    const fields = {
+        region: photo.region,
+        siteName: photo.siteName,
+        fileName: resized.name || photo.fileName || 'photo.jpg',
+        workId: photo.workId || '',
+        date: photo.date || '',
+        time: photo.time || '',
+        worker: photo.worker || '',
+        camera: photo.camera || '',
+        content: photo.content || ''
+    };
+    const form = new FormData();
+    Object.entries(fields).forEach(function(entry) { form.append(entry[0], entry[1]); });
+    form.append('photo', resized, fields.fileName);
+
+    try {
+        if (core?.api) return (await core.api.postForm('/api/photos', form)).data;
+        const response = await fetch(serverBase() + '/api/photos', {
+            method: 'POST', headers: { Authorization: 'Bearer ' + getAuthToken() }, body: form
+        });
+        if (!response.ok) throw new Error('사진 업로드 실패: ' + response.status);
+        return response.json();
+    } catch (error) {
+        const retriable = !navigator.onLine || error?.retriable || error?.code === 'network_error' || error instanceof TypeError;
+        if (!retriable || !core?.queueWhenOffline) throw error;
+        await core.queueWhenOffline({
+            method: 'POST', path: '/api/photos',
+            form: { fields: fields, photo: resized, fileName: fields.fileName }
+        });
+        return { queued: true, previewUrl: URL.createObjectURL(resized) };
+    }
+}

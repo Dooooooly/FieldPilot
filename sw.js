@@ -2,7 +2,7 @@
 // Service Worker - PWA 오프라인 지원 (최적화)
 // ============================================================
 
-const CACHE_NAME = 'FieldPilot-v1.0';
+const CACHE_NAME = 'FieldPilot-v1.1';
 const BASE_PATH = new URL('.', self.location.href).pathname;
 
 // 캐시할 파일 목록 (서브 디렉터리 경로 포함)
@@ -10,7 +10,13 @@ const ASSETS = [
     BASE_PATH,
     BASE_PATH + 'index.html',
     BASE_PATH + 'app.js',
-    BASE_PATH + 'manifest.json'
+    BASE_PATH + 'manifest.json',
+    BASE_PATH + 'src/main.js',
+    BASE_PATH + 'src/config.js',
+    BASE_PATH + 'src/api.js',
+    BASE_PATH + 'src/storage.js',
+    BASE_PATH + 'src/offline.js',
+    BASE_PATH + 'src/ui.js'
 ];
 
 // ===== 설치 =====
@@ -88,4 +94,18 @@ self.addEventListener('message', function(event) {
         self.skipWaiting();
         self.clients.claim();
     }
+});
+
+// Background Sync는 인증 정보를 서비스 워커에 저장하지 않는다. 대신 열린
+// 클라이언트에게 대기열 전송을 요청해 기존 Bearer 인증 흐름을 보존한다.
+self.addEventListener('sync', function(event) {
+    if (event.tag !== 'fieldpilot-request-sync') return;
+    event.waitUntil(
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+            .then(function(clients) {
+                clients.forEach(function(client) {
+                    client.postMessage({ type: 'FIELD_PILOT_FLUSH_OFFLINE_QUEUE' });
+                });
+            })
+    );
 });
