@@ -10082,27 +10082,15 @@ async function sendKakaoWorkDirectMessage() {
         }
 
 
-        const result =
-            await serverPost(
-                '/api/kakaowork/one-to-one',
-                {
-
-                    user:
-                        state.user,
-
-                    place:
-                        state.place,
-
-                    region:
-                        currentRegion ||
-                        fieldPilotAuth?.region ||
-                        '',
-
-                    photos:
-                        photoData
-
-                }
-            );
+       const result = await serverPost(
+    '/api/export/one-to-one',
+    {
+        region: currentRegion,
+        siteName: state.place,
+        fileNames: state.selectedPhotos,
+        userId: state.user?.userId || state.user?.id || ''
+    }
+);
 
 
         if (!result || result.ok === false) {
