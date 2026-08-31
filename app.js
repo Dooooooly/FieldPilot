@@ -9681,7 +9681,10 @@ async function restoreFieldPilotAuth() {
     const saved =
         localStorage.getItem(AUTH_STORAGE_KEY);
 
-    // 저장된 인증정보가 없음
+    // --------------------------------------------------------
+    // 저장된 인증정보 없음
+    // --------------------------------------------------------
+
     if (!saved) {
 
         fieldPilotAuth = {
@@ -9693,6 +9696,7 @@ async function restoreFieldPilotAuth() {
         };
 
         applyAuthorizationState();
+
         return false;
     }
 
@@ -9705,110 +9709,184 @@ async function restoreFieldPilotAuth() {
             !parsed.token ||
             !parsed.role
         ) {
+
             throw new Error(
                 '저장된 인증정보가 올바르지 않습니다.'
             );
         }
 
-        /*
-         * --------------------------------------------------------
-         * 서버 세션 확인
-         * --------------------------------------------------------
-         *
-         * token이 살아 있으면 그대로 복구한다.
-         */
-
-        const base = serverBase();
-
-        if (!base) {
-            throw new Error(
-                '서버 주소가 없습니다.'
-            );
-        }
-
-        const response =
-            await fetch(
-                base + '/api/auth/status',
-                {
-                    method: 'GET',
-                    headers: {
-                        Authorization:
-                            'Bearer ' + parsed.token
-                    }
-                }
-            );
-
-        if (!response.ok) {
-            throw new Error(
-                '서버 인증 세션 만료'
-            );
-        }
-
-        const data =
-            await response.json();
-
-        if (!data.ok) {
-            throw new Error(
-                '인증 상태 확인 실패'
-            );
-        }
-
-        /*
-         * 서버에서 확인된 인증정보로 복구
-         */
+        // ----------------------------------------------------
+        // 1. 로컬 인증정보 우선 복구
+        // ----------------------------------------------------
 
         fieldPilotAuth = {
 
             authorized: true,
 
             role:
-                data.role ||
-                parsed.role ||
-                '',
+                parsed.role || '',
 
             region:
-                data.region ||
-                parsed.region ||
-                '',
+                parsed.region || '',
 
             token:
-                parsed.token,
+                parsed.token || '',
 
             expiresAt:
-                data.expiresAt ||
-                parsed.expiresAt ||
-                0
+                parsed.expiresAt || 0
         };
 
-        localStorage.setItem(
-            AUTH_STORAGE_KEY,
-            JSON.stringify(
-                fieldPilotAuth
-            )
-        );
+        // 지역 사용자라면 저장된 지역을 즉시 적용
+        if (
+            fieldPilotAuth.role === 'region' &&
+            fieldPilotAuth.region
+        ) {
+
+            currentRegion =
+                fieldPilotAuth.region;
+
+            localStorage.setItem(
+                SELECTED_REGION_KEY,
+                currentRegion
+            );
+        }
 
         applyAuthorizationState();
 
         console.log(
-            '[Auth] 인증 복구 완료:',
+            '[Auth] 로컬 인증 복구:',
             fieldPilotAuth.role,
             fieldPilotAuth.region
         );
 
-        return true;
+        // ----------------------------------------------------
+        // 2. 서버 세션 확인
+        // ----------------------------------------------------
+
+        const base =
+            serverBase();
+
+        if (!base) {
+
+            console.warn(
+                '[Auth] 서버 주소 없음 → 로컬 인증 유지'
+            );
+
+            return true;
+        }
+
+        try {
+
+            const response =
+                await fetch(
+                    base + '/api/auth/status',
+                    {
+                        method: 'GET',
+                        headers: {
+                            Authorization:
+                                'Bearer ' +
+                                fieldPilotAuth.token
+                        }
+                    }
+                );
+
+            if (response.ok) {
+
+                const data =
+                    await response.json();
+
+                if (data.ok) {
+
+                    fieldPilotAuth = {
+
+                        authorized: true,
+
+                        role:
+                            data.role ||
+                            fieldPilotAuth.role ||
+                            '',
+
+                        region:
+                            data.region ||
+                            fieldPilotAuth.region ||
+                            '',
+
+                        token:
+                            fieldPilotAuth.token,
+
+                        expiresAt:
+                            data.expiresAt ||
+                            fieldPilotAuth.expiresAt ||
+                            0
+                    };
+
+                    localStorage.setItem(
+                        AUTH_STORAGE_KEY,
+                        JSON.stringify(
+                            fieldPilotAuth
+                        )
+                    );
+
+                    if (
+                        fieldPilotAuth.role ===
+                            'region' &&
+                        fieldPilotAuth.region
+                    ) {
+
+                        currentRegion =
+                            fieldPilotAuth.region;
+
+                        localStorage.setItem(
+                            SELECTED_REGION_KEY,
+                            currentRegion
+                        );
+                    }
+
+                    applyAuthorizationState();
+
+                    console.log(
+                        '[Auth] 서버 인증 확인 완료:',
+                        fieldPilotAuth.role,
+                        fieldPilotAuth.region
+                    );
+
+                    return true;
+                }
+            }
+
+            // ------------------------------------------------
+            // 서버 인증 실패
+            //
+            // 중요:
+            // 여기서 localStorage를 삭제하지 않는다.
+            // ------------------------------------------------
+
+            console.warn(
+                '[Auth] 서버 세션 확인 실패 → 로컬 인증 유지'
+            );
+
+            applyAuthorizationState();
+
+            return true;
+
+        } catch (serverError) {
+
+            console.warn(
+                '[Auth] 서버 확인 불가 → 로컬 인증 유지:',
+                serverError
+            );
+
+            applyAuthorizationState();
+
+            return true;
+        }
 
     } catch (error) {
 
-        console.warn(
-            '[Auth Restore]',
+        console.error(
+            '[Auth Restore] 저장된 인증정보 복구 실패:',
             error
         );
-
-        /*
-         * 여기서는 즉시 인증정보를 삭제한다.
-         * 서버 세션이 실제로 만료된 경우에만
-         * 다시 인가코드를 요구한다.
-         */
 
         localStorage.removeItem(
             AUTH_STORAGE_KEY
@@ -9817,13 +9895,9 @@ async function restoreFieldPilotAuth() {
         fieldPilotAuth = {
 
             authorized: false,
-
             role: '',
-
             region: '',
-
             token: '',
-
             expiresAt: 0
         };
 
