@@ -879,7 +879,7 @@ body {
                         margin-top:4px;
                     "
                 >
-                    사용자 → 현장 → 사진 순서로 선택하세요.
+                    자동 수신자 → 현장 검색 → 서버에 저장된 사진 선택
                 </div>
             </div>
 
@@ -936,7 +936,7 @@ body {
 
         </div>
 
-        <!-- 현장 -->
+        <!-- 현장 검색 -->
         <div
             style="
                 margin-bottom:15px;
@@ -951,12 +951,15 @@ body {
                     margin-bottom:6px;
                 "
             >
-                📍 현장
+                📍 현장 검색
             </label>
 
-            <select
-                id="kakaoWorkExportPlace"
-                onchange="onKakaoWorkExportPlaceChange()"
+            <input
+                id="kakaoWorkExportPlaceSearch"
+                type="text"
+                autocomplete="off"
+                placeholder="현장명을 입력하세요"
+                oninput="searchKakaoWorkExportPlaces()"
                 style="
                     width:100%;
                     box-sizing:border-box;
@@ -967,10 +970,30 @@ body {
                     font-size:14px;
                 "
             >
-                <option value="">
-                    현장을 선택하세요.
-                </option>
-            </select>
+
+            <div
+                id="kakaoWorkExportPlaceResults"
+                style="
+                    display:none;
+                    margin-top:6px;
+                    max-height:150px;
+                    overflow-y:auto;
+                    padding:5px;
+                    background:#f7fafc;
+                    border-radius:9px;
+                "
+            ></div>
+
+            <div
+                id="kakaoWorkExportSelectedPlace"
+                style="
+                    margin-top:6px;
+                    font-size:11px;
+                    color:#718096;
+                "
+            >
+                현장을 검색해서 선택하세요.
+            </div>
 
         </div>
 
