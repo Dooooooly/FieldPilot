@@ -8558,43 +8558,1104 @@ function searchWorkAddPlace() {
     results.style.display = 'block';
 }
 // ============================================================
-// 카카오워크 1:1 내보내기 모달
+// 카카오워크 1:1 사진 내보내기
 // ============================================================
+
+let kakaoWorkExportState = {
+    user: null,
+    place: null,
+    photos: []
+};
+
+
+// ------------------------------------------------------------
+// 모달 열기
+// ------------------------------------------------------------
+
 function openKakaoWorkExportModal() {
 
     const modal =
-        document.getElementById('kakaoWorkExportModal');
+        document.getElementById(
+            'kakaoWorkExportModal'
+        );
 
     if (!modal) {
-        console.warn(
+
+        console.error(
             '[KakaoWork] kakaoWorkExportModal 요소가 없습니다.'
+        );
+
+        alert(
+            '카카오워크 내보내기 화면을 불러올 수 없습니다.'
         );
 
         return;
     }
 
-    // 모달 열기
+
+    kakaoWorkExportState = {
+        user: null,
+        place: null,
+        photos: []
+    };
+
+
     modal.style.display = 'flex';
 
-    // 현재 선택된 지역/현장 정보 갱신
-    if (
-        typeof updateKakaoWorkExportPreview ===
-        'function'
-    ) {
-        updateKakaoWorkExportPreview();
+
+    const search =
+        document.getElementById(
+            'kakaoWorkUserSearch'
+        );
+
+    if (search) {
+
+        search.value = '';
+
+        setTimeout(
+            function() {
+                search.focus();
+            },
+            100
+        );
+
     }
+
+
+    const results =
+        document.getElementById(
+            'kakaoWorkUserResults'
+        );
+
+    if (results) {
+        results.innerHTML = '';
+    }
+
+
+    const selected =
+        document.getElementById(
+            'kakaoWorkSelectedUserBox'
+        );
+
+    if (selected) {
+        selected.style.display = 'none';
+    }
+
+
+    const photos =
+        document.getElementById(
+            'kakaoWorkExportPhotos'
+        );
+
+    if (photos) {
+        photos.value = '';
+    }
+
+
+    const preview =
+        document.getElementById(
+            'kakaoWorkExportPhotoPreview'
+        );
+
+    if (preview) {
+        preview.innerHTML = '';
+    }
+
+
+    loadKakaoWorkExportPlaces();
+
+    updateKakaoWorkExportSummary();
+
 }
-// ============================================================
-// 카카오워크 1:1 내보내기 모달 닫기
-// ============================================================
+
+
+// ------------------------------------------------------------
+// 모달 닫기
+// ------------------------------------------------------------
+
 function closeKakaoWorkExportModal() {
 
     const modal =
-        document.getElementById('kakaoWorkExportModal');
+        document.getElementById(
+            'kakaoWorkExportModal'
+        );
 
-    if (!modal) return;
+    if (modal) {
 
-    modal.style.display = 'none';
+        modal.style.display =
+            'none';
+
+    }
+
+}
+
+
+// ------------------------------------------------------------
+// 현장 목록
+// ------------------------------------------------------------
+
+function loadKakaoWorkExportPlaces() {
+
+    const select =
+        document.getElementById(
+            'kakaoWorkExportPlace'
+        );
+
+    if (!select) return;
+
+
+    select.innerHTML =
+        '<option value="">현장을 선택하세요</option>';
+
+
+    const region =
+        currentRegion ||
+        fieldPilotAuth?.region ||
+        '';
+
+
+    let source =
+        Array.isArray(places)
+            ? places
+            : [];
+
+
+    source.forEach(
+        function(place, index) {
+
+            if (!place) return;
+
+
+            const name =
+                place.name ||
+                place.placeName ||
+                place.title ||
+                place.현장명 ||
+                ('현장 ' + (index + 1));
+
+
+            const option =
+                document.createElement(
+                    'option'
+                );
+
+
+            option.value =
+                String(index);
+
+
+            option.textContent =
+                name;
+
+
+            option.dataset.region =
+                region;
+
+
+            select.appendChild(
+                option
+            );
+
+        }
+    );
+
+
+    const regionStatus =
+        document.getElementById(
+            'kakaoWorkExportRegionStatus'
+        );
+
+
+    if (regionStatus) {
+
+        regionStatus.textContent =
+            region
+                ? '📍 현재 지역: ' + region
+                : '⚠️ 지역이 선택되지 않았습니다.';
+
+    }
+
+
+    /*
+     * 일반 지역 사용자는
+     * 현재 지역의 첫 번째 현장을
+     * 자동 선택하지 않는다.
+     *
+     * 사용자가 명확하게 현장을 선택하게 한다.
+     */
+
+}
+
+
+// ------------------------------------------------------------
+// 현장 변경
+// ------------------------------------------------------------
+
+function onKakaoWorkExportPlaceChange() {
+
+    const select =
+        document.getElementById(
+            'kakaoWorkExportPlace'
+        );
+
+    if (!select) return;
+
+
+    const index =
+        Number(select.value);
+
+
+    if (
+        select.value === '' ||
+        !places[index]
+    ) {
+
+        kakaoWorkExportState.place =
+            null;
+
+    } else {
+
+        kakaoWorkExportState.place =
+            places[index];
+
+    }
+
+
+    updateKakaoWorkExportSummary();
+
+}
+
+
+// ------------------------------------------------------------
+// 사용자 검색
+// ------------------------------------------------------------
+
+async function searchKakaoWorkUsers() {
+
+    const input =
+        document.getElementById(
+            'kakaoWorkUserSearch'
+        );
+
+    const results =
+        document.getElementById(
+            'kakaoWorkUserResults'
+        );
+
+    const status =
+        document.getElementById(
+            'kakaoWorkUserSearchStatus'
+        );
+
+
+    if (!input || !results) return;
+
+
+    const keyword =
+        input.value.trim();
+
+
+    if (!keyword) {
+
+        if (status) {
+            status.textContent =
+                '검색어를 입력하세요.';
+        }
+
+        return;
+    }
+
+
+    if (status) {
+
+        status.textContent =
+            '⏳ 사용자 검색 중...';
+
+    }
+
+
+    results.innerHTML = '';
+
+
+    try {
+
+        /*
+         * 서버에 사용자 검색 API가 있다면 우선 사용
+         */
+
+        const data =
+            await serverGet(
+                '/api/kakaowork/users?keyword=' +
+                encodeURIComponent(keyword)
+            );
+
+
+        const users =
+            Array.isArray(data)
+                ? data
+                : (
+                    Array.isArray(data.users)
+                        ? data.users
+                        : []
+                );
+
+
+        if (!users.length) {
+
+            results.innerHTML =
+                '<div style="padding:12px;color:#718096;text-align:center;">' +
+                '검색 결과가 없습니다.' +
+                '</div>';
+
+            if (status) {
+                status.textContent =
+                    '검색 결과 없음';
+            }
+
+            return;
+        }
+
+
+        users.forEach(
+            function(user) {
+
+                renderKakaoWorkUserResult(
+                    user,
+                    results
+                );
+
+            }
+        );
+
+
+        if (status) {
+
+            status.textContent =
+                users.length +
+                '명의 사용자를 찾았습니다.';
+
+        }
+
+
+    } catch (error) {
+
+        console.error(
+            '[KakaoWork] 사용자 검색 실패:',
+            error
+        );
+
+
+        /*
+         * 서버 API가 아직 없다면
+         * 명확하게 표시한다.
+         */
+
+        results.innerHTML =
+            '<div style="' +
+            'padding:12px;' +
+            'background:#fff5f5;' +
+            'border:1px solid #fed7d7;' +
+            'border-radius:8px;' +
+            'color:#c53030;' +
+            '">' +
+            '❌ 사용자 검색에 실패했습니다.<br>' +
+            '<small>' +
+            escapeHtml(
+                error.message
+            ) +
+            '</small>' +
+            '</div>';
+
+
+        if (status) {
+
+            status.textContent =
+                '사용자 검색 실패';
+
+        }
+
+    }
+
+}
+
+
+// ------------------------------------------------------------
+// 사용자 검색 결과 UI
+// ------------------------------------------------------------
+
+function renderKakaoWorkUserResult(
+    user,
+    container
+) {
+
+    const button =
+        document.createElement(
+            'button'
+        );
+
+
+    button.type =
+        'button';
+
+
+    button.style.cssText =
+        'display:block;' +
+        'width:100%;' +
+        'text-align:left;' +
+        'padding:11px;' +
+        'margin-top:6px;' +
+        'border:1px solid #e2e8f0;' +
+        'border-radius:9px;' +
+        'background:#fff;' +
+        'cursor:pointer;';
+
+
+    const name =
+        user.name ||
+        user.user_name ||
+        user.displayName ||
+        '이름 없음';
+
+
+    const email =
+        user.email ||
+        user.user_email ||
+        '';
+
+
+    button.innerHTML =
+        '<div style="font-weight:700;">' +
+        escapeHtml(name) +
+        '</div>' +
+        (
+            email
+                ? '<div style="font-size:11px;color:#718096;margin-top:2px;">' +
+                  escapeHtml(email) +
+                  '</div>'
+                : ''
+        );
+
+
+    button.onclick =
+        function() {
+
+            selectKakaoWorkUser(
+                user
+            );
+
+        };
+
+
+    container.appendChild(
+        button
+    );
+
+}
+
+
+// ------------------------------------------------------------
+// 사용자 선택
+// ------------------------------------------------------------
+
+function selectKakaoWorkUser(user) {
+
+    kakaoWorkExportState.user =
+        user;
+
+
+    const name =
+        user.name ||
+        user.user_name ||
+        user.displayName ||
+        '이름 없음';
+
+
+    const email =
+        user.email ||
+        user.user_email ||
+        '';
+
+
+    const box =
+        document.getElementById(
+            'kakaoWorkSelectedUserBox'
+        );
+
+
+    const display =
+        document.getElementById(
+            'kakaoWorkSelectedUser'
+        );
+
+
+    if (box) {
+
+        box.style.display =
+            'block';
+
+    }
+
+
+    if (display) {
+
+        display.innerHTML =
+            escapeHtml(name) +
+            (
+                email
+                    ? ' <span style="font-size:11px;color:#718096;">' +
+                      escapeHtml(email) +
+                      '</span>'
+                    : ''
+            );
+
+    }
+
+
+    /*
+     * 용산 사용자인 경우
+     * 용산 현장을 자동 선택
+     */
+
+    const userRegion =
+        user.region ||
+        user.regionName ||
+        user.area ||
+        user.지역 ||
+        '';
+
+
+    const authorizedRegion =
+        fieldPilotAuth?.region ||
+        currentRegion ||
+        '';
+
+
+    const targetRegion =
+        userRegion ||
+        authorizedRegion;
+
+
+    if (
+        targetRegion === '용산' ||
+        authorizedRegion === '용산'
+    ) {
+
+        autoSelectYongsanPlace();
+
+    }
+
+
+    updateKakaoWorkExportSummary();
+
+}
+
+
+// ------------------------------------------------------------
+// 용산 현장 자동 선택
+// ------------------------------------------------------------
+
+function autoSelectYongsanPlace() {
+
+    const select =
+        document.getElementById(
+            'kakaoWorkExportPlace'
+        );
+
+    if (!select) return;
+
+
+    const region =
+        currentRegion ||
+        fieldPilotAuth?.region ||
+        '';
+
+
+    if (region !== '용산') {
+        return;
+    }
+
+
+    /*
+     * 이미 용산 사용자이고
+     * 용산 지역 현장만 존재하므로
+     * 첫 번째 현장을 자동 선택
+     */
+
+    if (
+        select.options.length > 1 &&
+        select.value === ''
+    ) {
+
+        select.selectedIndex =
+            1;
+
+
+        onKakaoWorkExportPlaceChange();
+
+    }
+
+}
+
+
+// ------------------------------------------------------------
+// 사진 선택
+// ------------------------------------------------------------
+
+function handleKakaoWorkExportPhotos(
+    input
+) {
+
+    if (!input) return;
+
+
+    kakaoWorkExportState.photos =
+        Array.from(
+            input.files || []
+        );
+
+
+    renderKakaoWorkPhotoPreview();
+
+    updateKakaoWorkExportSummary();
+
+}
+
+
+// ------------------------------------------------------------
+// 사진 미리보기
+// ------------------------------------------------------------
+
+function renderKakaoWorkPhotoPreview() {
+
+    const container =
+        document.getElementById(
+            'kakaoWorkExportPhotoPreview'
+        );
+
+
+    if (!container) return;
+
+
+    container.innerHTML = '';
+
+
+    kakaoWorkExportState.photos.forEach(
+        function(file) {
+
+            const reader =
+                new FileReader();
+
+
+            reader.onload =
+                function(event) {
+
+                    const img =
+                        document.createElement(
+                            'img'
+                        );
+
+
+                    img.src =
+                        event.target.result;
+
+
+                    img.style.cssText =
+                        'width:100%;' +
+                        'aspect-ratio:1;' +
+                        'object-fit:cover;' +
+                        'border-radius:7px;' +
+                        'border:1px solid #e2e8f0;';
+
+
+                    container.appendChild(
+                        img
+                    );
+
+                };
+
+
+            reader.readAsDataURL(
+                file
+            );
+
+        }
+    );
+
+}
+
+
+// ------------------------------------------------------------
+// 전송 가능 상태
+// ------------------------------------------------------------
+
+function updateKakaoWorkExportSummary() {
+
+    const summary =
+        document.getElementById(
+            'kakaoWorkExportSummary'
+        );
+
+
+    const send =
+        document.getElementById(
+            'kakaoWorkExportSendBtn'
+        );
+
+
+    const user =
+        kakaoWorkExportState.user;
+
+
+    const place =
+        kakaoWorkExportState.place;
+
+
+    const photos =
+        kakaoWorkExportState.photos;
+
+
+    const userName =
+        user
+            ? (
+                user.name ||
+                user.user_name ||
+                user.displayName ||
+                '선택됨'
+            )
+            : '선택 안 됨';
+
+
+    const placeName =
+        place
+            ? (
+                place.name ||
+                place.placeName ||
+                place.title ||
+                place.현장명 ||
+                '선택됨'
+            )
+            : '선택 안 됨';
+
+
+    if (summary) {
+
+        summary.innerHTML =
+            '사용자: ' +
+            escapeHtml(userName) +
+            '<br>' +
+            '현장: ' +
+            escapeHtml(placeName) +
+            '<br>' +
+            '사진: ' +
+            photos.length +
+            '장';
+
+    }
+
+
+    if (send) {
+
+        send.disabled =
+            !user ||
+            !place ||
+            photos.length === 0;
+
+    }
+
+}
+
+
+// ------------------------------------------------------------
+// 실제 1:1 전송
+// ------------------------------------------------------------
+
+async function sendKakaoWorkDirectMessage() {
+
+    const state =
+        kakaoWorkExportState;
+
+
+    if (!state.user) {
+
+        alert(
+            '사용자를 선택하세요.'
+        );
+
+        return;
+    }
+
+
+    if (!state.place) {
+
+        alert(
+            '현장을 선택하세요.'
+        );
+
+        return;
+    }
+
+
+    if (!state.photos.length) {
+
+        alert(
+            '사진을 선택하세요.'
+        );
+
+        return;
+    }
+
+
+    const status =
+        document.getElementById(
+            'kakaoWorkExportStatus'
+        );
+
+
+    const button =
+        document.getElementById(
+            'kakaoWorkExportSendBtn'
+        );
+
+
+    if (button) {
+
+        button.disabled =
+            true;
+
+        button.textContent =
+            '⏳ 전송 중...';
+
+    }
+
+
+    try {
+
+        /*
+         * 사진을 Base64로 변환
+         */
+
+        const photoData =
+            [];
+
+
+        for (
+            const file
+            of state.photos
+        ) {
+
+            const base64 =
+                await fileToBase64(
+                    file
+                );
+
+
+            photoData.push({
+
+                name:
+                    file.name,
+
+                type:
+                    file.type,
+
+                data:
+                    base64
+
+            });
+
+        }
+
+
+        const result =
+            await serverPost(
+                '/api/kakaowork/direct-send',
+                {
+
+                    user:
+                        state.user,
+
+                    place:
+                        state.place,
+
+                    region:
+                        currentRegion ||
+                        fieldPilotAuth?.region ||
+                        '',
+
+                    photos:
+                        photoData
+
+                }
+            );
+
+
+        if (!result || result.ok === false) {
+
+            throw new Error(
+                result?.message ||
+                result?.error ||
+                '전송 실패'
+            );
+
+        }
+
+
+        if (status) {
+
+            status.style.color =
+                '#38a169';
+
+            status.textContent =
+                '✅ 카카오워크 1:1 전송 완료';
+
+        }
+
+
+        alert(
+            '✅ 카카오워크 1:1 전송이 완료되었습니다.'
+        );
+
+
+        setTimeout(
+            closeKakaoWorkExportModal,
+            500
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            '[KakaoWork] 1:1 전송 실패:',
+            error
+        );
+
+
+        if (status) {
+
+            status.style.color =
+                '#e53e3e';
+
+            status.textContent =
+                '❌ ' +
+                error.message;
+
+        }
+
+
+        alert(
+            '❌ 카카오워크 전송 실패\n\n' +
+            error.message
+        );
+
+
+    } finally {
+
+        if (button) {
+
+            button.disabled =
+                false;
+
+            button.textContent =
+                '📤 1:1 전송';
+
+            updateKakaoWorkExportSummary();
+
+        }
+
+    }
+
+}
+
+
+// ------------------------------------------------------------
+// File → Base64
+// ------------------------------------------------------------
+
+function fileToBase64(file) {
+
+    return new Promise(
+        function(resolve, reject) {
+
+            const reader =
+                new FileReader();
+
+
+            reader.onload =
+                function() {
+
+                    const result =
+                        String(
+                            reader.result ||
+                            ''
+                        );
+
+
+                    const comma =
+                        result.indexOf(',');
+
+
+                    resolve(
+                        comma >= 0
+                            ? result.slice(
+                                comma + 1
+                            )
+                            : result
+                    );
+
+                };
+
+
+            reader.onerror =
+                function() {
+
+                    reject(
+                        new Error(
+                            '사진을 읽을 수 없습니다.'
+                        )
+                    );
+
+                };
+
+
+            reader.readAsDataURL(
+                file
+            );
+
+        }
+    );
+
+}
+
+
+// ------------------------------------------------------------
+// HTML escape
+// ------------------------------------------------------------
+
+function escapeHtml(value) {
+
+    return String(
+        value ?? ''
+    )
+        .replace(
+            /&/g,
+            '&amp;'
+        )
+        .replace(
+            /</g,
+            '&lt;'
+        )
+        .replace(
+            />/g,
+            '&gt;'
+        )
+        .replace(
+            /"/g,
+            '&quot;'
+        )
+        .replace(
+            /'/g,
+            '&#039;'
+        );
+
 }
 
 function selectWorkAddPlace(placeId) {
