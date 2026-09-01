@@ -3,6 +3,7 @@ import { ApiClient, ApiError, createApiClient, isRetryableApiError } from './api
 import { storage } from './storage.js';
 import { flushQueue, queueWhenOffline, resizeImage } from './offline.js';
 import { ui } from './ui.js';
+import { createPhotoThumbnail, editPhoto } from './photo-tools.js';
 
 const api = createApiClient();
 
@@ -32,6 +33,8 @@ window.FieldPilotCore = {
     resolveServerUrl,
     storage,
     resizeImage,
+    createPhotoThumbnail,
+    editPhoto,
     queueWhenOffline,
     flushQueue: function() { return flushQueue(api); },
     ui,
