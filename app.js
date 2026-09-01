@@ -255,6 +255,9 @@ let pendingWorkUpload = false;
 let startMarker = null;
 let routeMarkers = [];
 let placeMarkers = [];
+let nearbyPlaceClusterer = null;
+let nearbyClustersEnabled = localStorage.getItem('nearbyPlaceClusters') !== 'off';
+let mapDarkFilterStrength = Number(localStorage.getItem('mapDarkFilterStrength') || 50);
 let singlePlaceMarker = null;
 let singlePlaceInfoWindow = null;
 let autoSyncTimer = null;
@@ -1969,6 +1972,7 @@ function savePlaces() {
     });
 
     renderPlaces();
+    if (kakaoMap) renderNearbyPlaceClusters();
     updateStorageInfo();
 
     scheduleAutoSync();
@@ -2089,6 +2093,7 @@ async function loadPlacesFromServer(region, useServer = true) {
     }
 
     renderPlaces();
+    if (kakaoMap) renderNearbyPlaceClusters();
     updateStorageInfo();
 
     if (!useServer || !navigator.onLine) {
@@ -2118,6 +2123,7 @@ async function loadPlacesFromServer(region, useServer = true) {
             });
 
             renderPlaces();
+            if (kakaoMap) renderNearbyPlaceClusters();
             updateStorageInfo();
 
             console.log(
@@ -2222,6 +2228,7 @@ function loadRegionList() {
     }
 
     updateRegionDisplay();
+    clearNearbyPlaceClusters();
     renderPlaces();
     updateStorageInfo();
 
@@ -2351,6 +2358,7 @@ async function switchRegion(region) {
 
     // LOCAL → SERVER
     await loadPlacesFromServer(region, true);
+    if (kakaoMap) renderNearbyPlaceClusters();
 
     // 경로 데이터 초기화
     waypoints = [];
@@ -5229,7 +5237,7 @@ function initMap() {
         '?appkey=' +
         encodeURIComponent(KAKAO_JAVASCRIPT_KEY) +
         '&autoload=false' +
-        '&libraries=services';
+        '&libraries=services,clusterer';
 
     script.async = true;
     script.defer = true;
@@ -5304,11 +5312,77 @@ function createMap(container) {
         // kakaoMap.setZoomable(true);    ← 제거
         
         applyPendingMapCenter();
+        renderNearbyPlaceClusters();
+        initializeMapViewControls();
         updateSettingsConnectionUI();
         showTabStatus('tab-route', '🗺️ 지도 로드 완료', 'ok');
     } catch(e) {
         container.innerHTML = '<div style="...">❌ 지도 생성 실패</div>';
     }
+}
+
+function clearNearbyPlaceClusters() {
+    if (nearbyPlaceClusterer) {
+        try { nearbyPlaceClusterer.clear(); } catch (e) {}
+        try { nearbyPlaceClusterer.setMap(null); } catch (e) {}
+    }
+    nearbyPlaceClusterer = null;
+    placeMarkers.forEach(function(marker) { try { marker.setMap(null); } catch (e) {} });
+    placeMarkers = [];
+}
+
+function renderNearbyPlaceClusters() {
+    clearNearbyPlaceClusters();
+    if (!nearbyClustersEnabled || !kakaoMap || !window.kakao?.maps?.MarkerClusterer) return;
+    const validPlaces = (Array.isArray(places) ? places : []).filter(function(place) {
+        return Number.isFinite(Number(place?.lat)) && Number.isFinite(Number(place?.lng));
+    });
+    if (!validPlaces.length) return;
+    placeMarkers = validPlaces.map(function(place) {
+        const marker = new kakao.maps.Marker({
+            position: new kakao.maps.LatLng(Number(place.lat), Number(place.lng)),
+            title: String(place.name || '현장')
+        });
+        kakao.maps.event.addListener(marker, 'click', function() {
+            const info = new kakao.maps.InfoWindow({ content: '<div style="padding:7px 10px;white-space:nowrap;font-size:12px;font-weight:700;">' + escapeHtml(place.name || '현장') + '</div>' });
+            info.open(kakaoMap, marker);
+            setTimeout(function() { try { info.close(); } catch (e) {} }, 3500);
+        });
+        return marker;
+    });
+    nearbyPlaceClusterer = new kakao.maps.MarkerClusterer({
+        map: kakaoMap,
+        averageCenter: true,
+        minLevel: 4,
+        disableClickZoom: false,
+        styles: [{ width:'42px', height:'42px', background:'rgba(49,130,206,.9)', borderRadius:'50%', color:'#fff', textAlign:'center', fontWeight:'700', lineHeight:'42px', boxShadow:'0 3px 12px rgba(0,0,0,.25)' }]
+    });
+    nearbyPlaceClusterer.addMarkers(placeMarkers);
+}
+
+function toggleNearbyPlaceClusters(enabled) {
+    nearbyClustersEnabled = !!enabled;
+    localStorage.setItem('nearbyPlaceClusters', nearbyClustersEnabled ? 'on' : 'off');
+    renderNearbyPlaceClusters();
+}
+
+function setMapDarkFilterStrength(value) {
+    mapDarkFilterStrength = Math.max(0, Math.min(100, Number(value) || 0));
+    localStorage.setItem('mapDarkFilterStrength', String(mapDarkFilterStrength));
+    const output = document.getElementById('mapDarkFilterValue');
+    if (output) output.textContent = mapDarkFilterStrength + '%';
+    const brightness = 1 - mapDarkFilterStrength * 0.003;
+    const contrast = 1 + mapDarkFilterStrength * 0.002;
+    const saturation = 1 - mapDarkFilterStrength * 0.0015;
+    document.documentElement.style.setProperty('--map-dark-filter', 'brightness(' + brightness.toFixed(3) + ') contrast(' + contrast.toFixed(3) + ') saturate(' + saturation.toFixed(3) + ')');
+}
+
+function initializeMapViewControls() {
+    const toggle = document.getElementById('nearbyClusterToggle');
+    if (toggle) toggle.checked = nearbyClustersEnabled;
+    const range = document.getElementById('mapDarkFilterStrength');
+    if (range) range.value = String(mapDarkFilterStrength);
+    setMapDarkFilterStrength(mapDarkFilterStrength);
 }
 
 function addRouteMarker(lat, lng, title, isStart, colorIndex) {
@@ -7467,6 +7541,12 @@ document.addEventListener(
             '[FieldPilot] 초기화 완료'
         );
 
+        initializeMapViewControls();
+        refreshGlobalConnectionStatus();
+        if (!window._fieldPilotStatusTimer) {
+            window._fieldPilotStatusTimer = setInterval(refreshGlobalConnectionStatus, 30000);
+        }
+
     }
 );// ★★ DOMContentLoaded(38. 초기화 실행) 콜백을 닫는 괄호 — 반드시 필요합니다! ★★
 
@@ -7910,6 +7990,7 @@ function applyDarkMode(isDark) {
         document.documentElement.removeAttribute('data-theme');
         document.body.classList.remove('dark-mode');
     }
+    setMapDarkFilterStrength(mapDarkFilterStrength);
     updateDarkModeButton();
 }
 
@@ -8037,7 +8118,7 @@ function injectDarkModeCSS() {
     c.push('body.dark-mode .tab-status.info{background:#2c5282!important;color:#bee3f8!important}');
     c.push('body.dark-mode #offlineBanner{background:#9b2c2c!important;color:#fed7d7!important}');
     // 지도
-    c.push('body.dark-mode #map{filter:brightness(0.85) contrast(1.1)}');
+    c.push('body.dark-mode #map{filter:var(--map-dark-filter,brightness(.85) contrast(1.1))}');
     // 모달
     c.push('body.dark-mode .modal{background:#2d3748!important;color:#e2e8f0!important}');
     c.push('body.dark-mode .modal h3{color:#f7fafc!important}');
@@ -9874,12 +9955,16 @@ function renderKakaoWorkExportPhotoList(
 
         if (!fileName) return;
 
-        const url =
+        const originalUrl =
             photoDownloadUrl(
                 region,
                 siteName,
                 fileName
             );
+
+        const thumbnailUrl = photoThumbnailUrl(region, siteName, fileName);
+        const capturedAt = photo.capturedAt || photo.modifiedAt || '';
+        const worker = photo.worker || '작업자 미설정';
 
         html +=
             '<label style="display:flex;align-items:center;gap:8px;padding:7px 3px;border-radius:8px;cursor:pointer;">' +
@@ -9887,17 +9972,15 @@ function renderKakaoWorkExportPhotoList(
             escapeHtml(fileName) +
             '" onchange="updateKakaoWorkExportSelection()">' +
             '<img src="' +
-            url +
-            '" loading="lazy" style="width:56px;height:56px;object-fit:cover;border-radius:7px;background:#edf2f7;border:1px solid #e2e8f0;" onerror="this.style.opacity=0.35;">' +
+            thumbnailUrl +
+            '" loading="lazy" data-original-url="' + escapeHtml(originalUrl) + '" onclick="event.preventDefault();event.stopPropagation();openKakaoWorkPhotoPreview(this.dataset.originalUrl,\'' + escapeJsString(fileName) + '\')" style="width:56px;height:56px;object-fit:cover;border-radius:7px;background:#edf2f7;border:1px solid #e2e8f0;" onerror="this.style.opacity=0.35;">' +
             '<div style="min-width:0;flex:1;">' +
             '<div style="font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
             escapeHtml(fileName) +
             '</div>' +
             '<div style="font-size:10px;color:#a0aec0;margin-top:2px;">' +
-            formatKakaoWorkPhotoInfo(
-                photo.size,
-                photo.modifiedAt
-            ) +
+            escapeHtml(siteName) + ' · 👤 ' + escapeHtml(worker) + '<br>' +
+            formatKakaoWorkPhotoInfo(photo.size, capturedAt) +
             '</div>' +
             '</div>' +
             '</label>';
@@ -10599,6 +10682,8 @@ function updateKakaoWorkExportSummary() {
             'kakaoWorkExportSendBtn'
         );
 
+    const download = document.getElementById('kakaoWorkExportDownloadBtn');
+
 
     const user =
         kakaoWorkExportState.user;
@@ -10660,6 +10745,43 @@ function updateKakaoWorkExportSummary() {
 
     }
 
+    if (download) download.disabled = !place || photos.length === 0;
+
+}
+
+function openKakaoWorkPhotoPreview(url, fileName) {
+    if (!url) return;
+    const existing = document.getElementById('kakaoWorkOriginalPreview');
+    if (existing) existing.remove();
+    const modal = document.createElement('div');
+    modal.id = 'kakaoWorkOriginalPreview';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:1000000;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;padding:18px;';
+    const image = document.createElement('img');
+    image.src = url;
+    image.alt = fileName || '원본 사진';
+    image.style.cssText = 'max-width:96%;max-height:90vh;object-fit:contain;border-radius:10px;box-shadow:0 20px 60px rgba(0,0,0,.45);';
+    modal.appendChild(image);
+    modal.addEventListener('click', function() { modal.remove(); });
+    document.body.appendChild(modal);
+}
+
+function downloadSelectedKakaoWorkPhotos() {
+    const state = kakaoWorkExportState;
+    const siteName = String(state.place?.name || state.place?.placeName || '').trim();
+    const region = String(currentRegion || fieldPilotAuth?.region || '').trim();
+    if (!region || !siteName || !state.photos.length) {
+        alert('다운로드할 사진을 선택하세요.');
+        return;
+    }
+    state.photos.forEach(function(photo, index) {
+        setTimeout(function() {
+            const link = document.createElement('a');
+            link.href = photoDownloadUrl(region, siteName, photo.fileName);
+            link.download = photo.fileName || ('photo_' + (index + 1) + '.jpg');
+            link.rel = 'noopener';
+            document.body.appendChild(link); link.click(); link.remove();
+        }, index * 180);
+    });
 }
 
 
@@ -11365,6 +11487,13 @@ function photoDownloadUrl(region, siteName, fileName) {
         + '&fileName=' + encodeURIComponent(fileName);
 }
 
+function photoThumbnailUrl(region, siteName, fileName) {
+    return serverBase() + '/api/photo/thumbnail'
+        + '?region=' + encodeURIComponent(region)
+        + '&siteName=' + encodeURIComponent(siteName)
+        + '&fileName=' + encodeURIComponent(fileName);
+}
+
 function newPhotoId() {
     return 'p_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
@@ -11423,8 +11552,15 @@ async function savePhotoToDB(photo) {
         dataUrl: result.queued
             ? (photo.dataUrl || result.previewUrl || '')
             : photoDownloadUrl(region, siteName, result.fileName),
+        thumbnailUrl: result.queued
+            ? (photo.dataUrl || result.previewUrl || '')
+            : photoThumbnailUrl(region, siteName, result.fileName),
         fileSize: photo.fileSize,
-        uploadedAt: photo.uploadedAt
+        uploadedAt: photo.uploadedAt,
+        capturedAt: photo.capturedAt || photo.uploadedAt,
+        worker: record.worker || '',
+        date: record.date || '',
+        time: record.time || ''
     });
     return id;
 }
@@ -11451,8 +11587,13 @@ async function getPhotosByWorkId(workId) {
             siteName: siteName,
             fileName: p.fileName,
             dataUrl: photoDownloadUrl(region, siteName, p.fileName),
+            thumbnailUrl: photoThumbnailUrl(region, siteName, p.fileName),
             fileSize: p.size,
-            uploadedAt: p.modifiedAt
+            uploadedAt: p.savedAt || p.modifiedAt,
+            capturedAt: p.capturedAt || p.modifiedAt,
+            worker: p.worker || record.worker || '',
+            date: p.date || record.date || '',
+            time: p.time || record.time || ''
         };
         photoInfoCache.set(id, entry);
         return entry;
@@ -11486,7 +11627,12 @@ async function handleWorkPhotoUpload(event) {
     if (!files || files.length === 0) return;
     let workId = event.target.getAttribute('data-work-id');
     let statusEl = document.getElementById('workPhotoStatus');
-    if (statusEl) statusEl.textContent = '📷 사진 업로드 중...';
+    if (statusEl) statusEl.textContent = '✏️ 사진 편집 및 업로드 준비 중...';
+
+    let uploadedCount = 0;
+    let duplicateCount = 0;
+    let cancelledCount = 0;
+    const record = findWorkRecordById(workId);
 
     for (let i = 0; i < files.length; i++) {
         let file = files[i];
@@ -11494,17 +11640,39 @@ async function handleWorkPhotoUpload(event) {
             showTabStatus('tab-work', '⚠️ "' + file.name + '" 15MB 초과', 'warning');
             continue;
         }
-        await savePhotoToDB({
-            id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5) + '_' + i,
-            workId: workId,
-            file: file,
-            fileName: file.name,
-            fileSize: file.size,
-            uploadedAt: new Date().toISOString()
-        });
+        try {
+            const edited = fieldPilotCore()?.editPhoto
+                ? await fieldPilotCore().editPhoto(file, { siteName: record?.placeName || '', worker: record?.worker || workerName || '' })
+                : file;
+            if (!edited) { cancelledCount += 1; continue; }
+            const capturedAt = new Date(file.lastModified || Date.now()).toISOString();
+            await savePhotoToDB({
+                id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5) + '_' + i,
+                workId: workId,
+                file: edited,
+                fileName: edited.name || file.name,
+                fileSize: edited.size,
+                uploadedAt: new Date().toISOString(),
+                capturedAt: capturedAt
+            });
+            uploadedCount += 1;
+        } catch (error) {
+            if (error?.status === 409 && error?.data?.error === 'duplicate_photo') {
+                duplicateCount += 1;
+                continue;
+            }
+            console.error('[FieldPilot] 사진 업로드 실패:', error);
+            showTabStatus('tab-work', '❌ 사진 업로드 실패: ' + error.message, 'error');
+        }
     }
 
-    if (statusEl) statusEl.textContent = '✅ 사진 업로드 완료';
+    if (statusEl) {
+        const parts = [];
+        if (uploadedCount) parts.push('업로드 ' + uploadedCount + '장');
+        if (duplicateCount) parts.push('중복 제외 ' + duplicateCount + '장');
+        if (cancelledCount) parts.push('취소 ' + cancelledCount + '장');
+        statusEl.textContent = (uploadedCount ? '✅ ' : 'ℹ️ ') + (parts.join(' · ') || '선택한 사진이 없습니다');
+    }
     event.target.value = '';
     renderWorkPhotoList(workId);
 }
@@ -11523,7 +11691,7 @@ async function renderWorkPhotoList(workId) {
     for (let i = 0; i < photos.length; i++) {
         let p = photos[i];
         html += '<div style="position:relative;width:70px;height:70px;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0;">';
-        html += '<img src="' + p.dataUrl + '" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="viewPhoto(\'' + p.id + '\')">';
+        html += '<img src="' + (p.thumbnailUrl || p.dataUrl) + '" loading="lazy" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="viewPhoto(\'' + p.id + '\')">';
         html += '<button onclick="event.stopPropagation();deleteWorkPhoto(\'' + p.id + '\',\'' + workId + '\')" style="position:absolute;top:2px;right:2px;background:rgba(229,62,62,0.9);color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>';
         html += '</div>';
     }
@@ -11670,7 +11838,7 @@ async function showPlaceHistory(placeName) {
             if (photos.length > 0) {
                 html += '<div style="display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;">';
                 for (let j = 0; j < Math.min(photos.length, 3); j++) {
-                    html += '<img src="' + photos[j].dataUrl + '" style="width:50px;height:50px;object-fit:cover;border-radius:6px;border:1px solid #e2e8f0;cursor:pointer;" onclick="event.stopPropagation();viewPhoto(\'' + photos[j].id + '\')">';
+                    html += '<img src="' + (photos[j].thumbnailUrl || photos[j].dataUrl) + '" loading="lazy" style="width:50px;height:50px;object-fit:cover;border-radius:6px;border:1px solid #e2e8f0;cursor:pointer;" onclick="event.stopPropagation();viewPhoto(\'' + photos[j].id + '\')">';
                 }
                 if (photos.length > 3) {
                     html += '<div style="width:50px;height:50px;background:#e2e8f0;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#718096;">+' + (photos.length - 3) + '</div>';
@@ -12560,6 +12728,8 @@ async function githubSync(kind, region, data, message) {
     if (!isGitHubConfigured() || !navigator.onLine || !region) return false;
     try {
         await serverPost('/api/github/sync', { kind: kind, region: region, data: data, message: message });
+        localStorage.setItem('fieldPilotLastGithubSync', new Date().toISOString());
+        refreshGlobalConnectionStatus();
         return true;
     } catch (error) {
         console.warn('[FieldPilot] GitHub 서버 동기화 실패:', error);
@@ -12696,6 +12866,7 @@ function updateOnlineStatus() {
     if (banner) banner.classList.toggle('show', !navigator.onLine);
     if (!navigator.onLine) {
         showTabStatus('tab-settings', '📡 오프라인 - 변경사항을 안전하게 대기열에 보관합니다.', 'warning');
+        refreshGlobalConnectionStatus();
         return;
     }
 
@@ -12708,7 +12879,55 @@ function updateOnlineStatus() {
         setTimeout(function() { uploadToGitHub(true); }, 1000);
         if (pendingWorkUpload) setTimeout(function() { uploadWorkToGitHub(currentWork || loadWorkFromLocalStorage()); }, 1500);
     }
+    refreshGlobalConnectionStatus();
 }
+
+function setGlobalConnectionChip(id, text, state) {
+    const element = document.getElementById(id);
+    if (!element) return;
+    element.textContent = text;
+    element.className = 'connection-status-chip' + (state ? ' is-' + state : '');
+}
+
+async function refreshGlobalConnectionStatus() {
+    if (!navigator.onLine) {
+        setGlobalConnectionChip('globalServerStatus', '서버 오프라인', 'error');
+    } else if (!serverBase()) {
+        setGlobalConnectionChip('globalServerStatus', '서버 주소 미설정', 'error');
+    } else {
+        try {
+            const response = await fetch(serverBase() + '/api/health', { cache: 'no-store' });
+            if (!response.ok) throw new Error('health ' + response.status);
+            setGlobalConnectionChip('globalServerStatus', '서버 연결됨', 'ok');
+        } catch (error) {
+            setGlobalConnectionChip('globalServerStatus', '서버 연결 실패', 'error');
+        }
+    }
+
+    const lastSync = localStorage.getItem('fieldPilotLastGithubSync');
+    if (!navigator.onLine) {
+        setGlobalConnectionChip('globalGithubStatus', 'GitHub 동기화 대기', 'warn');
+    } else if (lastSync) {
+        setGlobalConnectionChip('globalGithubStatus', 'GitHub 동기화 완료', 'ok');
+    } else if (isGitHubConfigured()) {
+        setGlobalConnectionChip('globalGithubStatus', 'GitHub 연결됨', 'ok');
+    } else {
+        setGlobalConnectionChip('globalGithubStatus', 'GitHub 미설정', 'warn');
+    }
+
+    try {
+        const pending = await fieldPilotCore()?.storage?.queuedRequestCount?.() || 0;
+        setGlobalConnectionChip(
+            'globalOfflineQueueStatus',
+            pending ? '오프라인 대기 ' + pending + '건' : '오프라인 대기 없음',
+            pending ? 'warn' : 'ok'
+        );
+    } catch (error) {
+        setGlobalConnectionChip('globalOfflineQueueStatus', '대기열 확인 실패', 'warn');
+    }
+}
+
+window.addEventListener('fieldpilot:queue-changed', refreshGlobalConnectionStatus);
 
 function autoSyncStats() {
     if (isGitHubConfigured() && navigator.onLine) refreshStatsFromGitHub();
@@ -12740,6 +12959,12 @@ async function uploadPhotoMultipart(photo) {
 
     const core = fieldPilotCore();
     const resized = core?.resizeImage ? await core.resizeImage(file) : file;
+    let thumbnail = null;
+    try {
+        thumbnail = core?.createPhotoThumbnail ? await core.createPhotoThumbnail(resized) : null;
+    } catch (error) {
+        console.warn('[FieldPilot] 사진 썸네일 생성 실패, 원본 폴백 사용:', error);
+    }
     const fields = {
         region: photo.region,
         siteName: photo.siteName,
@@ -12749,11 +12974,13 @@ async function uploadPhotoMultipart(photo) {
         time: photo.time || '',
         worker: photo.worker || '',
         camera: photo.camera || '',
-        content: photo.content || ''
+        content: photo.content || '',
+        capturedAt: photo.capturedAt || new Date(file.lastModified || Date.now()).toISOString()
     };
     const form = new FormData();
     Object.entries(fields).forEach(function(entry) { form.append(entry[0], entry[1]); });
     form.append('photo', resized, fields.fileName);
+    if (thumbnail) form.append('thumbnail', thumbnail, 'thumbnail.jpg');
 
     try {
         if (core?.api) return (await core.api.postForm('/api/photos', form)).data;
@@ -12767,7 +12994,7 @@ async function uploadPhotoMultipart(photo) {
         if (!retriable || !core?.queueWhenOffline) throw error;
         await core.queueWhenOffline({
             method: 'POST', path: '/api/photos',
-            form: { fields: fields, photo: resized, fileName: fields.fileName }
+            form: { fields: fields, photo: resized, thumbnail: thumbnail, fileName: fields.fileName }
         });
         return { queued: true, previewUrl: URL.createObjectURL(resized) };
     }
