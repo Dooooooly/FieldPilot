@@ -479,6 +479,11 @@
         .help-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
         .help-section .help-title { font-weight: 700; font-size: 14px; color: #4f7eb3; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
         .help-section .help-body { font-size: 13px; color: #4a5568; line-height: 1.7; padding-left: 4px; }
+        .help-first-card { background: linear-gradient(135deg,#ebf8ff,#f0fff4); border: 1px solid #bee3f8; border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+        .help-step { display:flex; gap:9px; align-items:flex-start; padding:8px 0; border-bottom:1px dashed #cbd5e0; font-size:12px; line-height:1.6; }
+        .help-step:last-child { border-bottom:0; }
+        .help-step-number { width:22px; height:22px; border-radius:50%; background:#3182ce; color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:11px; font-weight:700; }
+        .help-jump { border:1px solid #90cdf4; background:#ebf8ff; color:#2b6cb0; border-radius:8px; padding:6px 10px; font-size:11px; font-weight:700; cursor:pointer; }
 
         .choice-grid { display: grid; gap: 8px; }
         .choice-grid.two { grid-template-columns: 1fr 1fr; }
@@ -1891,23 +1896,38 @@ body.dark-mode .connection-status-bar,body.dark-mode .map-view-controls{backgrou
         </div>
     </div>
 
+    <!-- 처음 사용하는 사용자용 필수 확인 -->
+    <div class="help-first-card">
+        <div style="font-size:15px;font-weight:800;color:#2b6cb0;margin-bottom:6px;">👋 처음 사용하는 분은 여기부터 시작하세요</div>
+        <div style="font-size:12px;color:#4a5568;line-height:1.65;margin-bottom:8px;">관리자에게 받은 <strong>인가코드</strong>만 준비하면 됩니다. GitHub 토큰이나 카카오 API 키는 사용자가 입력하지 않습니다.</div>
+        <div class="help-step"><span class="help-step-number">1</span><div><strong>설정 탭에서 인가코드 입력</strong><br>정상 인증되면 본인에게 허용된 지역이 자동으로 선택됩니다.</div></div>
+        <div class="help-step"><span class="help-step-number">2</span><div><strong>작업자 이름 저장</strong><br>사진과 작업 기록에 자동 연결될 이름이므로 먼저 확인하세요.</div></div>
+        <div class="help-step"><span class="help-step-number">3</span><div><strong>화면 위 상태 표시 확인</strong><br><span style="color:#276749;font-weight:700;">서버 연결됨</span>이 보여야 서버 데이터·사진·날씨를 사용할 수 있습니다. 오프라인 대기 건수는 연결 후 자동 전송됩니다.</div></div>
+        <div class="help-step"><span class="help-step-number">4</span><div><strong>현장과 경로 사용</strong><br>현장을 확인한 뒤 출발지·경유지를 선택하고 경로 최적화를 실행하세요.</div></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">
+            <button class="help-jump" onclick="switchTab('tab-settings')">⚙️ 인증·작업자 설정으로 이동</button>
+            <button class="help-jump" onclick="switchTab('tab-list')">📋 현장 확인으로 이동</button>
+            <button class="help-jump" onclick="switchTab('tab-places')">🗺️ 경로 시작하기</button>
+        </div>
+    </div>
+
     <!-- ═══════════════════════════════════════ -->
     <!-- 1. 🚀 빠른 시작 (3단계 흐름) -->
     <!-- ═══════════════════════════════════════ -->
     <div style="background:linear-gradient(135deg,#667eea,#764ba2);border-radius:12px;padding:16px;margin-bottom:16px;color:white;">
-        <div style="font-weight:700;font-size:15px;margin-bottom:12px;">🚀 빠른 시작 (3단계)</div>
+        <div style="font-weight:700;font-size:15px;margin-bottom:12px;">🚀 하루 작업 빠른 시작</div>
         <div style="display:flex;flex-direction:column;gap:8px;">
             <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.15);border-radius:8px;padding:10px;">
                 <span style="background:white;color:#667eea;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;">1</span>
-                <span style="font-size:13px;"><strong>현장 등록</strong> → 작업할 현장들을 등록하거나 엑셀에서 가져오세요</span>
+                <span style="font-size:13px;"><strong>상태 확인</strong> → 서버 연결과 오프라인 대기 건수를 먼저 확인하세요</span>
             </div>
             <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.15);border-radius:8px;padding:10px;">
                 <span style="background:white;color:#667eea;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;">2</span>
-                <span style="font-size:13px;"><strong>경로 최적화</strong> → 출발지 + 경유지 설정 후 최적화 실행</span>
+                <span style="font-size:13px;"><strong>현장·경로</strong> → 출발지와 방문 현장을 선택하고 최적화 실행</span>
             </div>
             <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.15);border-radius:8px;padding:10px;">
                 <span style="background:white;color:#667eea;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;">3</span>
-                <span style="font-size:13px;"><strong>기록 & 통계</strong> → 방문 기록 저장하고 통계로 확인</span>
+                <span style="font-size:13px;"><strong>기록·사진·전송</strong> → 처리내용과 사진을 저장하고 필요하면 카카오워크로 전송</span>
             </div>
         </div>
     </div>
@@ -1981,6 +2001,10 @@ body.dark-mode .connection-status-bar,body.dark-mode .map-view-controls{backgrou
                     <span style="background:#ebf8ff;color:#2b6cb0;border-radius:6px;padding:2px 8px;font-weight:600;white-space:nowrap;">Step 4</span>
                     <span><strong>결과 확인</strong> - 지도에 최적 경로 표시, 하단에 거리/시간/절약량 확인</span>
                 </div>
+                <div style="display:flex;gap:8px;">
+                    <span style="background:#ebf8ff;color:#2b6cb0;border-radius:6px;padding:2px 8px;font-weight:600;white-space:nowrap;">지도 보기</span>
+                    <span><strong>가까운 현장 묶음</strong>을 켜면 주변 현장을 숫자 묶음으로 볼 수 있습니다. 다크모드에서는 <strong>지도 필터</strong> 슬라이더로 밝기·대비 강도를 조절하세요.</span>
+                </div>
             </div>
         </div>
 
@@ -1988,12 +2012,12 @@ body.dark-mode .connection-status-bar,body.dark-mode .map-view-controls{backgrou
         <details style="background:#f7fafc;border-radius:8px;padding:12px;margin-top:8px;cursor:pointer;">
             <summary style="font-weight:600;font-size:13px;">💡 동작 원리: 어떻게 최적 경로를 계산하나요?</summary>
             <div style="font-size:12px;color:#4a5568;margin-top:8px;line-height:1.6;">
-                <div style="margin-bottom:6px;"><strong>1. 후보 경로 생성</strong> - 3가지 방식으로 초기 경로를 만듭니다</div>
+                <div style="margin-bottom:6px;"><strong>1. 후보 경로 생성</strong> - 방향·도로·직선거리 방식과 확률 기반 개선 시드로 여러 후보를 만듭니다.</div>
                 <div style="margin-left:12px;margin-bottom:4px;">• <strong>방향 기반</strong>: 출발지 기준 시계방향/반시계방향으로 묶어서 순서 결정</div>
                 <div style="margin-left:12px;margin-bottom:4px;">• <strong>도로 기반</strong>: 카카오맵 API로 실제 도로 거리 측정 후 가장 가까운 곳부터 방문</div>
                 <div style="margin-left:12px;margin-bottom:6px;">• <strong>직선 거리 기반</strong>: 직선거리 기준으로 가까운 곳부터 방문</div>
-                <div style="margin-bottom:6px;"><strong>2. 경로 개선 (2-opt)</strong> - 각 후보 경로를 최대 3번 반복하면서 교차 구간을 찾아 더 짧은 경로로 교체</div>
-                <div><strong>3. 최종 선택</strong> - 3가지 후보 중 총 거리(또는 시간)가 가장 짧은 경로를 최종 결과로 선택</div>
+                <div style="margin-bottom:6px;"><strong>2. 경로 개선</strong> - Simulated Annealing 시드와 2-opt를 함께 사용해 교차 구간과 지역 최적해를 개선합니다.</div>
+                <div><strong>3. 최종 선택</strong> - 설정한 최단거리·최소시간·균형 기준으로 가장 좋은 후보를 선택합니다.</div>
             </div>
         </details>
     </div>
@@ -2059,7 +2083,7 @@ body.dark-mode .connection-status-bar,body.dark-mode .map-view-controls{backgrou
                 <div style="margin-left:12px;margin-bottom:4px;">2. 도로명주소 우선 → 지번주소 순서로 좌표 확인</div>
                 <div style="margin-left:12px;margin-bottom:4px;">3. 좌표 + 전체 주소 + 행정동(동 정보) 저장</div>
                 <div style="margin-bottom:6px;"><strong>⚠️ 변환 실패 시:</strong> 주소가 잘못되었거나 카카오가 인식하지 못하는 경우입니다. 편집 버튼을 눌러 주소를 수정하거나 위도/경도를 직접 입력하세요.</div>
-                <div><strong>💾 저장 위치:</strong> 모든 현장 데이터는 브라우저의 로컬 저장소(localStorage)에 저장되며, GitHub 토큰을 설정하면 자동으로 GitHub에도 백업됩니다.</div>
+                <div><strong>💾 저장 위치:</strong> 현장 데이터는 노트북 서버와 브라우저의 IndexedDB 캐시에 저장되고, 서버가 비공개 GitHub 데이터 저장소와 동기화합니다. 사용자가 GitHub 토큰을 입력할 필요는 없습니다.</div>
             </div>
         </details>
     </div>
@@ -2203,6 +2227,39 @@ body.dark-mode .connection-status-bar,body.dark-mode .map-view-controls{backgrou
     </div>
 
     <!-- ═══════════════════════════════════════ -->
+    <!-- 사진 촬영·편집·카카오워크 -->
+    <!-- ═══════════════════════════════════════ -->
+    <div style="margin-bottom:20px;">
+        <div style="font-weight:700;font-size:15px;margin-bottom:10px;display:flex;align-items:center;gap:6px;">📷 사진 촬영·편집·전송</div>
+        <div style="background:white;border-radius:10px;padding:14px;border:1px solid #e2e8f0;">
+            <div style="font-weight:600;font-size:13px;margin-bottom:8px;">사진을 작업 기록에 남기는 순서</div>
+            <div style="display:flex;flex-direction:column;gap:7px;font-size:12px;color:#4a5568;line-height:1.6;">
+                <div><strong>1. 기록 탭에서 날짜 선택</strong> → 해당 현장의 기록 카드를 열고 카메라 촬영 또는 앨범 선택</div>
+                <div><strong>2. 사진 편집</strong> → 90도 회전, 영역 자르기, 화살표, 문자 메모를 적용하고 “저장 후 업로드” 선택</div>
+                <div><strong>3. 자동 연결</strong> → 촬영시각·작업자·현장명이 사진 메타데이터에 자동으로 연결</div>
+                <div><strong>4. 중복 확인</strong> → 같은 사진이 이미 있으면 새로 저장하지 않고 “중복 제외”로 안내</div>
+                <div><strong>5. 원본 보기</strong> → 목록은 빠른 썸네일만 표시하며 사진을 누를 때 원본을 불러옴</div>
+            </div>
+            <div style="background:#ebf8ff;border:1px solid #bee3f8;border-radius:7px;padding:9px;margin-top:10px;font-size:11px;color:#2c5282;line-height:1.6;">
+                여러 사진을 한 번에 선택하면 사진마다 편집 화면이 순서대로 열립니다. 편집하지 않을 사진은 <strong>편집 없이 사용</strong>을 누르세요.
+            </div>
+        </div>
+
+        <div style="background:white;border-radius:10px;padding:14px;border:1px solid #e2e8f0;margin-top:8px;">
+            <div style="font-weight:600;font-size:13px;margin-bottom:8px;">카카오워크 1:1 전송</div>
+            <div style="font-size:12px;color:#4a5568;line-height:1.7;">
+                <div><strong>1.</strong> 기록 탭 하단의 <strong>카카오워크 1:1 내보내기</strong>를 누릅니다.</div>
+                <div><strong>2.</strong> 현재 지역에 연결된 수신자가 자동 선택됐는지 확인합니다.</div>
+                <div><strong>3.</strong> 현장을 검색하고 서버 사진을 한 장 이상 선택합니다.</div>
+                <div><strong>4.</strong> <strong>다운로드</strong>는 선택 사진을 기기에 저장하고, <strong>1:1 전송</strong>은 선택 사진 전체를 카카오워크로 보냅니다.</div>
+            </div>
+            <div style="background:#fffaf0;border:1px solid #fbd38d;border-radius:7px;padding:9px;margin-top:9px;font-size:11px;color:#975a16;line-height:1.6;">
+                ⚠️ “수신자가 설정되지 않았습니다”가 나오면 사용자가 직접 검색하는 문제가 아니라, 관리자가 해당 지역 사용자 매칭을 설정해야 합니다.
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
     <!-- 6. ⚙️ 설정 탭 가이드 -->
     <!-- ═══════════════════════════════════════ -->
     <div style="margin-bottom:20px;">
@@ -2218,13 +2275,13 @@ body.dark-mode .connection-status-bar,body.dark-mode .map-view-controls{backgrou
                 </div>
                 <div style="background:#f7fafc;border-radius:8px;padding:10px;">
                     <div style="font-weight:600;margin-bottom:4px;">🔐 GitHub 연동</div>
-                    <div>GitHub 토큰을 입력하면 현장 데이터가 자동으로 백업됩니다. 여러 기기에서 동일한 데이터를 사용할 수 있습니다.</div>
-                    <div style="font-size:11px;color:#718096;margin-top:4px;">생성 방법: GitHub → Settings → Developer settings → Personal access tokens</div>
+                    <div>GitHub 연결은 관리자가 노트북 서버에서 설정합니다. 사용자는 상태 배지만 확인하면 됩니다.</div>
+                    <div style="font-size:11px;color:#718096;margin-top:4px;">상단에 “GitHub 동기화 완료”가 표시되면 마지막 서버 동기화가 성공한 상태입니다.</div>
                 </div>
                 <div style="background:#f7fafc;border-radius:8px;padding:10px;">
                     <div style="font-weight:600;margin-bottom:4px;">🗺️ 카카오 API 키</div>
-                    <div>지도 표시(JavaScript 키)에 필요합니다. 주소 변환·경로 최적화·날씨는 이제 노트북 서버가 대신 처리하므로 REST API 키는 여기 입력하지 않아도 됩니다 (서버의 config.json에서 관리).</div>
-                    <div style="font-size:11px;color:#718096;margin-top:4px;">생성 방법: developers.kakao.com → 앱 생성 → 키 발급</div>
+                    <div>지도·주소 변환·경로 최적화 키도 관리자가 노트북 서버에서 설정합니다. 일반 사용자는 입력하지 않습니다.</div>
+                    <div style="font-size:11px;color:#718096;margin-top:4px;">지도가 보이지 않으면 키를 새로 만들기 전에 서버 연결 상태와 관리자 설정을 확인하세요.</div>
                 </div>
             </div>
         </div>
@@ -2275,6 +2332,20 @@ body.dark-mode .connection-status-bar,body.dark-mode .map-view-controls{backgrou
     </div>
 
     <!-- ═══════════════════════════════════════ -->
+    <!-- 연결 상태·오프라인·데이터 -->
+    <!-- ═══════════════════════════════════════ -->
+    <div style="margin-bottom:20px;">
+        <div style="font-weight:700;font-size:15px;margin-bottom:10px;display:flex;align-items:center;gap:6px;">🔄 연결 상태와 데이터 저장</div>
+        <div style="background:white;border-radius:10px;padding:14px;border:1px solid #e2e8f0;font-size:12px;color:#4a5568;line-height:1.7;">
+            <div><strong>● 서버 연결됨</strong> — 노트북 서버 API를 정상적으로 사용할 수 있습니다.</div>
+            <div><strong>● GitHub 동기화 완료</strong> — 서버가 마지막 데이터 동기화를 성공했습니다.</div>
+            <div><strong>● 오프라인 대기 N건</strong> — 네트워크 문제로 아직 전송하지 못한 변경입니다. 앱을 열어 둔 상태에서 연결이 복구되면 순서대로 다시 전송합니다.</div>
+            <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #cbd5e0;"><strong>데이터 위치:</strong> 현장·기록·통계는 서버의 데이터 폴더와 비공개 GitHub 데이터 저장소에 동기화됩니다. 브라우저 IndexedDB는 빠른 표시와 오프라인 대기를 위한 보조 저장소입니다.</div>
+            <div style="background:#fff5f5;border:1px solid #fed7d7;border-radius:7px;padding:8px;margin-top:9px;color:#9b2c2c;">설정의 “모든 데이터 초기화”는 브라우저 로컬 데이터를 지우므로 관리자가 안내한 경우에만 사용하세요. 서버·GitHub 원본까지 자동 삭제하는 버튼은 아닙니다.</div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
     <!-- 8. ❓ 자주 묻는 질문 -->
     <!-- ═══════════════════════════════════════ -->
     <div style="margin-bottom:20px;">
@@ -2293,18 +2364,43 @@ body.dark-mode .connection-status-bar,body.dark-mode .map-view-controls{backgrou
             <details style="background:#f7fafc;border-radius:8px;padding:12px;cursor:pointer;">
                 <summary style="font-weight:600;font-size:13px;">지도가 안 나와요</summary>
                 <div style="font-size:12px;color:#4a5568;margin-top:8px;line-height:1.6;">
-                    설정 탭에서 카카오 JavaScript 키를 입력했는지 확인하세요.<br>
-                    키를 입력한 후에도 안 나오면 캐시 초기화 후 새로고침을 시도하세요.<br>
-                    <span style="color:#718096;font-size:11px;">설정 탭 → 업데이트 관리 → 캐시 초기화</span>
+                    먼저 상단의 <strong>서버 연결 상태</strong>를 확인하고 새로고침하세요.<br>
+                    서버는 연결됐는데도 “jsKey 설정 필요”가 나오면 관리자가 노트북 서버의 카카오 JavaScript 키와 카카오 개발자 콘솔 허용 도메인을 확인해야 합니다.<br>
+                    <span style="color:#718096;font-size:11px;">일반 사용자가 설정 화면에 키를 직접 입력하지 않습니다.</span>
                 </div>
             </details>
 
             <details style="background:#f7fafc;border-radius:8px;padding:12px;cursor:pointer;">
                 <summary style="font-weight:600;font-size:13px;">데이터가 사라졌어요</summary>
                 <div style="font-size:12px;color:#4a5568;margin-top:8px;line-height:1.6;">
-                    데이터는 브라우저의 로컬 저장소에 저장됩니다. 브라우저 캐시를 삭제하면 데이터도 함께 삭제됩니다.<br>
-                    GitHub 토큰을 설정해두면 자동으로 백업되므로, 다운로드 버튼으로 복원할 수 있습니다.<br>
-                    <span style="color:#718096;font-size:11px;">설정 탭 → GitHub 연동 → 📥 다운로드</span>
+                    먼저 올바른 인가코드와 지역으로 로그인했는지, 서버가 연결됐는지 확인하세요.<br>
+                    브라우저 캐시가 비어 있어도 서버 및 비공개 GitHub 데이터가 정상이라면 다시 동기화할 수 있습니다.<br>
+                    <span style="color:#718096;font-size:11px;">설정 탭 → GitHub 연동 → 📥 다운로드 또는 관리자에게 서버 데이터 확인 요청</span>
+                </div>
+            </details>
+
+            <details style="background:#f7fafc;border-radius:8px;padding:12px;cursor:pointer;">
+                <summary style="font-weight:600;font-size:13px;">서버 연결 실패 또는 CORS 오류가 나와요</summary>
+                <div style="font-size:12px;color:#4a5568;margin-top:8px;line-height:1.6;">
+                    노트북 서버와 Cloudflare 터널이 실행 중인지 확인한 뒤 페이지를 새로고침하세요.<br>
+                    터널을 재시작하면 주소가 바뀔 수 있으므로 <strong>server-config.js</strong>의 서버 주소도 새 주소와 같아야 합니다.<br>
+                    <span style="color:#718096;font-size:11px;">사용자가 해결하기 어려우면 화면 위 “서버 연결 실패” 상태를 관리자에게 알려주세요.</span>
+                </div>
+            </details>
+
+            <details style="background:#f7fafc;border-radius:8px;padding:12px;cursor:pointer;">
+                <summary style="font-weight:600;font-size:13px;">오프라인 대기 건수가 줄지 않아요</summary>
+                <div style="font-size:12px;color:#4a5568;margin-top:8px;line-height:1.6;">
+                    인터넷뿐 아니라 노트북 서버도 연결돼 있어야 재전송됩니다. 앱을 열어 둔 상태에서 서버 연결이 복구되면 자동으로 처리합니다.<br>
+                    계속 남아 있으면 로그아웃하거나 초기화하지 말고 관리자에게 대기 건수와 발생한 작업을 알려주세요.
+                </div>
+            </details>
+
+            <details style="background:#f7fafc;border-radius:8px;padding:12px;cursor:pointer;">
+                <summary style="font-weight:600;font-size:13px;">같은 사진이라고 업로드되지 않아요</summary>
+                <div style="font-size:12px;color:#4a5568;margin-top:8px;line-height:1.6;">
+                    동일한 사진 파일이 같은 현장에 이미 저장된 경우 중복 저장을 막습니다. 기존 사진 썸네일을 눌러 원본을 확인하세요.<br>
+                    실제로 다른 사진이라면 사진을 다시 촬영하거나 필요한 표시를 편집기에 추가한 뒤 저장하세요.
                 </div>
             </details>
 
