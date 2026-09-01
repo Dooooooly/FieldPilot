@@ -2,7 +2,7 @@
 // Service Worker - PWA 오프라인 지원 (최적화)
 // ============================================================
 
-const CACHE_NAME = 'FieldPilot-v1.3';
+const CACHE_NAME = 'FieldPilot-v1.5';
 const BASE_PATH = new URL('.', self.location.href).pathname;
 
 // 캐시할 파일 목록 (서브 디렉터리 경로 포함)
@@ -73,17 +73,26 @@ self.addEventListener('fetch', function(event) {
     event.respondWith(
         fetch(event.request)
             .then(function(response) {
-                var responseClone = response.clone();
-                caches.open(CACHE_NAME)
-                    .then(function(cache) {
-                        cache.put(event.request, responseClone);
-                    });
+                // 404/500 응답을 캐시하면 새로 추가된 모듈도 계속 실패할 수 있다.
+                if (response.ok) {
+                    var responseClone = response.clone();
+                    caches.open(CACHE_NAME)
+                        .then(function(cache) {
+                            cache.put(event.request, responseClone);
+                        });
+                }
                 return response;
             })
             .catch(function() {
                 return caches.match(event.request)
                     .then(function(response) {
-                        return response || caches.match(BASE_PATH + 'index.html');
+                        if (response) return response;
+                        // HTML 탐색만 앱 셸로 대체한다. JS 모듈 요청에 index.html을
+                        // 반환하면 MIME 오류가 발생해 전체 모듈 로딩이 중단된다.
+                        if (event.request.mode === 'navigate') {
+                            return caches.match(BASE_PATH + 'index.html');
+                        }
+                        return new Response('Offline resource unavailable', { status: 503 });
                     });
             })
     );
