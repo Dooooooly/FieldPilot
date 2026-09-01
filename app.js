@@ -11593,6 +11593,7 @@ async function getPhotosByWorkId(workId) {
     }
     let serverPhotos = rows.map(function(p) {
         const photoSiteName = p.siteName || siteName;
+        const photoVersion = encodeURIComponent(p.editedAt || p.modifiedAt || p.savedAt || '');
         let id = newPhotoId();
         let entry = {
             id: id,
@@ -11600,8 +11601,8 @@ async function getPhotosByWorkId(workId) {
             region: region,
             siteName: photoSiteName,
             fileName: p.fileName,
-            dataUrl: photoDownloadUrl(region, photoSiteName, p.fileName),
-            thumbnailUrl: photoThumbnailUrl(region, photoSiteName, p.fileName),
+            dataUrl: photoDownloadUrl(region, photoSiteName, p.fileName) + (photoVersion ? '&v=' + photoVersion : ''),
+            thumbnailUrl: photoThumbnailUrl(region, photoSiteName, p.fileName) + (photoVersion ? '&v=' + photoVersion : ''),
             fileSize: p.size,
             uploadedAt: p.savedAt || p.modifiedAt,
             capturedAt: p.capturedAt || p.modifiedAt,
@@ -11654,14 +11655,12 @@ async function handleWorkPhotoUpload(event) {
     }
     let workId = input.getAttribute('data-work-id');
     let statusEl = document.getElementById('workPhotoStatus');
-    if (statusEl) statusEl.textContent = '✏️ 사진 편집 및 업로드 준비 중...';
+    if (statusEl) statusEl.textContent = '📷 사진 업로드 중...';
 
     let uploadedCount = 0;
     let duplicateCount = 0;
-    let cancelledCount = 0;
     let failedCount = 0;
     let oversizedCount = 0;
-    let editorFallbackCount = 0;
     let firstError = '';
     const record = findWorkRecordById(workId);
 
@@ -11686,24 +11685,13 @@ async function handleWorkPhotoUpload(event) {
             continue;
         }
         try {
-            let edited = file;
-            if (fieldPilotCore()?.editPhoto) {
-                try {
-                    edited = await fieldPilotCore().editPhoto(file, { siteName: record.placeName || '', worker: record.worker || workerName || '' });
-                } catch (editorError) {
-                    console.warn('[FieldPilot] 사진 편집기를 열 수 없어 원본으로 업로드:', editorError);
-                    edited = file;
-                    editorFallbackCount += 1;
-                }
-            }
-            if (!edited) { cancelledCount += 1; continue; }
             const capturedAt = new Date(file.lastModified || Date.now()).toISOString();
             await savePhotoToDB({
                 id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5) + '_' + i,
                 workId: workId,
-                file: edited,
-                fileName: edited.name || file.name,
-                fileSize: edited.size,
+                file: file,
+                fileName: file.name,
+                fileSize: file.size,
                 uploadedAt: new Date().toISOString(),
                 capturedAt: capturedAt
             });
@@ -11723,9 +11711,7 @@ async function handleWorkPhotoUpload(event) {
         const parts = [];
         if (uploadedCount) parts.push('업로드 ' + uploadedCount + '장');
         if (duplicateCount) parts.push('중복 제외 ' + duplicateCount + '장');
-        if (cancelledCount) parts.push('취소 ' + cancelledCount + '장');
         if (oversizedCount) parts.push('15MB 초과 ' + oversizedCount + '장');
-        if (editorFallbackCount) parts.push('원본 업로드 ' + editorFallbackCount + '장');
         if (failedCount) parts.push('실패 ' + failedCount + '장');
         statusEl.style.color = failedCount ? '#e53e3e' : (uploadedCount ? '#38a169' : '#718096');
         statusEl.textContent = (failedCount ? '❌ ' : (uploadedCount ? '✅ ' : 'ℹ️ ')) + parts.join(' · ')
@@ -11759,10 +11745,89 @@ async function renderWorkPhotoList(workId) {
         html += '<img src="' + (p.thumbnailUrl || p.dataUrl) + '" loading="lazy" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="viewPhoto(\'' + p.id + '\')">';
         if (p.queued) html += '<span style="position:absolute;left:2px;bottom:2px;background:rgba(214,158,46,.95);color:white;border-radius:5px;padding:1px 4px;font-size:9px;">전송 대기</span>';
         html += '<button onclick="event.stopPropagation();deleteWorkPhoto(\'' + p.id + '\',\'' + workId + '\')" style="position:absolute;top:2px;right:2px;background:rgba(229,62,62,0.9);color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>';
+        if (!p.queued) html += '<button onclick="event.stopPropagation();editWorkPhoto(\'' + p.id + '\',\'' + workId + '\')" style="position:absolute;right:2px;bottom:2px;background:rgba(49,130,206,0.94);color:white;border:none;border-radius:5px;padding:3px 5px;font-size:9px;font-weight:700;cursor:pointer;">편집</button>';
         html += '</div>';
     }
     html += '</div>';
     container.innerHTML = html;
+}
+
+async function editWorkPhoto(photoId, workId) {
+    const info = photoInfoCache.get(photoId);
+    const statusEl = document.getElementById('workPhotoStatus');
+    if (!info) {
+        if (statusEl) statusEl.textContent = '❌ 편집할 사진 정보를 찾지 못했습니다. 목록을 다시 열어주세요.';
+        return;
+    }
+    if (info.queued) {
+        if (statusEl) statusEl.textContent = '⚠️ 전송 대기 사진은 서버 저장이 완료된 뒤 편집할 수 있습니다.';
+        return;
+    }
+    if (!navigator.onLine) {
+        if (statusEl) statusEl.textContent = '⚠️ 저장된 사진 편집은 서버 연결 상태에서 사용할 수 있습니다.';
+        return;
+    }
+    try {
+        if (statusEl) {
+            statusEl.style.color = '#4a5568';
+            statusEl.textContent = '⏳ 원본 사진 불러오는 중...';
+        }
+        const headers = {};
+        if (getAuthToken()) headers.Authorization = 'Bearer ' + getAuthToken();
+        const response = await fetch(photoDownloadUrl(info.region, info.siteName, info.fileName), { headers, cache: 'no-store' });
+        if (!response.ok) throw new Error('원본 사진 조회 실패: ' + response.status);
+        const blob = await response.blob();
+        const original = new File([blob], info.fileName || 'photo.jpg', {
+            type: blob.type || 'image/jpeg',
+            lastModified: Date.parse(info.capturedAt || info.uploadedAt || '') || Date.now()
+        });
+        const core = fieldPilotCore();
+        if (!core?.editPhoto) throw new Error('사진 편집 모듈을 불러오지 못했습니다. 페이지를 새로고침하세요.');
+        const edited = await core.editPhoto(original, { siteName: info.siteName, worker: info.worker || workerName || '' });
+        if (!edited) {
+            if (statusEl) statusEl.textContent = 'ℹ️ 사진 편집을 취소했습니다.';
+            return;
+        }
+        if (statusEl) statusEl.textContent = '⏳ 편집한 사진 저장 중...';
+        const resized = core.resizeImage ? await core.resizeImage(edited) : edited;
+        const thumbnail = core.createPhotoThumbnail ? await core.createPhotoThumbnail(resized) : null;
+        const form = new FormData();
+        form.append('region', info.region);
+        form.append('siteName', info.siteName);
+        form.append('fileName', info.fileName);
+        form.append('photo', resized, resized.name || info.fileName);
+        if (thumbnail) form.append('thumbnail', thumbnail, 'thumbnail.jpg');
+
+        let result;
+        if (core?.api) {
+            result = (await core.api.postForm('/api/photos/replace', form)).data;
+        } else {
+            const replaceResponse = await fetch(serverBase() + '/api/photos/replace', {
+                method: 'POST', headers: getAuthToken() ? { Authorization: 'Bearer ' + getAuthToken() } : {}, body: form
+            });
+            const data = await replaceResponse.json().catch(function() { return {}; });
+            if (!replaceResponse.ok) throw new Error(data.message || data.error || ('편집 사진 저장 실패: ' + replaceResponse.status));
+            result = data;
+        }
+        const newFileName = result.fileName || info.fileName;
+        info.fileName = newFileName;
+        const version = Date.now();
+        info.dataUrl = photoDownloadUrl(info.region, info.siteName, newFileName) + '&v=' + version;
+        info.thumbnailUrl = photoThumbnailUrl(info.region, info.siteName, newFileName) + '&v=' + version;
+        info.uploadedAt = new Date().toISOString();
+        photoInfoCache.set(photoId, info);
+        if (statusEl) {
+            statusEl.style.color = '#38a169';
+            statusEl.textContent = '✅ 사진 편집 내용이 저장되었습니다.';
+        }
+        await renderWorkPhotoList(workId);
+    } catch (error) {
+        console.error('[FieldPilot] 저장 사진 편집 실패:', error);
+        if (statusEl) {
+            statusEl.style.color = '#e53e3e';
+            statusEl.textContent = '❌ 사진 편집 실패: ' + (error.message || '알 수 없는 오류');
+        }
+    }
 }
 
 async function viewPhoto(photoId) {
