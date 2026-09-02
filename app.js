@@ -239,6 +239,7 @@ let weatherRetryCount = 0;
 const MAX_WEATHER_RETRY = 3;
 let userGpsCoords = null;      // ★ GPS 좌표 저장 (날씨용)
 let weatherInterval = null;    // ★ 날씨 주기 갱신 타이머
+let authExpiryNoticeAt = 0;
 let tempSettings = {};
 let routeObjective = 'distance';
 let useRoadOptimization = true;
@@ -6003,6 +6004,10 @@ XLSX.writeFile(wb, '현장리스트_' + currentRegion + '_' + timestamp + '.xlsx
 async function fetchWeather() {
     let weatherEl = document.getElementById('weatherDisplay');
     if (!weatherEl) return false;
+    if (!isAuthorized()) {
+        weatherEl.innerHTML = '<span>🔒</span><span>날씨</span>';
+        return true;
+    }
     try {
         // OpenWeather 직접 호출 대신 노트북 서버의 /api/weather 프록시 경유 (키는 서버 config.json에만 존재)
         let center = (typeof userGpsCoords !== 'undefined' && userGpsCoords) ? userGpsCoords : getRegionCenter(currentRegion);
@@ -6037,6 +6042,10 @@ async function fetchWeather() {
 }
 
 async function showWeekWeather() {
+    if (!isAuthorized()) {
+        showTabStatus('tab-settings', '🔒 날씨를 확인하려면 인가코드로 로그인하세요.', 'warning');
+        return;
+    }
     let existingModal = document.getElementById('weekWeatherModal');
     if (existingModal) {
         existingModal.remove();
@@ -12028,20 +12037,27 @@ async function restoreFieldPilotAuth() {
                 }
             }
 
-            // ------------------------------------------------
-            // 서버 인증 실패
-            //
-            // 중요:
-            // 여기서 localStorage를 삭제하지 않는다.
-            // ------------------------------------------------
+            // 서버가 응답했고 인증을 거부했다면 재시작 전의 만료 토큰을
+            // 유지하지 않는다. 네트워크 오류일 때만 아래 catch에서 유지한다.
+            if (response.status === 401 || response.status === 403) {
+                console.warn('[Auth] 서버 세션 만료 → 재인가 필요');
+                localStorage.removeItem(AUTH_STORAGE_KEY);
+                fieldPilotAuth = {
+                    authorized: false,
+                    role: '',
+                    region: '',
+                    token: '',
+                    expiresAt: 0
+                };
+                currentRegion = '';
+                places = [];
+                applyAuthorizationState();
+                return false;
+            }
 
-            console.warn(
-                '[Auth] 서버 세션 확인 실패 → 로컬 인증 유지'
-            );
-
+            console.warn('[Auth] 서버 인증 확인 실패: HTTP ' + response.status);
             applyAuthorizationState();
-
-            return true;
+            return false;
 
         } catch (serverError) {
 
@@ -12101,10 +12117,14 @@ function handleAuthExpired() {
 
     applyAuthorizationState();
 
-    alert(
-        '🔒 인가 세션이 만료되었습니다.\n' +
-        '설정 탭에서 다시 인가코드를 입력하세요.'
-    );
+    const now = Date.now();
+    if (now - authExpiryNoticeAt > 3000) {
+        authExpiryNoticeAt = now;
+        alert(
+            '🔒 인가 세션이 만료되었습니다.\n' +
+            '설정 탭에서 다시 인가코드를 입력하세요.'
+        );
+    }
 }
 async function logoutFieldPilot() {
 
