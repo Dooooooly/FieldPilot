@@ -350,13 +350,6 @@ function switchTab(tabId, updateHistory = true) {
     if (!tabId) return;
     let target = document.getElementById(tabId);
     if (!target) return;
-    if (tabId !== 'tab-route' && kakaoMap) {
-    try {
-        kakaoMap.setDraggable(false);
-        kakaoMap.setZoomable(false);
-    } catch (e) {}
-}
-    
     document.querySelectorAll('.tab-content').forEach(function(el) {
         el.classList.remove('active');
     });
@@ -377,8 +370,7 @@ if (tabId === 'tab-route') {
             if (kakaoMap) {
                 try {
                     kakaoMap.relayout();
-                    kakaoMap.setDraggable(true);
-                    kakaoMap.setZoomable(true);
+                    enableMapInteraction();
                 } catch (e) {
                     console.warn('[MAP] relayout 실패:', e);
                 }
@@ -5202,6 +5194,31 @@ function stabilizeRouteStartCenter(lat, lng) {
     });
 }
 
+function enableMapInteraction() {
+    const container = document.getElementById('map');
+    if (container) {
+        container.style.pointerEvents = 'auto';
+        container.style.touchAction = 'none';
+        if (!container.dataset.interactionGuard) {
+            const cancelAutoFocus = function() {
+                // 사용자가 직접 지도를 움직이면 예약된 자동 중앙 고정을 즉시 취소한다.
+                routeMapFocusToken += 1;
+                pendingMapCenter = null;
+            };
+            container.addEventListener('pointerdown', cancelAutoFocus, { capture: true, passive: true });
+            container.addEventListener('wheel', cancelAutoFocus, { capture: true, passive: true });
+            container.dataset.interactionGuard = 'on';
+        }
+    }
+    if (!kakaoMap) return;
+    try {
+        kakaoMap.setDraggable(true);
+        kakaoMap.setZoomable(true);
+    } catch (error) {
+        console.warn('[MAP] 지도 조작 활성화 실패:', error);
+    }
+}
+
 function renderOptimizedRouteMapView(allPoints, routeData) {
     if (!Array.isArray(allPoints) || allPoints.length < 2) return false;
     if (!kakaoMap) {
@@ -5419,10 +5436,11 @@ function createMap(container) {
     level: zoomLevel,
     draggable: true,
     zoomable: true,
-    scrollwheel: false
+    scrollwheel: !isMobile()
 };
         
         kakaoMap = new kakao.maps.Map(container, options);
+        enableMapInteraction();
         // ★ 중복 호출 제거 - options에서 이미 설정됨
         // kakaoMap.setDraggable(true);   ← 제거
         // kakaoMap.setZoomable(true);    ← 제거
