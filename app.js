@@ -264,6 +264,7 @@ let autoSyncTimer = null;
 let sdkLoading = false;
 let isShowingRouteMarkers = false;
 let pendingMapCenter = null;
+let pendingOptimizedMapView = null;
 let frameStartIndex = 0;
 let frameEndIndex = 9; // 기본 10개 (출발지 포함)
 let isFrameDragging = false;
@@ -4363,18 +4364,6 @@ async function runOptimize() {
             return;
         }
         
-        // ★ 기존 마커/폴리라인 완전 제거 (이전 경로 잔상 방지)
-clearRouteMarkers();
-clearSingleMarker();
-isShowingRouteMarkers = true;
-        
-        addRouteMarker(startPoint.lat, startPoint.lng, startPoint.name, true, -1);
-        
-        for (let i = 0; i < sorted.length; i++) {
-            let p = sorted[i];
-            addRouteMarker(p.lat, p.lng, (i + 1) + '. ' + p.name, false, i);
-        }
-        
         let allPoints = [{
             name: startPoint.name,
             lat: startPoint.lat,
@@ -4383,11 +4372,9 @@ isShowingRouteMarkers = true;
         }].concat(sorted);
         
         let routeData = await callKakaoMobilityRoute(allPoints, restKey);
-        
-        if (routeData) {
-            drawRoadRoute(routeData);
-        } else {
-            drawRoute(allPoints);
+        renderOptimizedRouteMapView(allPoints, routeData);
+
+        if (!routeData) {
             showTabStatus('tab-route', '⚠️ 도로 경로를 불러올 수 없어 직선으로 표시합니다.', 'warning');
         }
         
@@ -5160,6 +5147,42 @@ function focusRouteStart() {
     return startPoint ? focusMapOnPoint(startPoint.lat, startPoint.lng, 5) : false;
 }
 
+function renderOptimizedRouteMapView(allPoints, routeData) {
+    if (!Array.isArray(allPoints) || allPoints.length < 2) return false;
+    if (!kakaoMap) {
+        pendingOptimizedMapView = { allPoints: allPoints, routeData: routeData || null };
+        return false;
+    }
+
+    clearRouteMarkers();
+    clearSingleMarker();
+    isShowingRouteMarkers = true;
+
+    const routeStart = allPoints[0];
+    addRouteMarker(routeStart.lat, routeStart.lng, routeStart.name, true, -1);
+    for (let i = 1; i < allPoints.length; i++) {
+        const point = allPoints[i];
+        addRouteMarker(point.lat, point.lng, i + '. ' + point.name, false, i - 1);
+    }
+
+    if (routeData) drawRoadRoute(routeData);
+    else drawRoute(allPoints);
+
+    pendingOptimizedMapView = null;
+    return true;
+}
+
+function applyPendingOptimizedRouteMapView() {
+    if (!pendingOptimizedMapView || !kakaoMap) return false;
+    const view = pendingOptimizedMapView;
+    const rendered = renderOptimizedRouteMapView(view.allPoints, view.routeData);
+    if (rendered && view.allPoints[0]) {
+        const routeStart = view.allPoints[0];
+        focusMapOnPoint(routeStart.lat, routeStart.lng, 5);
+    }
+    return rendered;
+}
+
 function focusRouteStartAfterTabOpen() {
     if (!startPoint) return;
     const lat = Number(startPoint.lat);
@@ -5190,7 +5213,7 @@ function focusRouteStartAfterTabOpen() {
             initMap();
         }
 
-        if (attempts < 10) setTimeout(applyStartCenter, 250);
+        if (attempts < 40) setTimeout(applyStartCenter, 250);
     }
 
     requestAnimationFrame(function() {
@@ -5348,8 +5371,11 @@ function createMap(container) {
         // kakaoMap.setDraggable(true);   ← 제거
         // kakaoMap.setZoomable(true);    ← 제거
         
-        applyPendingMapCenter();
         renderNearbyPlaceClusters();
+        // 첫 최적화 때 지도 SDK가 늦게 생성돼도 보관해 둔 경로를 여기서 그린다.
+        // 경로의 setBounds가 끝난 뒤 출발지 중심을 마지막으로 적용해야 한다.
+        applyPendingOptimizedRouteMapView();
+        applyPendingMapCenter();
         initializeMapViewControls();
         updateSettingsConnectionUI();
         showTabStatus('tab-route', '🗺️ 지도 로드 완료', 'ok');
