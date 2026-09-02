@@ -413,81 +413,6 @@ if (
     }
 }
 // ============================================================
-// 3. 설정 관리 (API 키 인코딩)
-// ============================================================
-function encodeKey(val) {
-    if (!val) return '';
-    try { return btoa(val); } catch(e) { return val; }
-}
-function decodeKey(val) {
-    if (!val) return '';
-    try { return atob(val); } catch(e) { return val; }
-}
-
-function loadSettings() {
-    let saved = localStorage.getItem(SETTINGS_KEY);
-
-    if (saved) {
-        try {
-            let parsed = JSON.parse(saved);
-
-            settings.githubToken =
-                decodeKey(parsed.githubToken || '');
-
-            // 구버전 데이터 호환
-            settings.kakaoJsKey =
-                decodeKey(parsed.kakaoJsKey || '');
-
-            settings.kakaoRestKey =
-                decodeKey(parsed.kakaoRestKey || '');
-
-            settings.kakaoChatbotKey =
-                decodeKey(parsed.kakaoChatbotKey || '');
-
-            settings.kakaoChatbotUserId =
-                decodeKey(parsed.kakaoChatbotUserId || '');
-
-        } catch (e) {
-            console.warn(
-                '⚠️ 설정 복원 오류:',
-                e
-            );
-
-            settings = {
-                githubToken: '',
-                kakaoJsKey: '',
-                kakaoRestKey: '',
-                kakaoChatbotKey: '',
-                kakaoChatbotUserId: ''
-            };
-        }
-
-    } else {
-
-        settings = {
-            githubToken: '',
-            kakaoJsKey: '',
-            kakaoRestKey: '',
-            kakaoChatbotKey: '',
-            kakaoChatbotUserId: ''
-        };
-    }
-
-    // 작업자 이름
-    let workerInput =
-        document.getElementById('workerName');
-
-    if (workerInput) {
-        workerInput.value =
-            workerName || '';
-    }
-
-    updateWorkerNameStatus();
-    updateSettingsStatus();
-    updateSettingsConnectionUI();
-    updateAuthorizationUI();
-}
-// ============================================================
 // 현장처리 서버 연결 확인 (설정 탭 "🔄 서버 연결 확인" 버튼)
 // ============================================================
 async function testPhotoServer() {
@@ -609,55 +534,6 @@ function updateWorkWorkerDisplay() {
 // 설정 저장
 // ============================================================
 
-function saveSettings() {
-
-    if (!settings) {
-        settings = {
-            githubToken: '',
-            kakaoJsKey: '',
-            kakaoRestKey: '',
-            kakaoChatbotKey: '',
-            kakaoChatbotUserId: ''
-        };
-    }
-
-    const encoded = {
-
-        githubToken:
-            encodeKey(
-                settings.githubToken || ''
-            ),
-
-        kakaoJsKey:
-            encodeKey(
-                settings.kakaoJsKey || ''
-            ),
-
-        kakaoRestKey:
-            encodeKey(
-                settings.kakaoRestKey || ''
-            ),
-
-        kakaoChatbotKey:
-            encodeKey(
-                settings.kakaoChatbotKey || ''
-            ),
-
-        kakaoChatbotUserId:
-            encodeKey(
-                settings.kakaoChatbotUserId || ''
-            )
-    };
-
-    localStorage.setItem(
-        SETTINGS_KEY,
-        JSON.stringify(encoded)
-    );
-
-    updateSettingsStatus();
-}
-
-
 // ============================================================
 // 설정 상태 전체 갱신
 // ============================================================
@@ -676,110 +552,9 @@ function updateSettingsStatus() {
 // GitHub 토큰 저장
 // ============================================================
 
-function saveGitHubToken() {
-
-    const input =
-        document.getElementById(
-            'githubToken'
-        );
-
-    if (!input) {
-
-        console.warn(
-            'githubToken 입력창이 없습니다. ' +
-            '관리자 서버 설정을 사용하십시오.'
-        );
-
-        return;
-    }
-
-    settings.githubToken =
-        input.value.trim();
-
-    saveSettings();
-
-    showTabStatus(
-        'tab-settings',
-        '✅ GitHub 설정 저장됨',
-        'ok'
-    );
-}
-
-
 // ============================================================
 // 카카오 설정 저장
 // ============================================================
-
-function saveKakaoKeys() {
-
-    const jsInput =
-        document.getElementById(
-            'kakaoJsKey'
-        );
-
-    const restInput =
-        document.getElementById(
-            'kakaoRestKey'
-        );
-
-    if (jsInput) {
-        settings.kakaoJsKey =
-            jsInput.value.trim();
-    }
-
-    if (restInput) {
-        settings.kakaoRestKey =
-            restInput.value.trim();
-    }
-
-    saveSettings();
-
-    showTabStatus(
-        'tab-settings',
-        '✅ 카카오 설정이 저장되었습니다.',
-        'ok'
-    );
-
-    // 구버전 설정 UI가 실제로 존재할 때만
-    // 지도 SDK를 다시 로드한다.
-    if (jsInput) {
-
-        const container =
-            document.getElementById('map');
-
-        if (container) {
-
-            container.innerHTML =
-                '<div style="' +
-                'display:flex;' +
-                'justify-content:center;' +
-                'align-items:center;' +
-                'height:100%;' +
-                'color:#d69e2e;' +
-                'font-size:14px;' +
-                'background:#fffff0;' +
-                'border-radius:12px;' +
-                '">' +
-                '⏳ 카카오 지도 재로딩 중...' +
-                '</div>';
-        }
-
-        kakaoMap = null;
-
-        setTimeout(
-            function () {
-                if (
-                    typeof initMap ===
-                    'function'
-                ) {
-                    initMap();
-                }
-            },
-            300
-        );
-    }
-}
-
 
 // ============================================================
 // 설정 화면 연결 상태
@@ -1874,6 +1649,81 @@ function toggleAdminSettings() {
     if (opening) {
     loadAdminKakaoWorkMappings();
 }
+
+async function openAdminDashboard() {
+    if (fieldPilotAuth.role !== 'master') {
+        showTabStatus('tab-settings', '⚠️ 마스터 권한이 필요합니다.', 'warning');
+        return;
+    }
+
+    document.getElementById('adminDashboardModal')?.remove();
+    const modal = document.createElement('div');
+    modal.id = 'adminDashboardModal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:1000000;background:rgba(15,23,42,.72);display:flex;align-items:center;justify-content:center;padding:12px;';
+    modal.innerHTML = '<div style="width:min(960px,100%);max-height:94vh;overflow:auto;background:var(--bg-card);color:var(--text-primary);border-radius:16px;padding:16px;box-shadow:0 20px 60px rgba(0,0,0,.35)">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div><strong style="font-size:18px">📊 관리자 통합 대시보드</strong><div style="font-size:11px;color:var(--text-muted)">지역 전체 운영 현황</div></div><button class="btn btn-outline btn-sm" onclick="document.getElementById(\'adminDashboardModal\').remove()">닫기</button></div>'
+        + '<div id="adminDashboardBody" style="padding:24px;text-align:center;color:var(--text-muted)">⏳ 대시보드를 불러오는 중...</div></div>';
+    modal.addEventListener('click', function(event) { if (event.target === modal) modal.remove(); });
+    document.body.appendChild(modal);
+
+    try {
+        const data = await serverGet('/api/admin/dashboard');
+        const regions = data.regions || [];
+        const totals = data.totals || {};
+        const cards = [
+            ['오늘 경로 실행', totals.todayVisits || 0, '회'],
+            ['오늘 방문 현장', totals.todayPlaceCount || 0, '곳'],
+            ['미완료 기록', totals.incompleteSites || 0, '건']
+        ].map(item => '<div style="background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:12px;padding:12px"><div style="font-size:11px;color:var(--text-muted)">' + item[0] + '</div><div style="font-size:23px;font-weight:800">' + item[1] + '<small style="font-size:11px;margin-left:3px">' + item[2] + '</small></div></div>').join('');
+        const rows = regions.map(row => '<tr><td style="padding:8px;font-weight:700">' + escapeHtml(row.region) + '</td><td style="padding:8px;text-align:right">' + row.todayPlaceCount + '</td><td style="padding:8px;text-align:right">' + row.incompleteSites + '</td><td style="padding:8px;text-align:right">' + row.totalSites + '</td></tr>').join('');
+        const photos = (data.recentPhotos || []).map(photo => '<div style="padding:8px;border-bottom:1px solid var(--border-color)"><strong>' + escapeHtml(photo.region + ' · ' + photo.siteName) + '</strong><div style="font-size:11px;color:var(--text-muted)">' + escapeHtml(photo.fileName) + ' · ' + escapeHtml(photo.worker || '작업자 미상') + ' · ' + escapeHtml(photo.savedAt || '') + '</div></div>').join('') || '<div style="padding:12px;color:var(--text-muted)">최근 사진이 없습니다.</div>';
+        const body = document.getElementById('adminDashboardBody');
+        body.style.cssText = '';
+        body.innerHTML = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">' + cards + '</div>'
+            + '<div id="adminHeatMap" style="height:320px;border-radius:12px;background:var(--map-bg);margin-bottom:12px"></div>'
+            + '<div style="display:grid;grid-template-columns:minmax(280px,1fr) minmax(280px,1fr);gap:12px">'
+            + '<div style="overflow:auto;border:1px solid var(--border-color);border-radius:10px"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th style="padding:8px;text-align:left">지역</th><th>오늘 방문</th><th>미완료</th><th>전체 현장</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+            + '<div style="border:1px solid var(--border-color);border-radius:10px"><div style="padding:9px;font-weight:700">📷 최근 사진 업로드</div>' + photos + '</div></div>';
+        renderAdminHeatMap(regions.flatMap(row => row.heatPoints || []));
+    } catch (error) {
+        const body = document.getElementById('adminDashboardBody');
+        if (body) body.innerHTML = '<span style="color:#e53e3e">❌ ' + escapeHtml(error.message) + '</span>';
+    }
+}
+
+function renderAdminHeatMap(points) {
+    const container = document.getElementById('adminHeatMap');
+    if (!container || !window.kakao?.maps) return;
+    const fallback = new kakao.maps.LatLng(37.5326, 126.99);
+    const map = new kakao.maps.Map(container, { center: fallback, level: 8 });
+    map.setDraggable(true);
+    map.setZoomable(true);
+    if (!points.length) return;
+    const bounds = new kakao.maps.LatLngBounds();
+    const buckets = new Map();
+    for (const point of points) {
+        const key = Number(point.lat).toFixed(3) + ',' + Number(point.lng).toFixed(3);
+        const bucket = buckets.get(key) || { lat: Number(point.lat), lng: Number(point.lng), count: 0 };
+        bucket.count += 1;
+        buckets.set(key, bucket);
+    }
+    for (const point of buckets.values()) {
+        const position = new kakao.maps.LatLng(point.lat, point.lng);
+        bounds.extend(position);
+        new kakao.maps.Circle({
+            map,
+            center: position,
+            radius: 90 + Math.min(point.count, 10) * 35,
+            strokeWeight: 1,
+            strokeColor: '#dc2626',
+            strokeOpacity: 0.65,
+            fillColor: '#ef4444',
+            fillOpacity: Math.min(0.25 + point.count * 0.08, 0.72)
+        });
+    }
+    map.setBounds(bounds, 35, 35, 35, 35);
+    setTimeout(() => map.relayout(), 0);
+}
 }
 
 
@@ -1897,35 +1747,6 @@ async function refreshSettingsTab() {
 }
                                                                                                                                                                                                                                                                                                                                                   
                                                                                                                                                                                                                                                                                                                                                     
-async function testGitHubToken() {
-    let token = settings.githubToken || document.getElementById('githubToken').value.trim();
-    if (!token) {
-        showTabStatus('tab-settings', '토큰을 입력하세요.', 'warning');
-        return;
-    }
-    let gs = document.getElementById('githubStatus');
-    gs.textContent = '⏳ 테스트 중...';
-    gs.className = 'badge badge-wait';
-    try {
-        let res = await fetch('https://api.github.com/user', {
-            headers: { 'Authorization': 'token ' + token }
-        });
-        if (res.ok) {
-            let user = await res.json();
-            gs.textContent = '✅ ' + user.login;
-            gs.className = 'badge badge-ok';
-            settings.githubToken = token;
-            saveSettings();
-        } else {
-            gs.textContent = '❌ 실패 (' + res.status + ')';
-            gs.className = 'badge badge-fail';
-        }
-    } catch {
-        gs.textContent = '❌ 네트워크 오류';
-        gs.className = 'badge badge-fail';
-    }
-}
-
 // ============================================================
 // 4. 저장소 및 지역 관리
 // ============================================================
@@ -2571,9 +2392,15 @@ function deleteRegion() {
 // ============================================================
 function exportSettings() {
     const data = {
-        kakaoJsKey: settings.kakaoJsKey || '',
-        kakaoRestKey: settings.kakaoRestKey || '',
+        app: 'FieldPilot',
+        schemaVersion: 2,
         routeApi: routeApi || 'kakao',
+        optimizeMode: optimizeMode || 'Nearest',
+        routeObjective: routeObjective || 'distance',
+        useRoadOptimization: useRoadOptimization !== false,
+        useDirectionHint: useDirectionHint !== false,
+        nearbyClustersEnabled: nearbyClustersEnabled !== false,
+        darkMode: localStorage.getItem(DARK_MODE_KEY) === 'true',
         exportDate: new Date().toISOString()
     };
 
@@ -2609,18 +2436,36 @@ function importSettings(event) {
     reader.onload = function(e) {
         try {
             let data = JSON.parse(e.target.result);
-            if (!data.githubToken && !data.kakaoJsKey && !data.kakaoRestKey) {
+            if (!data || data.app !== 'FieldPilot' || Number(data.schemaVersion) < 2) {
                 showTabStatus('tab-settings', '❌ 유효한 설정 파일이 아닙니다.', 'error');
                 return;
             }
-            settings.githubToken = data.githubToken || '';
-            settings.kakaoJsKey = data.kakaoJsKey || '';
-            settings.kakaoRestKey = data.kakaoRestKey || '';
-            if (data.routeApi) routeApi = data.routeApi;
-            saveSettings();
-            document.getElementById('githubToken').value = settings.githubToken;
-            document.getElementById('kakaoJsKey').value = settings.kakaoJsKey;
-            document.getElementById('kakaoRestKey').value = settings.kakaoRestKey;
+
+            if (data.routeApi === 'kakao') {
+                routeApi = data.routeApi;
+                localStorage.setItem(ROUTE_API_KEY, routeApi);
+            }
+            if (typeof data.optimizeMode === 'string' && data.optimizeMode) {
+                optimizeMode = data.optimizeMode;
+                localStorage.setItem(OPTIMIZE_MODE_KEY, optimizeMode);
+            }
+            if (data.routeObjective === 'distance' || data.routeObjective === 'time') {
+                routeObjective = data.routeObjective;
+            }
+            if (typeof data.useRoadOptimization === 'boolean') {
+                useRoadOptimization = data.useRoadOptimization;
+            }
+            if (typeof data.useDirectionHint === 'boolean') {
+                useDirectionHint = data.useDirectionHint;
+            }
+            if (typeof data.nearbyClustersEnabled === 'boolean') {
+                nearbyClustersEnabled = data.nearbyClustersEnabled;
+                localStorage.setItem('nearbyPlaceClusters', nearbyClustersEnabled ? 'on' : 'off');
+            }
+            if (typeof data.darkMode === 'boolean') {
+                localStorage.setItem(DARK_MODE_KEY, data.darkMode ? 'true' : 'false');
+                applyDarkMode(data.darkMode);
+            }
             showTabStatus('tab-settings', '✅ 설정 복원 완료', 'ok');
             initMap();
         } catch(error) {
@@ -2930,7 +2775,7 @@ btn.innerHTML = '<span style="font-size:14px;">🎯</span> 현재 위치';
 btn.disabled = false;
 }
             
-            let restKey = settings.kakaoRestKey || 'server-proxy'; // 서버가 실제 키 보유, 클라이언트는 게이트 통과용
+            let restKey = 'server-proxy';
             if (restKey) {
                 serverGet('/api/geocode/reverse?lat=' + lat + '&lng=' + lng)
                 .then(function(data) {
@@ -2982,7 +2827,7 @@ async function setStartPoint() {
         showTabStatus('tab-places', '출발지를 입력하세요.', 'warning');
         return;
     }
-    let restKey = settings.kakaoRestKey || 'server-proxy'; // 서버가 실제 키 보유, 클라이언트는 게이트 통과용
+    let restKey = 'server-proxy';
     if (!restKey) {
         showTabStatus('tab-places', '⚠️ REST API 키가 필요합니다.', 'warning');
         return;
@@ -3422,7 +3267,7 @@ function saveAddPlaceModal() {
     let finalLng = lng;
 
     if (address && (isNaN(lat) || isNaN(lng))) {
-        let restKey = settings.kakaoRestKey || 'server-proxy'; // 서버가 실제 키 보유, 클라이언트는 게이트 통과용
+        let restKey = 'server-proxy';
         if (restKey) {
             geocodeAddress(address, restKey).then(function(geo) {
                 if (geo) {
@@ -3788,7 +3633,7 @@ async function saveModal() {
     let finalLng = lng;
 
     if (address && (isNaN(lat) || isNaN(lng))) {
-        let restKey = settings.kakaoRestKey || 'server-proxy'; // 서버가 실제 키 보유, 클라이언트는 게이트 통과용
+        let restKey = 'server-proxy';
         if (restKey) {
             let geo = await geocodeAddress(address, restKey);
             if (geo) {
@@ -4285,7 +4130,7 @@ async function runOptimize() {
             return;
         }
         
-        let restKey = settings.kakaoRestKey || 'server-proxy'; // 서버가 실제 키 보유, 클라이언트는 게이트 통과용
+        let restKey = 'server-proxy';
         if (!restKey) {
             showTabStatus('tab-places', '⚠️ REST API 키 필요 (설정 탭)', 'warning');
             return;
@@ -4633,7 +4478,7 @@ html += '</div>';
                     let p = routeResult.places[i];
                     addRouteMarker(p.lat, p.lng, (i + 1) + '. ' + p.name, false, i);
                 }
-                let restKey = settings.kakaoRestKey || 'server-proxy'; // 서버가 실제 키 보유, 클라이언트는 게이트 통과용
+                let restKey = 'server-proxy';
                 if (restKey) {
                     callKakaoMobilityRoute(allPoints, restKey).then(function(routeData) {
                         if (routeData) drawRoadRoute(routeData);
@@ -5820,211 +5665,6 @@ function utf8ToBase64(str) {
     }
 }
 
-async function uploadToGitHub(silent) {
-    silent = silent || false;
-    let token = settings.githubToken;
-    if (!token) {
-        if (!silent) showTabStatus('tab-settings', '⚠️ GitHub 토큰이 없습니다.', 'warning');
-        return;
-    }
-    if (!currentRegion || currentRegion.trim() === '') {
-        if (!silent) showTabStatus('tab-settings', '⚠️ 현재 선택된 지역이 없습니다.', 'warning');
-        return;
-    }
-    if (!navigator.onLine) {
-        if (!silent) showTabStatus('tab-settings', '📡 오프라인 상태 - 업로드 보류됨', 'warning');
-        return;
-    }
-    
-    try {
-        if (!silent) showTabStatus('tab-settings', '☁️ GitHub 업로드 중...', 'info');
-        
-        let userRes = await fetch('https://api.github.com/user', {
-            headers: { 'Authorization': 'token ' + token }
-        });
-        if (!userRes.ok) {
-            throw new Error('토큰 인증 실패: ' + userRes.status);
-        }
-        let user = await userRes.json();
-        let username = user.login;
-        
-        let repoName = 'route-data';
-        let fileName = currentRegion + '.json';
-        let content = JSON.stringify(places, null, 2);
-        let b64Content = utf8ToBase64(content);
-        
-        let repoUrl = 'https://api.github.com/repos/' + username + '/' + repoName;
-        let repoRes = await fetch(repoUrl, {
-            headers: { 'Authorization': 'token ' + token }
-        });
-        
-        if (repoRes.status === 404) {
-            let isPrivate = await new Promise(function(resolve) {
-                showConfirmModal(
-                    '📢 GitHub 저장소 생성',
-                    '저장소를 비공개로 생성하시겠습니까?\n(취소 시 공개 저장소로 생성됩니다)',
-                    function() { resolve(true); },
-                    function() { resolve(false); }
-                );
-            });
-            
-            let createRes = await fetch('https://api.github.com/user/repos', {
-                method: 'POST',
-                headers: {
-                    'Authorization': 'token ' + token,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    name: repoName,
-                    description: '경로 최적화 데이터 저장소',
-                    private: !!isPrivate,
-                    auto_init: true
-                })
-            });
-            if (!createRes.ok) throw new Error('저장소 생성 실패');
-            if (!silent) showTabStatus('tab-settings', '✅ 저장소 생성됨: ' + repoName, 'ok');
-            await new Promise(resolve => setTimeout(resolve, 2000));
-        } else if (!repoRes.ok) {
-            throw new Error('저장소 확인 실패: ' + repoRes.status);
-        }
-        
-        let fileUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents/' + encodeURIComponent(fileName);
-        let fileRes = await fetch(fileUrl, {
-            headers: { 'Authorization': 'token ' + token }
-        });
-        
-        let sha = null;
-        if (fileRes.ok) {
-            let fileData = await fileRes.json();
-            sha = fileData.sha;
-        }
-        
-        let putData = {
-            message: 'Auto sync: ' + currentRegion + ' (' + new Date().toLocaleString() + ')',
-            content: b64Content
-        };
-        if (sha) putData.sha = sha;
-        
-        let putRes = await fetch(fileUrl, {
-            method: 'PUT',
-            headers: {
-                'Authorization': 'token ' + token,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(putData)
-        });
-        
-        if (putRes.status === 409) {
-            showConfirmModal(
-                '⚠️ 동기화 충돌',
-                '다른 기기에서 동시에 수정한 것으로 보입니다.\n최신 버전을 가져와 병합하시겠습니까?',
-                async function() {
-                    let latestRes = await fetch(fileUrl, {
-                        headers: { 'Authorization': 'token ' + token }
-                    });
-                    if (latestRes.ok) {
-                        let latestData = await latestRes.json();
-                        let latestContent = new TextDecoder('utf-8').decode(
-                            Uint8Array.from(atob(latestData.content), function(c) { return c.charCodeAt(0); })
-                        );
-                        let latestPlaces = JSON.parse(latestContent);
-                        let merged = latestPlaces.slice();
-                        places.forEach(function(localP) {
-                            let existing = merged.find(function(m) { return normalizeName(m.name) === normalizeName(localP.name); });
-                            if (existing) {
-                                existing.address = localP.address || existing.address;
-                                existing.lat = localP.lat || existing.lat;
-                                existing.lng = localP.lng || existing.lng;
-                                existing.remark = localP.remark || existing.remark;
-                                existing.favorite = localP.favorite !== undefined ? localP.favorite : existing.favorite;
-                            } else {
-                                merged.push(localP);
-                            }
-                        });
-                        places = merged;
-                        savePlaces();
-                        serverPost('/api/places')
-                    } else {
-                        showTabStatus('tab-settings', '❌ 충돌 해결 실패', 'error');
-                    }
-                },
-                function() {
-                    showTabStatus('tab-settings', '⏸️ 충돌로 인해 업로드가 취소되었습니다.', 'warning');
-                }
-            );
-            return;
-        }
-        
-        if (!putRes.ok) {
-            let errorText = await putRes.text();
-            throw new Error('업로드 실패: ' + putRes.status + ' - ' + errorText);
-        }
-        
-        if (!silent) {
-            showTabStatus('tab-settings', '✅ GitHub 업로드 완료! (' + places.length + '개)', 'ok');
-        }
-    } catch(error) {
-        if (!silent) {
-            showTabStatus('tab-settings', '❌ 업로드 실패: ' + error.message, 'error');
-        }
-    }
-}
-
-async function downloadFromGitHub() {
-    let token = settings.githubToken;
-    if (!token) {
-        showTabStatus('tab-settings', '⚠️ GitHub 토큰이 없습니다.', 'warning');
-        return;
-    }
-    
-    try {
-        showTabStatus('tab-settings', '☁️ GitHub 저장소 목록 불러오는 중...', 'info');
-        
-        let userRes = await fetch('https://api.github.com/user', {
-            headers: { 'Authorization': 'token ' + token }
-        });
-        if (!userRes.ok) throw new Error('토큰 인증 실패');
-        let user = await userRes.json();
-        let username = user.login;
-        
-        let repoName = 'route-data';
-        let repoUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents';
-        let repoRes = await fetch(repoUrl, {
-            headers: { 'Authorization': 'token ' + token }
-        });
-        
-        if (repoRes.status === 404) {
-            showTabStatus('tab-settings', '📭 GitHub에 저장된 데이터가 없습니다.\n먼저 "업로드"를 실행하세요.', 'warning');
-            return;
-        }
-        if (!repoRes.ok) {
-            throw new Error('저장소 조회 실패: ' + repoRes.status);
-        }
-        
-        let files = await repoRes.json();
-        let regions = [];
-        files.forEach(function(file) {
-if (file.name.endsWith('.json') && file.name.indexOf('_stats') === -1 && file.name.indexOf('_work') === -1 && file.name !== '.json') {
-let region = file.name.replace('.json', '');
-regions.push(region);
-}
-});
-        
-        if (regions.length === 0) {
-            showTabStatus('tab-settings', '📭 GitHub에 저장된 지역 데이터가 없습니다.', 'warning');
-            return;
-        }
-        
-        showRegionSelectModal(regions, function(selectedRegion) {
-            if (selectedRegion) {
-                processDownloadFromGitHub(selectedRegion);
-            }
-        });
-    } catch(error) {
-        showTabStatus('tab-settings', '❌ 목록 조회 실패: ' + error.message, 'error');
-    }
-}
-
 function showRegionSelectModal(regions, onSelect) {
     let existing = document.getElementById('regionSelectModal');
     if (existing) existing.remove();
@@ -6088,245 +5728,10 @@ function showRegionSelectModal(regions, onSelect) {
     });
 }
 
-async function processDownloadFromGitHub(region) {
-    let token = settings.githubToken;
-    if (!token) {
-        showTabStatus('tab-settings', '⚠️ GitHub 토큰이 없습니다.', 'warning');
-        return;
-    }
-    
-    try {
-        showTabStatus('tab-settings', '☁️ GitHub 다운로드 중...', 'info');
-        
-        let userRes = await fetch('https://api.github.com/user', {
-            headers: { 'Authorization': 'token ' + token }
-        });
-        if (!userRes.ok) throw new Error('토큰 인증 실패');
-        let user = await userRes.json();
-        let username = user.login;
-        
-        let repoName = 'route-data';
-        let fileName = region + '.json';
-        let fileUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents/' + encodeURIComponent(fileName);
-        
-        let fileRes = await fetch(fileUrl, {
-            headers: { 'Authorization': 'token ' + token },
-            cache: 'no-store'
-        });
-        
-        if (fileRes.status === 404) {
-            showTabStatus('tab-settings', '📭 GitHub에 "' + region + '" 지역의 데이터가 없습니다.', 'warning');
-            return;
-        }
-        if (!fileRes.ok) {
-            throw new Error('다운로드 실패: ' + fileRes.status);
-        }
-        
-        let data = await fileRes.json();
-        let binaryString = atob(data.content);
-        let bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-        }
-        let content = new TextDecoder('utf-8').decode(bytes);
-        let loadedPlaces = JSON.parse(content);
-        
-        places = loadedPlaces;
-        
-        let key = getStorageKey(region);
-        localStorage.setItem(key, JSON.stringify(places));
-        
-        let select = document.getElementById('regionSelect');
-        let exists = false;
-        for (let i = 0; i < select.options.length; i++) {
-            if (select.options[i].value === region) {
-                exists = true;
-                break;
-            }
-        }
-        if (!exists) {
-            let opt = document.createElement('option');
-            opt.value = region;
-            opt.textContent = region;
-            select.appendChild(opt);
-        }
-        
-        select.value = region;
-        currentRegion = region;
-        localStorage.setItem(SELECTED_REGION_KEY, region);
-        
-        renderPlaces();
-        updateStorageInfo();
-        
-        if (kakaoMap) {
-            let center = getRegionCenter(region);
-            kakaoMap.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
-            kakaoMap.setLevel(5);
-            kakaoMap.relayout();
-        }
-        
-        showTabStatus('tab-settings', '✅ GitHub 다운로드 완료! (' + loadedPlaces.length + '개)', 'ok');
-    } catch(error) {
-        showTabStatus('tab-settings', '❌ 다운로드 실패: ' + error.message, 'error');
-    }
-}
-
 // 히스토리 토글 기능
-async function showGitHubHistory() {
-    let historyDiv = document.getElementById('githubHistory');
-    if (!historyDiv) return;
-    
-    if (historyDiv.style.display === 'block') {
-        historyDiv.style.display = 'none';
-        return;
-    }
-    
-    let token = settings.githubToken;
-    if (!token) {
-        showTabStatus('tab-settings', '⚠️ GitHub 토큰이 없습니다.', 'warning');
-        return;
-    }
-    
-    historyDiv.innerHTML = '<div style="text-align:center;padding:8px;color:#a0aec0;">⏳ 로딩 중...</div>';
-    historyDiv.style.display = 'block';
-    
-    try {
-        let userRes = await fetch('https://api.github.com/user', {
-            headers: { 'Authorization': 'token ' + token }
-        });
-        if (!userRes.ok) throw new Error('토큰 인증 실패');
-        let user = await userRes.json();
-        let username = user.login;
-        let repoName = 'route-data';
-        let fileName = currentRegion + '.json';
-        let url = 'https://api.github.com/repos/' + username + '/' + repoName + '/commits?path=' + encodeURIComponent(fileName) + '&per_page=10';
-        let commitRes = await fetch(url, {
-            headers: { 'Authorization': 'token ' + token }
-        });
-        if (!commitRes.ok) {
-            if (commitRes.status === 404) {
-                historyDiv.innerHTML = '<div style="color:#a0aec0;text-align:center;padding:8px;">📭 아직 커밋 기록이 없습니다</div>';
-                showTabStatus('tab-settings', '📭 히스토리가 없습니다.', 'warning');
-                return;
-            }
-            throw new Error('히스토리 조회 실패');
-        }
-        let commits = await commitRes.json();
-        if (commits.length === 0) {
-            historyDiv.innerHTML = '<div style="color:#a0aec0;text-align:center;padding:8px;">📭 아직 커밋 기록이 없습니다</div>';
-        } else {
-            let html = '<div style="font-weight:600;font-size:12px;margin-bottom:4px;">📋 최근 10개 커밋</div>';
-            for (let i = 0; i < commits.length; i++) {
-                let c = commits[i];
-                let date = new Date(c.commit.author.date).toLocaleString();
-                let msg = c.commit.message || 'No message';
-                let sha = c.sha;
-                html += '<div class="commit-item">';
-                html += '<div class="commit-info">';
-                html += '<div class="commit-msg">' + escapeHtml(msg) + '</div>';
-                html += '<div class="commit-date">' + date + '</div>';
-                html += '</div>';
-                html += '<button class="restore-btn" onclick="restoreFromGitHub(\'' + sha + '\')">복원</button>';
-                html += '</div>';
-            }
-            historyDiv.innerHTML = html;
-        }
-        historyDiv.style.display = 'block';
-        showTabStatus('tab-settings', '✅ 히스토리 로드 완료', 'ok');
-    } catch(error) {
-        historyDiv.innerHTML = '<div style="color:#e53e3e;text-align:center;padding:8px;">❌ 히스토리 로드 실패</div>';
-        historyDiv.style.display = 'block';
-        showTabStatus('tab-settings', '❌ 히스토리 로드 실패', 'error');
-    }
-}
-
-async function restoreFromGitHub(sha) {
-    let token = settings.githubToken;
-    if (!token) {
-        showTabStatus('tab-settings', '⚠️ GitHub 토큰이 없습니다.', 'warning');
-        return;
-    }
-    if (!currentRegion) {
-        showTabStatus('tab-settings', '⚠️ 복원할 지역이 선택되지 않았습니다.', 'warning');
-        return;
-    }
-    
-    showConfirmModal(
-        '⏪ 히스토리 복원',
-        '해당 버전으로 데이터를 복원하시겠습니까?\n현재 데이터는 덮어쓰기됩니다.',
-        async function() {
-            try {
-                showTabStatus('tab-settings', '⏳ 복원 중...', 'info');
-                let userRes = await fetch('https://api.github.com/user', {
-                    headers: { 'Authorization': 'token ' + token }
-                });
-                if (!userRes.ok) throw new Error('토큰 인증 실패');
-                let user = await userRes.json();
-                let username = user.login;
-                let repoName = 'route-data';
-                let fileName = currentRegion + '.json';
-                let url = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents/' + encodeURIComponent(fileName) + '?ref=' + sha;
-                let fileRes = await fetch(url, {
-                    headers: { 'Authorization': 'token ' + token }
-                });
-                if (!fileRes.ok) throw new Error('파일 조회 실패');
-                let data = await fileRes.json();
-                let binaryString = atob(data.content);
-                let bytes = new Uint8Array(binaryString.length);
-                for (let i = 0; i < binaryString.length; i++) {
-                    bytes[i] = binaryString.charCodeAt(i);
-                }
-                let content = new TextDecoder('utf-8').decode(bytes);
-                let loadedPlaces = JSON.parse(content);
-                
-                places = loadedPlaces;
-                let key = getStorageKey(currentRegion);
-                localStorage.setItem(key, JSON.stringify(places));
-                
-                renderPlaces();
-                updateStorageInfo();
-                showTabStatus('tab-settings', '✅ 복원 완료! (' + loadedPlaces.length + '개)', 'ok');
-                
-                if (kakaoMap) {
-                    let center = getRegionCenter(currentRegion);
-                    kakaoMap.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
-                    kakaoMap.setLevel(5);
-                    kakaoMap.relayout();
-                }
-            } catch(error) {
-                showTabStatus('tab-settings', '❌ 복원 실패: ' + error.message, 'error');
-            }
-        }
-    );
-}
-
 // ============================================================
 // 26. 오프라인 상태 감지
 // ============================================================
-function updateOnlineStatus() {
-    let banner = document.getElementById('offlineBanner');
-    if (!banner) return;
-    if (!navigator.onLine) {
-        banner.classList.add('show');
-        showTabStatus('tab-settings', '📡 오프라인 상태 - 변경사항이 GitHub에 동기화되지 않을 수 있습니다.', 'warning');
-    } else {
-        banner.classList.remove('show');
-        if (settings.githubToken) {
-            setTimeout(function() {
-                uploadToGitHub(true);
-            }, 2000);
-        }
-        if (pendingWorkUpload && settings.githubToken) {
-            setTimeout(function() {
-                let work = loadWorkFromLocalStorage();
-                uploadWorkToGitHub(work).then(function(ok) {
-                    if (ok) showTabStatus('tab-work', '✅ 오프라인 중 저장된 작업 기록이 업로드되었습니다.', 'ok');
-                });
-            }, 3000);
-        }
-    }
-}
-
 window.addEventListener('online', updateOnlineStatus);
 window.addEventListener('offline', updateOnlineStatus);
 
@@ -6428,7 +5833,7 @@ async function importPlaces(data) {
         return;
     }
     let added = 0, updated = 0, skipped = 0;
-    let restKey = settings.kakaoRestKey || 'server-proxy'; // 서버가 실제 키 보유, 클라이언트는 게이트 통과용
+    let restKey = 'server-proxy';
     let rowsToGeocode = [];
     for (let i = 0; i < data.length; i++) {
         let row = data[i];
@@ -7282,7 +6687,7 @@ document.addEventListener('click', function(event) {
 // ============================================================
 async function searchKakaoPlaces(query, size) {
     size = size || 5;
-    let restKey = settings.kakaoRestKey || 'server-proxy'; // 서버가 실제 키 보유, 클라이언트는 게이트 통과용
+    let restKey = 'server-proxy';
     if (!query || query.length < 2 || !restKey) return [];
     try {
         let data = await serverGet('/api/places/search?q=' + encodeURIComponent(query) + '&size=' + size);
@@ -7719,34 +7124,6 @@ document.addEventListener(
 // ============================================================
 // 탭 진입 시 자동 동기화
 // ============================================================
-function autoSyncStats() {
-    let now = Date.now();
-    // 10초 이내 재진입 시 캐시 사용 (연속 클릭 방지)
-    if (window._lastStatsSync && now - window._lastStatsSync < 10000) {
-        renderStatsTab();
-        return;
-    }
-    window._lastStatsSync = now;
-    if (settings.githubToken && navigator.onLine) {
-        refreshStatsFromGitHub();
-    } else {
-        renderStatsTab();
-    }
-}
-
-function autoSyncWork() {
-    let now = Date.now();
-    if (window._lastWorkSync && now - window._lastWorkSync < 10000) {
-        renderWorkTab();
-        return;
-    }
-    window._lastWorkSync = now;
-    if (settings.githubToken && navigator.onLine) {
-        refreshWorkFromGitHub();
-    } else {
-        renderWorkTab();
-    }
-}
 // ============================================================
 // 39. 도우미 함수 (tab-status 표시)
 // ============================================================
@@ -8581,7 +7958,7 @@ function tryCloseApp() {
 
 // ===== 동 추출 (카카오 coord2address API) =====
 async function extractDongFromCoords(lat, lng) {
-    let restKey = settings.kakaoRestKey || 'server-proxy'; // 서버가 실제 키 보유, 클라이언트는 게이트 통과용
+    let restKey = 'server-proxy';
     if (!restKey) return '';
     try {
         let data = await serverGet('/api/geocode/reverse?lat=' + lat + '&lng=' + lng);
@@ -8609,7 +7986,7 @@ function extractDongFromAddress(address) {
 }
 // ===== 현장 탭 진입 시 동 자동 변환 =====
 async function autoFillDong() {
-    if (!settings.kakaoRestKey) return;
+    if (!serverBase()) return;
     let needConvert = places.filter(function(p) {
         return !p.dong && p.lat && p.lng && p.lat !== 0 && p.lng !== 0;
     });
@@ -8822,122 +8199,7 @@ async function saveStatsToLocalStorage(stats) {
     }
 }
 // ===== GitHub 업로드 (통계 기록 시 자동) =====
-async function uploadStatsToGitHub(stats) {
-    let token = settings.githubToken;
-    if (!token) return false;
-    if (!currentRegion) return false;
-    if (!navigator.onLine) return false;
-    try {
-        let userRes = await fetch('https://api.github.com/user', {
-            headers: { 'Authorization': 'token ' + token }
-        });
-        if (!userRes.ok) return false;
-        let user = await userRes.json();
-        let username = user.login;
-        let repoName = 'route-data';
-        let fileName = currentRegion + '_stats.json';
-        let content = JSON.stringify(stats, null, 2);
-        let b64Content = utf8ToBase64(content);
-        let fileUrl = 'https://api.github.com/repos/' + username + '/' + repoName + '/contents/' + encodeURIComponent(fileName);
-        
-        // sha 가져오기
-        let fileRes = await fetch(fileUrl, {
-            headers: { 'Authorization': 'token ' + token }
-        });
-        let sha = null;
-        if (fileRes.ok) {
-            let fileData = await fileRes.json();
-            sha = fileData.sha;
-        }
-        
-        let putData = {
-            message: 'Stats update: ' + currentRegion + ' (' + new Date().toLocaleString() + ')',
-            content: b64Content
-        };
-        if (sha) putData.sha = sha;
-        
-        let putRes = await fetch(fileUrl, {
-            method: 'PUT',
-            headers: {
-                'Authorization': 'token ' + token,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(putData)
-        });
-        
-        // ★ 409 Conflict 시 sha 재획득 후 1회 재시도
-        if (putRes.status === 409) {
-            console.log('⚠️ stats 409 충돌 감지, sha 재획득 후 재시도...');
-            await new Promise(r => setTimeout(r, 1500));
-            let retryRes = await fetch(fileUrl, {
-                headers: { 'Authorization': 'token ' + token }
-            });
-            if (retryRes.ok) {
-                let newSha = (await retryRes.json()).sha;
-                putData.sha = newSha;
-                putRes = await fetch(fileUrl, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': 'token ' + token,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(putData)
-                });
-            }
-        }
-        
-        return putRes.ok;
-    } catch(e) {
-        return false;
-    }
-}
-
 // ===== GitHub에서 통계 다운로드 (🔄 새로고침 버튼) =====
-async function refreshStatsFromGitHub() {
-    let statsContent = document.getElementById('statsContent');
-    if (!statsContent) return;
-    if (!settings.githubToken) {
-        statsContent.innerHTML = '<div style="text-align:center;padding:20px;color:#e53e3e;">⚠️ 설정 탭에서 GitHub 토큰을 먼저 설정해주세요.</div>';
-        return;
-    }
-    if (!currentRegion) {
-        statsContent.innerHTML = '<div style="text-align:center;padding:20px;color:#e53e3e;">⚠️ 지역이 선택되지 않았습니다.</div>';
-        return;
-    }
-    statsContent.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#a0aec0;">⏳ GitHub에서 통계 불러오는 중...</div>';
-    try {
-        let token = settings.githubToken;
-        let userRes = await fetch('https://api.github.com/user', { headers: { 'Authorization': 'token ' + token } });
-        if (!userRes.ok) throw new Error('토큰 인증 실패');
-        let user = await userRes.json();
-        let fileName = currentRegion + '_stats.json';
-        let fileUrl = 'https://api.github.com/repos/' + user.login + '/route-data/contents/' + encodeURIComponent(fileName);
-        let fileRes = await fetch(fileUrl, { headers: { 'Authorization': 'token ' + token }, cache: 'no-store' });
-        if (fileRes.status === 404) {
-            currentStats = { version: 1, visitHistory: [], lastUpdated: null };
-            saveStatsToLocalStorage(currentStats);
-            renderStatsTab();
-            return;
-        }
-        if (!fileRes.ok) throw new Error('다운로드 실패: ' + fileRes.status);
-        let data = await fileRes.json();
-        let binaryString = atob(data.content);
-        let bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
-        let stats = JSON.parse(new TextDecoder('utf-8').decode(bytes));
-        let cutoff = Date.now() - (30 * 24 * 60 * 60 * 1000);
-        if (stats.visitHistory) {
-            stats.visitHistory = stats.visitHistory.filter(function(v) { return v.timestamp >= cutoff; });
-        }
-        currentStats = stats;
-        saveStatsToLocalStorage(stats);
-        renderStatsTab();
-        showTabStatus('tab-stats', '✅ GitHub에서 통계 동기화 완료', 'ok');
-    } catch(error) {
-        statsContent.innerHTML = '<div style="text-align:center;padding:20px;color:#e53e3e;">❌ 통계 로드 실패: ' + escapeHtml(error.message) + '</div>';
-    }
-}
-
 // ===== 통계 탭 렌더링 (자동 동 변환 포함) =====
 async function renderStatsTab() {
     let container = document.getElementById('statsContent');
@@ -9226,77 +8488,6 @@ async function saveWorkToLocalStorage(work) {
         queueServerWrite('/api/work-history?region=' + encodeURIComponent(region), work);
 
         return false;
-    }
-}
-
-async function uploadWorkToGitHub(work) {
-    let token = settings.githubToken;
-    if (!token || !currentRegion || !navigator.onLine) {
-        if (!navigator.onLine) pendingWorkUpload = true;
-        return false;
-    }
-    try {
-        let userRes = await fetch('https://api.github.com/user', { headers: { 'Authorization': 'token ' + token } });
-        if (!userRes.ok) return false;
-        let user = await userRes.json();
-        let fileName = currentRegion + '_work.json';
-        let content = JSON.stringify(work, null, 2);
-        let b64Content = utf8ToBase64(content);
-        let fileUrl = 'https://api.github.com/repos/' + user.login + '/route-data/contents/' + encodeURIComponent(fileName);
-        let fileRes = await fetch(fileUrl, { headers: { 'Authorization': 'token ' + token } });
-        let sha = null;
-        if (fileRes.ok) { sha = (await fileRes.json()).sha; }
-        let putData = { message: 'Work: ' + currentRegion + ' (' + new Date().toLocaleString() + ')', content: b64Content };
-        if (sha) putData.sha = sha;
-        let putRes = await fetch(fileUrl, {
-            method: 'PUT',
-            headers: { 'Authorization': 'token ' + token, 'Content-Type': 'application/json' },
-            body: JSON.stringify(putData)
-        });
-        if (putRes.ok) pendingWorkUpload = false;
-        return putRes.ok;
-    } catch(e) { return false; }
-}
-
-async function refreshWorkFromGitHub() {
-    let container = document.getElementById('workCalendar');
-    if (!container) return;
-    if (!settings.githubToken) {
-        showTabStatus('tab-work', '⚠️ GitHub 토큰을 먼저 설정해주세요.', 'warning');
-        return;
-    }
-    if (!currentRegion) {
-        showTabStatus('tab-work', '⚠️ 지역이 선택되지 않았습니다.', 'warning');
-        return;
-    }
-    container.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#a0aec0;">⏳ GitHub에서 작업 기록 불러오는 중...</div>';
-    try {
-        let token = settings.githubToken;
-        let userRes = await fetch('https://api.github.com/user', { headers: { 'Authorization': 'token ' + token } });
-        if (!userRes.ok) throw new Error('토큰 인증 실패');
-        let user = await userRes.json();
-        let fileName = currentRegion + '_work.json';
-        let fileUrl = 'https://api.github.com/repos/' + user.login + '/route-data/contents/' + encodeURIComponent(fileName);
-        let fileRes = await fetch(fileUrl, { headers: { 'Authorization': 'token ' + token }, cache: 'no-store' });
-        if (fileRes.status === 404) {
-            currentWork = { version: 1, categories: ['카메라', '비상벨', '전원설비', '네트워크', '기타'], workHistory: [], lastUpdated: null };
-            saveWorkToLocalStorage(currentWork);
-            renderWorkTab();
-            showTabStatus('tab-work', '📭 아직 작업 기록이 없습니다.', 'info');
-            return;
-        }
-        if (!fileRes.ok) throw new Error('다운로드 실패: ' + fileRes.status);
-        let data = await fileRes.json();
-        let binaryString = atob(data.content);
-        let bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
-        let work = JSON.parse(new TextDecoder('utf-8').decode(bytes));
-        currentWork = work;
-        saveWorkToLocalStorage(work);
-        renderWorkTab();
-        showTabStatus('tab-work', '✅ GitHub에서 작업 기록 동기화 완료', 'ok');
-    } catch(error) {
-        container.innerHTML = '<div style="text-align:center;padding:20px;color:#e53e3e;">❌ 로드 실패: ' + escapeHtml(error.message) + '</div>';
     }
 }
 
@@ -11587,7 +10778,7 @@ function searchLunchRestaurants(menu) {
     let coords = (typeof userGpsCoords !== 'undefined' && userGpsCoords) ? userGpsCoords : null;
 
     function doSearch(lat, lng, isGps) {
-        let restKey = settings.kakaoRestKey || 'server-proxy'; // 서버가 실제 키 보유, 클라이언트는 게이트 통과용
+        let restKey = 'server-proxy';
         if (!restKey) {
             restaurantList.innerHTML = '<div style="text-align:center;padding:12px;color:#e53e3e;font-size:13px;">⚠️ 카카오 REST API 키가 필요합니다.</div>';
             return;
@@ -12281,52 +11472,6 @@ async function sendToKakaoChatbot(record) {
 // ============================================================
 async function exportPhotosToServer() {
     showTabStatus('tab-work', 'ℹ️ 사진은 촬영 즉시 서버에 자동 저장됩니다. 별도 내보내기가 필요 없습니다.', 'info');
-}
-// 카카오 챗봇 설정 저장
-function saveKakaoChatbot() {
-    settings.kakaoChatbotKey = document.getElementById('kakaoChatbotKey').value.trim();
-    settings.kakaoChatbotUserId = document.getElementById('kakaoChatbotUserId').value.trim();
-    saveSettings();
-    updateKakaoChatbotStatus();
-    showTabStatus('tab-settings', '✅ 카카오 챗봇 설정 저장됨', 'ok');
-}
-
-function updateKakaoChatbotStatus() {
-    let el = document.getElementById('kakaoChatbotStatus');
-    if (!el) return;
-    if (settings.kakaoChatbotKey && settings.kakaoChatbotUserId) {
-        el.textContent = '✅ 챗봇 설정됨';
-        el.className = 'badge badge-ok';
-    } else {
-        el.textContent = '⏳ 미설정';
-        el.className = 'badge badge-wait';
-    }
-}
-
-async function testKakaoChatbot() {
-    let key = document.getElementById('kakaoChatbotKey').value.trim();
-    let userId = document.getElementById('kakaoChatbotUserId').value.trim();
-    if (!key || !userId) {
-        showTabStatus('tab-settings', '⚠️ 챗봇 키와 사용자 ID를 입력하세요', 'warning');
-        return;
-    }
-    try {
-        let response = await fetch('https://api.kakaocorp.com/v1/chatbot/message/send', {
-            method: 'POST',
-            headers: {
-                'Authorization': 'Bearer ' + key,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ user_id: userId, content: '✅ 경로 최적화 앱 테스트 메시지입니다.' })
-        });
-        if (response.ok) {
-            showTabStatus('tab-settings', '✅ 챗봇 테스트 성공! 카카오톡 확인', 'ok');
-        } else {
-            showTabStatus('tab-settings', '❌ 챗봇 테스트 실패: ' + response.status, 'error');
-        }
-    } catch (error) {
-        showTabStatus('tab-settings', '❌ 챗봇 연결 실패: ' + error.message, 'error');
-    }
 }
 // ============================================================
 // FieldPilot 인가
@@ -13029,13 +12174,11 @@ function loadSettings() {
         localStorage.setItem(SETTINGS_KEY, JSON.stringify(parsed));
     }
 
-    settings = {
-        githubConfigured: false,
-        kakaoJsKey: '',
-        kakaoRestKey: 'server-proxy',
-        kakaoChatbotKey: decodeKey(parsed.kakaoChatbotKey || ''),
-        kakaoChatbotUserId: decodeKey(parsed.kakaoChatbotUserId || '')
-    };
+    delete parsed.kakaoChatbotKey;
+    delete parsed.kakaoChatbotUserId;
+    localStorage.setItem(SETTINGS_KEY, '{}');
+
+    settings = { githubConfigured: false };
 
     const workerInput = document.getElementById('workerName');
     if (workerInput) workerInput.value = workerName || '';
@@ -13052,11 +12195,7 @@ function loadSettings() {
 }
 
 function saveSettings() {
-    const encoded = {
-        kakaoChatbotKey: encodeKey(settings.kakaoChatbotKey || ''),
-        kakaoChatbotUserId: encodeKey(settings.kakaoChatbotUserId || '')
-    };
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(encoded));
+    localStorage.setItem(SETTINGS_KEY, '{}');
     updateSettingsStatus();
 }
 
@@ -13268,7 +12407,45 @@ function setGlobalConnectionChip(id, text, state) {
     element.className = 'connection-status-chip' + (state ? ' is-' + state : '');
 }
 
+let lastServerConfigCheck = 0;
+let announcedServerUrl = '';
+
+async function checkForServerAddressChange(force) {
+    const now = Date.now();
+    if (!force && now - lastServerConfigCheck < 20000) return false;
+    lastServerConfigCheck = now;
+
+    try {
+        const response = await fetch('./server-config.js?ts=' + now, { cache: 'no-store' });
+        if (!response.ok) return false;
+        const text = await response.text();
+        const match = text.match(/FIELD_SERVER_URL\s*=\s*['"](https:\/\/[^'"]+)['"]/);
+        const latestUrl = String(match?.[1] || '').replace(/\/$/, '');
+        const currentUrl = String(serverBase() || '').replace(/\/$/, '');
+        if (!latestUrl || latestUrl === currentUrl || latestUrl === announcedServerUrl) return false;
+
+        announcedServerUrl = latestUrl;
+        setGlobalConnectionChip('globalServerStatus', '서버 주소 변경됨 · 새로고침 필요', 'warn');
+        showTabStatus('tab-settings', '🔄 터널 서버 주소가 변경되었습니다. 앱을 새로고침해 다시 로그인하세요.', 'warning');
+
+        if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification('FieldPilot 서버가 다시 시작되었습니다', {
+                body: '새 터널 주소가 적용되었습니다. 앱을 새로고침해 주세요.',
+                tag: 'fieldpilot-server-url-changed'
+            });
+        }
+
+        if (window.confirm('터널 서버가 재시작되어 주소가 변경되었습니다. 지금 새로고침하시겠습니까?')) {
+            window.location.reload();
+        }
+        return true;
+    } catch (error) {
+        return false;
+    }
+}
+
 async function refreshGlobalConnectionStatus() {
+    if (await checkForServerAddressChange(false)) return;
     if (!navigator.onLine) {
         setGlobalConnectionChip('globalServerStatus', '서버 오프라인', 'error');
     } else if (!serverBase()) {
@@ -13378,3 +12555,4 @@ async function uploadPhotoMultipart(photo) {
         return { queued: true, previewUrl: URL.createObjectURL(resized) };
     }
 }
+
