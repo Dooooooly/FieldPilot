@@ -1647,7 +1647,8 @@ function toggleAdminSettings() {
                 : '›';
     }
     if (opening) {
-    loadAdminKakaoWorkMappings();
+        loadAdminKakaoWorkMappings();
+    }
 }
 
 async function openAdminDashboard() {
@@ -1723,7 +1724,6 @@ function renderAdminHeatMap(points) {
     }
     map.setBounds(bounds, 35, 35, 35, 35);
     setTimeout(() => map.relayout(), 0);
-}
 }
 
 
@@ -6096,6 +6096,13 @@ function getServiceWorkerUrl() {
     return getAppBasePath() + 'sw.js';
 }
 
+function readAppVersionFromServiceWorker(source) {
+    var match = String(source || '').match(/APP_VERSION\s*=\s*['"]([^'"]+)['"]/);
+    if (match && match[1]) return match[1];
+    match = String(source || '').match(/CACHE_NAME\s*=\s*['"]FieldPilot-([^'"]+)['"]/);
+    return match && match[1] ? match[1] : '';
+}
+
 function registerServiceWorker() {
     if (!('serviceWorker' in navigator)) return;
     var swUrl = getServiceWorkerUrl();
@@ -6120,10 +6127,9 @@ function displayAppVersion() {
             return response.text();
         })
         .then(function(text) {
-            var match = text.match(/CACHE_NAME\s*=\s*['"](.+)['"]/);
-            if (match && match[1]) {
-                var version = match[1];
-                statusEl.innerHTML = '✅ 현재 버전: <strong>' + escapeHtml(version) + '</strong>';
+            var version = readAppVersionFromServiceWorker(text);
+            if (version) {
+                statusEl.innerHTML = '✅ 현재 버전: <strong>v' + escapeHtml(version) + '</strong>';
                 statusEl.style.color = '#38a169';
                 localStorage.setItem('app_cache_name', version);
             } else {
@@ -6135,7 +6141,7 @@ function displayAppVersion() {
             console.error('버전 확인 실패:', err);
             var cachedVersion = localStorage.getItem('app_cache_name');
             statusEl.innerHTML = cachedVersion
-                ? '⚠️ 현재 버전: <strong>' + escapeHtml(cachedVersion) + '</strong>'
+                ? '⚠️ 현재 버전: <strong>v' + escapeHtml(cachedVersion) + '</strong>'
                 : '⚠️ 버전 확인 실패';
             statusEl.style.color = '#d69e2e';
         });
@@ -6165,12 +6171,11 @@ async function checkForUpdates() {
         if (!response.ok) throw new Error('sw.js 로드 실패: ' + response.status);
 
         var swText = await response.text();
-        var match = swText.match(/CACHE_NAME\s*=\s*['"](.+)['"]/);
+        var version = readAppVersionFromServiceWorker(swText);
 
-        if (match && match[1]) {
-            var version = match[1];
+        if (version) {
             localStorage.setItem('app_cache_name', version);
-            statusEl.innerHTML = '✅ 현재 버전: <strong>' + escapeHtml(version) + '</strong>';
+            statusEl.innerHTML = '✅ 현재 버전: <strong>v' + escapeHtml(version) + '</strong>';
             statusEl.style.color = '#38a169';
         } else {
             statusEl.innerHTML = '✅ 최신 버전입니다.';
