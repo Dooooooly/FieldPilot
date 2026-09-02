@@ -2020,7 +2020,7 @@ body.dark-mode .map-address-search input{background:#1a202c;color:#f7fafc;border
                 <div style="margin-left:12px;margin-bottom:4px;">• <strong>방향 기반</strong>: 출발지 기준 시계방향/반시계방향으로 묶어서 순서 결정</div>
                 <div style="margin-left:12px;margin-bottom:4px;">• <strong>도로 기반</strong>: 카카오맵 API로 실제 도로 거리 측정 후 가장 가까운 곳부터 방문</div>
                 <div style="margin-left:12px;margin-bottom:6px;">• <strong>직선 거리 기반</strong>: 직선거리 기준으로 가까운 곳부터 방문</div>
-                <div style="margin-bottom:6px;"><strong>2. 경로 개선</strong> - Simulated Annealing 시드와 2-opt를 함께 사용해 교차 구간과 지역 최적해를 개선합니다.</div>
+                <div style="margin-bottom:6px;"><strong>2. 경로 개선</strong> - 여러 시작 후보와 2-opt로 교차 구간을 줄이고, 현장이 많은 경우에는 확률 기반 후보도 추가해 더 나은 순서를 찾습니다.</div>
                 <div><strong>3. 최종 선택</strong> - 설정한 최단거리·최소시간·균형 기준으로 가장 좋은 후보를 선택합니다.</div>
             </div>
         </details>
@@ -2083,9 +2083,9 @@ body.dark-mode .map-address-search input{background:#1a202c;color:#f7fafc;border
             <div style="font-size:12px;color:#4a5568;margin-top:8px;line-height:1.6;">
                 <div style="margin-bottom:6px;">현장을 추가하거나 엑셀에서 가져올 때, 주소가 있으면 자동으로 <strong>카카오 지오코딩 API</strong>를 호출합니다.</div>
                 <div style="margin-bottom:6px;"><strong>변환 과정:</strong></div>
-                <div style="margin-left:12px;margin-bottom:4px;">1. 주소를 카카오 서버에 전송</div>
+                <div style="margin-left:12px;margin-bottom:4px;">1. 앱이 노트북 서버에 주소 검색을 요청</div>
                 <div style="margin-left:12px;margin-bottom:4px;">2. 도로명주소 우선 → 지번주소 순서로 좌표 확인</div>
-                <div style="margin-left:12px;margin-bottom:4px;">3. 좌표 + 전체 주소 + 행정동(동 정보) 저장</div>
+                <div style="margin-left:12px;margin-bottom:4px;">3. 확인된 좌표와 정규화된 주소를 현장 정보에 저장</div>
                 <div style="margin-bottom:6px;"><strong>⚠️ 변환 실패 시:</strong> 주소가 잘못되었거나 카카오가 인식하지 못하는 경우입니다. 편집 버튼을 눌러 주소를 수정하거나 위도/경도를 직접 입력하세요.</div>
                 <div><strong>💾 저장 위치:</strong> 현장 데이터는 노트북 서버와 브라우저의 IndexedDB 캐시에 저장되고, 서버가 비공개 GitHub 데이터 저장소와 동기화합니다. 사용자가 GitHub 토큰을 입력할 필요는 없습니다.</div>
             </div>
@@ -2333,6 +2333,15 @@ body.dark-mode .map-address-search input{background:#1a202c;color:#f7fafc;border
                     <span style="color:#718096;font-size:11px;">카카오맵 앱 제한: 경유지 최대 5개 (초과 시 앞 5개만 전달)</span>
                 </div>
             </details>
+
+            <details style="background:white;border-radius:10px;padding:12px;border:1px solid #e2e8f0;cursor:pointer;">
+                <summary style="font-weight:600;font-size:13px;">🖥️ 관리자: 서버를 한 창에서 실행·종료</summary>
+                <div style="font-size:12px;color:#4a5568;margin-top:8px;line-height:1.6;">
+                    <strong>노트북서버/start-all.bat</strong>을 실행하면 Node 서버와 Cloudflare 터널을 한 창에서 관리합니다.<br>
+                    실행 창에서 <strong>Q</strong>를 누르거나 <strong>stop-all.bat</strong>을 실행하면 함께 종료됩니다.<br>
+                    새 터널 주소는 서버 설정 파일에 자동 반영되며, 문제가 있으면 <strong>server.log, server-error.log, tunnel-error.log</strong>를 확인하세요.
+                </div>
+            </details>
         </div>
     </div>
 
@@ -2380,15 +2389,15 @@ body.dark-mode .map-address-search input{background:#1a202c;color:#f7fafc;border
                 <div style="font-size:12px;color:#4a5568;margin-top:8px;line-height:1.6;">
                     먼저 올바른 인가코드와 지역으로 로그인했는지, 서버가 연결됐는지 확인하세요.<br>
                     브라우저 캐시가 비어 있어도 서버 및 비공개 GitHub 데이터가 정상이라면 다시 동기화할 수 있습니다.<br>
-                    <span style="color:#718096;font-size:11px;">설정 탭 → GitHub 연동 → 📥 다운로드 또는 관리자에게 서버 데이터 확인 요청</span>
+                    <span style="color:#718096;font-size:11px;">관리자 계정은 설정 탭의 GitHub 데이터 다운로드를 사용할 수 있으며, 일반 사용자는 관리자에게 서버 데이터 확인을 요청하세요.</span>
                 </div>
             </details>
 
             <details style="background:#f7fafc;border-radius:8px;padding:12px;cursor:pointer;">
                 <summary style="font-weight:600;font-size:13px;">서버 연결 실패 또는 CORS 오류가 나와요</summary>
                 <div style="font-size:12px;color:#4a5568;margin-top:8px;line-height:1.6;">
-                    노트북 서버와 Cloudflare 터널이 실행 중인지 확인한 뒤 페이지를 새로고침하세요.<br>
-                    터널을 재시작하면 주소가 바뀔 수 있으므로 <strong>server-config.js</strong>의 서버 주소도 새 주소와 같아야 합니다.<br>
+                    관리자는 <strong>노트북서버/start-all.bat</strong>을 다시 실행해 Node 서버와 Cloudflare 터널 상태를 확인하고, 사용자는 잠시 뒤 페이지를 새로고침하세요.<br>
+                    통합 실행기가 새 터널 주소를 자동 반영합니다. 계속 실패하면 서버·터널 오류 로그와 GitHub 동기화 결과를 확인하세요.<br>
                     <span style="color:#718096;font-size:11px;">사용자가 해결하기 어려우면 화면 위 “서버 연결 실패” 상태를 관리자에게 알려주세요.</span>
                 </div>
             </details>
@@ -2620,6 +2629,6 @@ body.dark-mode .map-address-search input{background:#1a202c;color:#f7fafc;border
 
     <script src="server-config.js"></script>
     <script type="module" src="src/main.js?v=20260901-photo-editor-1"></script>
-    <script src="app.js?v=20260902-map-lunch-1" defer></script>
+    <script src="app.js?v=20260902-dark-help-1" defer></script>
 </body>
 </html>
