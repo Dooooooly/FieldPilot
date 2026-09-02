@@ -3,11 +3,14 @@ import { ApiClient, ApiError, createApiClient, isRetryableApiError } from './api
 import { storage } from './storage.js';
 import { flushQueue, queueWhenOffline, resizeImage } from './offline.js';
 import { ui } from './ui.js';
-import { createPhotoThumbnail, editPhoto } from './photo-tools.js?v=2026.09.02.2';
+import { createPhotoThumbnail, editPhoto } from './photo-tools.js?v=2026.09.02.3';
 
 const api = createApiClient();
 
 async function initialize() {
+    if (window.FIELD_SERVER_CONFIG_READY) {
+        await window.FIELD_SERVER_CONFIG_READY;
+    }
     try {
         await storage.migrateLegacyLocalStorage();
     } catch (error) {
