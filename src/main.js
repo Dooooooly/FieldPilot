@@ -3,7 +3,7 @@ import { ApiClient, ApiError, createApiClient, isRetryableApiError } from './api
 import { storage } from './storage.js';
 import { flushQueue, queueWhenOffline, resizeImage } from './offline.js';
 import { ui } from './ui.js';
-import { createPhotoThumbnail, editPhoto } from './photo-tools.js?v=20260901-photo-editor-1';
+import { createPhotoThumbnail, editPhoto } from './photo-tools.js?v=20260902-security-1';
 
 const api = createApiClient();
 
