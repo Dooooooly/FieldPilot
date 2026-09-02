@@ -8043,7 +8043,7 @@ function injectDarkModeCSS() {
     style.id = 'dark-mode-css';
     let c = [];
     // 기본
-    c.push('body.dark-mode{background:#1a202c!important;color:#e2e8f0!important}');
+    c.push('body.dark-mode{--bg-primary:#1a202c;--bg-secondary:#2d3748;--bg-tertiary:#374151;--bg-hover:#3f4b5d;--bg-active:#2a4365;--text-primary:#f7fafc;--text-secondary:#cbd5e0;--text-muted:#cbd5e0;--text-placeholder:#a0aec0;--border-color:#4a5568;--border-light:#374151;--primary-color:#63b3ed;--primary-hover:#90cdf4;--success-color:#68d391;--success-hover:#9ae6b4;--danger-color:#fc8181;--danger-hover:#feb2b2;--warning-color:#fbd38d;--purple-color:#d6bcfa;--summary-bg:linear-gradient(135deg,#2a4365,#2d3748);--map-bg:#374151;--tab-icon-color:#cbd5e0;--fav-inactive:#a0aec0;background:#1a202c!important;color:#e2e8f0!important}');
     c.push('body.dark-mode h1,body.dark-mode h2,body.dark-mode h3,body.dark-mode h4,body.dark-mode h5{color:#f7fafc!important}');
     c.push('body.dark-mode p,body.dark-mode label,body.dark-mode span,body.dark-mode div,body.dark-mode li{color:#e2e8f0}');
     c.push('body.dark-mode a{color:#63b3ed!important}');
@@ -8071,13 +8071,13 @@ function injectDarkModeCSS() {
     c.push('body.dark-mode .bottom-tab.active{color:#63b3ed!important;background:rgba(99,179,237,0.1)!important}');
     // 입력 요소
     c.push('body.dark-mode input,body.dark-mode textarea,body.dark-mode select{background:#2d3748!important;color:#e2e8f0!important;border-color:#4a5568!important}');
-    c.push('body.dark-mode input::placeholder,body.dark-mode textarea::placeholder{color:#718096!important}');
+    c.push('body.dark-mode input::placeholder,body.dark-mode textarea::placeholder{color:#a0aec0!important;opacity:1}');
     c.push('body.dark-mode input:focus,body.dark-mode textarea:focus,body.dark-mode select:focus{border-color:#63b3ed!important}');
     // 버튼
     c.push('body.dark-mode .btn{background:#4a5568!important;color:#e2e8f0!important;border-color:#718096!important}');
-    c.push('body.dark-mode .btn-primary{background:#3182ce!important;color:#fff!important;border-color:#3182ce!important}');
-    c.push('body.dark-mode .btn-success{background:#38a169!important;color:#fff!important}');
-    c.push('body.dark-mode .btn-danger{background:#e53e3e!important;color:#fff!important}');
+    c.push('body.dark-mode .btn-primary{background:#2b6cb0!important;color:#fff!important;border-color:#63b3ed!important}');
+    c.push('body.dark-mode .btn-success{background:#276749!important;color:#fff!important;border-color:#68d391!important}');
+    c.push('body.dark-mode .btn-danger{background:#c53030!important;color:#fff!important;border-color:#fc8181!important}');
     c.push('body.dark-mode .btn-outline{background:transparent!important;color:#cbd5e0!important;border-color:#4a5568!important}');
     // 리스트
     c.push('body.dark-mode .place-item{background:#2d3748!important;color:#e2e8f0!important}');
@@ -8093,7 +8093,7 @@ function injectDarkModeCSS() {
     c.push('body.dark-mode .result-info{color:#e2e8f0!important}');
     c.push('body.dark-mode .source{background:#4a5568!important;color:#cbd5e0!important}');
     c.push('body.dark-mode .remark{background:#4a5568!important;color:#cbd5e0!important}');
-    c.push('body.dark-mode .empty-msg{color:#718096!important}');
+    c.push('body.dark-mode .empty-msg{color:#cbd5e0!important}');
     c.push('body.dark-mode .waypoint-list li{background:#2d3748!important;color:#e2e8f0!important}');
     // 배지
     c.push('body.dark-mode .badge{background:#4a5568!important;color:#e2e8f0!important}');
@@ -8137,6 +8137,9 @@ function injectDarkModeCSS() {
     c.push('body.dark-mode .work-calendar-day:hover{background:#3a4556!important;border-color:#718096!important}');
     c.push('body.dark-mode .work-calendar-day.is-today{background:#2a4365!important;border-color:#63b3ed!important}');
     c.push('body.dark-mode .work-calendar-day.is-selected{background:#2c5282!important;border-color:#90cdf4!important;box-shadow:0 0 0 2px rgba(144,205,244,.38)!important}');
+    c.push('body.dark-mode .work-calendar-day.is-sunday>div:first-child{color:#feb2b2!important}');
+    c.push('body.dark-mode .work-calendar-day.is-saturday>div:first-child{color:#90cdf4!important}');
+    c.push('body.dark-mode .work-calendar-day>div[style*="color:#3182ce"]{color:#90cdf4!important}');
     c.push('body.dark-mode .work-date-selection{background:#2c5282!important;border-color:#63b3ed!important;color:#ebf8ff!important}');
     // 상태
     c.push('body.dark-mode .tab-status{background:#2d3748!important;color:#e2e8f0!important}');
@@ -8173,36 +8176,38 @@ function injectDarkModeCSS() {
     c.push('body.dark-mode .help-body{color:#cbd5e0!important}');
     c.push('body.dark-mode .help-first-card{background:linear-gradient(135deg,#2a4365,#22543d)!important;border-color:#4a5568!important;color:#e2e8f0!important}');
     c.push('body.dark-mode .help-step{border-color:#4a5568!important;color:#e2e8f0!important}');
+    c.push('body.dark-mode .help-step-number{background:#2b6cb0!important;color:#fff!important}');
     c.push('body.dark-mode .help-jump{background:#2c5282!important;color:#ebf8ff!important;border-color:#63b3ed!important}');
+    c.push('body.dark-mode #darkModeToggleBtn{color:#f7fafc!important}');
+    c.push('body.dark-mode #updateStatus{color:#9ae6b4!important}');
+    c.push('body.dark-mode #settingsServerStatus,body.dark-mode #settingsGithubStatus,body.dark-mode #settingsKakaoStatus,body.dark-mode #settingsAppVersion{color:#f7fafc!important}');
     // ★ 인라인 스타일 커버 (글씨 안 보이는 핵심 원인)
-    c.push('body.dark-mode [style*="background:#f7fafc"]{background:#2d3748!important}');
-    c.push('body.dark-mode [style*="background:#fff"]{background:#2d3748!important}');
-    c.push('body.dark-mode [style*="background:white"]{background:#2d3748!important}');
-    c.push('body.dark-mode [style*="background:#ffffff"]{background:#2d3748!important}');
-    c.push('body.dark-mode [style*="background:#ebf8ff"]{background:#2c5282!important}');
-    c.push('body.dark-mode [style*="background:#fff5f5"]{background:#742a2a!important}');
-    c.push('body.dark-mode [style*="background:#f0fff4"]{background:#22543d!important}');
-    c.push('body.dark-mode [style*="background:#fffff0"]{background:#4a3b16!important}');
-    c.push('body.dark-mode [style*="background:#fefcbf"]{background:#5f4b16!important}');
-    c.push('body.dark-mode [style*="background:#faf5ff"]{background:#44337a!important}');
-    c.push('body.dark-mode [style*="background:#edf2f7"]{background:#374151!important}');
-    c.push('body.dark-mode [style*="background:#f8fafc"]{background:#273244!important}');
-    c.push('body.dark-mode [style*="background:#fffaf0"]{background:#4a3520!important}');
-    c.push('body.dark-mode [style*="color:#4a5568"]{color:#cbd5e0!important}');
-    c.push('body.dark-mode [style*="color:#718096"]{color:#a0aec0!important}');
-    c.push('body.dark-mode [style*="color:#2d3748"]{color:#e2e8f0!important}');
-    c.push('body.dark-mode [style*="color:#1a202c"]{color:#f7fafc!important}');
-    c.push('body.dark-mode [style*="color:#1f2937"]{color:#f7fafc!important}');
-    c.push('body.dark-mode [style*="color:#a0aec0"]{color:#a0aec0!important}');
-    c.push('body.dark-mode [style*="color:#276749"]{color:#9ae6b4!important}');
-    c.push('body.dark-mode [style*="color:#975a16"]{color:#fbd38d!important}');
-    c.push('body.dark-mode [style*="color:#2b6cb0"]{color:#90cdf4!important}');
-    c.push('body.dark-mode [style*="color:#4f7eb3"]{color:#90cdf4!important}');
-    c.push('body.dark-mode [style*="border-color:#e2e8f0"]{border-color:#4a5568!important}');
-    c.push('body.dark-mode [style*="border:1px solid #e2e8f0"]{border-color:#4a5568!important}');
-    c.push('body.dark-mode [style*="border-top:1px solid #e2e8f0"]{border-color:#4a5568!important}');
-    c.push('body.dark-mode [style*="border:2px solid #e2e8f0"]{border-color:#4a5568!important}');
-    c.push('body.dark-mode [style*="border:1px dashed #cbd5e0"]{border-color:#4a5568!important}');
+    const darkInlineRules = [
+        ['background', ['#f7fafc', '#fff', 'white', '#ffffff'], '#2d3748'],
+        ['background', ['#ebf8ff', '#eff6ff', '#bee3f8'], '#2a4365'],
+        ['background', ['#fff5f5', '#fed7d7'], '#742a2a'],
+        ['background', ['#f0fff4', '#f0fdf4', '#c6f6d5'], '#22543d'],
+        ['background', ['#fffff0', '#fefcbf', '#fffbeb'], '#4a3b16'],
+        ['background', ['#faf5ff', '#f5f3ff'], '#44337a'],
+        ['background', ['#edf2f7', '#e2e8f0'], '#374151'],
+        ['background', ['#f8fafc'], '#273244'],
+        ['background', ['#fffaf0', '#fff7ed'], '#4a3520'],
+        ['color', ['#4a5568', '#718096', '#a0aec0'], '#cbd5e0'],
+        ['color', ['#2d3748', '#1a202c', '#1f2937'], '#f7fafc'],
+        ['color', ['#276749', '#22543d', '#16a34a', '#38a169'], '#9ae6b4'],
+        ['color', ['#975a16', '#744210', '#d69e2e', '#ea580c'], '#fbd38d'],
+        ['color', ['#2b6cb0', '#2c5282', '#3182ce', '#2563eb', '#4f7eb3'], '#90cdf4'],
+        ['color', ['#9b2c2c', '#c53030', '#e53e3e'], '#feb2b2'],
+        ['color', ['#7c3aed', '#667eea'], '#d6bcfa']
+    ];
+    darkInlineRules.forEach(([property, values, replacement]) => {
+        values.forEach(value => {
+            c.push('body.dark-mode [style*="' + property + ':' + value + '"],body.dark-mode [style*="' + property + ': ' + value + '"]{' + property + ':' + replacement + '!important}');
+        });
+    });
+    ['border-color:#e2e8f0', 'border:1px solid #e2e8f0', 'border-top:1px solid #e2e8f0', 'border:2px solid #e2e8f0', 'border:1px dashed #cbd5e0'].forEach(rule => {
+        c.push('body.dark-mode [style*="' + rule + '"],body.dark-mode [style*="' + rule.replace(':', ': ') + '"]{border-color:#4a5568!important}');
+    });
     // 검색 결과
     c.push('body.dark-mode .search-results{background:#2d3748!important;border-color:#4a5568!important}');
     // 선택 카드 (최적화 설정 모달)
@@ -9202,7 +9207,8 @@ function renderWorkTab() {
         let isSelected = dateStr === selectedWorkDate;
         let stateClass =
             (isToday ? ' is-today' : '') +
-            (isSelected ? ' is-selected' : '');
+            (isSelected ? ' is-selected' : '') +
+            (dayOfWeek === 0 ? ' is-sunday' : dayOfWeek === 6 ? ' is-saturday' : '');
         let textColor = dayOfWeek === 0 ? '#e53e3e' : dayOfWeek === 6 ? '#3182ce' : '#2d3748';
         html += '<button type="button" class="work-calendar-day' + stateClass + '" onclick="showWorkDateDetail(\'' + dateStr + '\')" aria-pressed="' + (isSelected ? 'true' : 'false') + '" aria-label="' + dateStr + (count ? ', 기록 ' + count + '건' : ', 기록 없음') + '" style="width:100%;text-align:center;padding:6px 2px;min-height:52px;border-radius:7px;cursor:pointer;background:' + (isSelected ? '#bee3f8' : isToday ? '#ebf8ff' : 'transparent') + ';border:' + (isSelected ? '3px solid #2b6cb0' : isToday ? '2px solid #3182ce' : '1px solid #e2e8f0') + ';box-shadow:' + (isSelected ? '0 0 0 2px rgba(49,130,206,.18)' : 'none') + ';">';
         html += '<div style="font-size:13px;font-weight:' + (isToday ? '700' : '400') + ';color:' + textColor + ';">' + d + '</div>';
