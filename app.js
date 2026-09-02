@@ -22,6 +22,9 @@ function serverBase() {
 }
 
 async function serverGet(pathAndQuery) {
+    if (window.FIELD_SERVER_CONFIG_READY) {
+        await window.FIELD_SERVER_CONFIG_READY;
+    }
     let base = serverBase();
 
     if (!base) {
@@ -71,6 +74,9 @@ async function serverGet(pathAndQuery) {
     return res.json();
 }
 async function serverPost(pathAndQuery, data) {
+    if (window.FIELD_SERVER_CONFIG_READY) {
+        await window.FIELD_SERVER_CONFIG_READY;
+    }
     const base = serverBase();
 
     if (!base) {
@@ -12133,6 +12139,9 @@ function isGitHubConfigured() {
 }
 
 async function loadRuntimeConfiguration() {
+    if (window.FIELD_SERVER_CONFIG_READY) {
+        await window.FIELD_SERVER_CONFIG_READY;
+    }
     const base = serverBase();
     if (!base) return null;
 
