@@ -1,4 +1,5 @@
 {
+  "version": "20260902-security-1",
   "name": "경로 최적화",
   "short_name": "RouteOpt",
   "description": "경로 최적화 시스템",
