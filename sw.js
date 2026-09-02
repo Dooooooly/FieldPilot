@@ -2,22 +2,23 @@
 // Service Worker - PWA 오프라인 지원 (최적화)
 // ============================================================
 
-const CACHE_NAME = 'FieldPilot-v2.3';
+const APP_VERSION = '20260902-security-1';
+const CACHE_NAME = 'FieldPilot-' + APP_VERSION;
 const BASE_PATH = new URL('.', self.location.href).pathname;
 
 // 캐시할 파일 목록 (서브 디렉터리 경로 포함)
 const ASSETS = [
     BASE_PATH,
     BASE_PATH + 'index.html',
-    BASE_PATH + 'app.js?v=20260902-map-input-1',
+    BASE_PATH + 'app.js?v=' + APP_VERSION,
     BASE_PATH + 'manifest.json',
-    BASE_PATH + 'src/main.js?v=20260901-photo-editor-1',
+    BASE_PATH + 'src/main.js?v=' + APP_VERSION,
     BASE_PATH + 'src/config.js',
     BASE_PATH + 'src/api.js',
     BASE_PATH + 'src/storage.js',
     BASE_PATH + 'src/offline.js',
     BASE_PATH + 'src/ui.js',
-    BASE_PATH + 'src/photo-tools.js?v=20260901-photo-editor-1'
+    BASE_PATH + 'src/photo-tools.js?v=' + APP_VERSION
 ];
 
 // ===== 설치 =====
