@@ -1666,12 +1666,25 @@ async function openAdminDashboard() {
     document.getElementById('adminDashboardModal')?.remove();
     const modal = document.createElement('div');
     modal.id = 'adminDashboardModal';
-    modal.style.cssText = 'position:fixed;inset:0;z-index:1000000;background:rgba(15,23,42,.72);display:flex;align-items:center;justify-content:center;padding:12px;';
-    modal.innerHTML = '<div style="width:min(960px,100%);max-height:94vh;overflow:auto;background:var(--bg-card);color:var(--text-primary);border-radius:16px;padding:16px;box-shadow:0 20px 60px rgba(0,0,0,.35)">'
-        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div><strong style="font-size:18px">📊 관리자 통합 대시보드</strong><div style="font-size:11px;color:var(--text-muted)">지역 전체 운영 현황</div></div><button class="btn btn-outline btn-sm" onclick="document.getElementById(\'adminDashboardModal\').remove()">닫기</button></div>'
-        + '<div id="adminDashboardBody" style="padding:24px;text-align:center;color:var(--text-muted)">⏳ 대시보드를 불러오는 중...</div></div>';
+    modal.className = 'admin-dashboard-backdrop';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', 'adminDashboardTitle');
+    modal.innerHTML = '<div class="admin-dashboard-dialog">'
+        + '<div class="admin-dashboard-header"><div><div id="adminDashboardTitle" class="admin-dashboard-title">📊 관리자 통합 대시보드</div><div class="admin-dashboard-subtitle">지역 전체 운영 현황 · 최신 서버 데이터</div></div>'
+        + '<div class="admin-dashboard-actions"><button id="adminDashboardRefresh" class="btn btn-outline btn-sm" type="button">↻ <span>새로고침</span></button><button id="adminDashboardClose" class="btn btn-outline btn-sm" type="button" aria-label="대시보드 닫기">✕</button></div></div>'
+        + '<div id="adminDashboardBody" class="admin-dashboard-body"><div class="admin-dashboard-loading">⏳ 대시보드를 불러오는 중...</div></div></div>';
     modal.addEventListener('click', function(event) { if (event.target === modal) modal.remove(); });
+    const closeOnEscape = function(event) {
+        if (event.key === 'Escape' && document.getElementById('adminDashboardModal')) {
+            modal.remove();
+            document.removeEventListener('keydown', closeOnEscape);
+        }
+    };
+    document.addEventListener('keydown', closeOnEscape);
     document.body.appendChild(modal);
+    document.getElementById('adminDashboardClose')?.addEventListener('click', function() { modal.remove(); });
+    document.getElementById('adminDashboardRefresh')?.addEventListener('click', function() { modal.remove(); openAdminDashboard(); });
 
     try {
         const data = await serverGet('/api/admin/dashboard');
@@ -1681,31 +1694,43 @@ async function openAdminDashboard() {
             ['오늘 경로 실행', totals.todayVisits || 0, '회'],
             ['오늘 방문 현장', totals.todayPlaceCount || 0, '곳'],
             ['미완료 기록', totals.incompleteSites || 0, '건']
-        ].map(item => '<div style="background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:12px;padding:12px"><div style="font-size:11px;color:var(--text-muted)">' + item[0] + '</div><div style="font-size:23px;font-weight:800">' + item[1] + '<small style="font-size:11px;margin-left:3px">' + item[2] + '</small></div></div>').join('');
-        const rows = regions.map(row => '<tr><td style="padding:8px;font-weight:700">' + escapeHtml(row.region) + '</td><td style="padding:8px;text-align:right">' + row.todayPlaceCount + '</td><td style="padding:8px;text-align:right">' + row.incompleteSites + '</td><td style="padding:8px;text-align:right">' + row.totalSites + '</td></tr>').join('');
-        const photos = (data.recentPhotos || []).map(photo => '<div style="padding:8px;border-bottom:1px solid var(--border-color)"><strong>' + escapeHtml(photo.region + ' · ' + photo.siteName) + '</strong><div style="font-size:11px;color:var(--text-muted)">' + escapeHtml(photo.fileName) + ' · ' + escapeHtml(photo.worker || '작업자 미상') + ' · ' + escapeHtml(photo.savedAt || '') + '</div></div>').join('') || '<div style="padding:12px;color:var(--text-muted)">최근 사진이 없습니다.</div>';
+        ].map(item => '<div class="admin-dashboard-card"><div class="admin-dashboard-card-label">' + item[0] + '</div><div class="admin-dashboard-card-value">' + item[1] + '<small>' + item[2] + '</small></div></div>').join('');
+        const rows = regions.map(row => '<tr><td><strong>' + escapeHtml(row.region) + '</strong></td><td>' + row.todayPlaceCount + '</td><td>' + row.incompleteSites + '</td><td>' + row.totalSites + '</td></tr>').join('') || '<tr><td colspan="4" class="admin-dashboard-empty">표시할 지역 데이터가 없습니다.</td></tr>';
+        const photos = (data.recentPhotos || []).map(photo => {
+            const rawDate = photo.savedAt || '';
+            const parsed = rawDate ? new Date(rawDate) : null;
+            const savedAt = parsed && !Number.isNaN(parsed.getTime()) ? parsed.toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' }) : rawDate;
+            return '<div class="admin-dashboard-photo"><strong>' + escapeHtml(photo.region + ' · ' + photo.siteName) + '</strong><div class="admin-dashboard-photo-meta">' + escapeHtml(photo.fileName) + ' · ' + escapeHtml(photo.worker || '작업자 미상') + ' · ' + escapeHtml(savedAt) + '</div></div>';
+        }).join('') || '<div class="admin-dashboard-empty">최근 사진이 없습니다.</div>';
         const body = document.getElementById('adminDashboardBody');
-        body.style.cssText = '';
-        body.innerHTML = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">' + cards + '</div>'
-            + '<div id="adminHeatMap" style="height:320px;border-radius:12px;background:var(--map-bg);margin-bottom:12px"></div>'
-            + '<div style="display:grid;grid-template-columns:minmax(280px,1fr) minmax(280px,1fr);gap:12px">'
-            + '<div style="overflow:auto;border:1px solid var(--border-color);border-radius:10px"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th style="padding:8px;text-align:left">지역</th><th>오늘 방문</th><th>미완료</th><th>전체 현장</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
-            + '<div style="border:1px solid var(--border-color);border-radius:10px"><div style="padding:9px;font-weight:700">📷 최근 사진 업로드</div>' + photos + '</div></div>';
+        if (!body) return;
+        body.innerHTML = '<div class="admin-dashboard-cards">' + cards + '</div>'
+            + '<section class="admin-dashboard-section admin-dashboard-map-wrap"><div class="admin-dashboard-section-title"><span>🗺️ 최근 방문 밀도</span><span class="admin-dashboard-section-note">원이 클수록 방문이 많음</span></div><div id="adminHeatMap" class="admin-dashboard-map"></div><div class="admin-dashboard-map-legend">낮음 ◌ ● 높음</div></section>'
+            + '<div class="admin-dashboard-grid">'
+            + '<section class="admin-dashboard-section"><div class="admin-dashboard-section-title"><span>📍 지역별 현황</span></div><div class="admin-dashboard-table-wrap"><table class="admin-dashboard-table"><thead><tr><th>지역</th><th>오늘 방문</th><th>미완료</th><th>전체 현장</th></tr></thead><tbody>' + rows + '</tbody></table></div></section>'
+            + '<section class="admin-dashboard-section"><div class="admin-dashboard-section-title"><span>📷 최근 사진 업로드</span><span class="admin-dashboard-section-note">최신순</span></div>' + photos + '</section></div>';
         renderAdminHeatMap(regions.flatMap(row => row.heatPoints || []));
     } catch (error) {
         const body = document.getElementById('adminDashboardBody');
-        if (body) body.innerHTML = '<span style="color:#e53e3e">❌ ' + escapeHtml(error.message) + '</span>';
+        if (body) body.innerHTML = '<div class="admin-dashboard-error">❌ 대시보드를 불러오지 못했습니다.<br><small>' + escapeHtml(error.message) + '</small><br><button class="btn btn-outline btn-sm" style="margin-top:12px" onclick="document.getElementById(\'adminDashboardModal\').remove();openAdminDashboard()">다시 시도</button></div>';
     }
 }
 
 function renderAdminHeatMap(points) {
     const container = document.getElementById('adminHeatMap');
-    if (!container || !window.kakao?.maps) return;
+    if (!container) return;
+    if (!window.kakao?.maps) {
+        container.innerHTML = '<div class="admin-dashboard-empty">지도 모듈을 불러오지 못했습니다.<br>지역별 숫자 현황은 아래에서 확인할 수 있습니다.</div>';
+        return;
+    }
     const fallback = new kakao.maps.LatLng(37.5326, 126.99);
     const map = new kakao.maps.Map(container, { center: fallback, level: 8 });
     map.setDraggable(true);
     map.setZoomable(true);
-    if (!points.length) return;
+    if (!points.length) {
+        container.innerHTML = '<div class="admin-dashboard-empty">표시할 최근 방문 좌표가 없습니다.</div>';
+        return;
+    }
     const bounds = new kakao.maps.LatLngBounds();
     const buckets = new Map();
     for (const point of points) {
@@ -10300,13 +10325,21 @@ async function sendKakaoWorkDirectMessage() {
                 '#38a169';
 
             status.textContent =
-                '✅ 카카오워크 1:1 전송 완료';
+                '✅ 카카오워크 1:1 전송 완료 · ' +
+                Number(result.photoCount || fileNames.length) + '장' +
+                (Number(result.photoBatchCount || 0) > 1
+                    ? ' / ' + Number(result.photoBatchCount) + '회 분할'
+                    : '');
 
         }
 
 
         alert(
-            '✅ 카카오워크 1:1 전송이 완료되었습니다.'
+            '✅ 카카오워크 1:1 전송이 완료되었습니다.\n' +
+            Number(result.photoCount || fileNames.length) + '장 전송' +
+            (Number(result.photoBatchCount || 0) > 1
+                ? ' · ' + Number(result.photoBatchCount) + '회로 자동 분할'
+                : '')
         );
 
 
@@ -11453,7 +11486,13 @@ async function sendToKakaoChatbot(record) {
 
         showTabStatus(
             'tab-work',
-            '✅ 카카오워크 전송 완료',
+            '✅ 카카오워크 전송 완료' +
+                (Number(result.photoCount || 0) > 0
+                    ? ' · ' + Number(result.photoCount) + '장' +
+                        (Number(result.photoBatchCount || 0) > 1
+                            ? ' / ' + Number(result.photoBatchCount) + '회 분할'
+                            : '')
+                    : ''),
             'ok'
         );
 
