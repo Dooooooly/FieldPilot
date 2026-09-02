@@ -265,6 +265,7 @@ let sdkLoading = false;
 let isShowingRouteMarkers = false;
 let pendingMapCenter = null;
 let pendingOptimizedMapView = null;
+let routeMapFocusToken = 0;
 let frameStartIndex = 0;
 let frameEndIndex = 9; // 기본 10개 (출발지 포함)
 let isFrameDragging = false;
@@ -4372,6 +4373,8 @@ async function runOptimize() {
         }].concat(sorted);
         
         let routeData = await callKakaoMobilityRoute(allPoints, restKey);
+        // 첫 실행에서도 지도 객체가 준비된 뒤에만 경로·마커를 그린다.
+        await ensureRouteMapReady(12000);
         renderOptimizedRouteMapView(allPoints, routeData);
 
         if (!routeData) {
@@ -4499,10 +4502,7 @@ async function runOptimize() {
         
         updateOptimizationLiveSummary();
         
-        // 지도가 숨겨진 상태에서 중심을 먼저 바꾸면 탭 relayout이나 경로 bounds가
-        // 뒤늦게 적용되어 다른 곳이 보일 수 있다. 지도 탭을 연 뒤 출발지를 고정한다.
-        switchTab('tab-route');
-        focusRouteStartAfterTabOpen();
+        stabilizeRouteStartCenter(startPoint.lat, startPoint.lng);
     } catch(e) {
         showTabStatus('tab-places', '❌ 오류 발생: ' + e.message, 'error');
     } finally {
@@ -5147,6 +5147,61 @@ function focusRouteStart() {
     return startPoint ? focusMapOnPoint(startPoint.lat, startPoint.lng, 5) : false;
 }
 
+function ensureRouteMapReady(timeoutMs) {
+    timeoutMs = Number(timeoutMs) || 12000;
+    switchTab('tab-route');
+
+    return new Promise(function(resolve) {
+        const startedAt = Date.now();
+
+        function checkMap() {
+            if (kakaoMap && typeof kakao !== 'undefined' && kakao.maps) {
+                try { kakaoMap.relayout(); } catch (e) {}
+                resolve(true);
+                return;
+            }
+
+            if (!sdkLoading) initMap();
+            if (Date.now() - startedAt >= timeoutMs) {
+                resolve(false);
+                return;
+            }
+            setTimeout(checkMap, 100);
+        }
+
+        requestAnimationFrame(function() { setTimeout(checkMap, 50); });
+    });
+}
+
+function stabilizeRouteStartCenter(lat, lng) {
+    lat = Number(lat);
+    lng = Number(lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+    pendingMapCenter = { lat: lat, lng: lng, level: 5 };
+    const token = ++routeMapFocusToken;
+    [0, 180, 500, 1000, 1800].forEach(function(delay) {
+        setTimeout(function() {
+            const routeTab = document.getElementById('tab-route');
+            if (token !== routeMapFocusToken || !routeTab || !routeTab.classList.contains('active')) return;
+            if (!kakaoMap || typeof kakao === 'undefined' || !kakao.maps) return;
+            try {
+                const center = new kakao.maps.LatLng(lat, lng);
+                kakaoMap.relayout();
+                // 확대 수준 변경이 중심을 미세하게 이동시키는 브라우저가 있어
+                // level을 먼저 적용하고 center를 마지막에 두 번 확정한다.
+                kakaoMap.setLevel(5);
+                kakaoMap.setCenter(center);
+                kakaoMap.relayout();
+                kakaoMap.setCenter(center);
+                pendingMapCenter = null;
+            } catch (error) {
+                console.warn('[MAP] 출발지 중심 안정화 실패:', error);
+            }
+        }, delay);
+    });
+}
+
 function renderOptimizedRouteMapView(allPoints, routeData) {
     if (!Array.isArray(allPoints) || allPoints.length < 2) return false;
     if (!kakaoMap) {
@@ -5178,7 +5233,7 @@ function applyPendingOptimizedRouteMapView() {
     const rendered = renderOptimizedRouteMapView(view.allPoints, view.routeData);
     if (rendered && view.allPoints[0]) {
         const routeStart = view.allPoints[0];
-        focusMapOnPoint(routeStart.lat, routeStart.lng, 5);
+        stabilizeRouteStartCenter(routeStart.lat, routeStart.lng);
     }
     return rendered;
 }
@@ -5205,6 +5260,7 @@ function focusRouteStartAfterTabOpen() {
                 kakaoMap.setLevel(5);
                 kakaoMap.relayout();
                 pendingMapCenter = null;
+                stabilizeRouteStartCenter(lat, lng);
                 return;
             } catch (error) {
                 console.warn('[MAP] 출발지 중심 이동 재시도:', error);
