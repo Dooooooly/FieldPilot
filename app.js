@@ -257,7 +257,7 @@ let routeMarkers = [];
 let placeMarkers = [];
 let nearbyPlaceClusterer = null;
 let nearbyClustersEnabled = localStorage.getItem('nearbyPlaceClusters') !== 'off';
-let mapDarkFilterStrength = Number(localStorage.getItem('mapDarkFilterStrength') || 50);
+let mapAddressSearchOverlay = null;
 let singlePlaceMarker = null;
 let singlePlaceInfoWindow = null;
 let autoSyncTimer = null;
@@ -5366,23 +5366,52 @@ function toggleNearbyPlaceClusters(enabled) {
     renderNearbyPlaceClusters();
 }
 
-function setMapDarkFilterStrength(value) {
-    mapDarkFilterStrength = Math.max(0, Math.min(100, Number(value) || 0));
-    localStorage.setItem('mapDarkFilterStrength', String(mapDarkFilterStrength));
-    const output = document.getElementById('mapDarkFilterValue');
-    if (output) output.textContent = mapDarkFilterStrength + '%';
-    const brightness = 1 - mapDarkFilterStrength * 0.003;
-    const contrast = 1 + mapDarkFilterStrength * 0.002;
-    const saturation = 1 - mapDarkFilterStrength * 0.0015;
-    document.documentElement.style.setProperty('--map-dark-filter', 'brightness(' + brightness.toFixed(3) + ') contrast(' + contrast.toFixed(3) + ') saturate(' + saturation.toFixed(3) + ')');
+async function searchMapAddress() {
+    const input = document.getElementById('mapAddressSearchInput');
+    const button = document.getElementById('mapAddressSearchButton');
+    const query = String(input?.value || '').trim();
+    if (query.length < 2) {
+        showTabStatus('tab-route', '⚠️ 검색할 주소를 두 글자 이상 입력하세요.', 'warning');
+        input?.focus();
+        return;
+    }
+    if (!kakaoMap) {
+        initMap();
+        showTabStatus('tab-route', '⏳ 지도를 준비하고 있습니다. 잠시 후 다시 검색하세요.', 'info');
+        return;
+    }
+    if (button) { button.disabled = true; button.textContent = '검색 중…'; }
+    showTabStatus('tab-route', '🔎 주소 검색 중: ' + query, 'info');
+    try {
+        const geo = await geocodeAddress(query, 'server-proxy', 1);
+        if (!geo || !Number.isFinite(Number(geo.lat)) || !Number.isFinite(Number(geo.lng))) {
+            throw new Error('일치하는 주소를 찾지 못했습니다. 도로명이나 지번 주소로 다시 검색하세요.');
+        }
+        if (mapAddressSearchOverlay) {
+            try { mapAddressSearchOverlay.setMap(null); } catch (e) {}
+        }
+        const position = new kakao.maps.LatLng(Number(geo.lat), Number(geo.lng));
+        const label = geo.address || query;
+        mapAddressSearchOverlay = new kakao.maps.CustomOverlay({
+            map: kakaoMap,
+            position,
+            yAnchor: 1.35,
+            content: '<div style="background:rgba(255,255,255,.96);padding:7px 12px;border:2px solid #3182ce;border-radius:18px;box-shadow:0 5px 18px rgba(0,0,0,.2);font-size:12px;font-weight:700;color:#1a202c;white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis;">🔎 ' + escapeHtml(label) + '</div>'
+        });
+        kakaoMap.setLevel(3);
+        kakaoMap.panTo(position);
+        kakaoMap.relayout();
+        showTabStatus('tab-route', '✅ 주소 위치를 지도에 표시했습니다: ' + label, 'ok');
+    } catch (error) {
+        showTabStatus('tab-route', '❌ 주소 검색 실패: ' + (error.message || '알 수 없는 오류'), 'error');
+    } finally {
+        if (button) { button.disabled = false; button.textContent = '🔎 검색'; }
+    }
 }
 
 function initializeMapViewControls() {
     const toggle = document.getElementById('nearbyClusterToggle');
     if (toggle) toggle.checked = nearbyClustersEnabled;
-    const range = document.getElementById('mapDarkFilterStrength');
-    if (range) range.value = String(mapDarkFilterStrength);
-    setMapDarkFilterStrength(mapDarkFilterStrength);
 }
 
 function addRouteMarker(lat, lng, title, isStart, colorIndex) {
@@ -7990,7 +8019,6 @@ function applyDarkMode(isDark) {
         document.documentElement.removeAttribute('data-theme');
         document.body.classList.remove('dark-mode');
     }
-    setMapDarkFilterStrength(mapDarkFilterStrength);
     updateDarkModeButton();
 }
 
@@ -8118,7 +8146,12 @@ function injectDarkModeCSS() {
     c.push('body.dark-mode .tab-status.info{background:#2c5282!important;color:#bee3f8!important}');
     c.push('body.dark-mode #offlineBanner{background:#9b2c2c!important;color:#fed7d7!important}');
     // 지도
-    c.push('body.dark-mode #map{filter:var(--map-dark-filter,brightness(.85) contrast(1.1))}');
+    c.push('body.dark-mode #map{filter:brightness(.72) contrast(1.16) saturate(.78)}');
+    c.push('body.dark-mode #lunchGameModal .lunch-game-panel{background:#2d3748!important;color:#e2e8f0!important}');
+    c.push('body.dark-mode #lunchGameModal h3{color:#f7fafc!important}');
+    c.push('body.dark-mode #lunchGameModal select{background:#1a202c!important;color:#f7fafc!important;border-color:#4a5568!important}');
+    c.push('body.dark-mode #lunchGameModal .lunch-restaurant-item{background:#1a202c!important;border-color:#48bb78!important}');
+    c.push('body.dark-mode #lunchGameModal .lunch-restaurant-item div{color:#e2e8f0!important}');
     // 모달
     c.push('body.dark-mode .modal{background:#2d3748!important;color:#e2e8f0!important}');
     c.push('body.dark-mode .modal h3{color:#f7fafc!important}');
@@ -11222,6 +11255,7 @@ function renameCategory(index) {
 let helpEasterEggCount = 0;
 let lastHelpClickTime = 0;
 let lunchGameSpinning = false;
+const LUNCH_HISTORY_KEY = 'lunchGameHistory';
 
 function handleHelpEasterEgg() {
     let now = Date.now();
@@ -11242,37 +11276,91 @@ function openLunchGame() {
     if (existing) existing.remove();
 
     let modalHtml = '<div id="lunchGameModal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);z-index:999999;display:flex;justify-content:center;align-items:center;padding:20px;" onclick="if(event.target===this)this.remove()">';
-    modalHtml += '<div style="background:white;border-radius:24px;padding:28px 24px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:85vh;overflow-y:auto;" onclick="event.stopPropagation()">';
+    modalHtml += '<div class="lunch-game-panel" style="background:white;border-radius:24px;padding:24px 20px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-height:88vh;overflow-y:auto;" onclick="event.stopPropagation()">';
     modalHtml += '<div style="text-align:center;">';
     modalHtml += '<div style="font-size:48px;margin-bottom:8px;">🍱</div>';
     modalHtml += '<h3 style="font-size:20px;font-weight:700;color:#1a202c;margin-bottom:4px;">오늘 점심은 뭐 먹지?</h3>';
-    modalHtml += '<div style="font-size:12px;color:#a0aec0;margin-bottom:20px;">🎮 숨겨진 게임을 발견하셨네요!</div>';
+    modalHtml += '<div style="font-size:12px;color:#718096;margin-bottom:14px;">종류를 고르고 돌리면 직전 메뉴는 자동으로 피합니다.</div>';
     modalHtml += '</div>';
+    modalHtml += '<div class="lunch-game-options" style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;margin-bottom:12px;">';
+    modalHtml += '<select id="lunchCategoryFilter" onchange="updateLunchMenuPoolInfo()" aria-label="점심 메뉴 종류" style="width:100%;min-height:38px;border:1px solid #cbd5e0;border-radius:9px;padding:6px 9px;background:white;color:#2d3748;font-size:13px;"><option value="all">전체 메뉴</option><option value="한식">한식</option><option value="면·중식">면·중식</option><option value="일식">일식</option><option value="양식·간편">양식·간편</option><option value="건강식">건강식</option></select>';
+    modalHtml += '<label style="display:flex;align-items:center;gap:5px;font-size:12px;color:#4a5568;white-space:nowrap;cursor:pointer;"><input id="lunchExcludeSpicy" type="checkbox" onchange="updateLunchMenuPoolInfo()"> 🌶️ 매운맛 제외</label>';
+    modalHtml += '</div>';
+    modalHtml += '<div id="lunchPoolInfo" style="font-size:11px;color:#718096;margin:-4px 0 10px;text-align:center;"></div>';
     modalHtml += '<div id="lunchDisplayBg" style="background:linear-gradient(135deg,#667eea,#764ba2);border-radius:16px;padding:24px 16px;margin-bottom:20px;min-height:90px;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:all 0.3s;">';
     modalHtml += '<div id="lunchMenuDisplay" style="font-size:26px;font-weight:800;color:white;">❓</div>';
     modalHtml += '<div id="lunchResultMsg" style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:4px;">버튼을 눌러 메뉴를 골라보세요!</div>';
     modalHtml += '</div>';
     modalHtml += '<div id="lunchRestaurantList" style="display:none;margin-bottom:16px;"></div>';
+    modalHtml += '<div id="lunchRecentHistory" style="margin-bottom:12px;"></div>';
     modalHtml += '<button id="lunchSpinBtn" onclick="spinLunchMenu()" style="width:100%;padding:14px;background:#38a169;color:white;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;margin-bottom:8px;">🎰 메뉴 돌리기!</button>';
     modalHtml += '<button onclick="document.getElementById(\'lunchGameModal\').remove()" style="width:100%;padding:10px;background:#f7fafc;color:#718096;border:1px solid #e2e8f0;border-radius:12px;font-size:13px;cursor:pointer;">닫기</button>';
     modalHtml += '</div></div>';
 
     document.body.insertAdjacentHTML('beforeend', modalHtml);
+    updateLunchMenuPoolInfo();
     if (navigator.vibrate) navigator.vibrate(50);
 }
 
-function getLunchMenus() {
+function getLunchMenuItems() {
     return [
-        '🍲 김치찌개', '🥘 된장찌개', '🍖 제육볶음', '🍚 순두부찌개',
-        '🍜 칼국수', '🥟 짜장면', '🌶️ 짬뽕', '🍱 돈까스',
-        '🍔 햄버거', '🥪 샌드위치', '🥗 샐러드', '🍗 치킨',
-        '🍕 피자', '🍙 김밥', '🍚 비빔밥', '🍧 냉면',
-        '🐔 삼계탕', '🍖 설렁탕', '🍲 해장국', '🥘 부대찌개',
-        '🍖 갈비탕', '🌶️ 육개장', '🍜 콩국수', '🍜 잔치국수',
-        '🍛 덮밥', '🍣 초밥', '🍛 카레', '🍳 오므라이스',
-        '🍝 파스타', '🍜 라면', '🍜 우동', '🍚 볶음밥',
-        '🌶️ 마라탕', '🍜 쌀국수', '🥟 만두', '🍢 어묵탕'
-    ];
+        ['🍲 김치찌개','한식',true], ['🥘 된장찌개','한식',false], ['🍖 제육볶음','한식',true], ['🍚 순두부찌개','한식',true],
+        ['🍚 비빔밥','한식',false], ['🐔 삼계탕','한식',false], ['🍖 설렁탕','한식',false], ['🍲 해장국','한식',true],
+        ['🥘 부대찌개','한식',true], ['🍖 갈비탕','한식',false], ['🌶️ 육개장','한식',true], ['🍛 덮밥','한식',false], ['🍚 볶음밥','한식',false], ['🍢 어묵탕','한식',false],
+        ['🍜 칼국수','면·중식',false], ['🥟 짜장면','면·중식',false], ['🌶️ 짬뽕','면·중식',true], ['🍧 냉면','면·중식',false],
+        ['🍜 콩국수','면·중식',false], ['🍜 잔치국수','면·중식',false], ['🍜 라면','면·중식',true], ['🍜 우동','면·중식',false],
+        ['🌶️ 마라탕','면·중식',true], ['🍜 쌀국수','면·중식',false], ['🥟 만두','면·중식',false],
+        ['🍱 돈까스','일식',false], ['🍙 김밥','일식',false], ['🍣 초밥','일식',false],
+        ['🍔 햄버거','양식·간편',false], ['🥪 샌드위치','양식·간편',false], ['🍗 치킨','양식·간편',false], ['🍕 피자','양식·간편',false],
+        ['🍛 카레','양식·간편',false], ['🍳 오므라이스','양식·간편',false], ['🍝 파스타','양식·간편',false], ['🥗 샐러드','건강식',false]
+    ].map(function(item) {
+        return { label: item[0], category: item[1], spicy: item[2] };
+    });
+}
+
+function getLunchHistory() {
+    try {
+        const history = JSON.parse(localStorage.getItem(LUNCH_HISTORY_KEY) || '[]');
+        return Array.isArray(history) ? history.slice(0, 5) : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveLunchHistory(menu) {
+    const next = [menu].concat(getLunchHistory().filter(function(item) { return item !== menu; })).slice(0, 5);
+    localStorage.setItem(LUNCH_HISTORY_KEY, JSON.stringify(next));
+}
+
+function getLunchMenus() {
+    const category = document.getElementById('lunchCategoryFilter')?.value || 'all';
+    const excludeSpicy = !!document.getElementById('lunchExcludeSpicy')?.checked;
+    return getLunchMenuItems().filter(function(item) {
+        return (category === 'all' || item.category === category) && (!excludeSpicy || !item.spicy);
+    }).map(function(item) { return item.label; });
+}
+
+function updateLunchMenuPoolInfo() {
+    const info = document.getElementById('lunchPoolInfo');
+    const historyEl = document.getElementById('lunchRecentHistory');
+    const menus = getLunchMenus();
+    if (info) info.textContent = '현재 후보 ' + menus.length + '개 · 같은 메뉴 연속 당첨 방지';
+    if (historyEl) {
+        const history = getLunchHistory();
+        historyEl.innerHTML = history.length
+            ? '<div style="font-size:11px;color:#718096;margin-bottom:5px;">최근 결과</div><div style="display:flex;gap:5px;flex-wrap:wrap;">' + history.map(function(menu) { return '<span style="background:#edf2f7;color:#4a5568;border-radius:999px;padding:4px 8px;font-size:11px;">' + escapeHtml(menu) + '</span>'; }).join('') + '</div>'
+            : '<div style="font-size:11px;color:#a0aec0;text-align:center;">아직 최근 결과가 없습니다.</div>';
+    }
+}
+
+function chooseLunchMenu(menus) {
+    const previous = getLunchHistory()[0];
+    const candidates = menus.length > 1 ? menus.filter(function(menu) { return menu !== previous; }) : menus;
+    return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
+function getLunchMenuSearchText(menu) {
+    return String(menu || '').replace(/^[^\s]+\s/, '');
 }
 
 function spinLunchMenu() {
@@ -11286,6 +11374,11 @@ function spinLunchMenu() {
     let bg = document.getElementById('lunchDisplayBg');
     let restaurantList = document.getElementById('lunchRestaurantList');
     if (!display || !btn) { lunchGameSpinning = false; return; }
+    if (!menus.length) {
+        lunchGameSpinning = false;
+        if (resultMsg) resultMsg.textContent = '조건에 맞는 메뉴가 없습니다.';
+        return;
+    }
 
     if (restaurantList) { restaurantList.style.display = 'none'; restaurantList.innerHTML = ''; }
     btn.textContent = '🎰 고르는 중...';
@@ -11295,9 +11388,9 @@ function spinLunchMenu() {
     if (resultMsg) resultMsg.textContent = '두근두근...';
     if (bg) bg.style.background = 'linear-gradient(135deg,#667eea,#764ba2)';
 
-    let totalSpins = 30 + Math.floor(Math.random() * 10);
+    let totalSpins = 20 + Math.floor(Math.random() * 7);
     let currentSpin = 0;
-    let finalMenu = menus[Math.floor(Math.random() * menus.length)];
+    let finalMenu = chooseLunchMenu(menus);
 
     function doSpin() {
         currentSpin++;
@@ -11311,9 +11404,11 @@ function spinLunchMenu() {
             if (resultMsg) resultMsg.textContent = '🎉 결정 완료! 근처 식당을 찾아볼게요~';
             if (bg) bg.style.background = 'linear-gradient(135deg,#f6ad55,#ed8936)';
             if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+            saveLunchHistory(finalMenu);
+            updateLunchMenuPoolInfo();
 
             // ★ 이모지 제거 후 식당 검색
-            let menuText = finalMenu.replace(/^[^\s]+\s/, '');
+            let menuText = getLunchMenuSearchText(finalMenu);
             searchLunchRestaurants(menuText);
 
             setTimeout(function() {
@@ -11326,7 +11421,7 @@ function spinLunchMenu() {
         }
 
         let progress = currentSpin / totalSpins;
-        let delay = 50 + Math.floor(progress * progress * 300);
+        let delay = 45 + Math.floor(progress * progress * 180);
         setTimeout(doSpin, delay);
     }
 
@@ -11408,7 +11503,7 @@ function renderRestaurantResults(documents, menu, isGps) {
         let place = topList[i];
         let distance = place.distance ? (place.distance >= 1000 ? (place.distance / 1000).toFixed(1) + 'km' : place.distance + 'm') : '';
         let safeName = escapeHtml(place.place_name).replace(/'/g, "\\'").replace(/"/g, '&quot;');
-        html += '<div onclick="openLunchRestaurantInMap(this)" data-id="' + escapeHtml(place.id || '') + '" data-name="' + safeName + '" data-lat="' + place.y + '" data-lng="' + place.x + '" style="display:flex;align-items:center;gap:10px;padding:10px;background:#f7fafc;border-radius:10px;margin-bottom:6px;cursor:pointer;border-left:3px solid #38a169;">';
+        html += '<div class="lunch-restaurant-item" onclick="openLunchRestaurantInMap(this)" data-id="' + escapeHtml(place.id || '') + '" data-name="' + safeName + '" data-lat="' + place.y + '" data-lng="' + place.x + '" style="display:flex;align-items:center;gap:10px;padding:10px;background:#f7fafc;border-radius:10px;margin-bottom:6px;cursor:pointer;border-left:3px solid #38a169;">';
         html += '<div style="font-size:20px;font-weight:700;color:#38a169;min-width:28px;">' + (i + 1) + '</div>';
         html += '<div style="flex:1;min-width:0;">';
         html += '<div style="font-weight:600;font-size:13px;color:#1a202c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(place.place_name) + '</div>';
