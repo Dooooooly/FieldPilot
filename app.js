@@ -4481,10 +4481,6 @@ isShowingRouteMarkers = true;
         
         showRouteList();
         
-        if (startPoint && startPoint.lat && startPoint.lng) {
-            focusRouteStart();
-        }
-        
         let meta = sorted._optimizationMeta || {};
         let roadMsg = '';
         if (meta.roadSuccess !== undefined && meta.roadFallback !== undefined) {
@@ -4516,7 +4512,10 @@ isShowingRouteMarkers = true;
         
         updateOptimizationLiveSummary();
         
+        // 지도가 숨겨진 상태에서 중심을 먼저 바꾸면 탭 relayout이나 경로 bounds가
+        // 뒤늦게 적용되어 다른 곳이 보일 수 있다. 지도 탭을 연 뒤 출발지를 고정한다.
         switchTab('tab-route');
+        focusRouteStartAfterTabOpen();
     } catch(e) {
         showTabStatus('tab-places', '❌ 오류 발생: ' + e.message, 'error');
     } finally {
@@ -5159,6 +5158,44 @@ function applyPendingMapCenter() {
 
 function focusRouteStart() {
     return startPoint ? focusMapOnPoint(startPoint.lat, startPoint.lng, 5) : false;
+}
+
+function focusRouteStartAfterTabOpen() {
+    if (!startPoint) return;
+    const lat = Number(startPoint.lat);
+    const lng = Number(startPoint.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+    // SDK가 아직 준비되지 않은 경우에도 createMap()에서 적용할 수 있도록 보관한다.
+    pendingMapCenter = { lat: lat, lng: lng, level: 5 };
+    let attempts = 0;
+
+    function applyStartCenter() {
+        attempts += 1;
+        const routeTab = document.getElementById('tab-route');
+        if (!routeTab || !routeTab.classList.contains('active')) return;
+
+        if (kakaoMap && typeof kakao !== 'undefined' && kakao.maps) {
+            try {
+                kakaoMap.relayout();
+                kakaoMap.setCenter(new kakao.maps.LatLng(lat, lng));
+                kakaoMap.setLevel(5);
+                kakaoMap.relayout();
+                pendingMapCenter = null;
+                return;
+            } catch (error) {
+                console.warn('[MAP] 출발지 중심 이동 재시도:', error);
+            }
+        } else if (!sdkLoading) {
+            initMap();
+        }
+
+        if (attempts < 10) setTimeout(applyStartCenter, 250);
+    }
+
+    requestAnimationFrame(function() {
+        setTimeout(applyStartCenter, 220);
+    });
 }
 
 // ============================================================
@@ -12976,6 +13013,10 @@ async function githubSync(kind, region, data, message) {
 }
 
 async function githubData(kind, region, ref) {
+    region = String(region || '').trim();
+    // 인증/지역 복원 전에 기록 탭 렌더링이 먼저 실행될 수 있다. 이 시점에는
+    // 서버가 거부할 빈 region 요청을 보내지 않고 지역 선택 완료를 기다린다.
+    if (!region) return { found: false, data: null, skipped: true };
     let query = '/api/github/data?kind=' + encodeURIComponent(kind) + '&region=' + encodeURIComponent(region);
     if (ref) query += '&ref=' + encodeURIComponent(ref);
     return serverGet(query);
