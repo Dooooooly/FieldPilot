@@ -11606,12 +11606,17 @@ async function sendToKakaoChatbot(record) {
 
         showTabStatus(
             'tab-work',
-            '✅ 카카오워크 전송 완료' +
+            (result.messageUpdated
+                ? '✅ 기존 카카오워크 메시지 수정 완료'
+                : '✅ 카카오워크 전송 완료') +
                 (Number(result.photoCount || 0) > 0
-                    ? ' · ' + Number(result.photoCount) + '장' +
+                    ? ' · 새 사진 ' + Number(result.photoCount) + '장' +
                         (Number(result.photoBatchCount || 0) > 1
                             ? ' / ' + Number(result.photoBatchCount) + '회 분할'
                             : '')
+                    : '') +
+                (Number(result.skippedPhotoCount || 0) > 0
+                    ? ' · 기존 사진 ' + Number(result.skippedPhotoCount) + '장 재전송 안 함'
                     : ''),
             'ok'
         );
