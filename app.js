@@ -11387,18 +11387,19 @@ async function editWorkPhoto(photoId, workId) {
             return;
         }
         if (statusEl) statusEl.textContent = '⏳ 편집한 사진 저장 중...';
-        const resized = core.resizeImage ? await core.resizeImage(edited) : edited;
-        const thumbnail = core.createPhotoThumbnail ? await core.createPhotoThumbnail(resized) : null;
+        // 편집 결과도 다시 축소하지 않고 편집기가 만든 전체 해상도로 저장한다.
+        const editedFullResolution = edited;
+        const thumbnail = core.createPhotoThumbnail ? await core.createPhotoThumbnail(editedFullResolution) : null;
         const form = new FormData();
         form.append('region', info.region);
         form.append('siteName', info.siteName);
         form.append('fileName', info.fileName);
-        form.append('photo', resized, resized.name || info.fileName);
+        form.append('photo', editedFullResolution, editedFullResolution.name || info.fileName);
         if (thumbnail) form.append('thumbnail', thumbnail, 'thumbnail.jpg');
 
         let result;
         if (core?.api) {
-            result = (await core.api.postForm('/api/photos/replace', form)).data;
+            result = (await core.api.postForm('/api/photos/replace', form, { timeoutMs: 120000 })).data;
         } else {
             const replaceResponse = await fetch(serverBase() + '/api/photos/replace', {
                 method: 'POST', headers: getAuthToken() ? { Authorization: 'Bearer ' + getAuthToken() } : {}, body: form
@@ -12698,17 +12699,22 @@ async function uploadPhotoMultipart(photo) {
     if (!file) throw new Error('사진 파일을 찾을 수 없습니다.');
 
     const core = fieldPilotCore();
-    const resized = core?.resizeImage ? await core.resizeImage(file) : file;
+    const maxOriginalBytes = Number(core?.CONFIG?.photo?.maxInputBytes || 50 * 1024 * 1024);
+    if (file.size && file.size > maxOriginalBytes) {
+        throw new Error('원본 사진은 50MB 이하만 저장할 수 있습니다.');
+    }
+    // 현장 증빙 원본은 리사이즈하거나 JPEG로 다시 인코딩하지 않는다.
+    const originalFile = file;
     let thumbnail = null;
     try {
-        thumbnail = core?.createPhotoThumbnail ? await core.createPhotoThumbnail(resized) : null;
+        thumbnail = core?.createPhotoThumbnail ? await core.createPhotoThumbnail(originalFile) : null;
     } catch (error) {
         console.warn('[FieldPilot] 사진 썸네일 생성 실패, 원본 폴백 사용:', error);
     }
     const fields = {
         region: photo.region,
         siteName: photo.siteName,
-        fileName: resized.name || photo.fileName || 'photo.jpg',
+        fileName: originalFile.name || photo.fileName || 'photo.jpg',
         workId: photo.workId || '',
         date: photo.date || '',
         time: photo.time || '',
@@ -12719,11 +12725,11 @@ async function uploadPhotoMultipart(photo) {
     };
     const form = new FormData();
     Object.entries(fields).forEach(function(entry) { form.append(entry[0], entry[1]); });
-    form.append('photo', resized, fields.fileName);
+    form.append('photo', originalFile, fields.fileName);
     if (thumbnail) form.append('thumbnail', thumbnail, 'thumbnail.jpg');
 
     try {
-        if (core?.api) return (await core.api.postForm('/api/photos', form)).data;
+        if (core?.api) return (await core.api.postForm('/api/photos', form, { timeoutMs: 120000 })).data;
         const response = await fetch(serverBase() + '/api/photos', {
             method: 'POST', headers: { Authorization: 'Bearer ' + getAuthToken() }, body: form
         });
@@ -12734,9 +12740,9 @@ async function uploadPhotoMultipart(photo) {
         if (!retriable || !core?.queueWhenOffline) throw error;
         await core.queueWhenOffline({
             method: 'POST', path: '/api/photos',
-            form: { fields: fields, photo: resized, thumbnail: thumbnail, fileName: fields.fileName }
+            form: { fields: fields, photo: originalFile, thumbnail: thumbnail, fileName: fields.fileName }
         });
-        return { queued: true, previewUrl: URL.createObjectURL(resized) };
+        return { queued: true, previewUrl: URL.createObjectURL(originalFile) };
     }
 }
 
