@@ -3,6 +3,7 @@ import { isRetryableApiError } from './api.js';
 import {
     dueQueuedRequests,
     enqueueRequest,
+    queuedRequestCount,
     postponeQueuedRequest,
     removeQueuedRequest
 } from './storage.js';
@@ -12,7 +13,7 @@ export async function resizeImage(file, options = {}) {
     const maxDimension = Number(options.maxDimension || CONFIG.photo.maxDimension);
     const quality = Number(options.quality || CONFIG.photo.jpegQuality);
     if (file.size && file.size > CONFIG.photo.maxInputBytes) {
-        throw new Error('사진은 15MB 이하만 업로드할 수 있습니다.');
+        throw new Error('사진은 50MB 이하만 업로드할 수 있습니다.');
     }
     if (!('createImageBitmap' in globalThis)) return file;
 
@@ -44,6 +45,7 @@ export async function resizeImage(file, options = {}) {
 
 export async function queueWhenOffline(request) {
     const queued = await enqueueRequest(request);
+    window.dispatchEvent(new CustomEvent('fieldpilot:queue-changed', { detail: { pending: await queuedRequestCount() } }));
     try {
         const registration = await navigator.serviceWorker?.ready;
         if (registration?.sync) await registration.sync.register(CONFIG.offline.backgroundSyncTag);
@@ -54,7 +56,7 @@ export async function queueWhenOffline(request) {
 }
 
 export async function flushQueue(apiClient) {
-    if (!isBrowserOnline()) return { sent: 0, pending: 0 };
+    if (!isBrowserOnline()) return { sent: 0, pending: await queuedRequestCount() };
     const requests = await dueQueuedRequests();
     let sent = 0;
 
@@ -64,12 +66,14 @@ export async function flushQueue(apiClient) {
                 const form = new FormData();
                 Object.entries(queued.form.fields || {}).forEach(([key, value]) => form.append(key, value));
                 form.append('photo', queued.form.photo, queued.form.fileName || 'photo.jpg');
-                await apiClient.postForm(queued.path, form);
+                if (queued.form.thumbnail) form.append('thumbnail', queued.form.thumbnail, 'thumbnail.jpg');
+                await apiClient.postForm(queued.path, form, { timeoutMs: 120000 });
             } else {
                 await apiClient.request(queued.path, { method: queued.method, json: queued.json });
             }
             await removeQueuedRequest(queued.id);
             sent += 1;
+            window.dispatchEvent(new CustomEvent('fieldpilot:queue-changed', { detail: { pending: await queuedRequestCount() } }));
         } catch (error) {
             if (isRetryableApiError(error)) {
                 await postponeQueuedRequest(queued.id, error);
@@ -79,5 +83,7 @@ export async function flushQueue(apiClient) {
         }
     }
 
-    return { sent, pending: (await dueQueuedRequests()).length };
+    const pending = await queuedRequestCount();
+    window.dispatchEvent(new CustomEvent('fieldpilot:queue-changed', { detail: { sent, pending } }));
+    return { sent, pending };
 }
