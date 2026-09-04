@@ -1769,6 +1769,15 @@ async function openAdminDashboard() {
                 + '<div class="admin-dashboard-section-note" style="margin-top:5px">' + (hasLimit ? percent + '% 사용' : 'config.json에서 한도를 입력하세요') + '</div></div>';
         }).join('');
         const rows = regions.map(row => '<tr><td><strong>' + escapeHtml(row.region) + '</strong></td><td>' + row.todayPlaceCount + '</td><td>' + row.incompleteSites + '</td><td>' + row.totalSites + '</td></tr>').join('') || '<tr><td colspan="4" class="admin-dashboard-empty">표시할 지역 데이터가 없습니다.</td></tr>';
+        const dongDetails = regions.map(function(row) {
+            const distribution = row.dongDistribution || [];
+            const max = distribution[0]?.count || 1;
+            const bars = distribution.map(function(item) {
+                return '<div class="admin-dong-row"><span>' + escapeHtml(item.dong) + '</span><div class="admin-dong-track"><i style="width:' + Math.round(item.count / max * 100) + '%"></i></div><strong>' + item.count + '</strong></div>';
+            }).join('') || '<div class="admin-dashboard-empty">동 정보가 없습니다.</div>';
+            const anomaly = Number(row.missingDongCount || 0) + Number(row.incompleteSites || 0);
+            return '<details class="admin-dong-region"><summary><span><strong>' + escapeHtml(row.region) + '</strong> · ' + row.totalSites + '개 현장</span><span class="admin-anomaly-badge' + (anomaly ? ' has-warning' : '') + '">' + (anomaly ? '확인 ' + anomaly + '건' : '정상') + '</span></summary><div class="admin-dong-body">' + bars + (row.missingDongCount ? '<div class="admin-dong-warning">동 정보 누락 ' + row.missingDongCount + '개 · 현장 주소를 확인하세요.</div>' : '') + '</div></details>';
+        }).join('') || '<div class="admin-dashboard-empty">표시할 분포 데이터가 없습니다.</div>';
         const photos = (data.recentPhotos || []).map(photo => {
             const rawDate = photo.savedAt || '';
             const parsed = rawDate ? new Date(rawDate) : null;
@@ -1782,7 +1791,8 @@ async function openAdminDashboard() {
             + '<section class="admin-dashboard-section admin-dashboard-map-wrap"><div class="admin-dashboard-section-title"><span>🗺️ 최근 방문 밀도</span><span class="admin-dashboard-section-note">원이 클수록 방문이 많음</span></div><div id="adminHeatMap" class="admin-dashboard-map"></div><div class="admin-dashboard-map-legend">낮음 ◌ ● 높음</div></section>'
             + '<div class="admin-dashboard-grid">'
             + '<section class="admin-dashboard-section"><div class="admin-dashboard-section-title"><span>📍 지역별 현황</span></div><div class="admin-dashboard-table-wrap"><table class="admin-dashboard-table"><thead><tr><th>지역</th><th>오늘 방문</th><th>미완료</th><th>전체 현장</th></tr></thead><tbody>' + rows + '</tbody></table></div></section>'
-            + '<section class="admin-dashboard-section"><div class="admin-dashboard-section-title"><span>📷 최근 사진 업로드</span><span class="admin-dashboard-section-note">최신순</span></div>' + photos + '</section></div>';
+            + '<section class="admin-dashboard-section"><div class="admin-dashboard-section-title"><span>📷 최근 사진 업로드</span><span class="admin-dashboard-section-note">최신순</span></div>' + photos + '</section></div>'
+            + '<section class="admin-dashboard-section admin-dong-section"><div class="admin-dashboard-section-title"><span>🏘️ 지역별 동 분포 · 이상 항목</span><span class="admin-dashboard-section-note">지역을 눌러 전체 보기</span></div>' + dongDetails + '</section>';
         renderAdminHeatMap(regions.flatMap(row => row.heatPoints || []));
     } catch (error) {
         const body = document.getElementById('adminDashboardBody');
@@ -8391,119 +8401,91 @@ async function saveStatsToLocalStorage(stats) {
 // ===== GitHub에서 통계 다운로드 (🔄 새로고침 버튼) =====
 // ===== 통계 탭 렌더링 (자동 동 변환 포함) =====
 async function renderStatsTab() {
-    let container = document.getElementById('statsContent');
+    const container = document.getElementById('statsContent');
     if (!container) return;
-    
-    if (!currentStats) {
-        currentStats = loadStatsFromLocalStorage();
-    }
-    let stats = currentStats;
-    let history = stats.visitHistory || [];
-    
-    // 기간 필터링
-    let today = new Date().toISOString().slice(0, 10);
-    let todayVisits = history.filter(function(v) { return v.date === today; });
-    let weekStart = new Date();
+    if (!currentStats) currentStats = loadStatsFromLocalStorage();
+    const stats = currentStats;
+    const history = stats.visitHistory || [];
+    const today = new Date().toLocaleDateString('en-CA');
+    const todayVisits = history.filter(function(v) { return v.date === today; });
+    const weekStart = new Date();
     weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-    let weekStartStr = weekStart.toISOString().slice(0, 10);
-    let weekVisits = history.filter(function(v) { return v.date >= weekStartStr; });
-    let monthVisits = history;
-    
-    // 동별 현장 분포
-    let dongCount = {};
+    const weekStartStr = weekStart.toLocaleDateString('en-CA');
+    const weekVisits = history.filter(function(v) { return v.date >= weekStartStr; });
+    const dongCount = {};
     let noDongCount = 0;
-    for (let i = 0; i < places.length; i++) {
-        let p = places[i];
+    places.forEach(function(p) {
         if (p.dong && p.dong !== '미변환') {
             dongCount[p.dong] = (dongCount[p.dong] || 0) + 1;
         } else {
             noDongCount++;
         }
+    });
+    const dongSorted = Object.entries(dongCount).sort(function(a, b) { return b[1] - a[1]; });
+    let html = renderTodaySnapshot(todayVisits);
+    html += '<section class="stats-section"><div class="stats-section-title">📈 기간별 핵심 방문</div>';
+    html += '<div id="statsPeriodBtns" class="stats-period-controls">';
+    html += '<button class="btn btn-sm stats-period-btn active" data-period="today" onclick="switchStatsPeriod(\'today\')">오늘</button>';
+    html += '<button class="btn btn-sm stats-period-btn" data-period="week" onclick="switchStatsPeriod(\'week\')">이번 주</button>';
+    html += '<button class="btn btn-sm stats-period-btn" data-period="month" onclick="switchStatsPeriod(\'month\')">이번 달</button>';
+    html += '</div><div id="statsVisitData">' + renderVisitData(todayVisits) + '</div></section>';
+    html += renderDongDistribution(dongSorted, places.length);
+    if (noDongCount > 0) {
+        html += '<div class="stats-warning">⚠️ 동 정보가 없는 현장 <strong>' + noDongCount + '개</strong><br><span>현장 관리에서 주소와 동 정보를 확인해 주세요.</span></div>';
     }
-    let dongSorted = Object.entries(dongCount).sort(function(a, b) { return b[1] - a[1]; });
-    let visitCounts = { today: todayVisits, week: weekVisits, month: monthVisits };
-    
-    // HTML 생성
-    let html = '';
-    
-    // 기본 현황판
-    html += '<div style="margin-bottom:20px;">';
-    html += '<div style="font-size:13px;color:#718096;margin-bottom:8px;">총 현장: <strong>' + places.length + '개</strong></div>';
-    html += '<div style="font-weight:600;font-size:13px;margin-bottom:6px;">동별 현장 분포</div>';
-    
-    if (dongSorted.length === 0 && noDongCount === 0) {
-        html += '<div style="color:#a0aec0;font-size:13px;padding:8px;">현장 데이터가 없습니다</div>';
-    } else {
-        if (noDongCount > 0) {
-            html += '<div style="font-size:12px;color:#e53e3e;background:#fff5f5;border:1px solid #fed7d7;border-radius:6px;padding:8px;margin-bottom:8px;">';
-            html += '⚠️ 동 정보를 알 수 없는 현장 <strong>' + noDongCount + '개</strong>';
-            html += '<br><span style="font-size:11px;">통계 탭 진입 시 자동 변환됩니다</span>';
-            html += '</div>';
-        }
-        let maxCount = dongSorted.length > 0 ? dongSorted[0][1] : 1;
-        html += '<div style="display:flex;flex-direction:column;gap:4px;">';
-        for (let i = 0; i < dongSorted.length; i++) {
-            let dong = dongSorted[i][0];
-            let count = dongSorted[i][1];
-            let barWidth = Math.round((count / maxCount) * 100);
-            html += '<div style="display:flex;align-items:center;gap:8px;">';
-            html += '<span style="min-width:70px;font-size:12px;text-align:right;">' + escapeHtml(dong) + '</span>';
-            html += '<div style="flex:1;background:#e2e8f0;border-radius:4px;height:16px;overflow:hidden;">';
-            html += '<div style="width:' + barWidth + '%;background:#4f7eb3;height:100%;border-radius:4px;min-width:2px;"></div>';
-            html += '</div>';
-            html += '<span style="min-width:35px;font-size:12px;font-weight:600;">' + count + '개</span>';
-            html += '</div>';
-        }
-        html += '</div>';
-    }
-    html += '</div>';
-    
-    // 방문 분석
-    html += '<div style="border-top:1px solid #e2e8f0;padding-top:16px;">';
-    html += '<div style="font-weight:700;font-size:15px;margin-bottom:12px;">📈 방문 분석</div>';
-    html += '<div id="statsPeriodBtns" style="display:flex;gap:6px;margin-bottom:12px;">';
-    html += '<button class="btn btn-sm stats-period-btn active" data-period="today" onclick="switchStatsPeriod(\'today\')" style="padding:6px 12px;font-size:12px;border-radius:6px;">오늘</button>';
-    html += '<button class="btn btn-sm stats-period-btn" data-period="week" onclick="switchStatsPeriod(\'week\')" style="padding:6px 12px;font-size:12px;border-radius:6px;">이번 주</button>';
-    html += '<button class="btn btn-sm stats-period-btn" data-period="month" onclick="switchStatsPeriod(\'month\')" style="padding:6px 12px;font-size:12px;border-radius:6px;">이번 달</button>';
-    html += '</div>';
-    html += '<div id="statsVisitData">';
-    html += renderVisitData(visitCounts.today);
-    html += '</div>';
-    html += '</div>';
-    
     if (stats.lastUpdated) {
-        let lastDate = new Date(stats.lastUpdated);
-        html += '<div style="margin-top:16px;padding-top:12px;border-top:1px solid #e2e8f0;font-size:11px;color:#a0aec0;text-align:center;">';
-        html += '⏳ 마지막 동기화: ' + lastDate.toLocaleString();
-        html += '</div>';
+        const lastDate = new Date(stats.lastUpdated);
+        html += '<div class="stats-last-sync">⏳ 마지막 동기화: ' + lastDate.toLocaleString('ko-KR') + '</div>';
     }
-    
     container.innerHTML = html;
 }
-// ===== 방문 데이터 렌더링 =====
+
+function renderTodaySnapshot(visits) {
+    const totalPlaces = visits.reduce(function(sum, visit) { return sum + Number(visit.placeCount || visit.places?.length || 0); }, 0);
+    return '<section class="stats-today"><div class="stats-today-heading"><div><strong>오늘 스냅샷</strong><span>담당자 방문 현황</span></div><span class="stats-today-date">' + new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' }) + '</span></div>'
+        + '<div class="stats-snapshot-grid"><div class="stats-snapshot-card"><span>경로 실행</span><strong>' + visits.length + '<small>회</small></strong></div><div class="stats-snapshot-card is-green"><span>방문 현장</span><strong>' + totalPlaces + '<small>곳</small></strong></div></div></section>';
+}
+
+function renderDongDistribution(rows, totalSites) {
+    if (!rows.length) {
+        return '<section class="stats-section"><div class="stats-section-title">📍 동별 현장 분포 <small>총 ' + totalSites + '개</small></div><div class="stats-empty">현장 데이터가 없습니다.</div></section>';
+    }
+    const maxCount = rows[0][1] || 1;
+    let html = '<section class="stats-section"><div class="stats-section-title">📍 동별 현장 분포 <small>총 ' + totalSites + '개</small></div><div id="statsDongRows" class="stats-dong-list">';
+    rows.forEach(function(row, index) {
+        const hidden = index >= 5 ? ' stats-dong-extra' : '';
+        const width = Math.round(row[1] / maxCount * 100);
+        html += '<div class="stats-dong-row' + hidden + '"><span>' + escapeHtml(row[0]) + '</span><div class="stats-dong-track"><i style="width:' + width + '%"></i></div><strong>' + row[1] + '개</strong></div>';
+    });
+    html += '</div>';
+    if (rows.length > 5) html += '<button id="statsDongToggle" class="btn btn-outline btn-sm btn-block" type="button" onclick="toggleStatsDongDistribution()">전체 보기 (' + rows.length + '개 동)</button>';
+    return html + '</section>';
+}
+
+function toggleStatsDongDistribution() {
+    const button = document.getElementById('statsDongToggle');
+    const expanded = button?.dataset.expanded === 'true';
+    document.querySelectorAll('#statsDongRows .stats-dong-extra').forEach(function(row) { row.style.display = expanded ? 'none' : 'flex'; });
+    if (button) {
+        button.dataset.expanded = String(!expanded);
+        button.textContent = expanded ? '전체 보기' : '접기';
+    }
+}
+
+// 기간 토글 아래에는 실질적인 순위 정보만 표시한다.
 function renderVisitData(visits) {
     let html = '';
-    let totalPlaces = 0;
-    visits.forEach(function(v) { totalPlaces += v.placeCount; });
-    html += '<div style="display:flex;gap:12px;margin-bottom:12px;">';
-    html += '<div style="flex:1;background:#f7fafc;border-radius:8px;padding:10px;text-align:center;">';
-    html += '<div style="font-size:20px;font-weight:700;color:#2b6cb0;">' + visits.length + '</div>';
-    html += '<div style="font-size:11px;color:#718096;">방문 횟수</div></div>';
-    html += '<div style="flex:1;background:#f7fafc;border-radius:8px;padding:10px;text-align:center;">';
-    html += '<div style="font-size:20px;font-weight:700;color:#38a169;">' + totalPlaces + '</div>';
-    html += '<div style="font-size:11px;color:#718096;">방문 현장</div></div></div>';
 
     if (visits.length === 0) {
-        html += '<div style="text-align:center;padding:16px;color:#a0aec0;font-size:13px;">기록된 방문이 없습니다</div>';
+        html += '<div class="stats-empty">기록된 방문이 없습니다.</div>';
         return html;
     }
 
     let topPlaces = getTopPlacesForPeriod(visits);
     if (topPlaces.length > 0) {
-        html += '<div style="font-weight:600;font-size:13px;margin-bottom:6px;">🏆 최다 방문 장소 TOP 5</div>';
-        html += '<div style="display:flex;flex-direction:column;gap:3px;margin-bottom:12px;">';
+        html += '<div class="stats-ranking-title">🏆 최다 방문 장소 TOP 5</div><div class="stats-ranking-list">';
         for (let i = 0; i < topPlaces.length; i++) {
-            html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 8px;background:#f7fafc;border-radius:4px;font-size:12px;">';
+            html += '<div class="stats-ranking-row">';
             html += '<span>' + (i + 1) + '. ' + escapeHtml(topPlaces[i][0]) + '</span>';
             html += '<span style="font-weight:600;">' + topPlaces[i][1] + '회</span></div>';
         }
@@ -8512,11 +8494,10 @@ function renderVisitData(visits) {
 
     let topDongs = getTopDongsForPeriod(visits);
     if (topDongs.length > 0) {
-        html += '<div style="font-weight:600;font-size:13px;margin-bottom:6px;">📍 동별 자주 방문 TOP 3</div>';
-        html += '<div style="display:flex;flex-direction:column;gap:3px;">';
+        html += '<div class="stats-ranking-title">📍 동별 자주 방문 TOP 3</div><div class="stats-ranking-list">';
         let medals = ['🥇', '🥈', '🥉'];
         for (let i = 0; i < topDongs.length; i++) {
-            html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 8px;background:#f7fafc;border-radius:4px;font-size:12px;">';
+            html += '<div class="stats-ranking-row">';
             html += '<span>' + medals[i] + ' ' + escapeHtml(topDongs[i][0]) + '</span>';
             html += '<span style="font-weight:600;">' + topDongs[i][1] + '회</span></div>';
         }
@@ -11258,14 +11239,20 @@ async function getPhotosByWorkId(workId) {
 async function deletePhotoFromDB(photoId) {
     let info = photoInfoCache.get(photoId);
     if (!info) return;
-    try {
-        await fetch(serverBase() + '/api/photo'
+    const response = await fetch(serverBase() + '/api/photo'
             + '?region=' + encodeURIComponent(info.region)
             + '&siteName=' + encodeURIComponent(info.siteName)
-            + '&fileName=' + encodeURIComponent(info.fileName), { method: 'DELETE' });
-    } finally {
-        photoInfoCache.delete(photoId);
+            + '&fileName=' + encodeURIComponent(info.fileName), {
+                method: 'DELETE',
+                headers: getAuthToken() ? { Authorization: 'Bearer ' + getAuthToken() } : {}
+            });
+    if (response.status === 401) {
+        handleAuthExpired();
+        throw new Error('인가 세션이 만료되었습니다. 다시 로그인하세요.');
     }
+    const data = await response.json().catch(function() { return {}; });
+    if (!response.ok) throw new Error(data.message || data.error || ('사진 삭제 실패: ' + response.status));
+    photoInfoCache.delete(photoId);
 }
 
 async function getAllPhotos() {
@@ -11477,9 +11464,13 @@ async function viewPhoto(photoId) {
 }
 
 async function deleteWorkPhoto(photoId, workId) {
-    await deletePhotoFromDB(photoId);
-    renderWorkPhotoList(workId);
-    showTabStatus('tab-work', '✅ 사진 삭제됨', 'ok');
+    try {
+        await deletePhotoFromDB(photoId);
+        await renderWorkPhotoList(workId);
+        showTabStatus('tab-work', '✅ 사진 삭제됨', 'ok');
+    } catch (error) {
+        showTabStatus('tab-work', '❌ 사진 삭제 실패: ' + error.message, 'error');
+    }
 }
 
 // ============================================================
