@@ -52,9 +52,11 @@ export const CONFIG = {
     },
 
     photo: {
-        maxDimension: 1280,
-        jpegQuality: 0.85,
-        maxInputBytes: 15 * 1024 * 1024,
+        // 현장 증빙 사진은 원본 바이트를 그대로 서버에 저장한다.
+        preserveOriginal: true,
+        maxDimension: 2560,
+        jpegQuality: 0.92,
+        maxInputBytes: 50 * 1024 * 1024,
         outputMimeType: 'image/jpeg'
     },
 
