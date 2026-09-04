@@ -244,6 +244,7 @@ let tempSettings = {};
 let routeObjective = 'distance';
 let useRoadOptimization = true;
 let useDirectionHint = true;
+let todayPlanData = null;
 
 // --- 통계 관련 ---
 const STATS_KEY_PREFIX = 'stats_';
@@ -350,6 +351,57 @@ function isMobile() {
 // ============================================================
 // 2. 탭 전환
 // ============================================================
+async function refreshTodayPlanWidget(showFeedback) {
+    const list = document.getElementById('todayPlanList');
+    const meta = document.getElementById('todayPlanMeta');
+    if (!list || !meta) return;
+    if (!isAuthorized() || !currentRegion) {
+        todayPlanData = null;
+        meta.textContent = '로그인하고 지역을 선택하면 표시됩니다.';
+        list.innerHTML = '<div class="today-plan-empty">🔒 인가코드 로그인이 필요합니다.</div>';
+        return;
+    }
+    list.innerHTML = '<div class="today-plan-empty">⏳ 오늘 경로를 확인하는 중...</div>';
+    try {
+        const data = await serverGet('/api/home/today-plan?region=' + encodeURIComponent(currentRegion));
+        todayPlanData = data;
+        const rows = Array.isArray(data.places) ? data.places : [];
+        const updated = Number(data.updatedAt || 0)
+            ? new Date(Number(data.updatedAt)).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+            : '';
+        meta.textContent = currentRegion + ' · ' + rows.length + '곳' + (updated ? ' · ' + updated + ' 갱신' : '');
+        if (!rows.length) {
+            list.innerHTML = '<div class="today-plan-empty">오늘 저장된 최적화 경로가 없습니다.<br>경로 최적화를 실행하면 이곳에 표시됩니다.</div>';
+            return;
+        }
+        list.innerHTML = rows.map(function(place, index) {
+            return '<div class="today-plan-item"><span class="today-plan-order">' + (index + 1) + '</span><div><div class="today-plan-name">' + escapeHtml(place.name || '이름 없는 현장') + '</div><div class="today-plan-dong">' + escapeHtml(place.dong || '동 정보 없음') + '</div></div></div>';
+        }).join('') + '<button class="btn btn-primary btn-sm btn-block" type="button" onclick="loadTodayPlanIntoRoute()">🧭 이 경로 불러오기</button>';
+        if (showFeedback) showTabStatus('tab-places', '✅ 오늘 방문 예정 경로를 새로고침했습니다.', 'ok');
+    } catch (error) {
+        todayPlanData = null;
+        meta.textContent = '불러오기 실패';
+        list.innerHTML = '<div class="today-plan-empty">⚠️ ' + escapeHtml(error.message) + '</div>';
+    }
+}
+
+function loadTodayPlanIntoRoute() {
+    const rows = todayPlanData?.places || [];
+    if (!rows.length) return;
+    if (waypoints.length && !confirm('현재 경유지를 오늘 방문 예정 경로로 바꿀까요?')) return;
+    waypoints = rows.map(function(place) {
+        return {
+            name: place.name,
+            dong: place.dong,
+            lat: Number(place.lat),
+            lng: Number(place.lng),
+            address: ''
+        };
+    });
+    renderWaypointList();
+    showTabStatus('tab-places', '✅ 오늘 방문 예정 ' + rows.length + '곳을 경유지로 불러왔습니다.', 'ok');
+}
+
 // popstate에 의한 호출인지 구분하기 위한 플래그
 let isPopState = false;
 
@@ -361,6 +413,7 @@ function switchTab(tabId, updateHistory = true) {
         el.classList.remove('active');
     });
     target.classList.add('active');
+    if (tabId === 'tab-places') refreshTodayPlanWidget(false);
     
     document.querySelectorAll('.bottom-tab').forEach(function(btn) {
         let isActive = btn.getAttribute('data-tab') === tabId;
@@ -1673,7 +1726,7 @@ async function openAdminDashboard() {
     modal.setAttribute('aria-labelledby', 'adminDashboardTitle');
     modal.innerHTML = '<div class="admin-dashboard-dialog">'
         + '<div class="admin-dashboard-header"><div><div id="adminDashboardTitle" class="admin-dashboard-title">📊 관리자 통합 대시보드</div><div class="admin-dashboard-subtitle">지역 전체 운영 현황 · 최신 서버 데이터</div></div>'
-        + '<div class="admin-dashboard-actions"><button id="adminDashboardRefresh" class="btn btn-outline btn-sm" type="button">↻ <span>새로고침</span></button><button id="adminDashboardClose" class="btn btn-outline btn-sm" type="button" aria-label="대시보드 닫기">✕</button></div></div>'
+        + '<div class="admin-dashboard-actions"><button id="adminServerRestart" class="btn btn-danger btn-sm" type="button">⏻ <span>서버 재시작</span></button><button id="adminDashboardRefresh" class="btn btn-outline btn-sm" type="button">↻ <span>새로고침</span></button><button id="adminDashboardClose" class="btn btn-outline btn-sm" type="button" aria-label="대시보드 닫기">✕</button></div></div>'
         + '<div id="adminDashboardBody" class="admin-dashboard-body"><div class="admin-dashboard-loading">⏳ 대시보드를 불러오는 중...</div></div></div>';
     modal.addEventListener('click', function(event) { if (event.target === modal) modal.remove(); });
     const closeOnEscape = function(event) {
@@ -1686,6 +1739,7 @@ async function openAdminDashboard() {
     document.body.appendChild(modal);
     document.getElementById('adminDashboardClose')?.addEventListener('click', function() { modal.remove(); });
     document.getElementById('adminDashboardRefresh')?.addEventListener('click', function() { modal.remove(); openAdminDashboard(); });
+    document.getElementById('adminServerRestart')?.addEventListener('click', restartManagedServer);
 
     try {
         const data = await serverGet('/api/admin/dashboard');
@@ -1696,6 +1750,15 @@ async function openAdminDashboard() {
             ['오늘 방문 현장', totals.todayPlaceCount || 0, '곳'],
             ['미완료 기록', totals.incompleteSites || 0, '건']
         ].map(item => '<div class="admin-dashboard-card"><div class="admin-dashboard-card-label">' + item[0] + '</div><div class="admin-dashboard-card-value">' + item[1] + '<small>' + item[2] + '</small></div></div>').join('');
+        const usageItems = (data.apiUsage?.items || []).map(function(item) {
+            const hasLimit = Number(item.limit || 0) > 0;
+            const percent = hasLimit ? Number(item.percent || 0) : 0;
+            const level = percent >= 90 ? 'danger' : (percent >= 70 ? 'warning' : '');
+            return '<div class="api-usage-item"><div class="api-usage-head"><span>' + escapeHtml(item.label) + '</span><span>' + escapeHtml(item.period) + '</span></div>'
+                + '<div class="api-usage-count">' + Number(item.used || 0).toLocaleString() + '<small> / ' + (hasLimit ? Number(item.limit).toLocaleString() : '한도 미설정') + '</small></div>'
+                + '<div class="api-usage-track"><div class="api-usage-fill ' + level + '" style="width:' + (hasLimit ? Math.max(1, percent) : 0) + '%"></div></div>'
+                + '<div class="admin-dashboard-section-note" style="margin-top:5px">' + (hasLimit ? percent + '% 사용' : 'config.json에서 한도를 입력하세요') + '</div></div>';
+        }).join('');
         const rows = regions.map(row => '<tr><td><strong>' + escapeHtml(row.region) + '</strong></td><td>' + row.todayPlaceCount + '</td><td>' + row.incompleteSites + '</td><td>' + row.totalSites + '</td></tr>').join('') || '<tr><td colspan="4" class="admin-dashboard-empty">표시할 지역 데이터가 없습니다.</td></tr>';
         const photos = (data.recentPhotos || []).map(photo => {
             const rawDate = photo.savedAt || '';
@@ -1706,6 +1769,7 @@ async function openAdminDashboard() {
         const body = document.getElementById('adminDashboardBody');
         if (!body) return;
         body.innerHTML = '<div class="admin-dashboard-cards">' + cards + '</div>'
+            + '<section class="admin-dashboard-section" style="margin-bottom:14px"><div class="admin-dashboard-section-title"><span>⚡ API 사용량</span><span class="admin-dashboard-section-note">서버 경유 호출 기준</span></div><div class="api-usage-list">' + usageItems + '</div><div class="api-usage-hint">공급자 콘솔의 전체 사용량과 차이가 있을 수 있습니다. 카카오·OpenWeather 일일 한도는 노트북서버/config.json의 apiQuotas에서 설정합니다.</div></section>'
             + '<section class="admin-dashboard-section admin-dashboard-map-wrap"><div class="admin-dashboard-section-title"><span>🗺️ 최근 방문 밀도</span><span class="admin-dashboard-section-note">원이 클수록 방문이 많음</span></div><div id="adminHeatMap" class="admin-dashboard-map"></div><div class="admin-dashboard-map-legend">낮음 ◌ ● 높음</div></section>'
             + '<div class="admin-dashboard-grid">'
             + '<section class="admin-dashboard-section"><div class="admin-dashboard-section-title"><span>📍 지역별 현황</span></div><div class="admin-dashboard-table-wrap"><table class="admin-dashboard-table"><thead><tr><th>지역</th><th>오늘 방문</th><th>미완료</th><th>전체 현장</th></tr></thead><tbody>' + rows + '</tbody></table></div></section>'
@@ -1714,6 +1778,49 @@ async function openAdminDashboard() {
     } catch (error) {
         const body = document.getElementById('adminDashboardBody');
         if (body) body.innerHTML = '<div class="admin-dashboard-error">❌ 대시보드를 불러오지 못했습니다.<br><small>' + escapeHtml(error.message) + '</small><br><button class="btn btn-outline btn-sm" style="margin-top:12px" onclick="document.getElementById(\'adminDashboardModal\').remove();openAdminDashboard()">다시 시도</button></div>';
+    }
+}
+
+async function restartManagedServer() {
+    if (!isMaster()) {
+        alert('마스터 권한이 필요합니다.');
+        return;
+    }
+    if (!confirm('Node 서버를 원격 재시작할까요?\n터널 주소는 유지되며 약 10초 동안 연결이 끊길 수 있습니다.')) return;
+    const button = document.getElementById('adminServerRestart');
+    if (button) {
+        button.disabled = true;
+        button.textContent = '⏳ 재시작 중';
+    }
+    try {
+        await serverPost('/api/admin/restart', {});
+        const base = serverBase();
+        let healthy = false;
+        await new Promise(resolve => setTimeout(resolve, 1800));
+        for (let attempt = 0; attempt < 20; attempt += 1) {
+            try {
+                const response = await fetch(base + '/api/health?restartCheck=' + Date.now(), { cache: 'no-store' });
+                if (response.ok) {
+                    healthy = true;
+                    break;
+                }
+            } catch (error) {}
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        if (!healthy) throw new Error('재시작 후 서버 응답을 확인하지 못했습니다.');
+        document.getElementById('adminDashboardModal')?.remove();
+        localStorage.removeItem(AUTH_STORAGE_KEY);
+        fieldPilotAuth = { authorized: false, role: '', region: '', token: '', expiresAt: 0 };
+        currentRegion = '';
+        places = [];
+        applyAuthorizationState();
+        alert('✅ 서버 재시작이 완료되었습니다.\n보안을 위해 설정 탭에서 다시 로그인하세요.');
+    } catch (error) {
+        if (button) {
+            button.disabled = false;
+            button.innerHTML = '⏻ <span>서버 재시작</span>';
+        }
+        alert('❌ 서버 재시작 실패: ' + error.message);
     }
 }
 
@@ -2205,6 +2312,7 @@ async function switchRegion(region) {
 
     // LOCAL → SERVER
     await loadPlacesFromServer(region, true);
+    await refreshTodayPlanWidget(false);
     if (kakaoMap) renderNearbyPlaceClusters();
 
     // 경로 데이터 초기화
@@ -7003,6 +7111,8 @@ document.addEventListener(
 
         }
 
+        await refreshTodayPlanWidget(false);
+
         // --------------------------------------------------------
         // 5. UI 갱신
         // --------------------------------------------------------
@@ -11619,6 +11729,7 @@ if (
     renderPlaces();
     updateStorageInfo();
 }
+        await refreshTodayPlanWidget(false);
         if (fieldPilotAuth.role === 'master') {
             alert(
                 '✅ 마스터 권한으로 인가되었습니다.'
