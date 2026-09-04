@@ -171,6 +171,15 @@ export async function dueQueuedRequests(limit = CONFIG.offline.maxQueuedRequests
         .slice(0, limit);
 }
 
+export async function queuedRequestCount() {
+    const db = await openStorage();
+    const transaction = db.transaction(CONFIG.storage.queueStore, 'readonly');
+    const done = transactionDone(transaction);
+    const count = await requestAsPromise(transaction.objectStore(CONFIG.storage.queueStore).count());
+    await done;
+    return Number(count || 0);
+}
+
 export async function removeQueuedRequest(id) {
     const db = await openStorage();
     const transaction = db.transaction(CONFIG.storage.queueStore, 'readwrite');
@@ -202,6 +211,7 @@ export const storage = {
     migrateLegacyLocalStorage,
     enqueueRequest,
     dueQueuedRequests,
+    queuedRequestCount,
     removeQueuedRequest,
     postponeQueuedRequest
 };
