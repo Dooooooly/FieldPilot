@@ -1726,7 +1726,7 @@ async function openAdminDashboard() {
     modal.setAttribute('aria-labelledby', 'adminDashboardTitle');
     modal.innerHTML = '<div class="admin-dashboard-dialog">'
         + '<div class="admin-dashboard-header"><div><div id="adminDashboardTitle" class="admin-dashboard-title">📊 관리자 통합 대시보드</div><div class="admin-dashboard-subtitle">지역 전체 운영 현황 · 최신 서버 데이터</div></div>'
-        + '<div class="admin-dashboard-actions"><button id="adminServerRestart" class="btn btn-danger btn-sm" type="button">⏻ <span>서버 재시작</span></button><button id="adminDashboardRefresh" class="btn btn-outline btn-sm" type="button">↻ <span>새로고침</span></button><button id="adminDashboardClose" class="btn btn-outline btn-sm" type="button" aria-label="대시보드 닫기">✕</button></div></div>'
+        + '<div class="admin-dashboard-actions"><button id="adminServiceToggle" class="btn btn-outline btn-sm" type="button" disabled>⏳ <span>상태 확인</span></button><button id="adminServerRestart" class="btn btn-danger btn-sm" type="button">⏻ <span>서버 재시작</span></button><button id="adminDashboardRefresh" class="btn btn-outline btn-sm" type="button">↻ <span>새로고침</span></button><button id="adminDashboardClose" class="btn btn-outline btn-sm" type="button" aria-label="대시보드 닫기">✕</button></div></div>'
         + '<div id="adminDashboardBody" class="admin-dashboard-body"><div class="admin-dashboard-loading">⏳ 대시보드를 불러오는 중...</div></div></div>';
     modal.addEventListener('click', function(event) { if (event.target === modal) modal.remove(); });
     const closeOnEscape = function(event) {
@@ -1740,9 +1740,18 @@ async function openAdminDashboard() {
     document.getElementById('adminDashboardClose')?.addEventListener('click', function() { modal.remove(); });
     document.getElementById('adminDashboardRefresh')?.addEventListener('click', function() { modal.remove(); openAdminDashboard(); });
     document.getElementById('adminServerRestart')?.addEventListener('click', restartManagedServer);
+    document.getElementById('adminServiceToggle')?.addEventListener('click', toggleManagedService);
 
     try {
         const data = await serverGet('/api/admin/dashboard');
+        const serviceButton = document.getElementById('adminServiceToggle');
+        if (serviceButton) {
+            const paused = data.serviceState?.paused === true;
+            serviceButton.disabled = false;
+            serviceButton.dataset.paused = String(paused);
+            serviceButton.className = paused ? 'btn btn-success btn-sm' : 'btn btn-outline btn-sm';
+            serviceButton.innerHTML = paused ? '▶ <span>서비스 시작</span>' : '⏸ <span>서비스 중지</span>';
+        }
         const regions = data.regions || [];
         const totals = data.totals || {};
         const cards = [
@@ -1778,6 +1787,31 @@ async function openAdminDashboard() {
     } catch (error) {
         const body = document.getElementById('adminDashboardBody');
         if (body) body.innerHTML = '<div class="admin-dashboard-error">❌ 대시보드를 불러오지 못했습니다.<br><small>' + escapeHtml(error.message) + '</small><br><button class="btn btn-outline btn-sm" style="margin-top:12px" onclick="document.getElementById(\'adminDashboardModal\').remove();openAdminDashboard()">다시 시도</button></div>';
+    }
+}
+
+async function toggleManagedService() {
+    if (!isMaster()) return;
+    const button = document.getElementById('adminServiceToggle');
+    if (!button) return;
+    const currentlyPaused = button.dataset.paused === 'true';
+    const nextPaused = !currentlyPaused;
+    const action = nextPaused ? '중지' : '시작';
+    if (!confirm('FieldPilot 업무 서비스를 ' + action + '할까요?\n관리자 제어 화면과 서버 프로세스·터널은 계속 유지됩니다.')) return;
+    button.disabled = true;
+    button.textContent = '⏳ 처리 중';
+    try {
+        const result = await serverPost('/api/admin/service-state', { paused: nextPaused });
+        button.dataset.paused = String(result.paused === true);
+        button.className = result.paused ? 'btn btn-success btn-sm' : 'btn btn-outline btn-sm';
+        button.innerHTML = result.paused ? '▶ <span>서비스 시작</span>' : '⏸ <span>서비스 중지</span>';
+        button.disabled = false;
+        refreshGlobalConnectionStatus();
+        alert((result.paused ? '⏸️ ' : '▶️ ') + result.message);
+    } catch (error) {
+        button.disabled = false;
+        button.innerHTML = currentlyPaused ? '▶ <span>서비스 시작</span>' : '⏸ <span>서비스 중지</span>';
+        alert('❌ 서비스 ' + action + ' 실패: ' + error.message);
     }
 }
 
@@ -12644,7 +12678,12 @@ async function refreshGlobalConnectionStatus() {
         try {
             const response = await fetch(serverBase() + '/api/health', { cache: 'no-store' });
             if (!response.ok) throw new Error('health ' + response.status);
-            setGlobalConnectionChip('globalServerStatus', '서버 연결됨', 'ok');
+            const health = await response.json().catch(function() { return {}; });
+            setGlobalConnectionChip(
+                'globalServerStatus',
+                health.servicePaused ? '서비스 일시정지' : '서버 연결됨',
+                health.servicePaused ? 'warn' : 'ok'
+            );
         } catch (error) {
             setGlobalConnectionChip('globalServerStatus', '서버 연결 실패', 'error');
         }
