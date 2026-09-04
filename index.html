@@ -658,6 +658,15 @@ body {
 .api-usage-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;padding:12px}.api-usage-item{padding:11px;border:1px solid var(--border-color);border-radius:11px;background:var(--bg-tertiary)}.api-usage-head{display:flex;justify-content:space-between;gap:8px;font-size:11px;font-weight:750}.api-usage-count{margin-top:7px;font-size:16px;font-weight:850}.api-usage-count small{font-size:10px;color:var(--text-muted)}.api-usage-track{height:7px;margin-top:8px;border-radius:999px;overflow:hidden;background:var(--border-color)}.api-usage-fill{height:100%;border-radius:inherit;background:#22c55e}.api-usage-fill.warning{background:#f59e0b}.api-usage-fill.danger{background:#ef4444}.api-usage-hint{padding:0 12px 11px;font-size:10px;color:var(--text-muted)}
 .today-plan-widget{border-left:4px solid #3182ce}.today-plan-header{display:flex;justify-content:space-between;align-items:center;gap:8px}.today-plan-title{font-weight:800;font-size:14px}.today-plan-meta{margin-top:2px;font-size:10px;color:var(--text-muted)}.today-plan-list{display:grid;gap:6px;margin-top:9px}.today-plan-item{display:flex;align-items:center;gap:9px;padding:8px 9px;border:1px solid var(--border-color);border-radius:9px;background:var(--bg-tertiary)}.today-plan-order{display:grid;place-items:center;width:24px;height:24px;flex:0 0 24px;border-radius:50%;background:#3182ce;color:white;font-size:11px;font-weight:800}.today-plan-name{font-size:12px;font-weight:750}.today-plan-dong{font-size:10px;color:var(--text-muted)}.today-plan-empty{padding:12px 4px 3px;text-align:center;color:var(--text-muted);font-size:11px}
 body.dark-mode .admin-dashboard-map-legend{background:rgba(26,32,44,.92);color:#f1f5f9}
+body:not(.dark-mode) .admin-dashboard-dialog{background:#f1f5f9;color:#0f172a;border-color:#94a3b8}
+body:not(.dark-mode) .admin-dashboard-header{background:#fff;border-color:#cbd5e1}
+body:not(.dark-mode) .admin-dashboard-card,body:not(.dark-mode) .admin-dashboard-section{background:#fff;border-color:#cbd5e1;box-shadow:0 2px 8px rgba(15,23,42,.07)}
+body:not(.dark-mode) .admin-dashboard-card{border-top:3px solid #3b82f6}
+body:not(.dark-mode) .admin-dashboard-card-label,body:not(.dark-mode) .admin-dashboard-section-note,body:not(.dark-mode) .admin-dashboard-photo-meta,body:not(.dark-mode) .api-usage-hint{color:#475569}
+body:not(.dark-mode) .admin-dashboard-section-title,body:not(.dark-mode) .admin-dashboard-table th{background:#eaf0f7;color:#1e293b;border-color:#cbd5e1}
+body:not(.dark-mode) .admin-dashboard-table td,body:not(.dark-mode) .admin-dashboard-photo{border-color:#d8e0ea}
+body:not(.dark-mode) .api-usage-item{background:#f8fafc;border-color:#bdc8d6}
+body:not(.dark-mode) .api-usage-track{background:#dbe3ed}
 @media(max-width:720px){.admin-dashboard-backdrop{align-items:flex-end;padding:0}.admin-dashboard-dialog{max-height:96dvh;border-radius:20px 20px 0 0}.admin-dashboard-header{padding:13px 14px}.admin-dashboard-title{font-size:17px}.admin-dashboard-body{padding:12px}.admin-dashboard-actions .btn span{display:none}.admin-dashboard-cards{gap:7px}.admin-dashboard-card{padding:11px 9px}.admin-dashboard-card-value{font-size:20px}.admin-dashboard-map{height:280px}.admin-dashboard-grid,.api-usage-list{grid-template-columns:1fr}.admin-dashboard-section-title{padding:10px 11px}}
 .connection-status-chip::before{content:'';width:7px;height:7px;border-radius:50%;background:#a0aec0}.connection-status-chip.is-ok::before{background:#38a169}.connection-status-chip.is-warn::before{background:#d69e2e}.connection-status-chip.is-error::before{background:#e53e3e}
 .map-view-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 8px;padding:9px 10px;background:#f7fafc;border:1px solid #e2e8f0;border-radius:10px;font-size:12px}
@@ -2672,7 +2681,7 @@ body.dark-mode .map-address-search input{background:#1a202c;color:#f7fafc;border
                 return window.FIELD_SERVER_URL || '';
             });
     </script>
-    <script type="module" src="src/main.js?v=2026.09.04.3"></script>
-    <script src="app.js?v=2026.09.04.3" defer></script>
+    <script type="module" src="src/main.js?v=2026.09.04.4"></script>
+    <script src="app.js?v=2026.09.04.4" defer></script>
 </body>
 </html>
