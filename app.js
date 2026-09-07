@@ -413,6 +413,7 @@ function switchTab(tabId, updateHistory = true) {
         el.classList.remove('active');
     });
     target.classList.add('active');
+    if (tabId === 'tab-cameras') renderCameraTab();
     if (tabId === 'tab-places') refreshTodayPlanWidget(false);
     
     document.querySelectorAll('.bottom-tab').forEach(function(btn) {
