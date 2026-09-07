@@ -1718,14 +1718,15 @@ async function openAdminDashboard() {
         return;
     }
 
+    if (typeof closeDynamicModals === 'function') closeDynamicModals();
     document.getElementById('adminDashboardModal')?.remove();
     const modal = document.createElement('div');
     modal.id = 'adminDashboardModal';
-    modal.className = 'admin-dashboard-backdrop';
+    modal.className = 'modal-overlay active dynamic-modal';
     modal.setAttribute('role', 'dialog');
     modal.setAttribute('aria-modal', 'true');
     modal.setAttribute('aria-labelledby', 'adminDashboardTitle');
-    modal.innerHTML = '<div class="admin-dashboard-dialog">'
+    modal.innerHTML = '<div class="modal admin-dashboard-dialog">'
         + '<div class="admin-dashboard-header"><div><div id="adminDashboardTitle" class="admin-dashboard-title">📊 관리자 통합 대시보드</div><div class="admin-dashboard-subtitle">지역 전체 운영 현황 · 최신 서버 데이터</div></div>'
         + '<div class="admin-dashboard-actions"><button id="adminServiceToggle" class="btn btn-outline btn-sm" type="button" disabled>⏳ <span>상태 확인</span></button><button id="adminServerRestart" class="btn btn-danger btn-sm" type="button">⏻ <span>서버 재시작</span></button><button id="adminDashboardRefresh" class="btn btn-outline btn-sm" type="button">↻ <span>새로고침</span></button><button id="adminDashboardClose" class="btn btn-outline btn-sm" type="button" aria-label="대시보드 닫기">✕</button></div></div>'
         + '<div id="adminDashboardBody" class="admin-dashboard-body"><div class="admin-dashboard-loading">⏳ 대시보드를 불러오는 중...</div></div></div>';
@@ -8237,7 +8238,7 @@ async function recordVisitStats() {
         if (!dong) {
             dong = extractDongFromAddress(p.address || '');
         }
-        placeRecords.push({ name: p.name, dong: dong || '미변환', lat: p.lat, lng: p.lng });
+        placeRecords.push({ id: String(p.id), name: p.name, dong: dong || '미변환', lat: p.lat, lng: p.lng });
     }
     let startDong = '';
     if (startPoint && startPoint.lat && startPoint.lng) {
@@ -8270,6 +8271,7 @@ async function recordVisitStats() {
             time: '',
             timestamp: nowWork.getTime(),
             placeName: pr.name,
+            siteId: pr.id,
             dong: pr.dong || '',
             worker: workerName || '미설정',
             category: '',
@@ -8805,8 +8807,9 @@ function openWorkEditModal(workId) {
     let existing = document.getElementById('workEditModal');
     if (existing) existing.remove();
 
-    let modalHtml = '<div id="workEditModal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);z-index:999999;display:flex;justify-content:center;align-items:center;padding:20px;" onclick="if(event.target===this)this.remove()">';
-    modalHtml += '<div style="background:white;border-radius:16px;padding:24px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.2);max-height:80vh;overflow-y:auto;" onclick="event.stopPropagation()">';
+    if (typeof closeDynamicModals === 'function') closeDynamicModals();
+    let modalHtml = '<div id="workEditModal" class="modal-overlay active dynamic-modal" onclick="if(event.target===this)this.remove()">';
+    modalHtml += '<div class="modal work-entry-modal" onclick="event.stopPropagation()">';
     modalHtml += '<h3 style="font-size:17px;font-weight:700;color:#1a202c;margin-bottom:12px;">✏️ 처리내역 작성</h3>';
     modalHtml += '<div style="font-size:13px;color:#4a5568;margin-bottom:12px;">';
     modalHtml += '<div>현장: <strong>' + escapeHtml(record.placeName) + '</strong></div>';
@@ -8821,6 +8824,7 @@ function openWorkEditModal(workId) {
     modalHtml += '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">처리내용</label>';
     modalHtml += '<textarea id="workEditContent" rows="3" placeholder="처리 내용을 입력하세요" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;resize:vertical;">' + escapeHtml(record.content || '') + '</textarea>';
     modalHtml += '</div>';
+    modalHtml += '<button type="button" class="btn btn-outline btn-sm btn-block" onclick="openCameraReplaceForWork(\'' + record.id + '\',false)">🔄 카메라 교체</button>';
     // ★ 사진 업로드 영역
     modalHtml += '<div style="margin-bottom:12px;">';
     modalHtml += '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">📸 현장 사진</label>';
@@ -8923,8 +8927,9 @@ function openWorkAddModal(dateStr) {
     draftWork.lastUpdated = draftNow.toISOString();
     currentWork = draftWork;
     saveWorkToLocalStorage(draftWork);
-    var modalHtml = '<div id="workAddModal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);z-index:999999;display:flex;justify-content:center;align-items:center;padding:20px;" onclick="if(event.target===this)cancelWorkAdd(\'' + workId + '\')">';
-    modalHtml += '<div style="background:white;border-radius:16px;padding:24px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.2);max-height:85vh;overflow-y:auto;" onclick="event.stopPropagation()">';
+    if (typeof closeDynamicModals === 'function') closeDynamicModals();
+    var modalHtml = '<div id="workAddModal" class="modal-overlay active dynamic-modal" onclick="if(event.target===this)cancelWorkAdd(\'' + workId + '\')">';
+    modalHtml += '<div class="modal work-entry-modal" onclick="event.stopPropagation()">';
     modalHtml += '<h3 style="font-size:17px;font-weight:700;color:#1a202c;margin-bottom:12px;">➕ 처리내역 추가</h3>';
 
     modalHtml += '<div style="margin-bottom:12px;">';
@@ -8940,6 +8945,7 @@ function openWorkAddModal(dateStr) {
 
     modalHtml += '<div style="margin-bottom:12px;"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">처리내용</label>';
     modalHtml += '<textarea id="workAddContent" rows="3" placeholder="처리 내용을 입력하세요" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;resize:vertical;"></textarea></div>';
+    modalHtml += '<button type="button" class="btn btn-outline btn-sm btn-block" onclick="openCameraReplaceForWork(\'' + workId + '\',true)">🔄 카메라 교체</button>';
 
     modalHtml += '<div style="margin-bottom:12px;">';
     modalHtml += '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">📸 현장 사진</label>';
@@ -10604,7 +10610,7 @@ function selectWorkAddPlace(placeId) {
     var results = document.getElementById('workAddPlaceResults');
     var selectedEl = document.getElementById('workAddSelectedPlace');
 
-    if (hidden) hidden.value = place.name;
+    if (hidden) { hidden.value = place.name; hidden.dataset.siteId = String(place.id); }
     if (search) search.value = place.name;
 
     // ★ 임시 작업 기록에 현장을 즉시 반영
@@ -10616,6 +10622,7 @@ function selectWorkAddPlace(placeId) {
         });
         if (draftRecord) {
             draftRecord.placeName = place.name;
+            draftRecord.siteId = String(place.id);
             draftWork.lastUpdated = new Date().toISOString();
             currentWork = draftWork;
             saveWorkToLocalStorage(draftWork);
@@ -10631,6 +10638,7 @@ function selectWorkAddPlace(placeId) {
 async function saveWorkAdd(dateStr, workId) {
     var placeNameEl = document.getElementById('workAddPlace');
     var placeName = placeNameEl ? placeNameEl.value.trim() : '';
+    var siteId = placeNameEl ? String(placeNameEl.dataset.siteId || '') : '';
     var contentEl = document.getElementById('workAddContent');
     var content = contentEl ? contentEl.value.trim() : '';
     var cameraEl = document.getElementById('workAddCamera');
@@ -10661,6 +10669,7 @@ async function saveWorkAdd(dateStr, workId) {
             time: timeStr,
             timestamp: now.getTime(),
             placeName: placeName,
+            siteId: siteId,
             dong: '',
             worker: workerName || '미설정',
             category: '',
@@ -10674,6 +10683,7 @@ async function saveWorkAdd(dateStr, workId) {
         record.time = record.time || timeStr;
         record.timestamp = record.timestamp || now.getTime();
         record.placeName = placeName;
+        record.siteId = siteId || record.siteId || '';
         record.worker = workerName || record.worker || '미설정';
         record.content = content;
         record.camera = camera;
