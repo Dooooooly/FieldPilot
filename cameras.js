@@ -1,4 +1,5 @@
 let cameraInventory = [], cameraLoadSequence = 0;
+function autoSyncCameras() { return renderCameraTab(); }
 function closeDynamicModals() { document.querySelectorAll('.dynamic-modal').forEach(el => el.remove()); }
 function latestRepairInfo(camera) {
     const history = Array.isArray(camera.history) ? camera.history : [];
@@ -46,11 +47,17 @@ function cameraModal(title, content, id = 'cameraModal', parentId = '') {
 }
 function openCameraBatch() {
     const today = new Date().toLocaleDateString('en-CA');
-    const siteOptions = places.filter(place => place.id != null).map(place => '<option value="' + escapeHtml(String(place.id)) + '">' + escapeHtml(place.name) + '</option>').join('');
-    const modal = cameraModal('📦 재고 등록', '<form><label>등록 유형<select name="sourceType" class="input-field camera-source-type"><option value="new">신규 입고</option><option value="removed">기존 현장 철거품</option></select></label><label>사업코드<input name="projectCode" class="input-field" required pattern="[A-Za-z0-9]{1,20}" maxlength="20" placeholder="YS01"></label><label>사업명<input name="project" class="input-field" required maxlength="200"></label><label>모델<input name="model" class="input-field" required maxlength="200"></label><label>수량<input name="qty" class="input-field" type="number" min="1" max="999" value="1" required></label><div class="camera-removed-fields" hidden><input type="hidden" name="region" value="' + escapeHtml(currentRegion || '') + '"><div class="camera-repair-info">기존 카메라를 철거한 현장과 날짜가 이력에 저장됩니다.</div><label>철거한 현장<select name="siteId" class="input-field"><option value="">현장을 선택하세요</option>' + siteOptions + '</select></label><label>철거일<input name="removedAt" class="input-field" type="date" value="' + today + '"></label><label>입고 상태<select name="status" class="input-field"><option value="재고">정상 회수 · 재고</option><option value="수리중">고장 철거 · 수리중</option></select></label></div><div class="camera-modal-actions"><button class="btn btn-primary" type="submit">재고 등록</button></div></form>');
-    const source = modal.querySelector('.camera-source-type'), removedFields = modal.querySelector('.camera-removed-fields');
+    const modal = cameraModal('📦 재고 등록', '<form><label>등록 유형<select name="sourceType" class="input-field camera-source-type"><option value="new">신규 입고</option><option value="removed">기존 현장 철거품</option></select></label><div class="camera-new-fields"><label>사업명<input name="project" class="input-field" required maxlength="200"></label><label>모델<input name="model" class="input-field" required maxlength="200"></label><label>수량<input name="qty" class="input-field" type="number" min="1" max="999" value="1" required></label></div><div class="camera-removed-fields" hidden><input type="hidden" name="region" value="' + escapeHtml(currentRegion || '') + '"><div class="camera-repair-info">철거품은 한 대씩 등록되며 현장과 철거일만 이력에 저장합니다.</div><label>철거한 현장 검색<input type="search" class="input-field removed-site-search" placeholder="현장명을 입력하세요" autocomplete="off"></label><label>검색 결과<select name="siteId" class="input-field removed-site-results" size="6"><option value="">현장명을 검색하세요</option></select></label><label>철거일<input name="removedAt" class="input-field" type="date" value="' + today + '"></label><label>입고 상태<select name="status" class="input-field"><option value="재고">정상 회수 · 재고</option><option value="수리중">고장 철거 · 수리중</option></select></label></div><div class="camera-modal-actions"><button class="btn btn-primary" type="submit">재고 등록</button></div></form>');
+    const source = modal.querySelector('.camera-source-type'), newFields = modal.querySelector('.camera-new-fields'), removedFields = modal.querySelector('.camera-removed-fields');
+    const siteSearch = modal.querySelector('.removed-site-search'), siteResults = modal.querySelector('.removed-site-results');
+    siteSearch.oninput = () => {
+        const query = siteSearch.value.trim().toLowerCase();
+        const matches = query ? places.filter(place => place.id != null && String(place.name || '').toLowerCase().includes(query)).slice(0, 50) : [];
+        siteResults.innerHTML = matches.length ? matches.map(place => '<option value="' + escapeHtml(String(place.id)) + '">' + escapeHtml(place.name) + '</option>').join('') : '<option value="">' + (query ? '검색 결과가 없습니다' : '현장명을 검색하세요') + '</option>';
+    };
     source.onchange = () => {
-        const removed = source.value === 'removed'; removedFields.hidden = !removed;
+        const removed = source.value === 'removed'; newFields.hidden = removed; removedFields.hidden = !removed;
+        newFields.querySelectorAll('input').forEach(input => input.required = !removed);
         removedFields.querySelector('[name=siteId]').required = removed;
         removedFields.querySelector('[name=removedAt]').required = removed;
     };
