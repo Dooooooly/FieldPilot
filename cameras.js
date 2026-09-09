@@ -47,21 +47,28 @@ function cameraModal(title, content, id = 'cameraModal', parentId = '') {
 }
 function openCameraBatch() {
     const today = new Date().toLocaleDateString('en-CA');
-    const modal = cameraModal('📦 재고 등록', '<form><label>장비 종류<select name="equipmentType" class="input-field" required><option value="카메라">카메라</option><option value="LED안내판">LED안내판</option><option value="비상벨">비상벨</option></select></label><label>등록 유형<select name="sourceType" class="input-field camera-source-type"><option value="new">신규 입고</option><option value="removed">기존 현장 철거품</option></select></label><div class="camera-new-fields"><label>사업명<input name="project" class="input-field" required maxlength="200"></label><label>모델<input name="model" class="input-field" required maxlength="200"></label><label>수량<input name="qty" class="input-field" type="number" min="1" max="999" value="1" required></label></div><div class="camera-removed-fields" hidden><input type="hidden" name="region" value="' + escapeHtml(currentRegion || '') + '"><div class="camera-repair-info">철거품은 한 개씩 등록되며 현장과 철거일만 이력에 저장합니다.</div><label>철거한 현장 검색<input type="search" class="input-field removed-site-search" placeholder="현장명을 입력하세요" autocomplete="off"></label><label>검색 결과<select name="siteId" class="input-field removed-site-results" size="6"><option value="">현장명을 검색하세요</option></select></label><label>철거일<input name="removedAt" class="input-field" type="date" value="' + today + '"></label><label>입고 상태<select name="status" class="input-field"><option value="재고">정상 회수 · 재고</option><option value="수리중">고장 철거 · 수리중</option></select></label></div><div class="camera-modal-actions"><button class="btn btn-primary" type="submit">재고 등록</button></div></form>');
+    const modal = cameraModal('📦 재고 등록', '<form><label>장비 종류<select name="equipmentType" class="input-field" required><option value="카메라">카메라</option><option value="LED안내판">LED안내판</option><option value="비상벨">비상벨</option></select></label><label>등록 유형<select name="sourceType" class="input-field camera-source-type"><option value="new">신규 입고</option><option value="removed">기존 현장 철거품</option></select></label><div class="camera-new-fields"><label>사업명<input name="project" class="input-field" required maxlength="200"></label><label>모델<input name="model" class="input-field" required maxlength="200"></label><label>수량<input name="qty" class="input-field" type="number" min="1" max="999" value="1" required></label></div><div class="camera-removed-fields" hidden><input type="hidden" name="region" value="' + escapeHtml(currentRegion || '') + '"><input type="hidden" name="siteId" class="removed-site-id"><div class="camera-repair-info">철거품은 한 개씩 등록되며 현장과 철거일만 이력에 저장합니다.</div><label>철거한 현장 검색<div class="removed-site-picker"><input type="search" class="input-field removed-site-search" placeholder="현장명을 입력하고 결과를 선택하세요" autocomplete="off"><div class="removed-site-suggestions" role="listbox"></div></div></label><label>철거일<input name="removedAt" class="input-field" type="date" value="' + today + '"></label><label>입고 상태<select name="status" class="input-field"><option value="재고">정상 회수 · 재고</option><option value="수리중">고장 철거 · 수리중</option></select></label></div><div class="camera-modal-actions"><button class="btn btn-primary" type="submit">재고 등록</button></div></form>');
     const source = modal.querySelector('.camera-source-type'), newFields = modal.querySelector('.camera-new-fields'), removedFields = modal.querySelector('.camera-removed-fields');
-    const siteSearch = modal.querySelector('.removed-site-search'), siteResults = modal.querySelector('.removed-site-results');
+    const siteSearch = modal.querySelector('.removed-site-search'), siteId = modal.querySelector('.removed-site-id'), suggestions = modal.querySelector('.removed-site-suggestions');
     siteSearch.oninput = () => {
+        siteId.value = '';
         const query = siteSearch.value.trim().toLowerCase();
-        const matches = query ? places.filter(place => place.id != null && String(place.name || '').toLowerCase().includes(query)).slice(0, 50) : [];
-        siteResults.innerHTML = matches.length ? matches.map(place => '<option value="' + escapeHtml(String(place.id)) + '">' + escapeHtml(place.name) + '</option>').join('') : '<option value="">' + (query ? '검색 결과가 없습니다' : '현장명을 검색하세요') + '</option>';
+        const matches = query ? places.filter(place => place.id != null && String(place.name || '').toLowerCase().includes(query)).slice(0, 30) : [];
+        suggestions.innerHTML = matches.map(place => '<button type="button" class="removed-site-option" data-site-id="' + escapeHtml(String(place.id)) + '">' + escapeHtml(place.name) + '</button>').join('') || (query ? '<div class="removed-site-none">검색 결과가 없습니다.</div>' : '');
+        suggestions.classList.toggle('active', Boolean(query));
+        suggestions.querySelectorAll('.removed-site-option').forEach(button => button.onclick = () => {
+            const place = places.find(item => String(item.id) === button.dataset.siteId);
+            if (!place) return;
+            siteId.value = String(place.id); siteSearch.value = place.name;
+            suggestions.classList.remove('active'); suggestions.innerHTML = '';
+        });
     };
     source.onchange = () => {
         const removed = source.value === 'removed'; newFields.hidden = removed; removedFields.hidden = !removed;
         newFields.querySelectorAll('input').forEach(input => input.required = !removed);
-        removedFields.querySelector('[name=siteId]').required = removed;
         removedFields.querySelector('[name=removedAt]').required = removed;
     };
-    modal.querySelector('form').onsubmit = async event => { event.preventDefault(); const button = event.submitter; button.disabled = true; const values = Object.fromEntries(new FormData(event.target)); values.qty = Number(values.qty); try { await serverPost('/api/cameras/batch', values); modal.remove(); await renderCameraTab(); } catch (error) { modal.querySelector('.camera-feedback').textContent = error.message; button.disabled = false; } };
+    modal.querySelector('form').onsubmit = async event => { event.preventDefault(); const values = Object.fromEntries(new FormData(event.target)); if (values.sourceType === 'removed' && !values.siteId) { modal.querySelector('.camera-feedback').textContent = '검색 결과에서 철거한 현장을 선택하세요.'; siteSearch.focus(); return; } const button = event.submitter; button.disabled = true; values.qty = Number(values.qty); try { await serverPost('/api/cameras/batch', values); modal.remove(); await renderCameraTab(); } catch (error) { modal.querySelector('.camera-feedback').textContent = error.message; button.disabled = false; } };
 }
 function openCameraDetails(assetNumber) {
     const camera = cameraInventory.find(row => row.assetNumber === assetNumber); if (!camera) return;
