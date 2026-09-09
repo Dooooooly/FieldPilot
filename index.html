@@ -677,6 +677,7 @@ body:not(.dark-mode) .api-usage-track{background:#dbe3ed}
 body.dark-mode .connection-status-bar,body.dark-mode .map-view-controls{background:#2d3748!important;border-color:#4a5568!important}body.dark-mode .connection-status-chip{background:#1a202c;color:#e2e8f0}
 body.dark-mode .map-address-search input{background:#1a202c;color:#f7fafc;border-color:#4a5568}body.dark-mode .map-address-search button{background:#4299e1}
     #tab-cameras .ux-tab-icon{background:#fff7ed;color:#c2410c}.camera-filter-card{padding:12px}.camera-filter-row{display:grid;grid-template-columns:1fr 1fr;gap:7px}.camera-summary{margin:10px 2px 4px;color:var(--text-muted);font-size:11px}.camera-item{display:block;width:100%;text-align:left;padding:11px 12px;margin:6px 0;border:1px solid var(--border-color);border-radius:9px;background:var(--bg-card);color:var(--text-primary);cursor:pointer;overflow-wrap:anywhere}.camera-item-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.camera-item-head strong{font-size:13px}.camera-model{margin-top:4px;font-size:12px;font-weight:650}.camera-project,.camera-site{margin-top:2px;color:var(--text-muted);font-size:10px}.camera-badge{padding:2px 8px;border-radius:20px;background:#e2e8f0;color:#334155;font-size:10px}.camera-badge.installed{background:#dbeafe;color:#1e40af}.camera-badge.repairing{background:#fef3c7;color:#92400e}.camera-modal{width:min(460px,100%);max-width:460px;max-height:85vh;overflow:auto;color:var(--text-primary)}.camera-modal-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.camera-modal label{display:block;margin:12px 0;font-size:12px;font-weight:650}.camera-modal select{margin-top:5px}.camera-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}.camera-detail-summary{display:grid;gap:3px;padding:10px;background:var(--bg-tertiary);border-radius:8px;font-size:12px}.camera-repair-info{margin-top:7px;padding:8px 9px;border-radius:8px;background:#fffbeb;color:#92400e;font-size:10px;line-height:1.55}.camera-feedback{min-height:18px;margin-top:9px;color:#c53030;font-size:11px}.camera-empty{padding:24px;text-align:center;color:var(--text-muted);font-size:11px}.camera-empty.is-error{color:#c53030}.work-entry-modal{max-width:400px;max-height:85vh;overflow:auto}.btn-warning{background:#d97706;color:white;border-color:#d97706}body.dark-mode .camera-badge{background:#334155;color:#e2e8f0}body.dark-mode .camera-badge.installed{background:#1e3a8a;color:#dbeafe}body.dark-mode .camera-badge.repairing,body.dark-mode .camera-repair-info{background:#422006;color:#fde68a}.bottom-tabs{overflow-x:auto}.bottom-tab{min-width:44px!important}
+    .camera-filter-row{grid-template-columns:repeat(3,1fr)}.equipment-type-badge{padding:2px 7px;border-radius:20px;background:#ede9fe;color:#5b21b6;font-size:10px}body.dark-mode .equipment-type-badge{background:#4c1d95;color:#ede9fe}@media(max-width:520px){.camera-filter-row{grid-template-columns:1fr}}
     </style>
 </head>
 <body>
@@ -847,10 +848,10 @@ body.dark-mode .map-address-search input{background:#1a202c;color:#f7fafc;border
         </div>
 
         <div id="tab-cameras" class="tab-content">
-            <div id="tab-cameras-uxheader" class="ux-tab-header"><div class="ux-tab-icon">📦</div><div><div class="ux-tab-title">재고</div><div class="ux-tab-sub">카메라 입고·설치·수리·회수 상태를 관리합니다.</div></div></div>
-            <div class="card camera-filter-card"><div class="flex-between"><span class="card-title">재고 조회</span><button type="button" class="btn btn-primary btn-sm" onclick="openCameraBatch()">+ 재고 등록</button></div><div class="camera-filter-row"><select id="cameraProject" class="input-field" aria-label="사업 필터" onchange="filterCameraList()"><option value="">전체 사업</option></select><select id="cameraStatus" class="input-field" aria-label="상태 필터" onchange="filterCameraList()"><option value="">전체 상태</option><option>재고</option><option>설치됨</option><option>수리중</option></select></div><div id="cameraSummary" class="camera-summary" role="status"></div></div>
+            <div id="tab-cameras-uxheader" class="ux-tab-header"><div class="ux-tab-icon">📦</div><div><div class="ux-tab-title">재고</div><div class="ux-tab-sub">카메라·LED안내판·비상벨을 통합 관리합니다.</div></div></div>
+            <div class="card camera-filter-card"><div class="flex-between"><span class="card-title">재고 조회</span><button type="button" class="btn btn-primary btn-sm" onclick="openCameraBatch()">+ 재고 등록</button></div><div class="camera-filter-row"><select id="cameraType" class="input-field" aria-label="장비 종류 필터" onchange="filterCameraList()"><option value="">전체 장비</option><option>카메라</option><option>LED안내판</option><option>비상벨</option></select><select id="cameraProject" class="input-field" aria-label="사업 필터" onchange="filterCameraList()"><option value="">전체 사업</option></select><select id="cameraStatus" class="input-field" aria-label="상태 필터" onchange="filterCameraList()"><option value="">전체 상태</option><option>재고</option><option>설치됨</option><option>수리중</option></select></div><div id="cameraSummary" class="camera-summary" role="status"></div></div>
             <div id="cameraList"></div>
-            <details class="card"><summary>재고 사용법</summary><p>재고 등록에서 신규 입고 또는 기존 현장 철거품을 선택할 수 있습니다. 철거품은 철거 현장과 날짜, 정상 재고 또는 수리중 상태가 함께 기록됩니다. 수리중 카메라는 수리 완료 후 재고로 전환해야 다시 설치할 수 있습니다.</p></details>
+            <details class="card"><summary>재고 사용법</summary><p>카메라·LED안내판·비상벨을 신규 입고 또는 기존 현장 철거품으로 등록할 수 있습니다. 철거품은 현장과 날짜, 정상 재고 또는 수리중 상태가 기록됩니다. 수리중 장비는 수리 완료 후 재고로 전환해야 다시 설치할 수 있습니다.</p></details>
         </div>
         <div id="tab-stats" class="tab-content">
     <div id="tab-stats-uxheader" class="ux-tab-header">
@@ -2692,8 +2693,8 @@ body.dark-mode .map-address-search input{background:#1a202c;color:#f7fafc;border
                 return window.FIELD_SERVER_URL || '';
             });
     </script>
-    <script type="module" src="src/main.js?v=2026.09.09.2"></script>
-    <script src="app.js?v=2026.09.09.2" defer></script>
-    <script src="cameras.js?v=2026.09.09.2" defer></script>
+    <script type="module" src="src/main.js?v=2026.09.09.3"></script>
+    <script src="app.js?v=2026.09.09.3" defer></script>
+    <script src="cameras.js?v=2026.09.09.3" defer></script>
 </body>
 </html>

@@ -8824,7 +8824,7 @@ function openWorkEditModal(workId) {
     modalHtml += '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">처리내용</label>';
     modalHtml += '<textarea id="workEditContent" rows="3" placeholder="처리 내용을 입력하세요" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;resize:vertical;">' + escapeHtml(record.content || '') + '</textarea>';
     modalHtml += '</div>';
-    modalHtml += '<button type="button" class="btn btn-outline btn-sm btn-block" onclick="openCameraReplaceForWork(\'' + record.id + '\',false)">🔄 카메라 교체</button>';
+    modalHtml += '<button type="button" class="btn btn-outline btn-sm btn-block" onclick="openCameraReplaceForWork(\'' + record.id + '\',false)">🔄 장비 교체</button>';
     // ★ 사진 업로드 영역
     modalHtml += '<div style="margin-bottom:12px;">';
     modalHtml += '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">📸 현장 사진</label>';
@@ -8945,7 +8945,7 @@ function openWorkAddModal(dateStr) {
 
     modalHtml += '<div style="margin-bottom:12px;"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">처리내용</label>';
     modalHtml += '<textarea id="workAddContent" rows="3" placeholder="처리 내용을 입력하세요" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;resize:vertical;"></textarea></div>';
-    modalHtml += '<button type="button" class="btn btn-outline btn-sm btn-block" onclick="openCameraReplaceForWork(\'' + workId + '\',true)">🔄 카메라 교체</button>';
+    modalHtml += '<button type="button" class="btn btn-outline btn-sm btn-block" onclick="openCameraReplaceForWork(\'' + workId + '\',true)">🔄 장비 교체</button>';
 
     modalHtml += '<div style="margin-bottom:12px;">';
     modalHtml += '<label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;">📸 현장 사진</label>';
