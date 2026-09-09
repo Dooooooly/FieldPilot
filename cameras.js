@@ -45,7 +45,15 @@ function cameraModal(title, content, id = 'cameraModal', parentId = '') {
     document.body.appendChild(overlay); return overlay;
 }
 function openCameraBatch() {
-    const modal = cameraModal('📦 카메라 일괄 입고', '<form><label>사업코드<input name="projectCode" class="input-field" required pattern="[A-Za-z0-9]{1,20}" maxlength="20" placeholder="YS01"></label><label>사업명<input name="project" class="input-field" required maxlength="200"></label><label>모델<input name="model" class="input-field" required maxlength="200"></label><label>수량<input name="qty" class="input-field" type="number" min="1" max="999" value="1" required></label><div class="camera-modal-actions"><button class="btn btn-primary" type="submit">입고 등록</button></div></form>');
+    const today = new Date().toLocaleDateString('en-CA');
+    const siteOptions = places.filter(place => place.id != null).map(place => '<option value="' + escapeHtml(String(place.id)) + '">' + escapeHtml(place.name) + '</option>').join('');
+    const modal = cameraModal('📦 재고 등록', '<form><label>등록 유형<select name="sourceType" class="input-field camera-source-type"><option value="new">신규 입고</option><option value="removed">기존 현장 철거품</option></select></label><label>사업코드<input name="projectCode" class="input-field" required pattern="[A-Za-z0-9]{1,20}" maxlength="20" placeholder="YS01"></label><label>사업명<input name="project" class="input-field" required maxlength="200"></label><label>모델<input name="model" class="input-field" required maxlength="200"></label><label>수량<input name="qty" class="input-field" type="number" min="1" max="999" value="1" required></label><div class="camera-removed-fields" hidden><input type="hidden" name="region" value="' + escapeHtml(currentRegion || '') + '"><div class="camera-repair-info">기존 카메라를 철거한 현장과 날짜가 이력에 저장됩니다.</div><label>철거한 현장<select name="siteId" class="input-field"><option value="">현장을 선택하세요</option>' + siteOptions + '</select></label><label>철거일<input name="removedAt" class="input-field" type="date" value="' + today + '"></label><label>입고 상태<select name="status" class="input-field"><option value="재고">정상 회수 · 재고</option><option value="수리중">고장 철거 · 수리중</option></select></label></div><div class="camera-modal-actions"><button class="btn btn-primary" type="submit">재고 등록</button></div></form>');
+    const source = modal.querySelector('.camera-source-type'), removedFields = modal.querySelector('.camera-removed-fields');
+    source.onchange = () => {
+        const removed = source.value === 'removed'; removedFields.hidden = !removed;
+        removedFields.querySelector('[name=siteId]').required = removed;
+        removedFields.querySelector('[name=removedAt]').required = removed;
+    };
     modal.querySelector('form').onsubmit = async event => { event.preventDefault(); const button = event.submitter; button.disabled = true; const values = Object.fromEntries(new FormData(event.target)); values.qty = Number(values.qty); try { await serverPost('/api/cameras/batch', values); modal.remove(); await renderCameraTab(); } catch (error) { modal.querySelector('.camera-feedback').textContent = error.message; button.disabled = false; } };
 }
 function openCameraDetails(assetNumber) {
