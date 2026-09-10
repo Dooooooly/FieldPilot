@@ -215,6 +215,9 @@ function isRegionUser() {
     return isAuthorized() &&
         fieldPilotAuth.role === 'region';
 }
+function isVisitor() {
+    return isAuthorized() && fieldPilotAuth.role === 'visitor';
+}
 
 // --- 상태 변수 ---
 let currentRegion = localStorage.getItem(SELECTED_REGION_KEY) || '';
@@ -406,6 +409,7 @@ function loadTodayPlanIntoRoute() {
 let isPopState = false;
 
 function switchTab(tabId, updateHistory = true) {
+    if (isVisitor() && !['tab-places', 'tab-route'].includes(tabId)) tabId = 'tab-places';
     if (!tabId) return;
     let target = document.getElementById(tabId);
     if (!target) return;
@@ -982,6 +986,16 @@ function updateAuthorizationUI() {
         return;
     }
 
+
+    if (isVisitor()) {
+        if (authStatus) {
+            authStatus.textContent = '👤 방문자';
+            authStatus.className = 'badge badge-ok';
+        }
+        if (region) region.textContent = currentRegion || '지역 선택';
+        if (adminGroup) adminGroup.style.display = 'none';
+        return;
+    }
 
     // --------------------------------------------------------
     // 마스터
@@ -2166,6 +2180,11 @@ function loadRegionList() {
         return;
     }
 
+    if (isVisitor()) {
+        loadVisitorRegions();
+        return;
+    }
+
     if (isRegionUser()) {
 
     const region =
@@ -2321,7 +2340,7 @@ async function switchRegion(region) {
     }
 
     if (
-        !isMaster() &&
+        !isMaster() && !isVisitor() &&
         region !== fieldPilotAuth.region
     ) {
         showTabStatus(
@@ -2427,6 +2446,117 @@ async function switchRegion(region) {
     }
 
     fetchWeather();
+}
+
+async function loadVisitorRegions() {
+    if (!isVisitor()) return;
+    const select = document.getElementById('regionSelect');
+    try {
+        const data = await serverGet('/api/visitor/regions');
+        const regions = Array.isArray(data.regions) ? data.regions : [];
+        if (select) {
+            select.innerHTML = regions.map(region => '<option value="' + escapeHtml(region) + '">' + escapeHtml(region) + '</option>').join('');
+            select.disabled = false;
+        }
+        const saved = localStorage.getItem(SELECTED_REGION_KEY);
+        const target = regions.includes(saved) ? saved : regions[0];
+        if (target) await switchRegion(target);
+    } catch (error) {
+        showTabStatus('tab-places', '⚠️ 방문 지역을 불러오지 못했습니다.', 'warning');
+    }
+}
+
+function visitorPhotoUrl(region, siteName) {
+    return serverBase() + '/api/visitor/photo?region=' + encodeURIComponent(region) + '&siteName=' + encodeURIComponent(siteName);
+}
+
+async function fetchVisitorPhoto(region, siteName) {
+    const response = await fetch(visitorPhotoUrl(region, siteName), {
+        headers: { Authorization: 'Bearer ' + getAuthToken() },
+        cache: 'no-store'
+    });
+    if (response.status === 404) return null;
+    if (response.status === 401) {
+        handleAuthExpired();
+        throw new Error('인가가 만료되었습니다.');
+    }
+    if (!response.ok) throw new Error('대표사진을 불러오지 못했습니다. (' + response.status + ')');
+    return response.blob();
+}
+
+async function openVisitorSitePhotoByName(siteName) {
+    if (!isVisitor() || !currentRegion || !siteName) return;
+    if (typeof closeDynamicModals === 'function') closeDynamicModals();
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay active dynamic-modal';
+    overlay.innerHTML = '<div class="modal camera-modal"><div class="camera-modal-head"><div><h3>📷 현장 대표사진</h3><div class="camera-summary">' + escapeHtml(currentRegion) + ' · ' + escapeHtml(siteName) + '</div></div><button class="btn btn-outline btn-sm" type="button" data-close>닫기</button></div><div class="visitor-photo-frame"><div class="visitor-photo-empty">⏳ 사진 확인 중…</div></div><div class="visitor-photo-actions"><input type="file" accept="image/*" capture="environment" hidden><button class="btn btn-primary" type="button" data-upload>📷 대표사진 등록/교체</button></div><div class="camera-summary">사진은 서버의 photos / 지역 / 현장명 폴더에 <strong>1번</strong>으로 원본 저장되며, 1번 사진만 이 화면에 표시됩니다.</div></div>';
+    const frame = overlay.querySelector('.visitor-photo-frame');
+    const input = overlay.querySelector('input[type=file]');
+    const upload = overlay.querySelector('[data-upload]');
+    let objectUrl = '';
+    const release = () => { if (objectUrl) URL.revokeObjectURL(objectUrl); objectUrl = ''; };
+    const close = () => { release(); overlay.remove(); };
+    overlay.querySelector('[data-close]').onclick = close;
+    overlay.onclick = event => { if (event.target === overlay) close(); };
+    const render = async () => {
+        release();
+        frame.innerHTML = '<div class="visitor-photo-empty">⏳ 사진 확인 중…</div>';
+        try {
+            const blob = await fetchVisitorPhoto(currentRegion, siteName);
+            if (!blob) {
+                frame.innerHTML = '<div class="visitor-photo-empty">등록된 1번 대표사진이 없습니다.<br>아래 버튼으로 현장사진을 등록하세요.</div>';
+                return;
+            }
+            objectUrl = URL.createObjectURL(blob);
+            const img = document.createElement('img');
+            img.alt = siteName + ' 대표사진';
+            img.src = objectUrl;
+            frame.replaceChildren(img);
+        } catch (error) {
+            frame.innerHTML = '<div class="visitor-photo-empty">⚠️ ' + escapeHtml(error.message) + '</div>';
+        }
+    };
+    upload.onclick = () => input.click();
+    input.onchange = async () => {
+        const file = input.files?.[0];
+        if (!file) return;
+        if (!String(file.type || '').startsWith('image/')) return alert('이미지 파일만 등록할 수 있습니다.');
+        upload.disabled = true;
+        upload.textContent = '업로드 중…';
+        try {
+            const form = new FormData();
+            form.append('region', currentRegion);
+            form.append('siteName', siteName);
+            form.append('photo', file, file.name || '1.jpg');
+            const response = await fetch(serverBase() + '/api/visitor/photo', { method: 'POST', headers: { Authorization: 'Bearer ' + getAuthToken() }, body: form });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.message || data.error || '업로드 실패 (' + response.status + ')');
+            await render();
+            showTabStatus('tab-route', '✅ ' + siteName + ' 대표사진을 원본으로 저장했습니다.', 'ok');
+        } catch (error) {
+            alert('❌ 대표사진 저장 실패\n\n' + error.message);
+        } finally {
+            upload.disabled = false;
+            upload.textContent = '📷 대표사진 등록/교체';
+            input.value = '';
+        }
+    };
+    document.body.appendChild(overlay);
+    await render();
+}
+
+function openVisitorRegionPicker() {
+    if (!isVisitor()) return openRegionManager();
+    const select = document.getElementById('regionSelect');
+    const options = [...(select?.options || [])];
+    if (!options.length) return;
+    if (typeof closeDynamicModals === 'function') closeDynamicModals();
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay active dynamic-modal';
+    overlay.innerHTML = '<div class="modal"><h3>📍 방문 지역 선택</h3><div class="visitor-region-list">' + options.map(option => '<button type="button" class="btn btn-outline btn-block" data-region="' + escapeHtml(option.value) + '">' + escapeHtml(option.textContent) + '</button>').join('') + '</div></div>';
+    overlay.onclick = event => { if (event.target === overlay) overlay.remove(); };
+    overlay.querySelectorAll('[data-region]').forEach(button => button.onclick = async () => { overlay.remove(); await switchRegion(button.dataset.region); });
+    document.body.appendChild(overlay);
 }
 
 function addRegion() {
@@ -3146,6 +3276,14 @@ function renderWaypointList() {
         html += '<span class="remove" onclick="event.stopPropagation(); removeWaypoint(' + i + ')">✕</span></li>';
     }
     list.innerHTML = html;
+    if (isVisitor()) {
+        list.querySelectorAll('li[data-name]').forEach(function(item) {
+            item.style.cursor = 'pointer';
+            item.addEventListener('click', function() {
+                openVisitorSitePhotoByName(item.dataset.name || '');
+            });
+        });
+    }
     
     // ★ Sortable 초기화 (함수 내부에 위치해야 함)
     if (window.Sortable) {
@@ -4715,6 +4853,7 @@ function moveToRoutePoint(el) {
     document.querySelectorAll('.route-item').forEach(function(item) { item.style.background = ''; });
     el.style.background = '#ebf8ff';
     showTabStatus('tab-route', '📍 "' + name + '" 위치로 이동했습니다.', 'info');
+    if (isVisitor()) openVisitorSitePhotoByName(name);
 }
 
 // ============================================================
@@ -5512,6 +5651,10 @@ function renderNearbyPlaceClusters() {
             title: String(place.name || '현장')
         });
         kakao.maps.event.addListener(marker, 'click', function() {
+            if (isVisitor()) {
+                openVisitorSitePhotoByName(place.name || '현장');
+                return;
+            }
             const info = new kakao.maps.InfoWindow({ content: '<div style="padding:7px 10px;white-space:nowrap;font-size:12px;font-weight:700;">' + escapeHtml(place.name || '현장') + '</div>' });
             info.open(kakaoMap, marker);
             setTimeout(function() { try { info.close(); } catch (e) {} }, 3500);
@@ -6746,6 +6889,7 @@ function deleteRegionFromPopup() {
 }
 
 function openRegionManager() {
+    if (isVisitor()) return openVisitorRegionPicker();
     let existing = document.getElementById('regionManagerModal');
     if (existing) existing.remove();
     
@@ -7157,7 +7301,7 @@ document.addEventListener(
 
         }
 
-        await refreshTodayPlanWidget(false);
+        if (!isVisitor()) await refreshTodayPlanWidget(false);
 
         // --------------------------------------------------------
         // 5. UI 갱신
@@ -11776,6 +11920,9 @@ if (
             alert(
                 '✅ 마스터 권한으로 인가되었습니다.'
             );
+        } else if (fieldPilotAuth.role === 'visitor') {
+            switchTab('tab-places');
+            alert('✅ 방문자 권한으로 인가되었습니다.\n경로·지도와 현장 대표사진 기능을 사용할 수 있습니다.');
         } else {
             alert(
                 '✅ ' +
@@ -11834,6 +11981,9 @@ function applyAuthorizationState() {
             status.className =
                 'badge badge-ok';
 
+        } else if (isVisitor()) {
+            status.textContent = '👤 방문자 - 경로·지도·대표사진';
+            status.className = 'badge badge-ok';
         } else {
 
             status.textContent =
@@ -11913,6 +12063,16 @@ function applyRegionLock() {
         return;
     }
 
+    if (isVisitor()) {
+        if (select) select.disabled = false;
+        if (regionManager) regionManager.style.display = 'none';
+        if (regionDisplay) {
+            regionDisplay.style.cursor = 'pointer';
+            regionDisplay.onclick = openVisitorRegionPicker;
+        }
+        return;
+    }
+
     // 일반 지역 사용자
     const authorizedRegion =
         fieldPilotAuth.region;
@@ -11957,6 +12117,11 @@ function updateFeatureLockState() {
         'fieldpilot-locked',
         locked
     );
+    document.body.classList.toggle('visitor-mode', isVisitor());
+    if (isVisitor()) {
+        const active = document.querySelector('.tab-content.active');
+        if (active && !['tab-places', 'tab-route'].includes(active.id)) switchTab('tab-places');
+    }
 
     const selectors = [
         '#tab-list button',
