@@ -2341,7 +2341,7 @@ async function switchRegion(region) {
     }
 
     if (
-        !isMaster() && !isVisitor() &&
+        !isMaster() &&
         region !== fieldPilotAuth.region
     ) {
         showTabStatus(
@@ -2459,8 +2459,7 @@ async function loadVisitorRegions() {
             select.innerHTML = regions.map(region => '<option value="' + escapeHtml(region) + '">' + escapeHtml(region) + '</option>').join('');
             select.disabled = false;
         }
-        const saved = localStorage.getItem(SELECTED_REGION_KEY);
-        const target = regions.includes(saved) ? saved : regions[0];
+        const target = fieldPilotAuth.region || regions[0];
         if (target) await switchRegion(target);
     } catch (error) {
         showTabStatus('tab-places', '⚠️ 방문 지역을 불러오지 못했습니다.', 'warning');
@@ -11968,7 +11967,7 @@ if (
             );
         } else if (fieldPilotAuth.role === 'visitor') {
             switchTab('tab-places');
-            alert('✅ 방문자 권한으로 인가되었습니다.\n경로·지도와 현장 대표사진 기능을 사용할 수 있습니다.');
+            alert('✅ ' + fieldPilotAuth.region + ' 방문자 권한으로 인가되었습니다.\n해당 지역의 경로·지도와 현장 대표사진 기능을 사용할 수 있습니다.');
         } else {
             alert(
                 '✅ ' +
@@ -12028,7 +12027,7 @@ function applyAuthorizationState() {
                 'badge badge-ok';
 
         } else if (isVisitor()) {
-            status.textContent = '👤 방문자 - 경로·지도·대표사진';
+            status.textContent = '👤 ' + fieldPilotAuth.region + ' 방문자 - 경로·지도·대표사진';
             status.className = 'badge badge-ok';
         } else {
 
@@ -12110,11 +12109,13 @@ function applyRegionLock() {
     }
 
     if (isVisitor()) {
-        if (select) select.disabled = false;
+        currentRegion = fieldPilotAuth.region;
+        localStorage.setItem(SELECTED_REGION_KEY, currentRegion);
+        if (select) select.disabled = true;
         if (regionManager) regionManager.style.display = 'none';
         if (regionDisplay) {
-            regionDisplay.style.cursor = 'pointer';
-            regionDisplay.onclick = openVisitorRegionPicker;
+            regionDisplay.style.cursor = 'default';
+            regionDisplay.onclick = null;
         }
         return;
     }
