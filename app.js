@@ -267,6 +267,7 @@ let startMarker = null;
 let routeMarkers = [];
 let placeMarkers = [];
 let nearbyPlaceClusterer = null;
+let placeNameOverlays = [];
 let nearbyClustersEnabled = localStorage.getItem('nearbyPlaceClusters') !== 'off';
 let mapAddressSearchOverlay = null;
 let singlePlaceMarker = null;
@@ -5611,6 +5612,7 @@ function createMap(container) {
         
         kakaoMap = new kakao.maps.Map(container, options);
         enableMapInteraction();
+        kakao.maps.event.addListener(kakaoMap, 'idle', updateVisiblePlaceNameLabels);
         // ★ 중복 호출 제거 - options에서 이미 설정됨
         // kakaoMap.setDraggable(true);   ← 제거
         // kakaoMap.setZoomable(true);    ← 제거
@@ -5629,6 +5631,7 @@ function createMap(container) {
 }
 
 function clearNearbyPlaceClusters() {
+    clearPlaceNameLabels();
     if (nearbyPlaceClusterer) {
         try { nearbyPlaceClusterer.clear(); } catch (e) {}
         try { nearbyPlaceClusterer.setMap(null); } catch (e) {}
@@ -5636,6 +5639,48 @@ function clearNearbyPlaceClusters() {
     nearbyPlaceClusterer = null;
     placeMarkers.forEach(function(marker) { try { marker.setMap(null); } catch (e) {} });
     placeMarkers = [];
+}
+
+function clearPlaceNameLabels() {
+    placeNameOverlays.forEach(function(overlay) {
+        try { overlay.setMap(null); } catch (e) {}
+    });
+    placeNameOverlays = [];
+}
+
+function updateVisiblePlaceNameLabels() {
+    clearPlaceNameLabels();
+    if (!nearbyClustersEnabled || !kakaoMap || !window.kakao?.maps) return;
+    // 카카오맵은 숫자가 작을수록 더 확대된 상태다.
+    if (kakaoMap.getLevel() > 3) return;
+    const bounds = kakaoMap.getBounds();
+    const projection = kakaoMap.getProjection();
+    const occupied = new Set();
+    const visible = (Array.isArray(places) ? places : []).filter(function(place) {
+        const lat = Number(place?.lat);
+        const lng = Number(place?.lng);
+        return Number.isFinite(lat) && Number.isFinite(lng) && bounds.contain(new kakao.maps.LatLng(lat, lng));
+    });
+    for (const place of visible) {
+        if (placeNameOverlays.length >= 70) break;
+        const position = new kakao.maps.LatLng(Number(place.lat), Number(place.lng));
+        const point = projection.pointFromCoords(position);
+        // 화면을 작은 칸으로 나눠 가까운 이름끼리 겹치지 않게 하나만 표시한다.
+        const cell = Math.floor(point.x / 105) + ':' + Math.floor(point.y / 30);
+        if (occupied.has(cell)) continue;
+        occupied.add(cell);
+        const label = document.createElement('span');
+        label.className = 'map-place-name-text';
+        label.textContent = String(place.name || '현장');
+        const overlay = new kakao.maps.CustomOverlay({
+            map: kakaoMap,
+            position: position,
+            content: label,
+            yAnchor: 1.75,
+            zIndex: 2
+        });
+        placeNameOverlays.push(overlay);
+    }
 }
 
 function renderNearbyPlaceClusters() {
@@ -5669,6 +5714,7 @@ function renderNearbyPlaceClusters() {
         styles: [{ width:'42px', height:'42px', background:'rgba(49,130,206,.9)', borderRadius:'50%', color:'#fff', textAlign:'center', fontWeight:'700', lineHeight:'42px', boxShadow:'0 3px 12px rgba(0,0,0,.25)' }]
     });
     nearbyPlaceClusterer.addMarkers(placeMarkers);
+    updateVisiblePlaceNameLabels();
 }
 
 function toggleNearbyPlaceClusters(enabled) {
