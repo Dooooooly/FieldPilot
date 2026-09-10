@@ -11876,9 +11876,12 @@ async function exportPhotosToServer() {
 // ============================================================
 // FieldPilot 인가
 // ============================================================
-async function authorizeFieldPilot() {
+async function authorizeFieldPilot(inputId) {
     const input =
-        document.getElementById('fieldPilotAuthCode');
+        document.getElementById(inputId || 'fieldPilotAuthCode');
+    const initialLogin = input?.id === 'initialAuthCode';
+    const initialButton = document.getElementById('initialAuthButton');
+    const initialMessage = document.getElementById('initialAuthMessage');
 
     const code =
         String(input?.value || '').trim();
@@ -11898,6 +11901,14 @@ async function authorizeFieldPilot() {
     }
 
     try {
+        if (initialLogin && initialButton) {
+            initialButton.disabled = true;
+            initialButton.textContent = '인가 확인 중…';
+        }
+        if (initialLogin && initialMessage) {
+            initialMessage.textContent = '서버에서 인가코드를 확인하고 있습니다.';
+            initialMessage.className = 'initial-auth-message';
+        }
         const response = await fetch(
             base + '/api/auth/login',
             {
@@ -11982,16 +11993,28 @@ if (
             error
         );
 
-        alert(
-            '❌ 인가 실패\n\n' +
-            error.message
-        );
+        if (initialLogin && initialMessage) {
+            initialMessage.textContent = '❌ ' + error.message;
+            initialMessage.className = 'initial-auth-message is-error';
+            input?.focus();
+        } else {
+            alert('❌ 인가 실패\n\n' + error.message);
+        }
+    } finally {
+        if (initialLogin && initialButton) {
+            initialButton.disabled = false;
+            initialButton.textContent = '인가 후 시작';
+        }
     }
 }
 function applyAuthorizationState() {
 
     const authorized =
         isAuthorized();
+    document.body.classList.toggle('auth-gated', !authorized);
+    if (!authorized) {
+        setTimeout(function() { document.getElementById('initialAuthCode')?.focus(); }, 50);
+    }
 
     const status =
         document.getElementById(
@@ -12487,7 +12510,7 @@ function handleAuthExpired() {
         authExpiryNoticeAt = now;
         alert(
             '🔒 인가 세션이 만료되었습니다.\n' +
-            '설정 탭에서 다시 인가코드를 입력하세요.'
+            '첫 화면에서 다시 인가코드를 입력하세요.'
         );
     }
 }
