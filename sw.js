@@ -2,7 +2,7 @@
 // Service Worker - PWA 오프라인 지원 (최적화)
 // ============================================================
 
-const APP_VERSION = '2026.09.10.4';
+const APP_VERSION = '2026.09.10.5';
 const CACHE_NAME = 'FieldPilot-' + APP_VERSION;
 const BASE_PATH = new URL('.', self.location.href).pathname;
 
