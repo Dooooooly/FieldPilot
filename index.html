@@ -662,7 +662,6 @@ body {
 .stats-today{padding:16px;border-radius:16px;background:linear-gradient(135deg,#1d4ed8,#2563eb 58%,#0891b2);color:#fff;box-shadow:0 8px 24px rgba(37,99,235,.22)}.stats-today-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.stats-today-heading strong{display:block;font-size:17px}.stats-today-heading span{display:block;margin-top:2px;font-size:10px;color:#dbeafe}.stats-today-date{padding:5px 8px;border-radius:999px;background:rgba(255,255,255,.16);white-space:nowrap}.stats-snapshot-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:14px}.stats-snapshot-card{padding:13px;border:1px solid rgba(255,255,255,.28);border-radius:12px;background:rgba(255,255,255,.13)}.stats-snapshot-card>span{font-size:11px;color:#dbeafe}.stats-snapshot-card strong{display:block;margin-top:3px;font-size:27px}.stats-snapshot-card small{margin-left:3px;font-size:11px}.stats-snapshot-card.is-green{background:rgba(16,185,129,.25)}
 .stats-section{margin-top:12px;padding:13px;border:1px solid var(--border-color);border-radius:14px;background:var(--bg-card)}.stats-section-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-size:14px;font-weight:800}.stats-section-title small{font-size:10px;color:var(--text-muted);font-weight:600}.stats-period-controls{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px}.stats-period-btn.active{background:#2563eb!important;color:#fff!important;border-color:#2563eb!important}.stats-ranking-title{margin:12px 0 6px;font-size:12px;font-weight:800}.stats-ranking-list,.stats-dong-list{display:grid;gap:6px}.stats-ranking-row,.stats-dong-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:9px;background:var(--bg-tertiary);font-size:11px}.stats-ranking-row{justify-content:space-between}.stats-dong-row>span{width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.stats-dong-row>strong{width:38px;text-align:right}.stats-dong-extra{display:none}.stats-dong-track,.admin-dong-track{height:7px;flex:1;border-radius:999px;overflow:hidden;background:var(--border-color)}.stats-dong-track i,.admin-dong-track i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#3b82f6,#06b6d4)}.stats-warning{margin-top:12px;padding:10px 12px;border:1px solid #fbbf24;border-radius:10px;background:#fffbeb;color:#92400e;font-size:11px}.stats-warning span{font-size:10px}.stats-last-sync{padding:12px 2px 2px;text-align:center;color:var(--text-muted);font-size:10px}.stats-empty{padding:20px 8px;text-align:center;color:var(--text-muted);font-size:11px}
 .admin-dong-section{margin-top:14px}.admin-dong-region{border-bottom:1px solid var(--border-color)}.admin-dong-region:last-child{border-bottom:0}.admin-dong-region summary{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:11px 13px;cursor:pointer;font-size:12px;list-style-position:inside}.admin-dong-body{display:grid;gap:6px;padding:0 13px 13px}.admin-dong-row{display:flex;align-items:center;gap:8px;font-size:11px}.admin-dong-row>span{width:82px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.admin-dong-row>strong{width:30px;text-align:right}.admin-anomaly-badge{padding:3px 7px;border-radius:999px;background:#dcfce7;color:#166534;font-size:9px;font-weight:800}.admin-anomaly-badge.has-warning{background:#fef3c7;color:#92400e}.admin-dong-warning{padding:7px 9px;border-radius:8px;background:#fffbeb;color:#92400e;font-size:10px}
-.today-plan-widget{border-left:4px solid #3182ce}.today-plan-header{display:flex;justify-content:space-between;align-items:center;gap:8px}.today-plan-title{font-weight:800;font-size:14px}.today-plan-meta{margin-top:2px;font-size:10px;color:var(--text-muted)}.today-plan-list{display:grid;gap:6px;margin-top:9px}.today-plan-item{display:flex;align-items:center;gap:9px;padding:8px 9px;border:1px solid var(--border-color);border-radius:9px;background:var(--bg-tertiary)}.today-plan-order{display:grid;place-items:center;width:24px;height:24px;flex:0 0 24px;border-radius:50%;background:#3182ce;color:white;font-size:11px;font-weight:800}.today-plan-name{font-size:12px;font-weight:750}.today-plan-dong{font-size:10px;color:var(--text-muted)}.today-plan-empty{padding:12px 4px 3px;text-align:center;color:var(--text-muted);font-size:11px}
 body.dark-mode .admin-dashboard-map-legend{background:rgba(26,32,44,.92);color:#f1f5f9}
 body.dark-mode .stats-warning,body.dark-mode .admin-dong-warning{background:#422006;color:#fde68a;border-color:#92400e}body.dark-mode .admin-anomaly-badge{background:#14532d;color:#bbf7d0}body.dark-mode .admin-anomaly-badge.has-warning{background:#422006;color:#fde68a}
 body:not(.dark-mode) .admin-dashboard-dialog{background:#f1f5f9;color:#0f172a;border-color:#94a3b8}
@@ -684,7 +683,7 @@ body.dark-mode .map-address-search input{background:#1a202c;color:#f7fafc;border
     .camera-filter-row{grid-template-columns:repeat(3,1fr)}.equipment-type-badge{padding:2px 7px;border-radius:20px;background:#ede9fe;color:#5b21b6;font-size:10px}body.dark-mode .equipment-type-badge{background:#4c1d95;color:#ede9fe}@media(max-width:520px){.camera-filter-row{grid-template-columns:1fr}}
     .removed-site-picker{position:relative}.removed-site-suggestions{display:none;position:absolute;left:0;right:0;top:calc(100% + 3px);max-height:220px;overflow:auto;border:1px solid var(--border-color);border-radius:9px;background:var(--bg-card);box-shadow:0 10px 28px rgba(15,23,42,.2);z-index:3}.removed-site-suggestions.active{display:block}.removed-site-option{display:block;width:100%;padding:9px 11px;border:0;border-bottom:1px solid var(--border-color);background:transparent;color:var(--text-primary);text-align:left;font-size:12px;cursor:pointer}.removed-site-option:last-child{border-bottom:0}.removed-site-option:hover,.removed-site-option:focus{background:var(--bg-tertiary);outline:none}.removed-site-none{padding:12px;text-align:center;color:var(--text-muted);font-size:11px}
     body.visitor-mode .bottom-tab:not([data-tab="tab-places"]):not([data-tab="tab-route"]){display:none!important}
-    body.visitor-mode #todayPlanWidget,body.visitor-mode #stats-record-btn,body.visitor-mode #globalGithubStatus,body.visitor-mode #globalOfflineQueueStatus{display:none!important}
+    body.visitor-mode #globalGithubStatus,body.visitor-mode #globalOfflineQueueStatus{display:none!important}
     .visitor-logout{display:none;margin-left:auto;border:1px solid var(--border-color);border-radius:999px;background:var(--bg-card);color:var(--text-primary);padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer}
     body.visitor-mode .visitor-logout{display:inline-flex}
     .visitor-photo-frame{min-height:220px;border:1px solid var(--border-color);border-radius:12px;background:var(--bg-tertiary);display:flex;align-items:center;justify-content:center;overflow:hidden;margin:12px 0}
@@ -746,13 +745,6 @@ body.dark-mode .map-address-search input{background:#1a202c;color:#f7fafc;border
 
         <!-- ===== 탭: 경로 ===== -->
         <div id="tab-places" class="tab-content active">
-            <div id="todayPlanWidget" class="card today-plan-widget">
-                <div class="today-plan-header">
-                    <div><div class="today-plan-title">📅 오늘 방문 예정</div><div id="todayPlanMeta" class="today-plan-meta">로그인 후 오늘 경로를 확인합니다.</div></div>
-                    <button class="btn btn-outline btn-sm" type="button" onclick="refreshTodayPlanWidget(true)" aria-label="오늘 방문 예정 새로고침">↻</button>
-                </div>
-                <div id="todayPlanList" class="today-plan-list"><div class="today-plan-empty">⏳ 확인 중...</div></div>
-            </div>
             <div class="card">
                 <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; width:100%; margin-bottom:8px;">
                     <span>🚩 출발지</span>
@@ -2234,11 +2226,11 @@ body.dark-mode .map-address-search input{background:#1a202c;color:#f7fafc;border
             <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#4a5568;">
                 <div style="display:flex;gap:8px;">
                     <span style="background:#ebf8ff;color:#2b6cb0;border-radius:6px;padding:2px 8px;font-weight:600;white-space:nowrap;">Step 1</span>
-                    <span>경로 탭에서 최적화 완료 후 <strong>📊 통계 기록</strong> 버튼 클릭</span>
+                    <span>기록 탭에서 현장을 선택하고 처리내역을 저장</span>
                 </div>
                 <div style="display:flex;gap:8px;">
                     <span style="background:#ebf8ff;color:#2b6cb0;border-radius:6px;padding:2px 8px;font-weight:600;white-space:nowrap;">Step 2</span>
-                    <span>방문한 모든 현장의 동 정보가 자동 변환되어 저장</span>
+                    <span>저장한 현장·날짜·작업자 정보가 통계에 자동 반영</span>
                 </div>
                 <div style="display:flex;gap:8px;">
                     <span style="background:#ebf8ff;color:#2b6cb0;border-radius:6px;padding:2px 8px;font-weight:600;white-space:nowrap;">Step 3</span>
@@ -2246,7 +2238,7 @@ body.dark-mode .map-address-search input{background:#1a202c;color:#f7fafc;border
                 </div>
             </div>
             <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:8px;margin-top:8px;font-size:11px;color:#744210;">
-                ⚠️ <strong>중요:</strong> 통계 기록 버튼을 눌러야만 방문 기록이 저장됩니다. 최적화만 실행하고 버튼을 누르지 않으면 기록되지 않습니다.
+                💡 처리내역을 수정하거나 삭제하면 연결된 통계도 자동으로 다시 계산되며, 같은 기록이 중복 집계되지 않습니다.
             </div>
         </div>
     </div>
@@ -2733,8 +2725,8 @@ body.dark-mode .map-address-search input{background:#1a202c;color:#f7fafc;border
                 return window.FIELD_SERVER_URL || '';
             });
     </script>
-    <script type="module" src="src/main.js?v=2026.09.11.2"></script>
-    <script src="app.js?v=2026.09.11.2" defer></script>
-    <script src="cameras.js?v=2026.09.11.2" defer></script>
+    <script type="module" src="src/main.js?v=2026.09.11.3"></script>
+    <script src="app.js?v=2026.09.11.3" defer></script>
+    <script src="cameras.js?v=2026.09.11.3" defer></script>
 </body>
 </html>
