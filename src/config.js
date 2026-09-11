@@ -6,7 +6,7 @@
  */
 
 export const CONFIG = {
-    version: '2026.09.11.5',
+    version: '2026.09.11.6',
 
     storage: {
         databaseName: 'FieldPilotCore',
