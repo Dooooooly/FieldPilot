@@ -1944,6 +1944,25 @@ function savePlaces() {
     return true;
 }
 
+async function notifyPlaceChange(action, before, after) {
+    try {
+        const result = await serverPost('/api/places/change-notification', {
+            region: currentRegion,
+            action: action,
+            before: before || null,
+            after: after || null
+        });
+        if (result && result.sent === false) {
+            showTabStatus('tab-list', '⚠️ 현장은 저장됐지만 ' + (result.reason || '카카오워크 알림을 보내지 못했습니다.'), 'warning');
+        }
+        return !!(result && result.sent);
+    } catch (error) {
+        console.warn('[FieldPilot] 현장 변경 알림 실패:', error);
+        showTabStatus('tab-list', '⚠️ 현장은 저장됐지만 카카오워크 알림을 보내지 못했습니다.', 'warning');
+        return false;
+    }
+}
+
 let placeSyncInProgress = false;
 let placeSyncPending = false;
 
@@ -3558,7 +3577,7 @@ async function savePlaceFromModal(name, address, lat, lng, remark, dong) {
         dong = await extractDongFromCoords(lat, lng);
         if (dong === '기타') dong = '';
     }
-    places.push({
+    const addedPlace = {
         id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
         name: name,
         address: address,
@@ -3567,13 +3586,15 @@ async function savePlaceFromModal(name, address, lat, lng, remark, dong) {
         dong: dong || '',
         remark: remark || '',
         favorite: false
-    });
+    };
+    places.push(addedPlace);
     savePlaces();
     scheduleAutoSync();
     closeAddPlaceModal();
     let msg = '✅ "' + name + '" 추가됨';
     if (dong) msg += ' (' + dong + ')';
     showTabStatus('tab-list', msg, 'ok');
+    await notifyPlaceChange('추가', null, addedPlace);
 }
 
 function searchAddressForModal(query) {
@@ -3735,7 +3756,7 @@ function deletePlace(id) {
     showConfirmModal(
         '🗑️ 현장 삭제',
         '"' + target.name + '" 현장을 삭제하시겠습니까?',
-        function() {
+        async function() {
             places = places.filter(function(p) { return p.id !== id; });
             waypoints = waypoints.filter(function(w) { return w.name !== target.name; });
             renderWaypointList();
@@ -3743,6 +3764,7 @@ function deletePlace(id) {
             savePlaces();
             scheduleAutoSync();
             showTabStatus('tab-list', '✅ 삭제 완료', 'ok');
+            await notifyPlaceChange('삭제', target, null);
         }
     );
 }
@@ -3861,6 +3883,7 @@ async function saveModal() {
 
     let place = places.find(function(p) { return p.id === id; });
     if (!place) { closeModal(); return; }
+    const previousPlace = Object.assign({}, place);
 
     if (!name) {
         showModalEditError('⚠️ 현장명을 입력하세요.');
@@ -3933,6 +3956,7 @@ closeModal();
 renderPlaces();
 let dongMsg = place.dong ? ' (' + place.dong + ')' : '';
 showTabStatus('tab-list', '✅ "' + name + '" 수정 완료' + dongMsg, 'ok');
+await notifyPlaceChange('수정', previousPlace, place);
 }
 
 function closeModal() {
