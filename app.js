@@ -2136,92 +2136,14 @@ function loadRegionList() {
     }
 
     if (isRegionUser()) {
-
-    const region =
-        String(fieldPilotAuth.region || '').trim();
-
-    if (!region) {
-        console.warn(
-            '[AUTH] 지역 사용자이지만 region이 없습니다.'
-        );
-
-        currentRegion = '';
-        places = [];
-
-        updateRegionDisplay();
-        updateFeatureLockState();
-
+        loadAuthorizedRegionOptions();
         return;
     }
 
-    currentRegion = region;
-
-    localStorage.setItem(
-        SELECTED_REGION_KEY,
-        region
-    );
-
-    const option =
-        document.createElement('option');
-
-    option.value = region;
-    option.textContent = region;
-
-    select.appendChild(option);
-
-    select.value = region;
-    select.disabled = true;
-
-    /*
-     * 기존 LOCAL 데이터를 먼저 표시한다.
-     * 처음 사용하는 사용자라면 빈 배열이 된다.
-     */
-    const data =
-        localStorage.getItem(
-            getStorageKey(region)
-        );
-
-    try {
-        places =
-            data
-                ? JSON.parse(data)
-                : [];
-    } catch (error) {
-
-        console.warn(
-            '[LOCAL] 지역 데이터 파싱 실패:',
-            error
-        );
-
-        places = [];
+    if (isMaster()) {
+        loadAuthorizedRegionOptions();
+        return;
     }
-
-    updateRegionDisplay();
-    clearNearbyPlaceClusters();
-    renderPlaces();
-    updateStorageInfo();
-
-    /*
-     * ★ 핵심
-     * 지역 인가가 완료되면 반드시
-     * SERVER → LOCAL 동기화를 수행한다.
-     *
-     * 처음 사용하는 사용자도 여기서
-     * 서버의 용산 현장 목록을 가져온다.
-     */
-    loadPlacesFromServer(
-        region,
-        true
-    ).catch(function(error) {
-
-        console.warn(
-            '[SERVER → LOCAL] 지역 현장 초기 로딩 실패:',
-            error
-        );
-    });
-
-    return;
-}
     select.innerHTML = '';
     
     let regions = [];
@@ -2279,6 +2201,83 @@ function loadRegionList() {
     }
 }
 
+async function loadAuthorizedRegionOptions() {
+    const select = document.getElementById('regionSelect');
+    if (!select || (!isMaster() && !isRegionUser())) return;
+
+    try {
+        const data = await serverGet('/api/visitor/regions');
+        const regions = Array.isArray(data.regions)
+            ? data.regions.map(region => String(region || '').trim()).filter(Boolean)
+            : [];
+
+        regions.sort((a, b) => a.localeCompare(b, 'ko'));
+        select.innerHTML = regions.map(region =>
+            '<option value="' + escapeHtml(region) + '">' + escapeHtml(region) + '</option>'
+        ).join('');
+        select.disabled = false;
+
+        const authorizedRegion = String(fieldPilotAuth.region || '').trim();
+        const savedRegion = localStorage.getItem(SELECTED_REGION_KEY);
+        const target = isMaster() && regions.includes(savedRegion)
+            ? savedRegion
+            : (regions.includes(authorizedRegion)
+                ? authorizedRegion
+                : (regions.includes(currentRegion) ? currentRegion : regions[0]));
+
+        if (target) await switchRegion(target);
+    } catch (error) {
+        console.warn('[AUTH] 전체 지역 목록 로드 실패:', error);
+        showTabStatus('tab-places', '⚠️ 전체 지역 목록을 불러오지 못했습니다.', 'warning');
+    }
+}
+
+async function authorizeRegionSwitch(region) {
+    const previousRegion = currentRegion;
+    const select = document.getElementById('regionSelect');
+    const code = window.prompt(region + ' 지역 인가코드를 입력하세요.');
+
+    if (code === null || !String(code).trim()) {
+        if (select) select.value = previousRegion;
+        return false;
+    }
+
+    try {
+        const response = await fetch(serverBase() + '/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: String(code).trim() })
+        });
+        const text = await response.text();
+        let data = {};
+        try { data = text ? JSON.parse(text) : {}; } catch (error) { }
+
+        if (!response.ok || !data.ok) {
+            throw new Error(data.message || data.error || '인가코드가 올바르지 않습니다.');
+        }
+        if (data.role !== 'master' && (data.role !== 'region' || data.region !== region)) {
+            throw new Error(region + ' 지역 인가코드를 입력하세요.');
+        }
+
+        fieldPilotAuth = {
+            authorized: true,
+            role: data.role || '',
+            region: data.region || '',
+            token: data.token || '',
+            expiresAt: data.expiresAt || 0,
+            kakaoWorkUserId: data.kakaoWorkUserId || '',
+            kakaoWorkUserName: data.kakaoWorkUserName || ''
+        };
+        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(fieldPilotAuth));
+        applyAuthorizationState();
+        return true;
+    } catch (error) {
+        if (select) select.value = previousRegion;
+        alert('❌ ' + error.message);
+        return false;
+    }
+}
+
 async function switchRegion(region) {
     if (!isAuthorized()) {
         showTabStatus(
@@ -2289,18 +2288,9 @@ async function switchRegion(region) {
         return;
     }
 
-    if (
-        !isMaster() &&
-        region !== fieldPilotAuth.region
-    ) {
-        showTabStatus(
-            'tab-settings',
-            '🔒 ' +
-            fieldPilotAuth.region +
-            ' 지역만 사용할 수 있습니다.',
-            'warning'
-        );
-        return;
+    if (isRegionUser() && region !== fieldPilotAuth.region) {
+        const authorized = await authorizeRegionSwitch(region);
+        if (!authorized) return;
     }
 
     if (!region || region === '') {
