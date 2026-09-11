@@ -270,6 +270,8 @@ let nearbyPlaceClusterer = null;
 let placeNameOverlays = [];
 let nearbyClustersEnabled = localStorage.getItem('nearbyPlaceClusters') !== 'off';
 let mapAddressSearchOverlay = null;
+let myLocationMarker = null;
+let myLocationAccuracyCircle = null;
 let singlePlaceMarker = null;
 let singlePlaceInfoWindow = null;
 let autoSyncTimer = null;
@@ -2485,7 +2487,7 @@ async function fetchVisitorPhoto(region, siteName) {
 }
 
 async function openVisitorSitePhotoByName(siteName) {
-    if (!isVisitor() || !currentRegion || !siteName) return;
+    if (!isAuthorized() || !currentRegion || !siteName) return;
     if (typeof closeDynamicModals === 'function') closeDynamicModals();
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay active dynamic-modal';
@@ -4853,7 +4855,7 @@ function moveToRoutePoint(el) {
     document.querySelectorAll('.route-item').forEach(function(item) { item.style.background = ''; });
     el.style.background = '#ebf8ff';
     showTabStatus('tab-route', '📍 "' + name + '" 위치로 이동했습니다.', 'info');
-    if (isVisitor()) openVisitorSitePhotoByName(name);
+    if (isAuthorized()) openVisitorSitePhotoByName(name);
 }
 
 // ============================================================
@@ -5695,13 +5697,7 @@ function renderNearbyPlaceClusters() {
             title: String(place.name || '현장')
         });
         kakao.maps.event.addListener(marker, 'click', function() {
-            if (isVisitor()) {
-                openVisitorSitePhotoByName(place.name || '현장');
-                return;
-            }
-            const info = new kakao.maps.InfoWindow({ content: '<div style="padding:7px 10px;white-space:nowrap;font-size:12px;font-weight:700;">' + escapeHtml(place.name || '현장') + '</div>' });
-            info.open(kakaoMap, marker);
-            setTimeout(function() { try { info.close(); } catch (e) {} }, 3500);
+            openVisitorSitePhotoByName(place.name || '현장');
         });
         return marker;
     });
@@ -5722,6 +5718,71 @@ function toggleNearbyPlaceClusters(enabled) {
     renderNearbyPlaceClusters();
 }
 
+async function moveMapToMyLocation() {
+    const button = document.getElementById('mapMyLocationButton');
+    if (!navigator.geolocation) {
+        showTabStatus('tab-route', '❌ 이 기기에서는 위치 기능을 사용할 수 없습니다.', 'error');
+        return;
+    }
+    if (button) {
+        button.disabled = true;
+        button.textContent = '위치 확인 중…';
+    }
+    try {
+        const ready = await ensureRouteMapReady(12000);
+        if (!ready) throw new Error('지도를 준비하지 못했습니다.');
+        const position = await new Promise(function(resolve, reject) {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 15000
+            });
+        });
+        const lat = Number(position.coords.latitude);
+        const lng = Number(position.coords.longitude);
+        const accuracy = Math.max(5, Number(position.coords.accuracy) || 20);
+        userGpsCoords = { lat, lng };
+        const point = new kakao.maps.LatLng(lat, lng);
+        if (myLocationMarker) myLocationMarker.setMap(null);
+        if (myLocationAccuracyCircle) myLocationAccuracyCircle.setMap(null);
+        myLocationAccuracyCircle = new kakao.maps.Circle({
+            map: kakaoMap,
+            center: point,
+            radius: accuracy,
+            strokeWeight: 1,
+            strokeColor: '#2563eb',
+            strokeOpacity: 0.55,
+            fillColor: '#60a5fa',
+            fillOpacity: 0.16,
+            zIndex: 3
+        });
+        myLocationMarker = new kakao.maps.CustomOverlay({
+            map: kakaoMap,
+            position: point,
+            content: '<div class="map-my-location-dot" title="내 위치"><span></span></div>',
+            xAnchor: 0.5,
+            yAnchor: 0.5,
+            zIndex: 9
+        });
+        kakaoMap.relayout();
+        kakaoMap.setLevel(3);
+        kakaoMap.panTo(point);
+        updateVisiblePlaceNameLabels();
+        showTabStatus('tab-route', '✅ 현재 위치로 이동했습니다. (정확도 약 ' + Math.round(accuracy) + 'm)', 'ok');
+    } catch (error) {
+        let message = error?.message || '현재 위치를 확인하지 못했습니다.';
+        if (error?.code === 1) message = '위치 권한이 차단되었습니다. 브라우저 설정에서 위치 권한을 허용하세요.';
+        else if (error?.code === 2) message = '현재 위치 신호를 확인할 수 없습니다.';
+        else if (error?.code === 3) message = '위치 확인 시간이 초과되었습니다.';
+        showTabStatus('tab-route', '❌ ' + message, 'error');
+    } finally {
+        if (button) {
+            button.disabled = false;
+            button.textContent = '◎ 내 위치';
+        }
+    }
+}
+
 async function searchMapAddress() {
     const input = document.getElementById('mapAddressSearchInput');
     const button = document.getElementById('mapAddressSearchButton');
@@ -5729,6 +5790,11 @@ async function searchMapAddress() {
     if (query.length < 2) {
         showTabStatus('tab-route', '⚠️ 검색할 주소를 두 글자 이상 입력하세요.', 'warning');
         input?.focus();
+        return;
+    }
+    const siteMatches = findMapSiteMatches(query);
+    if (siteMatches.length) {
+        await selectMapSiteSearch(siteMatches[0]);
         return;
     }
     if (!kakaoMap) {
@@ -5765,6 +5831,74 @@ async function searchMapAddress() {
     }
 }
 
+function findMapSiteMatches(query) {
+    const keyword = String(query || '').trim().toLocaleLowerCase('ko-KR');
+    if (keyword.length < 1) return [];
+    return (Array.isArray(places) ? places : [])
+        .filter(function(place) {
+            return place && place.name && Number.isFinite(Number(place.lat)) && Number.isFinite(Number(place.lng)) &&
+                String(place.name).toLocaleLowerCase('ko-KR').includes(keyword);
+        })
+        .sort(function(a, b) {
+            const an = String(a.name).toLocaleLowerCase('ko-KR');
+            const bn = String(b.name).toLocaleLowerCase('ko-KR');
+            const ae = an === keyword ? 0 : an.startsWith(keyword) ? 1 : 2;
+            const be = bn === keyword ? 0 : bn.startsWith(keyword) ? 1 : 2;
+            return ae - be || an.localeCompare(bn, 'ko-KR', { numeric: true });
+        })
+        .slice(0, 12);
+}
+
+function searchMapPlaceSuggestions(value) {
+    const results = document.getElementById('mapPlaceSearchResults');
+    if (!results) return;
+    const matches = findMapSiteMatches(value);
+    if (!String(value || '').trim() || !matches.length) {
+        results.innerHTML = '';
+        results.classList.remove('active');
+        return;
+    }
+    results.innerHTML = matches.map(function(place) {
+        return '<button type="button" class="map-place-search-option" data-place-id="' + escapeHtml(place.id || '') + '"><strong>📍 ' + escapeHtml(place.name) + '</strong><small>' + escapeHtml(place.address || place.roadAddress || currentRegion) + '</small></button>';
+    }).join('');
+    results.classList.add('active');
+    results.querySelectorAll('[data-place-id]').forEach(function(option, index) {
+        option.onclick = function() { selectMapSiteSearch(matches[index]); };
+    });
+}
+
+async function selectMapSiteSearch(place) {
+    if (!place) return;
+    const input = document.getElementById('mapAddressSearchInput');
+    const results = document.getElementById('mapPlaceSearchResults');
+    if (input) input.value = place.name || '';
+    if (results) {
+        results.innerHTML = '';
+        results.classList.remove('active');
+    }
+    const ready = await ensureRouteMapReady(12000);
+    if (!ready) {
+        showTabStatus('tab-route', '❌ 지도를 준비하지 못했습니다.', 'error');
+        return;
+    }
+    if (mapAddressSearchOverlay) {
+        try { mapAddressSearchOverlay.setMap(null); } catch (e) {}
+    }
+    const point = new kakao.maps.LatLng(Number(place.lat), Number(place.lng));
+    mapAddressSearchOverlay = new kakao.maps.CustomOverlay({
+        map: kakaoMap,
+        position: point,
+        yAnchor: 1.45,
+        content: '<div class="map-searched-site">📍 ' + escapeHtml(place.name || '현장') + '</div>',
+        zIndex: 8
+    });
+    kakaoMap.relayout();
+    kakaoMap.setLevel(3);
+    kakaoMap.panTo(point);
+    updateVisiblePlaceNameLabels();
+    showTabStatus('tab-route', '✅ "' + place.name + '" 현장을 표시했습니다. 지도 마커를 누르면 대표사진을 볼 수 있습니다.', 'ok');
+}
+
 function initializeMapViewControls() {
     const toggle = document.getElementById('nearbyClusterToggle');
     if (toggle) toggle.checked = nearbyClustersEnabled;
@@ -5790,7 +5924,8 @@ function addRouteMarker(lat, lng, title, isStart, colorIndex) {
         } else {
             let idx = (colorIndex !== undefined && colorIndex !== null) ? colorIndex : 0;
             let color = COLORS[idx % COLORS.length];
-            content = '<div style="background:' + color + ';padding:6px 14px;border-radius:20px;box-shadow:0 4px 16px rgba(0,0,0,0.15);font-size:13px;font-weight:700;color:white;white-space:nowrap;border:1px solid rgba(255,255,255,0.3);z-index:5;">📍 ' + escapeHtml(title) + '</div>';
+            const siteName = String(title || '').replace(/^\d+\.\s*/, '');
+            content = '<button type="button" onclick="openVisitorSitePhotoByName(\'' + escapeJsString(siteName) + '\')" style="background:' + color + ';padding:6px 14px;border-radius:20px;box-shadow:0 4px 16px rgba(0,0,0,0.15);font-size:13px;font-weight:700;color:white;white-space:nowrap;border:1px solid rgba(255,255,255,0.3);z-index:5;cursor:pointer;">📍 ' + escapeHtml(title) + '</button>';
         }
         
         let customOverlay = new kakao.maps.CustomOverlay({
