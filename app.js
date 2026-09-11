@@ -247,7 +247,6 @@ let tempSettings = {};
 let routeObjective = 'distance';
 let useRoadOptimization = true;
 let useDirectionHint = true;
-let todayPlanData = null;
 
 // --- 통계 관련 ---
 const STATS_KEY_PREFIX = 'stats_';
@@ -357,57 +356,6 @@ function isMobile() {
 // ============================================================
 // 2. 탭 전환
 // ============================================================
-async function refreshTodayPlanWidget(showFeedback) {
-    const list = document.getElementById('todayPlanList');
-    const meta = document.getElementById('todayPlanMeta');
-    if (!list || !meta) return;
-    if (!isAuthorized() || !currentRegion) {
-        todayPlanData = null;
-        meta.textContent = '로그인하고 지역을 선택하면 표시됩니다.';
-        list.innerHTML = '<div class="today-plan-empty">🔒 인가코드 로그인이 필요합니다.</div>';
-        return;
-    }
-    list.innerHTML = '<div class="today-plan-empty">⏳ 오늘 경로를 확인하는 중...</div>';
-    try {
-        const data = await serverGet('/api/home/today-plan?region=' + encodeURIComponent(currentRegion));
-        todayPlanData = data;
-        const rows = Array.isArray(data.places) ? data.places : [];
-        const updated = Number(data.updatedAt || 0)
-            ? new Date(Number(data.updatedAt)).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
-            : '';
-        meta.textContent = currentRegion + ' · ' + rows.length + '곳' + (updated ? ' · ' + updated + ' 갱신' : '');
-        if (!rows.length) {
-            list.innerHTML = '<div class="today-plan-empty">오늘 저장된 최적화 경로가 없습니다.<br>경로 최적화를 실행하면 이곳에 표시됩니다.</div>';
-            return;
-        }
-        list.innerHTML = rows.map(function(place, index) {
-            return '<div class="today-plan-item"><span class="today-plan-order">' + (index + 1) + '</span><div><div class="today-plan-name">' + escapeHtml(place.name || '이름 없는 현장') + '</div><div class="today-plan-dong">' + escapeHtml(place.dong || '동 정보 없음') + '</div></div></div>';
-        }).join('') + '<button class="btn btn-primary btn-sm btn-block" type="button" onclick="loadTodayPlanIntoRoute()">🧭 이 경로 불러오기</button>';
-        if (showFeedback) showTabStatus('tab-places', '✅ 오늘 방문 예정 경로를 새로고침했습니다.', 'ok');
-    } catch (error) {
-        todayPlanData = null;
-        meta.textContent = '불러오기 실패';
-        list.innerHTML = '<div class="today-plan-empty">⚠️ ' + escapeHtml(error.message) + '</div>';
-    }
-}
-
-function loadTodayPlanIntoRoute() {
-    const rows = todayPlanData?.places || [];
-    if (!rows.length) return;
-    if (waypoints.length && !confirm('현재 경유지를 오늘 방문 예정 경로로 바꿀까요?')) return;
-    waypoints = rows.map(function(place) {
-        return {
-            name: place.name,
-            dong: place.dong,
-            lat: Number(place.lat),
-            lng: Number(place.lng),
-            address: ''
-        };
-    });
-    renderWaypointList();
-    showTabStatus('tab-places', '✅ 오늘 방문 예정 ' + rows.length + '곳을 경유지로 불러왔습니다.', 'ok');
-}
-
 // popstate에 의한 호출인지 구분하기 위한 플래그
 let isPopState = false;
 
@@ -421,7 +369,6 @@ function switchTab(tabId, updateHistory = true) {
     });
     target.classList.add('active');
     if (tabId === 'tab-cameras' && typeof autoSyncCameras === 'function') autoSyncCameras();
-    if (tabId === 'tab-places') refreshTodayPlanWidget(false);
     
     document.querySelectorAll('.bottom-tab').forEach(function(btn) {
         let isActive = btn.getAttribute('data-tab') === tabId;
@@ -2380,7 +2327,6 @@ async function switchRegion(region) {
 
     // LOCAL → SERVER
     await loadPlacesFromServer(region, true);
-    await refreshTodayPlanWidget(false);
     if (kakaoMap) renderNearbyPlaceClusters();
 
     // 경로 데이터 초기화
@@ -4715,7 +4661,7 @@ function showRouteList() {
     }
     html += '</div>';
 
-    // ===== 2. 전체 경유지 연결 버튼 + 통계 기록 버튼 (나란히 배치) =====
+    // ===== 2. 전체 경유지 연결 버튼 =====
 const totalPoints = sorted.length + 1;
 const isKakao = routeApi === 'kakao';
 const appLimit = isKakao ? 6 : 12;
@@ -4726,7 +4672,6 @@ const displayCount = Math.min(totalPoints, appLimit);
 
 html += '<div style="margin-top:12px; padding-top:12px; border-top: 1px solid #e2e8f0;">';
 
-// ★ 버튼 2개를 나란히 배치
 html += '<div style="display:flex; gap:8px; margin-bottom:8px;">';
 
 // 왼쪽: 전체 경유지 연결 버튼
@@ -4742,11 +4687,6 @@ html += '🗺️ 전체 경로 연결';
 html += '</button>';
 }
 
-// 오른쪽: 통계 기록 버튼 (배경색 있음)
-html += '<button id="stats-record-btn" class="btn" style="flex:1; padding:10px; font-size:14px; font-weight:600; background:#38a169; color:white; border:none; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px;" onclick="recordVisitStats()">';
-html += '📝방문 현장 기록';
-html += '</button>';
-
 html += '</div>';
 
 // API별 제한 안내
@@ -4757,11 +4697,6 @@ if (isOverLimit) {
 } else {
     html += '<div style="font-size:0.7rem; color:#718096; text-align:center; margin-top:4px;">✅ ' + totalPoints + '개 지점 모두 연결 (' + appName + ' 지원 범위 내)</div>';
 }
-
-// ★ 통계 기록 안내 문구
-html += '<div style="font-size:0.65rem; color:#a0aec0; text-align:center; margin-top:6px; padding:6px; background:#f7fafc; border-radius:4px; border:1px dashed #cbd5e0;">';
-html += '💡 <strong>통계 기록</strong> 버튼을 눌러야 방문 기록이 저장됩니다';
-html += '</div>';
 
 html += '</div>';
 
@@ -7484,7 +7419,6 @@ document.addEventListener(
 
         }
 
-        if (!isVisitor()) await refreshTodayPlanWidget(false);
 
         // --------------------------------------------------------
         // 5. UI 갱신
@@ -12119,7 +12053,6 @@ if (
     renderPlaces();
     updateStorageInfo();
 }
-        if (!isVisitor()) await refreshTodayPlanWidget(false);
         if (fieldPilotAuth.role === 'master') {
             alert(
                 '✅ 마스터 권한으로 인가되었습니다.'
