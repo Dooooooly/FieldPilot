@@ -7300,7 +7300,7 @@ function handleAddrKeydown(event) {
 // ============================================================
 (function() {
     let startX = 0, startY = 0, tracking = false;
-    let validTabs = ['tab-places', 'tab-route', 'tab-list', 'tab-stats', 'tab-work', 'tab-settings', 'tab-help'];
+    let validTabs = ['tab-places', 'tab-route', 'tab-list', 'tab-work', 'tab-stats', 'tab-cameras', 'tab-settings', 'tab-help'];
     document.addEventListener('touchstart', function(e) {
         let target = e.target;
         // ★ 지도 영역과 입력 요소는 스와이프에서 제외
@@ -7319,6 +7319,9 @@ function handleAddrKeydown(event) {
         if (Math.abs(dy) >= Math.abs(dx) || Math.abs(dx) < 70 || Math.abs(dy) > 60) return;
         let activeTab = document.querySelector('.tab-content.active');
         if (!activeTab) return;
+        const tabOrder = isVisitor()
+            ? validTabs.filter(function(tabId) { return tabId === 'tab-places' || tabId === 'tab-route'; })
+            : validTabs;
         let currentIndex = tabOrder.indexOf(activeTab.id);
         if (currentIndex < 0) return;
         let nextIndex = dx < 0 ? Math.min(currentIndex + 1, tabOrder.length - 1) : Math.max(currentIndex - 1, 0);
@@ -12058,8 +12061,18 @@ async function authorizeFieldPilot(inputId) {
             }
         );
 
-        const data =
-            await response.json();
+        const responseText = await response.text();
+        let data = {};
+        try {
+            data = responseText ? JSON.parse(responseText) : {};
+        } catch (parseError) {
+            if (!response.ok) {
+                throw new Error(response.status === 503
+                    ? '서버 터널이 연결되지 않았습니다. 서버 관리자가 start-all.bat을 다시 실행해야 합니다.'
+                    : '서버 응답을 확인할 수 없습니다. (HTTP ' + response.status + ')');
+            }
+            throw new Error('서버 응답 형식이 올바르지 않습니다.');
+        }
 
         if (!response.ok || !data.ok) {
             throw new Error(
@@ -12106,7 +12119,7 @@ if (
     renderPlaces();
     updateStorageInfo();
 }
-        await refreshTodayPlanWidget(false);
+        if (!isVisitor()) await refreshTodayPlanWidget(false);
         if (fieldPilotAuth.role === 'master') {
             alert(
                 '✅ 마스터 권한으로 인가되었습니다.'
