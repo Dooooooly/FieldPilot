@@ -2517,6 +2517,10 @@ function openVisitorRegionPicker() {
 }
 
 function addRegion() {
+    if (!isMaster()) {
+        showTabStatus('tab-settings', '🔒 지역 추가는 마스터만 가능합니다.', 'warning');
+        return;
+    }
     let existing = document.getElementById('customRegionModal');
     if (existing) existing.remove();
     
@@ -2610,6 +2614,10 @@ function addRegion() {
 }
 
 function deleteRegion() {
+    if (!isMaster()) {
+        showTabStatus('tab-settings', '🔒 지역 삭제는 마스터만 가능합니다.', 'warning');
+        return;
+    }
     let select = document.getElementById('regionSelect');
     if (!select) return;
     
@@ -6928,6 +6936,10 @@ function selectRegionFromPopup(region) {
 }
 
 function addRegionFromPopup() {
+    if (!isMaster()) {
+        showTabStatus('tab-settings', '🔒 지역 추가는 마스터만 가능합니다.', 'warning');
+        return;
+    }
     let input = document.getElementById('newRegionInput');
     if (!input) return;
     let name = input.value.trim();
@@ -6968,6 +6980,10 @@ function addRegionFromPopup() {
 }
 
 function deleteRegionFromPopup() {
+    if (!isMaster()) {
+        showTabStatus('tab-settings', '🔒 지역 삭제는 마스터만 가능합니다.', 'warning');
+        return;
+    }
     let currentRegion = localStorage.getItem(SELECTED_REGION_KEY);
     if (!currentRegion) {
         showTabStatus('tab-settings', '⚠️ 삭제할 지역이 없습니다.', 'warning');
@@ -7019,6 +7035,10 @@ function deleteRegionFromPopup() {
 
 function openRegionManager() {
     if (isVisitor()) return openVisitorRegionPicker();
+    if (!isMaster()) {
+        showTabStatus('tab-settings', '🔒 지역 관리는 마스터만 가능합니다.', 'warning');
+        return;
+    }
     let existing = document.getElementById('regionManagerModal');
     if (existing) existing.remove();
     
@@ -7342,7 +7362,6 @@ document.addEventListener(
 
         loadSettings();
         await loadRuntimeConfiguration();
-        await loadInitialAuthRegions();
 
         // --------------------------------------------------------
         // 2. 인증 복구
@@ -11969,19 +11988,12 @@ async function authorizeFieldPilot(inputId) {
     const initialLogin = input?.id === 'initialAuthCode';
     const initialButton = document.getElementById('initialAuthButton');
     const initialMessage = document.getElementById('initialAuthMessage');
-    const initialRegion = initialLogin
-        ? String(document.getElementById('initialAuthRegion')?.value || '').trim()
-        : '';
 
     const code =
         String(input?.value || '').trim();
 
     if (!code) {
         alert('인가코드를 입력하세요.');
-        return;
-    }
-    if (initialLogin && !initialRegion) {
-        alert('접속할 지역을 선택하세요.');
         return;
     }
 
@@ -12036,16 +12048,6 @@ async function authorizeFieldPilot(inputId) {
                 data.error ||
                 '인가에 실패했습니다.'
             );
-        }
-
-        if (initialLogin && data.role !== 'master' && data.region !== initialRegion) {
-            if (data.token) {
-                fetch(base + '/api/auth/logout', {
-                    method: 'POST',
-                    headers: { Authorization: 'Bearer ' + data.token }
-                }).catch(function() {});
-            }
-            throw new Error(initialRegion + ' 지역의 인가코드를 입력하세요.');
         }
 
         fieldPilotAuth = {
@@ -12117,29 +12119,6 @@ if (
         if (initialLogin && initialButton) {
             initialButton.disabled = false;
             initialButton.textContent = '인가 후 시작';
-        }
-    }
-}
-
-async function loadInitialAuthRegions() {
-    const select = document.getElementById('initialAuthRegion');
-    if (!select) return;
-    try {
-        const response = await fetch(serverBase() + '/api/auth/regions', { cache: 'no-store' });
-        const data = await response.json();
-        if (!response.ok || !data.ok) throw new Error(data.message || data.error || '지역 목록을 불러오지 못했습니다.');
-        const regions = Array.isArray(data.regions) ? data.regions : [];
-        select.innerHTML = '<option value="">지역 선택</option>' + regions.map(function(region) {
-            return '<option value="' + escapeHtml(region) + '">' + escapeHtml(region) + '</option>';
-        }).join('');
-        select.disabled = false;
-    } catch (error) {
-        select.innerHTML = '<option value="">지역 목록 연결 실패</option>';
-        select.disabled = true;
-        const message = document.getElementById('initialAuthMessage');
-        if (message) {
-            message.textContent = '❌ 서버에서 지역 목록을 불러오지 못했습니다.';
-            message.className = 'initial-auth-message is-error';
         }
     }
 }
