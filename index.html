@@ -721,6 +721,9 @@ body.dark-mode .map-address-search input{background:#1a202c;color:#f7fafc;border
     <header class="header">
         <div class="header-left"><h1>🚗 경로 최적화</h1></div>
         <div class="header-right">
+            <button class="header-tool-button" type="button" onclick="openFieldToolsModal()" aria-label="현장 도구 열기" title="현장 도구">
+                <span aria-hidden="true">🧰</span><span class="header-tool-label">도구</span>
+            </button>
             <div class="weather" id="weatherDisplay" onclick="showWeekWeather()">
                 <span>⏳</span><span class="temp">--°C</span>
             </div>
@@ -1655,17 +1658,6 @@ body.dark-mode .map-address-search input{background:#1a202c;color:#f7fafc;border
 
     </div>
 
-
-    <div class="setting-group">
-        <h4>🧰 도구</h4>
-        <div style="font-size:11px;color:var(--text-muted);line-height:1.5;margin-bottom:8px;">
-            현장에서 자주 쓰는 계산과 편의 기능을 실행합니다.
-        </div>
-        <div class="row" style="gap:6px;">
-            <button class="btn btn-primary btn-sm" onclick="openPipeInchCalculator()" style="flex:1;">🧰 파이프 인치 계산기</button>
-            <button class="btn btn-outline btn-sm" onclick="openLunchGame()" style="flex:1;">🍱 점심 메뉴</button>
-        </div>
-    </div>
 
     <!-- ========================================================
          관리자
@@ -2736,9 +2728,9 @@ body.dark-mode .map-address-search input{background:#1a202c;color:#f7fafc;border
                 return window.FIELD_SERVER_URL || '';
             });
     </script>
-    <script type="module" src="src/main.js?v=2026.09.18.2"></script>
-    <script src="app.js?v=2026.09.18.2" defer></script>
-    <script src="cameras.js?v=2026.09.18.2" defer></script>
-    <script src="pipe-calculator.js?v=2026.09.18.2" defer></script>
+    <script type="module" src="src/main.js?v=2026.09.18.3"></script>
+    <script src="app.js?v=2026.09.18.3" defer></script>
+    <script src="cameras.js?v=2026.09.18.3" defer></script>
+    <script src="pipe-calculator.js?v=2026.09.18.3" defer></script>
 </body>
 </html>
