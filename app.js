@@ -5,6 +5,21 @@
 // --- 저장소 키 ---
 const STORAGE_KEY_PREFIX = 'places_';
 const SELECTED_REGION_KEY = 'selectedRegion';
+const LOCAL_REGION_ADDS_KEY = 'fieldpilot_local_region_adds';
+const LOCAL_REGION_HIDDEN_KEY = 'fieldpilot_local_region_hidden';
+
+function readRegionListSetting(key) {
+    try {
+        const value = JSON.parse(localStorage.getItem(key) || '[]');
+        return Array.isArray(value) ? value.map(String).filter(Boolean) : [];
+    } catch (error) {
+        return [];
+    }
+}
+
+function writeRegionListSetting(key, values) {
+    localStorage.setItem(key, JSON.stringify(Array.from(new Set(values.map(String).filter(Boolean))).sort()));
+}
 const SETTINGS_KEY = 'app_settings';
 const OPTIMIZE_MODE_KEY = 'optimizeMode';
 const PRESETS_KEY = 'route_presets';
@@ -2226,9 +2241,13 @@ async function loadAuthorizedRegionOptions() {
 
     try {
         const data = await serverGet('/api/visitor/regions');
-        const regions = Array.isArray(data.regions)
+        let regions = Array.isArray(data.regions)
             ? data.regions.map(region => String(region || '').trim()).filter(Boolean)
             : [];
+
+        const localAdds = readRegionListSetting(LOCAL_REGION_ADDS_KEY);
+        const localHidden = new Set(readRegionListSetting(LOCAL_REGION_HIDDEN_KEY));
+        regions = Array.from(new Set(regions.concat(localAdds))).filter(region => !localHidden.has(region));
 
         regions.sort((a, b) => a.localeCompare(b, 'ko'));
         select.innerHTML = regions.map(region =>
@@ -3508,8 +3527,20 @@ function openAddPlaceModal() {
     document.getElementById('addPlaceModal').classList.add('active');
     document.getElementById('modalPlaceName').value = '';
     document.getElementById('modalPlaceAddr').value = '';
+    // 이전 입력의 좌표가 남아 새 주소보다 우선되는 경우를 막는다.
+    const latInput = document.getElementById('modalPlaceLat');
+    const lngInput = document.getElementById('modalPlaceLng');
+    if (latInput) latInput.value = '';
+    if (lngInput) lngInput.value = '';
     document.getElementById('modalPlaceRemark').value = '';
     document.getElementById('modalPlaceName').focus();
+}
+
+function hasUsablePlaceCoordinates(place) {
+    const lat = Number(place?.lat);
+    const lng = Number(place?.lng);
+    return Number.isFinite(lat) && Number.isFinite(lng) &&
+        lat >= 33 && lat <= 43 && lng >= 124 && lng <= 132;
 }
 
 function closeAddPlaceModal() {
@@ -5617,7 +5648,7 @@ function updateVisiblePlaceNameLabels() {
     const visible = (Array.isArray(places) ? places : []).filter(function(place) {
         const lat = Number(place?.lat);
         const lng = Number(place?.lng);
-        return Number.isFinite(lat) && Number.isFinite(lng) && bounds.contain(new kakao.maps.LatLng(lat, lng));
+        return hasUsablePlaceCoordinates(place) && bounds.contain(new kakao.maps.LatLng(lat, lng));
     });
     for (const place of visible) {
         if (placeNameOverlays.length >= 70) break;
@@ -5645,7 +5676,7 @@ function renderNearbyPlaceClusters() {
     clearNearbyPlaceClusters();
     if (!nearbyClustersEnabled || !kakaoMap || !window.kakao?.maps?.MarkerClusterer) return;
     const validPlaces = (Array.isArray(places) ? places : []).filter(function(place) {
-        return Number.isFinite(Number(place?.lat)) && Number.isFinite(Number(place?.lng));
+        return hasUsablePlaceCoordinates(place);
     });
     if (!validPlaces.length) return;
     placeMarkers = validPlaces.map(function(place) {
@@ -5793,7 +5824,7 @@ function findMapSiteMatches(query) {
     if (keyword.length < 1) return [];
     return (Array.isArray(places) ? places : [])
         .filter(function(place) {
-            return place && place.name && Number.isFinite(Number(place.lat)) && Number.isFinite(Number(place.lng)) &&
+            return place && place.name && hasUsablePlaceCoordinates(place) &&
                 String(place.name).toLocaleLowerCase('ko-KR').includes(keyword);
         })
         .sort(function(a, b) {
@@ -6964,6 +6995,8 @@ function addRegionFromPopup() {
     }
     let key = getStorageKey(region);
     localStorage.setItem(key, JSON.stringify([]));
+    writeRegionListSetting(LOCAL_REGION_ADDS_KEY, readRegionListSetting(LOCAL_REGION_ADDS_KEY).concat(region));
+    writeRegionListSetting(LOCAL_REGION_HIDDEN_KEY, readRegionListSetting(LOCAL_REGION_HIDDEN_KEY).filter(item => item !== region));
     let opt = document.createElement('option');
     opt.value = region;
     opt.textContent = region;
@@ -7000,6 +7033,8 @@ function deleteRegionFromPopup() {
         function() {
             let key = getStorageKey(currentRegion);
             localStorage.removeItem(key);
+            writeRegionListSetting(LOCAL_REGION_HIDDEN_KEY, readRegionListSetting(LOCAL_REGION_HIDDEN_KEY).concat(currentRegion));
+            writeRegionListSetting(LOCAL_REGION_ADDS_KEY, readRegionListSetting(LOCAL_REGION_ADDS_KEY).filter(item => item !== currentRegion));
             for (let i = 0; i < select.options.length; i++) {
                 if (select.options[i].value === currentRegion) {
                     select.remove(i);
@@ -7033,7 +7068,7 @@ function deleteRegionFromPopup() {
     );
 }
 
-function openRegionManager() {
+async function openRegionManager() {
     if (isVisitor()) return openVisitorRegionPicker();
     if (!isMaster()) {
         showTabStatus('tab-settings', '🔒 지역 관리는 마스터만 가능합니다.', 'warning');
@@ -7052,6 +7087,13 @@ function openRegionManager() {
             }
         }
     }
+    try {
+        const remote = await serverGet('/api/visitor/regions');
+        if (Array.isArray(remote.regions)) regions = regions.concat(remote.regions);
+    } catch (error) {
+        console.warn('[지역관리] 서버 지역 목록 로드 실패:', error);
+    }
+    regions = Array.from(new Set(regions)).filter(region => !readRegionListSetting(LOCAL_REGION_HIDDEN_KEY).includes(region));
     regions.sort();
     
     let currentRegion = localStorage.getItem(SELECTED_REGION_KEY) || '';
