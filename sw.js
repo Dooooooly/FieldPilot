@@ -2,7 +2,7 @@
 // Service Worker - PWA 오프라인 지원 (최적화)
 // ============================================================
 
-const APP_VERSION = '2026.09.18.1';
+const APP_VERSION = '2026.09.18.2';
 const CACHE_NAME = 'FieldPilot-' + APP_VERSION;
 const BASE_PATH = new URL('.', self.location.href).pathname;
 
@@ -12,6 +12,7 @@ const ASSETS = [
     BASE_PATH + 'index.html',
     BASE_PATH + 'app.js?v=' + APP_VERSION,
     BASE_PATH + 'cameras.js?v=' + APP_VERSION,
+    BASE_PATH + 'pipe-calculator.js?v=' + APP_VERSION,
     BASE_PATH + 'manifest.json',
     BASE_PATH + 'src/main.js?v=' + APP_VERSION,
     BASE_PATH + 'src/config.js',
