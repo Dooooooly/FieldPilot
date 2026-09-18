@@ -176,6 +176,15 @@
         }
         .weather:hover { background: rgba(255,255,255,0.25); transform: translateY(-1px); }
         .weather .temp { font-weight: 700; font-size: 13px; }
+        .header .header-tool-button.weather {
+            border: 0 !important;
+            min-height: 0 !important;
+            padding: 4px 12px !important;
+            background: rgba(255,255,255,0.15) !important;
+            color: white !important;
+            font: inherit !important;
+        }
+        .header .header-tool-button.weather:hover { background: rgba(255,255,255,0.25) !important; }
         .header-divider { width: 1px; height: 20px; background: rgba(255,255,255,0.2); flex-shrink: 0; }
 
         .main { max-width: 600px; margin: 0 auto; padding: 12px 14px 80px; }
@@ -721,9 +730,10 @@ body.dark-mode .map-address-search input{background:#1a202c;color:#f7fafc;border
     <header class="header">
         <div class="header-left"><h1>🚗 경로 최적화</h1></div>
         <div class="header-right">
-            <button class="header-tool-button" type="button" onclick="openFieldToolsModal()" aria-label="현장 도구 열기" title="현장 도구">
+            <button class="weather header-tool-button" type="button" onclick="openFieldToolsModal()" aria-label="현장 도구 열기" title="현장 도구">
                 <span aria-hidden="true">🧰</span><span class="header-tool-label">도구</span>
             </button>
+            <span class="header-divider"></span>
             <div class="weather" id="weatherDisplay" onclick="showWeekWeather()">
                 <span>⏳</span><span class="temp">--°C</span>
             </div>
@@ -2728,9 +2738,9 @@ body.dark-mode .map-address-search input{background:#1a202c;color:#f7fafc;border
                 return window.FIELD_SERVER_URL || '';
             });
     </script>
-    <script type="module" src="src/main.js?v=2026.09.18.3"></script>
-    <script src="app.js?v=2026.09.18.3" defer></script>
-    <script src="cameras.js?v=2026.09.18.3" defer></script>
-    <script src="pipe-calculator.js?v=2026.09.18.3" defer></script>
+    <script type="module" src="src/main.js?v=2026.09.18.4"></script>
+    <script src="app.js?v=2026.09.18.4" defer></script>
+    <script src="cameras.js?v=2026.09.18.4" defer></script>
+    <script src="pipe-calculator.js?v=2026.09.18.4" defer></script>
 </body>
 </html>
