@@ -489,6 +489,11 @@
         .modal .btn-row { margin-top: 12px; }
         .modal input { width: 100%; padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 13px; margin-bottom: 8px; }
         .modal input:focus { border-color: #4f7eb3; outline: none; }
+        #modal .modal { max-width: 440px; max-height: 90vh; overflow-y: auto; background: var(--bg-card); color: var(--text-primary); }
+        #modal .modal input { background: var(--bg-secondary); color: var(--text-primary); border-color: var(--border-color); }
+        .edit-map-picker { margin: 8px 0; }
+        .edit-map-picker-map { height: 270px; width: 100%; margin-top: 8px; border: 1px solid var(--border-color); border-radius: 10px; overflow: hidden; }
+        .edit-map-picker-help { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
 
         .help-section { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid #e2e8f0; }
         .help-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
@@ -2566,6 +2571,13 @@ body.dark-mode .map-address-search input{background:#1a202c;color:#f7fafc;border
                 <input type="number" id="modalLat" placeholder="위도 (선택)" step="any" style="flex:1; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px;">
                 <input type="number" id="modalLng" placeholder="경도 (선택)" step="any" style="flex:1; padding:8px 12px; border:2px solid #e2e8f0; border-radius:8px; font-size:13px;">
             </div>
+            <div class="edit-map-picker">
+                <button type="button" class="btn btn-outline btn-sm" onclick="toggleEditMapPicker()">📍 지도에서 위치 선택</button>
+                <div id="editMapPickerPanel" hidden>
+                    <div id="editMapPickerMap" class="edit-map-picker-map" role="application" aria-label="현장 위치 선택 지도"></div>
+                    <div id="editMapPickerHelp" class="edit-map-picker-help">지도를 클릭하면 위도·경도가 입력됩니다. 저장 전에는 현장 위치가 바뀌지 않습니다.</div>
+                </div>
+            </div>
             <div style="margin-bottom:8px;">
     <label for="modalDong" style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;color:#4a5568;">🏘️ 동 (행정동)</label>
     <input id="modalDong" type="text" placeholder="동 (선택)" style="width:100%;padding:8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;">
@@ -2738,9 +2750,9 @@ body.dark-mode .map-address-search input{background:#1a202c;color:#f7fafc;border
                 return window.FIELD_SERVER_URL || '';
             });
     </script>
-    <script type="module" src="src/main.js?v=2026.09.18.4"></script>
-    <script src="app.js?v=2026.09.18.4" defer></script>
-    <script src="cameras.js?v=2026.09.18.4" defer></script>
-    <script src="pipe-calculator.js?v=2026.09.18.4" defer></script>
+    <script type="module" src="src/main.js?v=2026.09.29.1"></script>
+    <script src="app.js?v=2026.09.29.1" defer></script>
+    <script src="cameras.js?v=2026.09.29.1" defer></script>
+    <script src="pipe-calculator.js?v=2026.09.29.1" defer></script>
 </body>
 </html>
