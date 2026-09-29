@@ -3897,8 +3897,79 @@ function openEditModal(id) {
     document.getElementById('modalRemark').value = place.remark || '';
     if (document.getElementById('modalDong')) document.getElementById('modalDong').value = place.dong || '';
     document.getElementById('modalId').value = id;
+    document.getElementById('modalLat').value = '';
+    document.getElementById('modalLng').value = '';
+    document.getElementById('editMapPickerPanel').hidden = true;
+    editMapPickerMap = null;
+    editMapPickerMarker = null;
     showModalEditError(null);
     document.getElementById('modal').classList.add('active');
+}
+
+let editMapPickerMap = null;
+let editMapPickerMarker = null;
+let editMapPickerLoading = false;
+
+async function ensureEditMapPickerSdk() {
+    if (typeof kakao !== 'undefined' && kakao.maps) {
+        await new Promise(resolve => kakao.maps.load(resolve));
+        return;
+    }
+    if (!KAKAO_JAVASCRIPT_KEY) await loadRuntimeConfiguration();
+    if (!KAKAO_JAVASCRIPT_KEY) throw new Error('지도 키를 불러올 수 없습니다. 서버 연결을 확인하세요.');
+    await new Promise((resolve, reject) => {
+        let script = document.querySelector('script[src*="dapi.kakao.com/v2/maps/sdk.js"]');
+        if (!script) {
+            script = document.createElement('script');
+            script.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=' + encodeURIComponent(KAKAO_JAVASCRIPT_KEY) + '&autoload=false&libraries=services,clusterer';
+            script.async = true;
+            document.head.appendChild(script);
+        }
+        const timeout = setTimeout(() => reject(new Error('지도 로딩 시간이 초과되었습니다.')), 15000);
+        const ready = () => {
+            clearTimeout(timeout);
+            if (typeof kakao === 'undefined' || !kakao.maps) return reject(new Error('지도 SDK를 불러오지 못했습니다.'));
+            kakao.maps.load(resolve);
+        };
+        if (typeof kakao !== 'undefined' && kakao.maps) ready();
+        else {
+            script.addEventListener('load', ready, { once: true });
+            script.addEventListener('error', () => { clearTimeout(timeout); reject(new Error('지도 SDK 연결에 실패했습니다.')); }, { once: true });
+        }
+    });
+}
+
+async function toggleEditMapPicker() {
+    const panel = document.getElementById('editMapPickerPanel');
+    if (!panel || editMapPickerLoading) return;
+    if (!panel.hidden) { panel.hidden = true; return; }
+    panel.hidden = false;
+    const help = document.getElementById('editMapPickerHelp');
+    help.textContent = '⏳ 지도 불러오는 중…';
+    editMapPickerLoading = true;
+    try {
+        await ensureEditMapPickerSdk();
+        if (panel.hidden) return;
+        const place = places.find(p => p.id === document.getElementById('modalId').value);
+        const lat = Number(document.getElementById('modalLat').value) || Number(place?.lat) || 37.5665;
+        const lng = Number(document.getElementById('modalLng').value) || Number(place?.lng) || 126.9780;
+        const center = new kakao.maps.LatLng(lat, lng);
+        editMapPickerMap = new kakao.maps.Map(document.getElementById('editMapPickerMap'), { center, level: 3 });
+        editMapPickerMarker = new kakao.maps.Marker({ map: editMapPickerMap, position: center });
+        kakao.maps.event.addListener(editMapPickerMap, 'click', function(mouseEvent) {
+            const point = mouseEvent.latLng;
+            document.getElementById('modalLat').value = point.getLat().toFixed(7);
+            document.getElementById('modalLng').value = point.getLng().toFixed(7);
+            editMapPickerMarker.setPosition(point);
+            help.textContent = '✅ 선택한 좌표가 입력됐습니다. 현장 편집의 저장 버튼을 눌러 적용하세요.';
+        });
+        help.textContent = '지도를 클릭하면 위도·경도가 입력됩니다. 저장 전에는 현장 위치가 바뀌지 않습니다.';
+        setTimeout(() => { if (!panel.hidden && editMapPickerMap) editMapPickerMap.relayout(); }, 100);
+    } catch (error) {
+        help.textContent = '⚠️ ' + error.message;
+    } finally {
+        editMapPickerLoading = false;
+    }
 }
 
 function showModalEditError(msg) {
@@ -4000,6 +4071,9 @@ await notifyPlaceChange('수정', previousPlace, place);
 
 function closeModal() {
     document.getElementById('modal').classList.remove('active');
+    document.getElementById('editMapPickerPanel').hidden = true;
+    editMapPickerMap = null;
+    editMapPickerMarker = null;
     document.getElementById('modalName').value = '';
     document.getElementById('modalAddress').value = '';
     document.getElementById('modalLat').value = '';
