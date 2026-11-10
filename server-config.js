@@ -1,2 +1,2 @@
 // 현장처리 서버 주소 설정 (Cloudflare Quick Tunnel - 재시작마다 바뀝니다)
-window.FIELD_SERVER_URL = 'https://consideration-holidays-side-supplied.trycloudflare.com';
+window.FIELD_SERVER_URL = 'https://abs-accepts-tags-grass.trycloudflare.com';
