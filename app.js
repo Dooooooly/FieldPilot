@@ -2001,7 +2001,7 @@ function scheduleAutoSync() {
     }
 
     autoSyncTimer = setTimeout(async function() {
-
+        autoSyncTimer = null;
         if (placeSyncInProgress) {
             placeSyncPending = true;
             return;
@@ -3297,7 +3297,27 @@ function renderWaypointList() {
 // ============================================================
 // 11. 경유지 검색
 // ============================================================
+let waypointSearchGeneration = 0;
+async function refreshWaypointPlaces(region) {
+    if (!region || !navigator.onLine || autoSyncTimer || placeSyncInProgress || placeSyncPending) return;
+    try {
+        const data = await serverGet('/api/places?region=' + encodeURIComponent(region));
+        // 아직 전송하지 않은 편집은 서버 목록으로 덮어쓰지 않는다.
+        if (region !== currentRegion || autoSyncTimer || placeSyncInProgress || placeSyncPending || !Array.isArray(data?.places)) return;
+        places = data.places;
+        const key = getStorageKey(region);
+        localStorage.setItem(key, JSON.stringify(places));
+        fieldPilotCore()?.storage?.setValue(key, places).catch(console.warn);
+        renderPlaces();
+        if (kakaoMap) renderNearbyPlaceClusters();
+    } catch (error) {
+        console.warn('[경유지] 최신 목록 조회 실패, 저장된 현장으로 검색:', error.message);
+    }
+}
+
 function searchWaypoint(query) {
+    const generation = ++waypointSearchGeneration;
+    clearTimeout(window._waypointSearchTimer);
     let container = document.getElementById('waypointSearchResults');
     if (!query || query.length < 1) {
         container.style.display = 'none';
@@ -3305,6 +3325,9 @@ function searchWaypoint(query) {
     }
     clearTimeout(window._waypointSearchTimer);
     window._waypointSearchTimer = setTimeout(async function() {
+        const region = currentRegion;
+        await refreshWaypointPlaces(region);
+        if (generation !== waypointSearchGeneration || region !== currentRegion) return;
         let placeResults = [];
         let lowerQuery = query.toLowerCase();
         for (let i = 0; i < places.length; i++) {
@@ -3320,8 +3343,9 @@ function searchWaypoint(query) {
                 });
             }
         }
-        placeResults = placeResults.slice(0, 5);
+        placeResults = placeResults.slice(0, 30);
         let kakaoResults = await searchKakaoPlaces(query, 5);
+        if (generation !== waypointSearchGeneration || region !== currentRegion) return;
         kakaoResults = kakaoResults.slice(0, 5);
         let allResults = [];
         let seenNames = {};
@@ -6412,16 +6436,26 @@ async function importPlaces(data) {
 let address = String(row['도로명주소'] || row['주소'] || row['address'] || row['Address'] || '').trim();
 let remark = String(row['비고'] || row['remark'] || row['Remark'] || '').trim();
 let dong = String(row['동정보'] || row['동'] || row['dong'] || '').trim();
+        const fields = Object.fromEntries(Object.entries(row).map(([key, value]) => [key.replace(/\s/g, '').toLowerCase(), value]));
+        const lat = Number(String(fields['위도'] ?? fields['lat'] ?? fields['latitude'] ?? '').replace(/,/g, '').trim());
+        const lng = Number(String(fields['경도'] ?? fields['lng'] ?? fields['lon'] ?? fields['longitude'] ?? '').replace(/,/g, '').trim());
+        const hasCoordinates = hasUsablePlaceCoordinates({ lat, lng });
+        const locationQuery = dong ? ('서울특별시 ' + currentRegion + ' ' + dong).replace(/\s+/g, ' ') : address;
         if (!name) continue;
         let normalized = normalizeName(name);
         let existing = places.find(function(p) { return normalizeName(p.name) === normalized; });
         if (existing) {
-if (existing.address !== address || existing.remark !== remark || existing.dong !== dong) {
+if (existing.address !== address || existing.remark !== remark || existing.dong !== dong || (hasCoordinates && (Number(existing.lat) !== lat || Number(existing.lng) !== lng)) || !hasUsablePlaceCoordinates(existing)) {
 existing.address = address;
 existing.remark = remark;
 if (dong) existing.dong = dong;
-                if (address && restKey) {
-                    rowsToGeocode.push({ name: name, address: address, existing: existing });
+                if (hasCoordinates) {
+                    existing.lat = lat;
+                    existing.lng = lng;
+                } else if (locationQuery && restKey) {
+                    existing.lat = 0;
+                    existing.lng = 0;
+                    rowsToGeocode.push({ name: name, address: locationQuery, existing: existing, fromDong: !!dong });
                 }
                 updated++;
             } else {
@@ -6432,15 +6466,15 @@ if (dong) existing.dong = dong;
 id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
 name: name,
 address: address,
-lat: 0,
-lng: 0,
+lat: hasCoordinates ? lat : 0,
+lng: hasCoordinates ? lng : 0,
 remark: remark,
 dong: dong || '',
 favorite: false
 };
             places.push(newPlace);
-            if (address && restKey) {
-                rowsToGeocode.push({ name: name, address: address, existing: newPlace });
+            if (!hasCoordinates && locationQuery && restKey) {
+                rowsToGeocode.push({ name: name, address: locationQuery, existing: newPlace, fromDong: !!dong });
             }
             added++;
         }
@@ -6452,10 +6486,11 @@ favorite: false
         });
         for (let i = 0; i < rowsToGeocode.length; i++) {
     let item = rowsToGeocode[i];
-    if (item.existing && item.geo) {
+    if (item.existing && hasUsablePlaceCoordinates(item.geo)) {
         item.existing.lat = item.geo.lat;
         item.existing.lng = item.geo.lng;
-        item.existing.address = item.geo.address || item.existing.address;
+        if (!item.fromDong) item.existing.address = item.geo.address || item.existing.address;
+        item.existing.coordinateSource = item.fromDong ? 'dong' : 'address';
         if (!item.existing.dong) {
             let dong = await extractDongFromCoords(item.geo.lat, item.geo.lng);
             if (!dong || dong === '기타') {
