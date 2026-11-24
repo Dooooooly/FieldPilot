@@ -253,6 +253,17 @@ let favFilterActive = false;
 let pendingUpload = null;
 let originalRouteCost = null;
 let routeApi = localStorage.getItem(ROUTE_API_KEY) || 'kakao';
+const KAKAO_MAX_WAYPOINTS = 15;
+const TMAP_MAX_WAYPOINTS = 100;
+
+function getMaxWaypoints() {
+    return routeApi === 'tmap' ? TMAP_MAX_WAYPOINTS : KAKAO_MAX_WAYPOINTS;
+}
+
+function getRouteApiLabel() {
+    return routeApi === 'tmap' ? 'TMap' : '카카오맵';
+}
+
 let weatherRetryCount = 0;
 const MAX_WEATHER_RETRY = 3;
 let userGpsCoords = null;      // ★ GPS 좌표 저장 (날씨용)
@@ -2887,8 +2898,9 @@ function toggleWaypointSelection(name, address, lat, lng) {
     if (idx >= 0) {
         selectedWaypoints.splice(idx, 1);
     } else {
-        if (selectedWaypoints.length >= 15) {
-            showTabStatus('tab-places', '⚠️ 최대 15개까지 선택 가능', 'warning');
+        const maxWaypoints = getMaxWaypoints();
+        if (selectedWaypoints.length >= maxWaypoints) {
+            showTabStatus('tab-places', '⚠️ ' + getRouteApiLabel() + ' 경유지는 최대 ' + maxWaypoints + '개까지 선택 가능', 'warning');
             return;
         }
         selectedWaypoints.push({ name: name, address: address, lat: lat, lng: lng });
@@ -3143,8 +3155,9 @@ async function setStartPoint() {
 function selectWaypointFromSearch(name, address, lat, lng) {
     document.getElementById('waypointInput').value = '';
     document.getElementById('waypointSearchResults').style.display = 'none';
-    if (waypoints.length >= 15) {
-        showTabStatus('tab-places', '⚠️ 최대 15개까지 가능', 'warning');
+    const maxWaypoints = getMaxWaypoints();
+    if (waypoints.length >= maxWaypoints) {
+        showTabStatus('tab-places', '⚠️ ' + getRouteApiLabel() + ' 경유지는 최대 ' + maxWaypoints + '개까지 가능', 'warning');
         return;
     }
     waypoints.push({ name: name, lat: lat, lng: lng, address: address });
@@ -3168,11 +3181,12 @@ function addWaypoint() {
         
         let added = 0;
         let duplicated = 0;
+        const maxWaypoints = getMaxWaypoints();
         
         for (let i = 0; i < selectedWaypoints.length; i++) {
             let w = selectedWaypoints[i];
-            if (waypoints.length >= 15) {
-                showTabStatus('tab-places', '⚠️ 최대 15개까지 가능', 'warning');
+            if (waypoints.length >= maxWaypoints) {
+                showTabStatus('tab-places', '⚠️ ' + getRouteApiLabel() + ' 경유지는 최대 ' + maxWaypoints + '개까지 가능', 'warning');
                 break;
             }
             if (!waypoints.some(function(ex) { return ex.name === w.name; })) {
@@ -3206,8 +3220,9 @@ function addWaypoint() {
         input.focus();
         return;
     }
-    if (waypoints.length >= 15) {
-        showTabStatus('tab-places', '⚠️ 최대 15개까지 가능', 'warning');
+    const maxWaypoints = getMaxWaypoints();
+    if (waypoints.length >= maxWaypoints) {
+        showTabStatus('tab-places', '⚠️ ' + getRouteApiLabel() + ' 경유지는 최대 ' + maxWaypoints + '개까지 가능', 'warning');
         return;
     }
     if (waypoints.some(function(ex) { return ex.name === name; })) {
@@ -4111,8 +4126,9 @@ function closeModal() {
 function addWaypointFromList(id) {
     let place = places.find(function(p) { return p.id === id; });
     if (!place) return;
-    if (waypoints.length >= 15) {
-        showTabStatus('tab-list', '⚠️ 최대 15개까지 가능', 'warning');
+    const maxWaypoints = getMaxWaypoints();
+    if (waypoints.length >= maxWaypoints) {
+        showTabStatus('tab-list', '⚠️ ' + getRouteApiLabel() + ' 경유지는 최대 ' + maxWaypoints + '개까지 가능', 'warning');
         return;
     }
     if (waypoints.some(function(w) { return w.name === place.name; })) {
@@ -4552,6 +4568,15 @@ async function runOptimize() {
             showTabStatus('tab-places', '📍 경유지를 추가하세요!', 'warning');
             return;
         }
+        const maxWaypoints = getMaxWaypoints();
+        if (waypoints.length > maxWaypoints) {
+            showTabStatus(
+                'tab-places',
+                '⚠️ ' + getRouteApiLabel() + ' 경유지는 최대 ' + maxWaypoints + '개까지 선택할 수 있습니다. 현재 ' + waypoints.length + '개입니다.',
+                'warning'
+            );
+            return;
+        }
         
         let restKey = 'server-proxy';
         if (!restKey) {
@@ -4829,7 +4854,7 @@ html += '<div style="display:flex; gap:8px; margin-bottom:8px;">';
 if (routeApi === 'tmap') {
 // ★ TMap: 전체 연결 버튼 숨김 + 안내 문구
 html += '<div style="flex:1; padding:10px; font-size:12px; color:#a0aec0; background:#f7fafc; border-radius:8px; text-align:center;">';
-html += 'ℹ️ TMap은 경유지 기능을 지원하지 않습니다<br><span style="font-size:11px;">각 구간별 🚗 버튼으로 이동하세요</span>';
+html += 'ℹ️ TMap 딥링크는 경유지를 지원하지 않습니다<br><span style="font-size:11px;">각 구간별 🚗 버튼으로 이동하세요</span>';
 html += '</div>';
 } else {
 // 카카오맵: 기존 전체 연결 버튼
@@ -4841,11 +4866,11 @@ html += '</button>';
 html += '</div>';
 
 // API별 제한 안내
-if (isOverLimit) {
+if (isKakao && isOverLimit) {
     html += '<div style="font-size:0.7rem; color:#e53e3e; text-align:center; margin-top:4px;">⚠️ ' + appName + ' 제한: 총 ' + appLimit + '개 지점까지만 전달됩니다';
-    if (isKakao) html += '<br>(경유지 ' + waypointLimit + '개 초과 시 초과분은 잘려서 전달됩니다)';
+    html += '<br>(경유지 ' + waypointLimit + '개 초과 시 초과분은 잘려서 전달됩니다)';
     html += '</div>';
-} else {
+} else if (isKakao) {
     html += '<div style="font-size:0.7rem; color:#718096; text-align:center; margin-top:4px;">✅ ' + totalPoints + '개 지점 모두 연결 (' + appName + ' 지원 범위 내)</div>';
 }
 
@@ -6201,9 +6226,20 @@ function loadPreset(index) {
                 return;
             }
 
+            const presetWaypoints = Array.isArray(preset.waypoints) ? preset.waypoints : [];
+            const maxWaypoints = getMaxWaypoints();
+            if (presetWaypoints.length > maxWaypoints) {
+                showTabStatus(
+                    'tab-places',
+                    '⚠️ ' + getRouteApiLabel() + ' 경유지는 최대 ' + maxWaypoints + '개까지 불러올 수 있습니다. 프리셋에는 ' + presetWaypoints.length + '개가 있습니다.',
+                    'warning'
+                );
+                return;
+            }
+
             waypoints = [];
-            for (let i = 0; i < preset.waypoints.length; i++) {
-                let w = preset.waypoints[i];
+            for (let i = 0; i < presetWaypoints.length; i++) {
+                let w = presetWaypoints[i];
                 waypoints.push({
                     name: w.name,
                     address: w.address || '',
@@ -7842,7 +7878,8 @@ function renderOptimizedWaypoints() {
     if (navBtn) {
         const apiLabel = routeApi === 'tmap' ? 'TMap' : '카카오내비';
         const icon = routeApi === 'tmap' ? '🚗' : '🗺️';
-        navBtn.innerHTML = `${icon} 경유지 연결 (<span id="selected-count-badge">${selectedCount}</span>)`;
+        const navLabel = routeApi === 'tmap' ? '출발→도착 연결' : '경유지 연결';
+        navBtn.innerHTML = `${icon} ${navLabel} (<span id="selected-count-badge">${selectedCount}</span>)`;
         navBtn.style.background = routeApi === 'tmap' ? '#0064d8' : '#fee500';
         navBtn.style.color = routeApi === 'tmap' ? 'white' : '#333';
         // 배지 재설정
@@ -7852,7 +7889,10 @@ function renderOptimizedWaypoints() {
     
     // 제한 메시지
     if (limitMsg) {
-        if (selectedCount > 10) {
+        if (routeApi === 'tmap') {
+            limitMsg.textContent = 'ℹ️ TMap 딥링크는 경유지를 지원하지 않습니다 (출발→도착만 연결)';
+            limitMsg.style.color = 'var(--text-muted)';
+        } else if (selectedCount > 10) {
             limitMsg.textContent = `⚠️ 최대 10개까지 전달됩니다 (${selectedCount - 10}개 제외)`;
             limitMsg.style.color = '#e53e3e';
         } else {
@@ -7863,7 +7903,7 @@ function renderOptimizedWaypoints() {
     
     // ★ 틀 테두리 색상 (10개 초과 시 경고)
     if (frameContainer) {
-        if (selectedCount > 10) {
+        if (routeApi !== 'tmap' && selectedCount > 10) {
             frameContainer.style.borderColor = '#e53e3e';
             frameContainer.style.borderStyle = 'solid';
         } else {
@@ -7972,7 +8012,7 @@ function openMultiStopNavigation() {
     const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
     // ============================================================
-    // 1. TMap 처리 (경유지 최대 10개 지원)
+    // 1. TMap 처리 (딥링크 경유지 미지원, 출발→도착만 연결)
     // ============================================================
     if (routeApi === 'tmap') {
 // ★ TMap: 경유지 미지원 → 출발지~도착지만 연결
@@ -7995,7 +8035,7 @@ window.location.href = schemeUrl;
 setTimeout(function() {
 window.open(webUrl, '_blank');
 }, 1500);
-showTabStatus('tab-route', '🗺️ TMap 실행 중... (경유지 미지원, 출발→도착만)', 'warning');
+showTabStatus('tab-route', '🗺️ TMap 실행 중... (딥링크 경유지 미지원, 출발→도착만)', 'warning');
 return;
 }
 
