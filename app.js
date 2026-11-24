@@ -82,7 +82,7 @@ async function serverGet(pathAndQuery) {
 
         throw new Error(
             (errBody && (errBody.message || errBody.error)) ||
-            ('서버 오류 ' + res.status)
+            (res.status === 503 ? 'FieldPilot 서버에 연결할 수 없습니다. 서버 연결이 복구된 후 다시 시도하세요.' : '서버 오류 ' + res.status)
         );
     }
 
@@ -140,7 +140,7 @@ async function serverPost(pathAndQuery, data) {
         throw new Error(
             (errBody &&
                 (errBody.message || errBody.error)) ||
-            ('서버 오류 ' + res.status)
+            (res.status === 503 ? 'FieldPilot 서버에 연결할 수 없습니다. 서버 연결이 복구된 후 다시 시도하세요.' : '서버 오류 ' + res.status)
         );
     }
 
