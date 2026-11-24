@@ -6,7 +6,7 @@
  */
 
 export const CONFIG = {
-    version: '2026.09.29.2',
+    version: '2026.11.24.1',
 
     storage: {
         databaseName: 'FieldPilotCore',
@@ -70,7 +70,8 @@ export const CONFIG = {
     },
 
     route: {
-        maxWaypoints: 15,
+        maxWaypoints: 15, // Kakao map waypoint selection limit
+        tmapMaxWaypoints: 100,
         advancedOptimizationThreshold: 15
     }
 };
