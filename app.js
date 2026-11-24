@@ -4640,11 +4640,87 @@ async function runOptimize() {
             return;
         }
         
-        originalRouteCost = await routeCost(validPlaces.slice(), startPoint, restKey);
-        
-        showTabStatus('tab-places', '🛣️ 실제 도로거리 기반 최적화 계산 중...', 'info');
-        let sorted = await optimizeRouteAlgorithm(validPlaces, startPoint.lat, startPoint.lng, optimizeMode, restKey);
-        
+        const isTmapRoute = routeApi === 'tmap';
+        let tmapOptimization = null;
+        let sorted = null;
+        let routeData = null;
+
+        if (isTmapRoute) {
+            originalRouteCost = null;
+            {
+                showTabStatus('tab-places', '🧭 TMap 경유지 순서 최적화 계산 중...', 'info');
+                try {
+                    tmapOptimization = await callTmapRouteOptimization(
+                        [startPoint].concat(validPlaces)
+                    );
+                } catch (error) {
+                    showTabStatus('tab-places', '⚠️ TMap 경로 계산 실패: ' + error.message, 'error');
+                    return;
+                }
+            }
+
+            if (tmapOptimization && Array.isArray(tmapOptimization.order)) {
+                const destination = validPlaces[validPlaces.length - 1];
+                const candidates = validPlaces.slice(0, -1);
+                const used = new Set();
+                const ordered = [];
+
+                tmapOptimization.order.forEach(function (value) {
+                    const index = Number(value);
+                    if (Number.isInteger(index) &&
+                        index >= 0 &&
+                        index < candidates.length &&
+                        !used.has(index)) {
+                        used.add(index);
+                        ordered.push(candidates[index]);
+                    }
+                });
+                for (let i = 0; i < candidates.length; i++) {
+                    if (!used.has(i)) ordered.push(candidates[i]);
+                }
+
+                sorted = ordered.concat([destination]);
+                sorted._optimizationMeta = {
+                    roadCalls: 1,
+                    roadSuccess: 1,
+                    roadFallback: 0,
+                    distanceKm: Number(tmapOptimization.totalDistanceM || 0) / 1000,
+                    durationMin: Number(tmapOptimization.totalTimeSec || 0) / 60,
+                    method: 'TMAP 경유지 순서 최적화 100'
+                };
+                routeData = tmapOptimizationToRouteData(tmapOptimization);
+            } else {
+                sorted = buildGeometricSeed(
+                    validPlaces,
+                    { name: '출발지', lat: startPoint.lat, lng: startPoint.lng },
+                    optimizeMode
+                );
+                sorted._optimizationMeta = {
+                    roadCalls: 0,
+                    roadSuccess: 0,
+                    roadFallback: 0,
+                    distanceKm: 0,
+                    durationMin: 0,
+                    method: '직선거리 기준 (TMAP 최적화 미사용)'
+                };
+                showTabStatus(
+                    'tab-places',
+                    '⚠️ TMap 경유지 최적화를 사용할 수 없어 직선거리 기준으로 정렬했습니다.',
+                    'warning'
+                );
+            }
+        } else {
+            originalRouteCost = await routeCost(validPlaces.slice(), startPoint, restKey);
+            showTabStatus('tab-places', '🛣️ 실제 도로거리 기반 최적화 계산 중...', 'info');
+            sorted = await optimizeRouteAlgorithm(
+                validPlaces,
+                startPoint.lat,
+                startPoint.lng,
+                optimizeMode,
+                restKey
+            );
+        }
+
         if (!sorted || sorted.length === 0) {
             showTabStatus('tab-places', '⚠️ 최적화 실패', 'error');
             return;
@@ -4656,8 +4732,10 @@ async function runOptimize() {
             lng: startPoint.lng,
             address: startPoint.address || ''
         }].concat(sorted);
-        
-        let routeData = await callKakaoMobilityRoute(allPoints, restKey);
+
+        if (!routeData) {
+            routeData = await callKakaoMobilityRoute(allPoints, restKey);
+        }
         // 첫 실행에서도 지도 객체가 준비된 뒤에만 경로·마커를 그린다.
         await ensureRouteMapReady(12000);
         renderOptimizedRouteMapView(allPoints, routeData);
@@ -5235,6 +5313,80 @@ async function callKakaoMobilityRoute(points, restKey) {
     } catch(e) {
         return null;
     }
+}
+
+// ============================================================
+// TMAP 경유지 순서 최적화 100 (노트북 서버 프록시)
+// ============================================================
+async function callTmapRouteOptimization(points) {
+    if (!Array.isArray(points) || points.length < 2) return null;
+    const origin = points[0];
+    const destination = points[points.length - 1];
+    const waypoints = points.slice(1, -1);
+
+    const payload = {
+        origin: { name: origin.name || '출발지', x: origin.lng, y: origin.lat },
+        destination: { name: destination.name || '도착지', x: destination.lng, y: destination.lat },
+        waypoints: waypoints.map(function (point) {
+            return { name: point.name || '경유지', x: point.lng, y: point.lat };
+        })
+    };
+    return await serverPost('/api/route/optimization', payload);
+}
+
+function tmapOptimizationToRouteData(result) {
+    if (!result) return null;
+    let sections = [];
+    if (Array.isArray(result.segments)) {
+        sections = result.segments.map(function (segment) {
+            const vertexes = [];
+            (Array.isArray(segment.path) ? segment.path : []).forEach(function (coordinate) {
+                if (!Array.isArray(coordinate) || coordinate.length < 2) return;
+                const lng = Number(coordinate[0]);
+                const lat = Number(coordinate[1]);
+                if (Number.isFinite(lng) && Number.isFinite(lat)) {
+                    vertexes.push(lng, lat);
+                }
+            });
+            return {
+                distance: Number(segment.distanceM || 0),
+                duration: Number(segment.timeSec || 0),
+                roads: vertexes.length >= 4 ? [{ vertexes: vertexes }] : []
+            };
+        }).filter(function (section) {
+            return section.roads.length > 0;
+        });
+    }
+
+    if (!sections.length && Array.isArray(result.path) && result.path.length >= 2) {
+        const vertexes = [];
+        result.path.forEach(function (coordinate) {
+            if (!Array.isArray(coordinate) || coordinate.length < 2) return;
+            const lng = Number(coordinate[0]);
+            const lat = Number(coordinate[1]);
+            if (Number.isFinite(lng) && Number.isFinite(lat)) {
+                vertexes.push(lng, lat);
+            }
+        });
+        if (vertexes.length >= 4) {
+            sections = [{
+                distance: Number(result.totalDistanceM || 0),
+                duration: Number(result.totalTimeSec || 0),
+                roads: [{ vertexes: vertexes }]
+            }];
+        }
+    }
+
+    if (!sections.length) return null;
+    return {
+        routes: [{
+            summary: {
+                distance: Number(result.totalDistanceM || 0),
+                duration: Number(result.totalTimeSec || 0)
+            },
+            sections: sections
+        }]
+    };
 }
 
 function drawRoadRoute(routeData) {
